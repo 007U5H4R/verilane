@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Verilane mockup</title>
+<meta name="description" content="Non-production Stage 3 mockup of Verilane, an evidence-backed accounts receivable collections copilot." />
+<style>
+:root{
+  --canvas:#f8f7f3;--surface:#fff;--surface-sunken:#f1efe8;
+  --border:#e4e1d8;--border-strong:#cdc8bb;
+  --text:#17221c;--text-muted:#53605a;
+  --brand:#1f7a4d;--brand-strong:#145c38;--brand-tint:#e6f3ec;
+  --rail:#0f3d29;--rail-active:#1c5a3e;--rail-text:#f3f8f5;--rail-muted:#b9d4c5;
+  --high:#b3261e;--high-bg:#fbe9e7;--med:#8a5a00;--med-bg:#fdf1dc;
+  --low:#3a6b52;--low-bg:#e8f2ec;--disp:#5b5f7a;--disp-bg:#ececf2;
+  --disabled-bg:#ebe8e0;--disabled-text:#6b736e;--on-brand:#fff;
+  --r-lg:14px;--r-md:10px;
+  --font-ui:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-display:"Iowan Old Style","Charter","Source Serif 4",Georgia,serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --canvas:#0f1613;--surface:#17201c;--surface-sunken:#121a16;
+    --border:#283531;--border-strong:#3a4944;--text:#e7f0ea;--text-muted:#a9b8b0;
+    --brand:#3fae79;--brand-strong:#6fcc9a;--brand-tint:#173326;
+    --rail:#0a2419;--rail-active:#17402d;--rail-muted:#9fc2af;
+    --high:#ff8a80;--high-bg:#3a1f1d;--med:#e8b35c;--med-bg:#3a2e18;
+    --low:#7fcba0;--low-bg:#16302a;--disp:#a9acc9;--disp-bg:#23263a;
+    --disabled-bg:#222c28;--disabled-text:#93a29a;--on-brand:#06140d;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --canvas:#0f1613;--surface:#17201c;--surface-sunken:#121a16;
+  --border:#283531;--border-strong:#3a4944;--text:#e7f0ea;--text-muted:#a9b8b0;
+  --brand:#3fae79;--brand-strong:#6fcc9a;--brand-tint:#173326;
+  --rail:#0a2419;--rail-active:#17402d;--rail-muted:#9fc2af;
+  --high:#ff8a80;--high-bg:#3a1f1d;--med:#e8b35c;--med-bg:#3a2e18;
+  --low:#7fcba0;--low-bg:#16302a;--disp:#a9acc9;--disp-bg:#23263a;
+  --disabled-bg:#222c28;--disabled-text:#93a29a;--on-brand:#06140d;color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--canvas);color:var(--text);font:14px/1.5 var(--font-ui);-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--brand-strong)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--font-mono);font-size:12px}
+
+/* prototype chrome — not product UI */
+.proto-banner{background:var(--surface-sunken);border-bottom:1px solid var(--border);padding:6px 16px;font-size:12px;color:var(--text-muted)}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.toolbar .label{font-size:12px;color:var(--text-muted);margin-right:4px}
+.nav-btn,.tg{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer;min-height:30px}
+.nav-btn[aria-selected="true"],.tg[aria-pressed="true"]{background:var(--brand-tint);border-color:var(--brand);color:var(--brand-strong);font-weight:600}
+.toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+
+/* app shell */
+.app{display:grid;grid-template-columns:216px minmax(0,1fr);min-height:calc(100vh - 80px)}
+.rail{background:var(--rail);color:var(--rail-text);display:flex;flex-direction:column;padding:16px 12px;gap:16px}
+.logo-card{background:#fff;border-radius:var(--r-md);padding:8px 10px;display:flex;align-items:center;justify-content:center}
+.logo-card img{display:block;width:100%;max-width:150px;height:auto}
+.logo-fallback{color:#0f3d29;font-weight:700;font-size:16px}
+.who{display:flex;gap:10px;align-items:center}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--rail-active);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.who small{display:block;color:var(--rail-muted);font-size:12px}
+.rail nav{display:flex;flex-direction:column;gap:2px}
+.rail-link{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);color:var(--rail-text);text-decoration:none;background:none;border:0;cursor:pointer;text-align:left;width:100%;min-height:40px}
+.rail-link:hover{background:rgba(255,255,255,.06)}
+.rail-link[aria-current="page"]{background:var(--rail-active);font-weight:600}
+.rail-link .count{margin-left:auto;font-size:12px;color:var(--rail-muted)}
+.rail-foot{margin-top:auto;font-size:12px;letter-spacing:.08em;font-weight:700;color:var(--rail-muted);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 10px;align-self:flex-start}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 28px;border-bottom:1px solid var(--border);background:var(--canvas);flex-wrap:wrap}
+.crumbs{font-size:13px;color:var(--text-muted);margin-right:auto}
+.crumbs strong{color:var(--text);font-weight:600}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 10px;background:var(--surface);color:var(--text-muted)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:2px}
+.seg button{border:0;background:none;border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;min-height:32px}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand);font-weight:600}
+.icon-btn{border:1px solid var(--border);background:var(--surface);border-radius:999px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer}
+
+.banner{display:flex;gap:10px;align-items:flex-start;padding:10px 28px;font-size:13px;border-bottom:1px solid var(--border)}
+.banner.warn{background:var(--med-bg);color:var(--text)}
+.banner.info{background:var(--brand-tint)}
+.banner[hidden]{display:none}
+
+.content{padding:28px;max-width:1240px;width:100%}
+.panel{display:none}.panel.active{display:block}
+h1.display{font-family:var(--font-display);font-weight:600;font-size:32px;line-height:1.15;margin:0;letter-spacing:-.01em}
+.sub{color:var(--text-muted);margin:4px 0 0}
+.head-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.head-row .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+h2{font-size:16px;margin:0 0 4px}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:0 0 8px;font-weight:600}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;font-weight:600;font-size:13px;min-height:36px;text-decoration:none;color:var(--text)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.btn.primary:hover{background:var(--brand-strong)}
+.btn[aria-disabled="true"],.btn[aria-disabled="true"]:hover{background:var(--disabled-bg);border-color:var(--disabled-bg);color:var(--disabled-text);cursor:not-allowed}
+.btn.ghost{border-color:transparent;background:none}
+.btn.sm{padding:4px 12px;min-height:32px;font-size:12px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.high{background:var(--high-bg);color:var(--high)}
+.pill.med{background:var(--med-bg);color:var(--med)}
+.pill.low{background:var(--low-bg);color:var(--low)}
+.pill.disp{background:var(--disp-bg);color:var(--disp)}
+
+/* Home */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:24px}
+.kpi{padding:16px 20px;border-left:1px solid var(--border)}
+.kpi:first-child{border-left:0}
+.kpi .v{font-family:var(--font-display);font-size:26px;font-weight:600}
+.kpi .l{color:var(--text-muted);font-size:13px}
+.home-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px;align-items:start}
+.task{margin-bottom:10px}
+.task summary{list-style:none;display:flex;gap:12px;align-items:center;padding:14px 16px;cursor:pointer}
+.task summary::-webkit-details-marker{display:none}
+.task summary .t{font-weight:600}
+.task summary .d{color:var(--text-muted);font-size:13px}
+.task summary .chev{margin-left:auto;transition:transform .15s}
+.task[open] summary .chev{transform:rotate(90deg)}
+.task .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.task-body{border-top:1px solid var(--border);padding:8px 16px 12px}
+.task-item{display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);flex-wrap:wrap}
+.task-item:last-child{border-bottom:0}
+.task-item .grow{flex:1;min-width:160px}
+.muted{color:var(--text-muted)}
+.small{font-size:12px}
+.link-btn{background:none;border:0;color:var(--brand-strong);cursor:pointer;padding:6px 0;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.chart{padding:16px 20px;margin-bottom:16px}
+.bars{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.bar-row{display:grid;grid-template-columns:64px minmax(0,1fr) 90px;gap:10px;align-items:center;font-size:13px}
+.bar-track{height:12px;background:var(--surface-sunken);border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;background:var(--brand);border-radius:999px}
+.stack{display:flex;height:16px;border-radius:999px;overflow:hidden;margin-top:12px;gap:2px}
+.stack span{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:12px;color:var(--text-muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.install-chip{display:flex;gap:10px;align-items:center;padding:10px 14px;margin-bottom:16px;background:var(--brand-tint);border-radius:var(--r-md);font-size:13px;flex-wrap:wrap}
+.install-chip[hidden]{display:none}
+
+/* Queue */
+.filters{padding:14px 16px;margin-bottom:16px}
+.filter-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--border-strong);border-radius:999px;padding:6px 12px;background:var(--surface);flex:1;min-width:200px;max-width:360px}
+.search input{border:0;outline:0;background:none;width:100%}
+.filter-body{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);align-items:center}
+.filter-body[hidden]{display:none}
+.fgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fgroup .k{font-size:12px;color:var(--text-muted);font-weight:600}
+.check-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer;min-height:32px}
+.check-pill input{accent-color:var(--brand);margin:0}
+.result-count{margin-left:auto;font-size:13px;color:var(--text-muted)}
+.q-head,.q-row{display:grid;grid-template-columns:minmax(0,2fr) 120px 90px 120px 110px 150px;gap:12px;align-items:center}
+.q-head{padding:0 16px 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+.q-list{display:flex;flex-direction:column;gap:8px}
+.q-row{padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.q-row:hover{border-color:var(--border-strong)}
+.q-row.is-disputed{background:color-mix(in srgb,var(--disp-bg) 45%,var(--surface))}
+.q-cust b{display:block}
+.q-cust span{font-size:12px;color:var(--text-muted)}
+.q-amt{font-weight:600;text-align:right}
+.q-meta{display:contents}
+.q-act{text-align:right}
+.pager{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:16px;font-size:13px;color:var(--text-muted)}
+
+/* Investigation */
+.action-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.action-bar .nav-pos{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)}
+.reason{font-size:13px;color:var(--text-muted);margin:0 0 16px}
+.next-step{display:flex;gap:10px;align-items:flex-start;padding:12px 16px;border-radius:var(--r-md);background:var(--med-bg);margin-bottom:16px;font-size:14px}
+.inv-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.doc{padding:24px}
+.doc-head{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between}
+.doc-amt{text-align:right}
+.doc-amt .v{font-family:var(--font-display);font-size:30px;font-weight:600}
+.from-to{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin:20px 0;padding:14px 16px;background:var(--surface-sunken);border-radius:var(--r-md);font-size:13px}
+.from-to b{display:block;font-size:14px}
+.why{padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:20px}
+.why p{margin:0 0 8px;font-weight:600}
+.factors{display:flex;gap:8px;flex-wrap:wrap}
+.factor{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 10px;background:var(--surface)}
+.ev{margin-bottom:20px}
+.ev-table{width:100%;border-collapse:collapse;font-size:13px}
+.ev-table th,.ev-table td{text-align:left;padding:8px 0;border-bottom:1px solid var(--border);vertical-align:top}
+.ev-table th{width:38%;color:var(--text-muted);font-weight:500}
+.ev-table td .src{display:block;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-top:2px}
+.draft{border:1px solid var(--border);border-radius:var(--r-md);padding:16px;background:var(--surface-sunken)}
+.draft-head{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.draft p{margin:0 0 10px}
+.draft mark{background:var(--brand-tint);color:inherit;border-bottom:1px solid var(--brand);padding:0 2px;border-radius:2px}
+.draft sup{color:var(--brand-strong);font-weight:700}
+.foot{font-size:12px;color:var(--text-muted);font-family:var(--font-mono);margin:0;padding-left:16px}
+.side .card{padding:16px;margin-bottom:16px}
+.checks{list-style:none;margin:0;padding:0}
+.checks li{display:flex;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.checks li:last-child{border-bottom:0}
+.checks .ok{color:var(--low);font-weight:700;width:16px;flex:none}
+.checks li.fail{background:var(--high-bg);border-radius:var(--r-md);padding:10px;border:0;margin:6px 0;flex-direction:column;gap:4px}
+.checks li.fail .t{color:var(--high);font-weight:700;display:flex;gap:6px;align-items:center}
+.log{list-style:none;margin:0 0 12px;padding:0}
+.log li{font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)}
+.log time{display:block;font-size:12px;color:var(--text-muted)}
+textarea{width:100%;min-height:72px;border:1px solid var(--border-strong);border-radius:var(--r-md);padding:8px 10px;background:var(--surface);resize:vertical}
+
+/* Mobile preview */
+.mobile-wrap{display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:390px;max-width:100%;border:1px solid var(--border-strong);border-radius:28px;overflow:hidden;background:var(--canvas)}
+.m-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--rail)}
+.m-top .logo-card{padding:6px 8px}
+.m-top .logo-card img{max-width:104px}
+.m-top .rail-foot{margin:0}
+.m-body{padding:16px}
+.m-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 16px}
+.m-kpis .card{padding:12px}
+.m-kpis .v{font-family:var(--font-display);font-size:20px;font-weight:600}
+.m-card{padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px}
+.m-card.is-disputed{background:color-mix(in srgb,var(--disp-bg) 45%,var(--surface))}
+.m-nav{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);background:var(--surface)}
+.m-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 10px;font-size:12px;color:var(--text-muted);text-decoration:none;min-height:48px}
+.m-nav a[aria-current="page"]{color:var(--brand-strong);font-weight:700}
+.spec{max-width:420px}
+.spec li{margin-bottom:6px}
+
+/* States */
+.states-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.state{padding:20px}
+.state-label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:700;margin-bottom:12px}
+.center{text-align:center;padding:24px 8px}
+.spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--brand);margin:0 auto 10px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skel{height:44px;border-radius:var(--r-md);background:var(--surface-sunken);margin-top:8px}
+.err-box{background:var(--high-bg);border-radius:var(--r-md);padding:12px 14px;font-size:13px}
+.err-box b{color:var(--high)}
+
+/* responsive */
+@media (max-width:1279px){
+  .inv-grid,.home-grid{grid-template-columns:minmax(0,1fr)}
+  .q-head,.q-row{grid-template-columns:minmax(0,2fr) 120px 90px 120px 150px}
+  .col-status{display:none}
+}
+@media (max-width:1023px){
+  .app{grid-template-columns:72px minmax(0,1fr)}
+  .rail{padding:12px 8px;align-items:center}
+  .rail .logo-card{padding:6px}
+  .rail-label,.rail-link .count,.who-text,.rail-foot{display:none}
+  .rail-link{justify-content:center;padding:10px}
+  .q-head{display:none}
+  .q-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"cust amt" "meta act";row-gap:10px}
+  .q-cust{grid-area:cust}.q-amt{grid-area:amt}
+  .q-meta{grid-area:meta;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .q-meta .col-status{display:inline}
+  .q-act{grid-area:act}
+  .states-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:767px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{flex-direction:row;padding:10px 16px;justify-content:space-between}
+  .rail nav{display:none}
+  .rail .logo-card img{max-width:110px}
+  .topbar,.banner{padding-left:16px;padding-right:16px}
+  .content{padding:20px 16px}
+  h1.display{font-size:26px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi:nth-child(3){border-left:0}
+  .kpi:nth-child(n+3){border-top:1px solid var(--border)}
+  .from-to{grid-template-columns:minmax(0,1fr)}
+  .from-to .arrow{transform:rotate(90deg)}
+  .doc{padding:16px}
+  .doc-amt{text-align:left}
+  .ev-table,.ev-table tbody,.ev-table tr,.ev-table th,.ev-table td{display:block;width:100%}
+  .ev-table th{border-bottom:0;padding-bottom:0}
+  .result-count{margin-left:0;width:100%}
+  .search{max-width:none}
+  .action-bar .nav-pos{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4M4 4h12l-2 4 2 4H4"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h2M3 10h18"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M8 4h11v14a2 2 0 01-2 2H7a2 2 0 01-2-2V7"/><path d="M5 7a3 3 0 013-3M9 9h6M9 13h6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-2.7-1.1l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15H3a2 2 0 110-4h.1a1.6 1.6 0 001.1-2.7l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 4.6V3a2 2 0 114 0v.1a1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11h.1a2 2 0 110 4H21a1.6 1.6 0 00-1.6 0z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+</svg>
+
+<div class="proto-banner">Stage 3 prototype · non-production · all data synthetic · layout patterns informed by Expensify web (via Mobbin), Verilane brand and content</div>
+<div class="toolbar">
+  <span class="label">Screen</span>
+  <div role="tablist" aria-label="Prototype screens" style="display:contents">
+    <button class="nav-btn" role="tab" data-panel="overview" aria-selected="true">Home</button>
+    <button class="nav-btn" role="tab" data-panel="queue" aria-selected="false">Queue</button>
+    <button class="nav-btn" role="tab" data-panel="investigation" aria-selected="false">Investigation</button>
+    <button class="nav-btn" role="tab" data-panel="mobile" aria-selected="false">Mobile 390</button>
+    <button class="nav-btn" role="tab" data-panel="states" aria-selected="false">States</button>
+  </div>
+  <span class="sep" aria-hidden="true"></span>
+  <span class="label">Simulate</span>
+  <button class="tg" id="offline-toggle" aria-pressed="false">Offline</button>
+  <button class="tg" id="install-toggle" aria-pressed="false">Install prompt</button>
+  <button class="tg" id="fallback-toggle" aria-pressed="false">Storage fallback</button>
+</div>
+
+<div class="app">
+  <aside class="rail" aria-label="Primary">
+    <div class="logo-card">
+      <img src="../../../public/brand/verilane-logo.png" alt="Verilane" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-fallback',textContent:'Verilane'}))" />
+    </div>
+    <div class="who">
+      <span class="avatar" aria-hidden="true">AR</span>
+      <span class="who-text"><b>Demo workspace</b><small id="rail-role">Analyst</small></span>
+    </div>
+    <nav aria-label="Main">
+      <button class="rail-link" data-goto="overview" aria-current="page"><svg class="ic"><use href="#i-home"/></svg><span class="rail-label">Home</span></button>
+      <button class="rail-link" data-goto="queue"><svg class="ic"><use href="#i-list"/></svg><span class="rail-label">Queue</span><span class="count num">48</span></button>
+      <button class="rail-link"><svg class="ic"><use href="#i-flag"/></svg><span class="rail-label">Disputes</span><span class="count num">3</span></button>
+      <button class="rail-link"><svg class="ic"><use href="#i-wallet"/></svg><span class="rail-label">Payments</span></button>
+      <button class="rail-link"><svg class="ic"><use href="#i-mail"/></svg><span class="rail-label">Drafts</span><span class="count num">2</span></button>
+      <button class="rail-link"><svg class="ic"><use href="#i-scroll"/></svg><span class="rail-label">Audit log</span></button>
+      <button class="rail-link"><svg class="ic"><use href="#i-gear"/></svg><span class="rail-label">Settings</span></button>
+    </nav>
+    <span class="rail-foot">DEMO DATA</span>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs" id="crumbs"><strong>Home</strong></div>
+      <span class="tag"><svg class="ic" style="width:14px;height:14px"><use href="#i-spark"/></svg>Simulated LLM</span>
+      <div class="seg" role="group" aria-label="Role">
+        <button data-role="analyst" aria-pressed="true">Analyst</button>
+        <button data-role="manager" aria-pressed="false">Manager</button>
+      </div>
+      <button class="icon-btn" id="theme-toggle" aria-label="Toggle dark theme"><svg class="ic"><use href="#i-sun"/></svg></button>
+    </header>
+    <div class="banner warn" id="offline-banner" role="status" hidden><svg class="ic"><use href="#i-alert"/></svg><span><b>You're offline.</b> Your queue and drafts are saved on this device. Sending and Live LLM are paused until you reconnect.</span></div>
+    <div class="banner info" id="fallback-banner" role="status" hidden><svg class="ic"><use href="#i-alert"/></svg><span><b>Browser storage is unavailable.</b> Changes last only for this tab. Reload resets the demo data.</span></div>
+
+    <main class="content">
+      <!-- HOME -->
+      <section class="panel active" id="panel-overview" aria-labelledby="h-home">
+        <div class="install-chip" id="install-chip-overview" hidden>
+          <svg class="ic"><use href="#i-upload"/></svg>
+          <span>Install Verilane to open the demo from your dock and keep working offline.</span>
+          <button class="btn sm primary">Install</button><button class="btn sm ghost">Not now</button>
+        </div>
+        <div class="head-row">
+          <div><h1 class="display" id="h-home">Home</h1><p class="sub">As of 30 Oct 2026 · 48 open invoices</p></div>
+        </div>
+        <div class="card kpis">
+          <div class="kpi"><div class="v num">₹18,42,500</div><div class="l">Outstanding</div></div>
+          <div class="kpi"><div class="v num">12</div><div class="l">High priority</div></div>
+          <div class="kpi"><div class="v num">3</div><div class="l">Open disputes</div></div>
+          <div class="kpi"><div class="v num">27</div><div class="l">Avg. days overdue</div></div>
+        </div>
+        <div class="home-grid">
+          <div>
+            <h2 style="margin-bottom:12px">Needs your attention</h2>
+            <details class="card task" open>
+              <summary><span class="dot" style="background:var(--high)"></span><span><span class="t">12 high-priority invoices</span><br><span class="d">Oldest is 61 days overdue</span></span><svg class="ic chev"><use href="#i-chev"/></svg></summary>
+              <div class="task-body">
+                <div class="task-item"><span class="grow"><b>Lotus Polymers</b> <span class="muted small">INV-00137</span></span><span class="num">₹1,12,000</span><span class="pill high">61 days</span><button class="link-btn" data-goto="investigation">Review</button></div>
+                <div class="task-item"><span class="grow"><b>Acme Textiles</b> <span class="muted small">INV-00142</span></span><span class="num">₹85,000</span><span class="pill high">45 days</span><button class="link-btn" data-goto="investigation">Review</button></div>
+                <button class="link-btn" data-goto="queue">See all 12 in the queue</button>
+              </div>
+            </details>
+            <details class="card task">
+              <summary><span class="dot" style="background:var(--disp)"></span><span><span class="t">3 open disputes</span><br><span class="d">Reminders paused on these invoices</span></span><svg class="ic chev"><use href="#i-chev"/></svg></summary>
+              <div class="task-body"><div class="task-item"><span class="grow"><b>Kiran Apparel</b> <span class="muted small">INV-00129 · "Goods short-shipped"</span></span><span class="num">₹41,200</span><button class="link-btn">Open</button></div></div>
+            </details>
+            <details class="card task">
+              <summary><span class="dot" style="background:var(--brand)"></span><span><span class="t">2 drafts awaiting approval</span><br><span class="d">Nimbus Freight Co., Meridian Foods</span></span><svg class="ic chev"><use href="#i-chev"/></svg></summary>
+              <div class="task-body">
+                <div class="task-item"><span class="grow"><b>Nimbus Freight Co.</b> <span class="muted small">INV-00118</span></span><span class="num">₹32,400</span><button class="link-btn">Review draft</button></div>
+                <div class="task-item"><span class="grow"><b>Meridian Foods</b> <span class="muted small">INV-00145</span></span><span class="num">₹27,600</span><button class="link-btn">Review draft</button></div>
+              </div>
+            </details>
+            <details class="card task">
+              <summary><span class="dot" style="background:var(--med)"></span><span><span class="t">1 unmatched payment</span><br><span class="d">Reference doesn't match exactly, so it needs a person</span></span><svg class="ic chev"><use href="#i-chev"/></svg></summary>
+              <div class="task-body"><div class="task-item"><span class="grow"><span class="mono">NEFT/ACME/0142</span> <span class="muted small">closest: INV-00141, not INV-00142</span></span><button class="link-btn">Match manually</button></div></div>
+            </details>
+            <button class="link-btn small">Show 4 dismissed tasks</button>
+          </div>
+          <div>
+            <div class="card chart">
+              <h2>Where is the money stuck?</h2>
+              <p class="muted small" style="margin:0">Outstanding by days overdue</p>
+              <div class="bars">
+                <div class="bar-row"><span>1–15</span><span class="bar-track"><span class="bar-fill" style="width:46%;display:block"></span></span><span class="num" style="text-align:right">₹3,10,000</span></div>
+                <div class="bar-row"><span>16–30</span><span class="bar-track"><span class="bar-fill" style="width:82%;display:block"></span></span><span class="num" style="text-align:right">₹5,48,300</span></div>
+                <div class="bar-row"><span>31–60</span><span class="bar-track"><span class="bar-fill" style="width:100%;display:block"></span></span><span class="num" style="text-align:right">₹6,72,200</span></div>
+                <div class="bar-row"><span>60+</span><span class="bar-track"><span class="bar-fill" style="width:46%;display:block;background:var(--high)"></span></span><span class="num" style="text-align:right">₹3,12,000</span></div>
+              </div>
+            </div>
+            <div class="card chart">
+              <h2>How much of the queue is urgent?</h2>
+              <p class="muted small" style="margin:0">48 invoices by priority</p>
+              <div class="stack" role="img" aria-label="12 high, 19 medium, 14 low, 3 disputed">
+                <span style="flex:12;background:var(--high)"></span><span style="flex:19;background:var(--med)"></span><span style="flex:14;background:var(--low)"></span><span style="flex:3;background:var(--disp)"></span>
+              </div>
+              <div class="legend"><span><i style="background:var(--high)"></i>High 12</span><span><i style="background:var(--med)"></i>Medium 19</span><span><i style="background:var(--low)"></i>Low 14</span><span><i style="background:var(--disp)"></i>Disputed 3</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUEUE -->
+      <section class="panel" id="panel-queue" aria-labelledby="h-queue">
+        <div class="head-row">
+          <div><h1 class="display" id="h-queue">Collections queue</h1><p class="sub">Ranked by priority.v1 · as of 30 Oct 2026</p></div>
+          <div class="actions"><button class="btn"><svg class="ic"><use href="#i-file"/></svg>Export CSV</button><button class="btn"><svg class="ic"><use href="#i-upload"/></svg>Import data</button></div>
+        </div>
+        <div class="card filters">
+          <div class="filter-top">
+            <label class="search"><svg class="ic"><use href="#i-search"/></svg><span class="sr-only">Search customers or invoices</span><input type="search" placeholder="Search customer or invoice no." /></label>
+            <button class="btn sm" id="filter-toggle" aria-expanded="true" aria-controls="filter-body">Hide filters</button>
+            <button class="btn sm ghost">Reset</button>
+          </div>
+          <div class="filter-body" id="filter-body">
+            <div class="fgroup"><span class="k" id="prio-k">Priority</span>
+              <div class="seg" role="group" aria-labelledby="prio-k"><button aria-pressed="true">All</button><button aria-pressed="false">High</button><button aria-pressed="false">Medium</button><button aria-pressed="false">Low</button></div>
+            </div>
+            <div class="fgroup"><span class="k">Status</span>
+              <label class="check-pill"><input type="checkbox" checked>Open</label>
+              <label class="check-pill"><input type="checkbox" checked>Disputed</label>
+              <label class="check-pill"><input type="checkbox">Promised</label>
+            </div>
+            <span class="result-count" role="status">6 of 48 shown</span>
+          </div>
+        </div>
+        <div class="q-head" aria-hidden="true"><span>Customer · invoice</span><span style="text-align:right">Outstanding</span><span>Overdue</span><span>Priority</span><span class="col-status">Status</span><span></span></div>
+        <div class="q-list" role="list">
+          <div class="q-row" role="listitem"><div class="q-cust"><b>Lotus Polymers</b><span>INV-00137</span></div><div class="q-amt num">₹1,12,000</div><div class="q-meta"><span class="num">61 days</span><span><span class="pill high">High · 74</span></span><span class="col-status muted">Open</span></div><div class="q-act"><button class="btn sm" data-goto="investigation">Review</button></div></div>
+          <div class="q-row" role="listitem"><div class="q-cust"><b>Acme Textiles</b><span>INV-00142</span></div><div class="q-amt num">₹85,000</div><div class="q-meta"><span class="num">45 days</span><span><span class="pill high">High · 68</span></span><span class="col-status muted">Open</span></div><div class="q-act"><button class="btn sm primary" data-goto="investigation">Review</button></div></div>
+          <div class="q-row is-disputed" role="listitem"><div class="q-cust"><b>Kiran Apparel</b><span>INV-00129</span></div><div class="q-amt num">₹41,200</div><div class="q-meta"><span class="num">39 days</span><span><span class="pill disp">Disputed</span></span><span class="col-status muted">Reminders paused</span></div><div class="q-act"><button class="btn sm">Open dispute</button></div></div>
+          <div class="q-row" role="listitem"><div class="q-cust"><b>Meridian Foods</b><span>INV-00145</span></div><div class="q-amt num">₹27,600</div><div class="q-meta"><span class="num">38 days</span><span><span class="pill med">Medium · 41</span></span><span class="col-status muted">Draft pending</span></div><div class="q-act"><button class="btn sm">Review</button></div></div>
+          <div class="q-row" role="listitem"><div class="q-cust"><b>Nimbus Freight Co.</b><span>INV-00118</span></div><div class="q-amt num">₹32,400</div><div class="q-meta"><span class="num">22 days</span><span><span class="pill med">Medium · 36</span></span><span class="col-status muted">Draft pending</span></div><div class="q-act"><button class="btn sm">Review</button></div></div>
+          <div class="q-row" role="listitem"><div class="q-cust"><b>Harbor Stone Traders</b><span>INV-00151</span></div><div class="q-amt num">₹9,800</div><div class="q-meta"><span class="num">6 days</span><span><span class="pill low">Low · 18</span></span><span class="col-status muted">Open</span></div><div class="q-act"><button class="btn sm">Review</button></div></div>
+        </div>
+        <div class="pager"><span>Page 1 of 8</span><button class="btn sm" aria-disabled="true" title="Unavailable: already on the first page">Previous</button><button class="btn sm">Next</button></div>
+      </section>
+
+      <!-- INVESTIGATION -->
+      <section class="panel" id="panel-investigation" aria-labelledby="h-inv">
+        <div class="action-bar">
+          <button class="btn ghost" data-goto="queue"><svg class="ic"><use href="#i-left"/></svg>Queue</button>
+          <button class="btn primary" id="primary-action" aria-disabled="true" aria-describedby="primary-reason">Submit for approval</button>
+          <button class="btn">Edit draft</button>
+          <button class="btn">Mark disputed</button>
+          <span class="nav-pos"><span>1 of 12 high priority</span><button class="icon-btn" aria-label="Previous invoice" aria-disabled="true"><svg class="ic"><use href="#i-left"/></svg></button><button class="icon-btn" aria-label="Next invoice"><svg class="ic"><use href="#i-chev"/></svg></button></span>
+        </div>
+        <p class="reason" id="primary-reason">Unavailable: 1 pre-approval check is failing — a payment reference may already cover this invoice.</p>
+        <div class="next-step"><svg class="ic"><use href="#i-alert"/></svg><span><b>Next step:</b> check payment <span class="mono">NEFT/ACME/0142</span> before you send. It may be this invoice with a typo, or INV-00141.</span></div>
+        <div class="inv-grid">
+          <article class="card doc">
+            <div class="doc-head">
+              <div>
+                <span class="pill high">High priority · score 68</span>
+                <h1 class="display" id="h-inv" style="margin-top:10px">Acme Textiles</h1>
+                <p class="sub">INV-00142 · issued 16 Aug 2026 · due 15 Sep 2026</p>
+              </div>
+              <div class="doc-amt"><div class="v num">₹85,000</div><div class="muted">45 days overdue</div></div>
+            </div>
+            <div class="from-to">
+              <div><span class="muted small">From</span><b>Verilane Collections</b></div>
+              <svg class="ic arrow" aria-hidden="true"><use href="#i-arrow"/></svg>
+              <div><span class="muted small">To</span><b>Acme Textiles</b><span class="mono">ap@acmetextiles.example</span></div>
+            </div>
+            <div class="why">
+              <p>High priority — 45 days overdue with no recorded payment commitment.</p>
+              <div class="factors"><span class="factor">+30 overdue 31–60 days</span><span class="factor">+18 no commitment</span><span class="factor">+15 amount ≥ ₹75,000</span><span class="factor">+5 reminder unanswered</span></div>
+            </div>
+            <h2 class="sr-only">Evidence</h2>
+            <section class="ev"><h3>Invoice facts</h3>
+              <table class="ev-table"><tbody>
+                <tr><th scope="row">Outstanding amount</th><td><b class="num">₹85,000</b><span class="src">Source: invoices.csv · Row: 12 · Field: outstanding_amount</span></td></tr>
+                <tr><th scope="row">Due date</th><td>15 Sep 2026<span class="src">Source: invoices.csv · Row: 12 · Field: due_date</span></td></tr>
+                <tr><th scope="row">Days overdue</th><td class="num">45<span class="src">Derived: AS_OF_DATE 2026-10-30 − due_date</span></td></tr>
+              </tbody></table>
+            </section>
+            <section class="ev"><h3>Communication</h3>
+              <table class="ev-table"><tbody>
+                <tr><th scope="row">Last reminder</th><td>14 Oct 2026, no reply<span class="src">Source: emails.json · Row: 31 · Field: sent_at</span></td></tr>
+                <tr><th scope="row">Payment commitment</th><td>None recorded<span class="src">Source: emails.json · no commitment signal found</span></td></tr>
+              </tbody></table>
+            </section>
+            <section class="ev"><h3>Payments</h3>
+              <table class="ev-table"><tbody>
+                <tr><th scope="row">Applied to this invoice</th><td class="num">₹0<span class="src">Source: payments.csv · no exact match</span></td></tr>
+                <tr><th scope="row">Candidate payment</th><td><span class="mono">NEFT/ACME/0142</span> · ₹85,000 · needs review<span class="src">Source: payments.csv · Row: 9 · Field: reference</span></td></tr>
+              </tbody></table>
+            </section>
+            <section><h3>Reminder draft</h3>
+              <div class="draft">
+                <div class="draft-head"><span class="tag"><svg class="ic" style="width:14px;height:14px"><use href="#i-spark"/></svg>Simulated LLM</span><span class="muted small">Every highlighted fact links to a source row</span></div>
+                <p>Dear Acme Textiles accounts team,</p>
+                <p>This is a reminder that invoice <mark>INV-00142</mark><sup>1</sup> for <mark>₹85,000</mark><sup>2</sup> was due on <mark>15 Sep 2026</mark><sup>3</sup> and is now <mark>45 days</mark><sup>4</sup> overdue. We have not received a payment commitment since our reminder on <mark>14 Oct 2026</mark><sup>5</sup>.</p>
+                <p>Could you share an expected payment date, or let us know if anything is holding this up?</p>
+                <ol class="foot"><li>invoices.csv · Row 12 · invoice_no</li><li>invoices.csv · Row 12 · outstanding_amount</li><li>invoices.csv · Row 12 · due_date</li><li>derived · AS_OF_DATE − due_date</li><li>emails.json · Row 31 · sent_at</li></ol>
+              </div>
+            </section>
+          </article>
+          <div class="side">
+            <section class="card" aria-labelledby="h-checks">
+              <h2 id="h-checks">Pre-approval checks</h2>
+              <p class="muted small" style="margin:0 0 8px">8 of 9 passing</p>
+              <ul class="checks">
+                <li class="fail"><span class="t"><svg class="ic" style="width:16px;height:16px"><use href="#i-x"/></svg>Duplicate payment reference</span><span class="small">NEFT/ACME/0142 (payments.csv row 9) may already settle this invoice.</span><button class="link-btn small" style="align-self:flex-start">Review payment</button></li>
+                <li><span class="ok" aria-hidden="true">✓</span>Amount matches source</li>
+                <li><span class="ok" aria-hidden="true">✓</span>Invoice number matches source</li>
+                <li><span class="ok" aria-hidden="true">✓</span>Due date matches source</li>
+                <li><span class="ok" aria-hidden="true">✓</span>No open dispute</li>
+                <li><span class="ok" aria-hidden="true">✓</span>Recipient on file</li>
+                <li><span class="ok" aria-hidden="true">✓</span>No unsupported claims</li>
+                <li><span class="ok" aria-hidden="true">✓</span>Tone within policy</li>
+                <li><span class="ok" aria-hidden="true">✓</span>Reminder cadence respected</li>
+              </ul>
+            </section>
+            <section class="card" aria-labelledby="h-log">
+              <h2 id="h-log">Activity</h2>
+              <ul class="log">
+                <li>Draft generated from 5 source facts<time>30 Oct 2026, 09:12 · Simulated LLM</time></li>
+                <li>Priority scored High · 68 (priority.v1)<time>30 Oct 2026, 09:10 · System</time></li>
+                <li>Reminder sent<time>14 Oct 2026 · A. Rao</time></li>
+              </ul>
+              <label for="note" class="small muted">Add a note</label>
+              <textarea id="note" placeholder="Visible to your team in the audit log"></textarea>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- MOBILE -->
+      <section class="panel" id="panel-mobile" aria-labelledby="h-mobile">
+        <div class="head-row"><div><h1 class="display" id="h-mobile">Mobile, 390px</h1><p class="sub">Rows become two-line cards, and navigation moves to the bottom</p></div></div>
+        <div class="mobile-wrap">
+          <div class="phone">
+            <div class="m-top">
+              <div class="logo-card"><img src="../../../public/brand/verilane-logo.png" alt="Verilane" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-fallback',textContent:'Verilane'}))" /></div>
+              <span class="rail-foot">DEMO DATA</span>
+            </div>
+            <div class="banner warn" id="mobile-offline" role="status" hidden style="padding:10px 16px"><span><b>Offline.</b> Saved on this device. Sending is paused.</span></div>
+            <div class="m-body">
+              <h2 style="font-family:var(--font-display);font-size:22px">Home</h2>
+              <p class="muted small" style="margin:0">As of 30 Oct 2026</p>
+              <div class="m-kpis">
+                <div class="card"><div class="v num">₹18.4L</div><div class="small muted">Outstanding</div></div>
+                <div class="card"><div class="v num">12</div><div class="small muted">High priority</div></div>
+                <div class="card"><div class="v num">3</div><div class="small muted">Disputes</div></div>
+                <div class="card"><div class="v num">27</div><div class="small muted">Avg. days</div></div>
+              </div>
+              <div class="card m-card"><b>Lotus Polymers</b><b class="num">₹1,12,000</b><span class="small muted">INV-00137 · 61 days</span><span class="pill high">High</span></div>
+              <div class="card m-card"><b>Acme Textiles</b><b class="num">₹85,000</b><span class="small muted">INV-00142 · 45 days</span><span class="pill high">High</span></div>
+              <div class="card m-card is-disputed"><b>Kiran Apparel</b><b class="num">₹41,200</b><span class="small muted">INV-00129 · 39 days</span><span class="pill disp">Disputed</span></div>
+              <div class="card m-card"><b>Nimbus Freight Co.</b><b class="num">₹32,400</b><span class="small muted">INV-00118 · 22 days</span><span class="pill med">Medium</span></div>
+            </div>
+            <nav class="m-nav" aria-label="Mobile">
+              <a href="#" aria-current="page"><svg class="ic"><use href="#i-home"/></svg>Home</a>
+              <a href="#"><svg class="ic"><use href="#i-list"/></svg>Queue</a>
+              <a href="#"><svg class="ic"><use href="#i-flag"/></svg>Disputes</a>
+              <a href="#"><svg class="ic"><use href="#i-more"/></svg>More</a>
+            </nav>
+          </div>
+          <div class="spec">
+            <h2>Breakpoints</h2>
+            <ul>
+              <li><b>≥1280:</b> 216px emerald sidebar, with the checks and activity column beside the document.</li>
+              <li><b>1024–1279:</b> single column, and the queue drops the Status column.</li>
+              <li><b>768–1023:</b> a 72px icon rail, and queue rows become two-line cards.</li>
+              <li><b>&lt;768:</b> a top bar plus bottom navigation, 16px gutters, KPIs in a 2×2 grid, and evidence tables stacked.</li>
+              <li>Touch targets are at least 44px, and there is no horizontal scroll at 390.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATES -->
+      <section class="panel" id="panel-states" aria-labelledby="h-states">
+        <div class="head-row"><div><h1 class="display" id="h-states">Screen states</h1><p class="sub">Shown for the queue. Every data view uses the same four.</p></div></div>
+        <div class="states-grid">
+          <div class="card state"><div class="state-label">Loading</div>
+            <div class="center" role="status"><div class="spinner" aria-hidden="true"></div><b>Scoring 48 invoices…</b><p class="muted small" style="margin:4px 0 0">Applying priority.v1 to your demo data</p></div>
+            <div class="skel"></div><div class="skel"></div>
+          </div>
+          <div class="card state"><div class="state-label">Empty · filtered</div>
+            <div class="center"><b>No invoices match these filters</b><p class="muted small">Try All priorities or include Promised.</p><button class="btn">Clear filters</button></div>
+          </div>
+          <div class="card state"><div class="state-label">Empty · no data</div>
+            <div class="center"><b>No invoices yet</b><p class="muted small">Load the demo set or import your own CSV. Imported data stays in this browser.</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn primary">Load demo data</button><button class="btn">Import CSV</button></div></div>
+          </div>
+          <div class="card state"><div class="state-label">Error</div>
+            <div class="err-box" role="alert"><b>Couldn't import invoices.csv</b><p style="margin:6px 0">Row 31 has an invalid due_date <span class="mono">"31/02/2026"</span>. Nothing was imported, and your current data is unchanged.</p><button class="btn sm">Choose another file</button> <button class="link-btn small">Download error report</button></div>
+          </div>
+          <div class="card state" style="grid-column:1/-1"><div class="state-label">Working</div>
+            <div class="q-row"><div class="q-cust"><b>Acme Textiles</b><span>INV-00142</span></div><div class="q-amt num">₹85,000</div><div class="q-meta"><span class="num">45 days</span><span><span class="pill high">High · 68</span></span><span class="col-status muted">Open</span></div><div class="q-act"><button class="btn sm primary">Review</button></div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  var crumbsFor={overview:'<strong>Home</strong>',queue:'<strong>Queue</strong>',investigation:'Queue › <strong>Acme Textiles · INV-00142</strong>',mobile:'<strong>Mobile preview</strong>',states:'<strong>Screen states</strong>'};
+  var railFor={overview:0,queue:1,investigation:1};
+  var railLinks=document.querySelectorAll('.rail nav .rail-link');
+  function show(name){
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('active',p.id==='panel-'+name)});
+    document.querySelectorAll('.nav-btn').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.panel===name))});
+    document.getElementById('crumbs').innerHTML=crumbsFor[name];
+    railLinks.forEach(function(l,i){ if(i===railFor[name]) l.setAttribute('aria-current','page'); else l.removeAttribute('aria-current'); });
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.panel)})});
+  document.querySelectorAll('[data-goto]').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();show(b.dataset.goto)})});
+
+  var root=document.documentElement;
+  document.getElementById('theme-toggle').addEventListener('click',function(){
+    var dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark';
+  });
+
+  function toggler(id,targets){
+    var b=document.getElementById(id);
+    b.addEventListener('click',function(){
+      var on=b.getAttribute('aria-pressed')!=='true';
+      b.setAttribute('aria-pressed',String(on));
+      targets.forEach(function(t){document.getElementById(t).hidden=!on});
+    });
+  }
+  toggler('offline-toggle',['offline-banner','mobile-offline']);
+  toggler('install-toggle',['install-chip-overview']);
+  toggler('fallback-toggle',['fallback-banner']);
+
+  var primary=document.getElementById('primary-action');
+  document.querySelectorAll('[data-role]').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('[data-role]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+      var mgr=b.dataset.role==='manager';
+      primary.textContent=mgr?'Approve & send':'Submit for approval';
+      document.getElementById('rail-role').textContent=mgr?'Manager':'Analyst';
+    });
+  });
+  primary.addEventListener('click',function(e){ if(primary.getAttribute('aria-disabled')==='true') e.preventDefault(); });
+
+  var ft=document.getElementById('filter-toggle'),fb=document.getElementById('filter-body');
+  ft.addEventListener('click',function(){
+    var open=ft.getAttribute('aria-expanded')==='true';
+    ft.setAttribute('aria-expanded',String(!open)); fb.hidden=open; ft.textContent=open?'Show filters':'Hide filters';
+  });
+  document.querySelectorAll('.filter-body .seg').forEach(function(seg){
+    seg.querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
+      seg.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+    })});
+  });
+})();
+</script>
+</body>
+</html>
