@@ -5,6 +5,8 @@ import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "@/components/states/ErrorState";
 import { DbContext } from "@/store/hooks";
+import { useInstallPrompt } from "@/lib/useInstallPrompt";
+import { Button } from "@/components/ui/button";
 import { AsOfControl } from "./AsOfControl";
 import { DataOps } from "./DataOps";
 import { ImportDialog } from "./ImportDialog";
@@ -24,6 +26,32 @@ function Section({ id, title, children }: { id: string; title: string; children:
       </h2>
       {children}
     </section>
+  );
+}
+
+/** TASK-24.5: the Settings entry point for installing the PWA, sharing the
+ * captured `beforeinstallprompt` event with the header chip. */
+function InstallSection() {
+  const { canInstall, installed, promptInstall } = useInstallPrompt();
+  if (installed) {
+    return <p className="text-[13px] text-text-muted">Verilane is installed on this device.</p>;
+  }
+  if (!canInstall) {
+    return (
+      <p className="text-[13px] text-text-muted">
+        Not installable right now — your browser didn’t offer an install prompt for this page.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[13px] text-text-muted">Install Verilane for offline access and a standalone window.</p>
+      <div>
+        <Button type="button" variant="outline" size="sm" onClick={promptInstall}>
+          Install app
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -64,6 +92,9 @@ export function SettingsView() {
       </Section>
       <Section id="theme" title="Theme">
         <ThemeControl />
+      </Section>
+      <Section id="install" title="Install app">
+        <InstallSection />
       </Section>
       <Section id="eval" title="Evaluation">
         <p className="text-[13px] text-text-muted">How well extraction and matching score against the labelled demo set.</p>
