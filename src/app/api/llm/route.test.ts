@@ -22,13 +22,21 @@ vi.mock("next/server", async () => {
 });
 
 const parseMock = vi.fn();
+const ctorMock = vi.fn();
 
-vi.mock("@anthropic-ai/sdk", () => {
+// Only the client class is faked; the SDK's real error classes are kept so
+// the catch paths are exercised with the exact types `messages.parse` throws.
+vi.mock("@anthropic-ai/sdk", async () => {
+  const actual = await vi.importActual<typeof import("@anthropic-ai/sdk")>("@anthropic-ai/sdk");
   class MockAnthropic {
     messages = { parse: parseMock };
-    static APIError = class extends Error {};
+    static AnthropicError = actual.AnthropicError;
+    static APIError = actual.APIError;
+    constructor(opts?: unknown) {
+      ctorMock(opts);
+    }
   }
-  return { default: MockAnthropic };
+  return { ...actual, default: MockAnthropic };
 });
 
 const msg = {
@@ -151,4 +159,96 @@ describe("TC-074: live provider rejects refusal or invalid output", () => {
     await POST(jsonRequest(msg));
     expect(parseMock).toHaveBeenCalled();
   });
+});
+
+describe("TASK-23 fix round 1: SDK failures never escape as a 500 or leak upstream text", () => {
+  const originalKey = process.env.ANTHROPIC_API_KEY;
+  const originalFlag = process.env.VERILANE_LIVE_LLM;
+  const UPSTREAM_DETAIL = "upstream-secret-detail-xyz";
+
+  beforeEach(() => {
+    process.env.ANTHROPIC_API_KEY = "test-not-a-key";
+    process.env.VERILANE_LIVE_LLM = "1";
+    parseMock.mockReset();
+    ctorMock.mockReset();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (originalKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = originalKey;
+    if (originalFlag === undefined) delete process.env.VERILANE_LIVE_LLM;
+    else process.env.VERILANE_LIVE_LLM = originalFlag;
+  });
+
+  it("extract: a structured-output parse failure (base AnthropicError) is rejected, not a 500", async () => {
+    const { AnthropicError } = await vi.importActual<typeof import("@anthropic-ai/sdk")>("@anthropic-ai/sdk");
+    parseMock.mockRejectedValueOnce(new AnthropicError(`Failed to parse structured output: ${UPSTREAM_DETAIL}`));
+    const { POST } = await import("./extract/route");
+    const res = await POST(jsonRequest(msg));
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(JSON.parse(text).status).toBe("rejected");
+    expect(text).not.toContain(UPSTREAM_DETAIL);
+  });
+
+  it("draft: a structured-output parse failure (base AnthropicError) is rejected, not a 500", async () => {
+    const { AnthropicError } = await vi.importActual<typeof import("@anthropic-ai/sdk")>("@anthropic-ai/sdk");
+    parseMock.mockRejectedValueOnce(new AnthropicError(`Failed to parse structured output as JSON: ${UPSTREAM_DETAIL}`));
+    const { POST } = await import("./draft/route");
+    const res = await POST(jsonRequest({ invoice_id: "INV-9001", context: "overdue" }));
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(JSON.parse(text).status).toBe("rejected");
+    expect(text).not.toContain(UPSTREAM_DETAIL);
+  });
+
+  it("extract: an upstream 503 APIError is rejected with a generic code, upstream message not sent to the browser", async () => {
+    const { APIError } = await vi.importActual<typeof import("@anthropic-ai/sdk")>("@anthropic-ai/sdk");
+    parseMock.mockRejectedValueOnce(new APIError(503, undefined, UPSTREAM_DETAIL, new Headers()));
+    const { POST } = await import("./extract/route");
+    const res = await POST(jsonRequest(msg));
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(JSON.parse(text).status).toBe("rejected");
+    expect(text).not.toContain(UPSTREAM_DETAIL);
+  });
+
+  it("draft: an upstream 503 APIError returns generic issues only", async () => {
+    const { APIError } = await vi.importActual<typeof import("@anthropic-ai/sdk")>("@anthropic-ai/sdk");
+    parseMock.mockRejectedValueOnce(new APIError(503, undefined, UPSTREAM_DETAIL, new Headers()));
+    const { POST } = await import("./draft/route");
+    const res = await POST(jsonRequest({ invoice_id: "INV-9001", context: "overdue" }));
+    const body = await res.json();
+    expect(body).toEqual({ status: "rejected", reason: "live LLM request failed", issues: ["upstream_error"] });
+  });
+
+  it("failure is logged server-side without the API key", async () => {
+    const { APIError } = await vi.importActual<typeof import("@anthropic-ai/sdk")>("@anthropic-ai/sdk");
+    parseMock.mockRejectedValueOnce(new APIError(503, undefined, UPSTREAM_DETAIL, new Headers()));
+    const { POST } = await import("./extract/route");
+    await POST(jsonRequest(msg));
+    const logged = vi.mocked(console.error).mock.calls.flat().map(String).join(" ");
+    expect(logged).toContain("503");
+    expect(logged).not.toContain("test-not-a-key");
+  });
+
+  it("extract: output truncated at max_tokens is rejected", async () => {
+    parseMock.mockResolvedValueOnce({
+      stop_reason: "max_tokens",
+      parsed_output: { email_class: "unknown", signals: [], invoice_refs: [], amounts: [], dates: [], commitment_date: null, payment_claim: null, missing_info: [] },
+    });
+    const { POST } = await import("./extract/route");
+    const res = await POST(jsonRequest(msg));
+    expect((await res.json()).status).toBe("rejected");
+  });
+
+  it("draft: output truncated at max_tokens is rejected", async () => {
+    parseMock.mockResolvedValueOnce({ stop_reason: "max_tokens", parsed_output: { subject: "Re", body: "Dear" } });
+    const { POST } = await import("./draft/route");
+    const res = await POST(jsonRequest({ invoice_id: "INV-9001", context: "overdue" }));
+    expect((await res.json()).status).toBe("rejected");
+  });
+
 });

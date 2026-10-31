@@ -51,6 +51,25 @@ const LiveExtractionFieldsSchema = z.object({
   missing_info: z.array(z.string()),
 });
 
+function liveClient(): Anthropic {
+  return new Anthropic();
+}
+
+/**
+ * Maps any SDK failure to a generic issue code (T23-2/T23-4). `APIError`
+ * covers HTTP/connection/timeout failures; a bare `AnthropicError` is what
+ * `messages.parse` throws when structured output fails JSON/Zod parsing.
+ * The upstream message never leaves the server: only the error class and
+ * HTTP status are logged — never the key, request headers or body.
+ * Returns `null` for anything that is not an SDK error (re-thrown: a bug).
+ */
+function sdkFailureCode(op: string, err: unknown): "upstream_error" | "invalid_output" | null {
+  if (!(err instanceof Anthropic.AnthropicError)) return null;
+  const status = err instanceof Anthropic.APIError ? err.status : undefined;
+  console.error(`live LLM ${op} failed: ${err.constructor.name}${status === undefined ? "" : ` (status ${status})`}`);
+  return err instanceof Anthropic.APIError ? "upstream_error" : "invalid_output";
+}
+
 function reject(msg: Pick<EmailMessage, "message_id">, reason: string, issues: string[] = []): Result<unknown, Rejected> {
   return { ok: false, error: { message_id: msg.message_id, reason, issues } };
 }
@@ -63,7 +82,7 @@ function reject(msg: Pick<EmailMessage, "message_id">, reason: string, issues: s
 export async function extractLive(msg: EmailMessage): Promise<Result<unknown, Rejected>> {
   let response;
   try {
-    response = await new Anthropic().messages.parse({
+    response = await liveClient().messages.parse({
       model: liveModelId(),
       max_tokens: 4096,
       messages: [
@@ -80,14 +99,16 @@ export async function extractLive(msg: EmailMessage): Promise<Result<unknown, Re
       output_config: { format: zodOutputFormat(LiveExtractionFieldsSchema) },
     });
   } catch (err) {
-    if (err instanceof Anthropic.APIError) {
-      return reject(msg, "live LLM request failed", [err.message]);
-    }
+    const code = sdkFailureCode("extract", err);
+    if (code) return reject(msg, "live LLM request failed", [code]);
     throw err;
   }
 
   if (response.stop_reason === "refusal") {
     return reject(msg, "model refused the request");
+  }
+  if (response.stop_reason === "max_tokens") {
+    return reject(msg, "model output was truncated", ["max_tokens"]);
   }
   if (!response.parsed_output) {
     return reject(msg, "model output did not match the extraction schema");
@@ -133,7 +154,7 @@ export async function draftLive(input: LiveDraftInput): Promise<Result<LiveDraft
 
   let response;
   try {
-    response = await new Anthropic().messages.parse({
+    response = await liveClient().messages.parse({
       model: liveModelId(),
       max_tokens: 2048,
       messages: [
@@ -149,14 +170,16 @@ export async function draftLive(input: LiveDraftInput): Promise<Result<LiveDraft
       output_config: { format: zodOutputFormat(LiveDraftFieldsSchema) },
     });
   } catch (err) {
-    if (err instanceof Anthropic.APIError) {
-      return rejectDraft("live LLM request failed", [err.message]);
-    }
+    const code = sdkFailureCode("draft", err);
+    if (code) return rejectDraft("live LLM request failed", [code]);
     throw err;
   }
 
   if (response.stop_reason === "refusal") {
     return rejectDraft("model refused the request");
+  }
+  if (response.stop_reason === "max_tokens") {
+    return rejectDraft("model output was truncated", ["max_tokens"]);
   }
   if (!response.parsed_output) {
     return rejectDraft("model output did not match the draft schema");
