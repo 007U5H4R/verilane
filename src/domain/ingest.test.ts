@@ -154,3 +154,41 @@ describe("ingest — TC-009 conflict and unknown status", () => {
     expect(result.invoices[0]?.status).toBe("partially_paid");
   });
 });
+
+describe("ingest — TC-013 invoice_number uniqueness", () => {
+  it("flags a repeated invoice_number as a conflict and keeps the first row's number", () => {
+    const result = ingest({
+      invoices: [
+        invoiceRow({ row_id: "1", invoice_id: "INV-001", invoice_number: "1001" }),
+        invoiceRow({ row_id: "2", invoice_id: "INV-002", invoice_number: "1001" }),
+      ],
+      customers: [customerRow()],
+      payments: [],
+      emails: [],
+    });
+
+    expect(result.invoices.map((i) => i.invoice_number)).toEqual(["1001", null]);
+    expect(result.dataIssues).toEqual([
+      expect.objectContaining({
+        record_id: "INV-002",
+        field: "invoice_number",
+        kind: "conflict",
+        message: expect.stringContaining("INV-001"),
+      }),
+    ]);
+  });
+
+  it("does not treat several blank invoice_numbers as duplicates of each other", () => {
+    const result = ingest({
+      invoices: [
+        invoiceRow({ row_id: "1", invoice_id: "INV-001", invoice_number: "" }),
+        invoiceRow({ row_id: "2", invoice_id: "INV-002", invoice_number: "" }),
+      ],
+      customers: [customerRow()],
+      payments: [],
+      emails: [],
+    });
+
+    expect(result.dataIssues.map((d) => d.kind)).toEqual(["missing", "missing"]);
+  });
+});
