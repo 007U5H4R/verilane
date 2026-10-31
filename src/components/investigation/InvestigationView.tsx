@@ -7,6 +7,7 @@ import { formatInr, paise } from "@/domain/money";
 import { outstandingOf } from "@/domain/priority";
 import type { Evidence } from "@/domain/schema";
 import { useCustomers, useInvoice, usePayments } from "@/store/hooks";
+import { ActivityLog } from "./ActivityLog";
 import { DocumentCard, formatDate } from "./DocumentCard";
 import { EvidenceTable } from "./EvidenceTable";
 import { PriorityReason } from "./PriorityReason";
@@ -91,22 +92,28 @@ export function InvestigationView() {
       <p className="mb-4">
         <BackToQueue />
       </p>
-      <DocumentCard
-        invoice={invoice}
-        priority={priority}
-        customer={customers.get(invoice.customer_id)}
-        outstandingPaise={outstandingOf(invoice, { payments })}
-      >
-        <PriorityReason priority={priority} />
-        <EvidenceTable
-          title="Invoice facts"
-          rows={facts.map((ev) => ({
-            label: INVOICE_FACT_LABELS[ev.source_field] ?? ev.source_field,
-            value: factValue(ev),
-            evidence: ev,
-          }))}
-        />
-      </DocumentCard>
+      {/* Design.md §16: two columns at ≥1280px (evidence | activity), one below. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <DocumentCard
+          invoice={invoice}
+          priority={priority}
+          customer={customers.get(invoice.customer_id)}
+          outstandingPaise={outstandingOf(invoice, { payments })}
+        >
+          <PriorityReason priority={priority} />
+          <EvidenceTable
+            title="Invoice facts"
+            rows={facts.map((ev) => ({
+              label: INVOICE_FACT_LABELS[ev.source_field] ?? ev.source_field,
+              value: factValue(ev),
+              evidence: ev,
+            }))}
+          />
+        </DocumentCard>
+        <aside className="min-w-0">
+          <ActivityLog invoiceId={invoice.invoice_id} />
+        </aside>
+      </div>
     </div>
   );
 }
