@@ -3,7 +3,7 @@
  * TC-037 exactly one audit event per command; TC-038 atomic rollback.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CommandNotImplemented, PermissionDenied } from "@/domain/commands";
+import { PermissionDenied } from "@/domain/commands";
 import type { Invoice } from "@/domain/schema";
 import { VerilaneDb } from "./db";
 import { execute, type CommandInput } from "./tx";
@@ -21,8 +21,24 @@ beforeEach(async () => {
     { draft_id: "DR-BIG", invoice_id: "INV-1", status: "validated", amount_paise: 60_000_000 },
   ]);
   await db.disputes.bulkAdd([
-    { dispute_id: "D-T", invoice_id: "INV-1", status: "new" },
-    { dispute_id: "D-R", invoice_id: "INV-1", status: "under_review" },
+    {
+      dispute_id: "D-T",
+      invoice_id: "INV-1",
+      customer_id: "C-1",
+      type: "unknown",
+      claim_text: "x",
+      ai_recommendation: "x",
+      status: "new",
+    },
+    {
+      dispute_id: "D-R",
+      invoice_id: "INV-1",
+      customer_id: "C-1",
+      type: "unknown",
+      claim_text: "x",
+      ai_recommendation: "x",
+      status: "under_review",
+    },
   ]);
   await db.reviewItems.bulkAdd([
     { review_id: "RV-A", kind: "data_issue", status: "open" },
@@ -90,12 +106,6 @@ describe("execute() — TC-037 one audit event per command", () => {
     expect(await db.audit.count()).toBe(0);
   });
 
-  it("not-yet-implemented commands write nothing", async () => {
-    await expect(
-      execute(db, { type: "mark_disputed", subject: { kind: "invoice", id: "INV-1" } }),
-    ).rejects.toBeInstanceOf(CommandNotImplemented);
-    expect(await db.audit.count()).toBe(0);
-  });
 });
 
 describe("execute() — TC-038 atomic rollback", () => {

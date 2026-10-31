@@ -8,6 +8,7 @@ import Dexie, { type DexieOptions, type Table } from "dexie";
 import type {
   Customer,
   DataIssue,
+  Dispute,
   Evidence,
   Extraction,
   Invoice,
@@ -36,12 +37,7 @@ export interface EmailMatchRow {
   [key: string]: unknown;
 }
 
-export interface DisputeRow {
-  dispute_id: string;
-  invoice_id: string;
-  status: string;
-  [key: string]: unknown;
-}
+export type DisputeRow = Dispute;
 
 export interface DraftRow {
   draft_id: string;

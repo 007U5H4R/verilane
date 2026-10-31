@@ -12,7 +12,16 @@ import { match } from "@/domain/match";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
 import { reviewItemsFor } from "@/domain/review";
 import { deriveSignals } from "@/domain/signals";
-import type { Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
+import type {
+  Dispute,
+  EmailMessage,
+  Extraction,
+  Invoice,
+  Match,
+  Payment,
+  Priority,
+  ReviewItem,
+} from "@/domain/schema";
 import { simulateExtraction } from "@/ai/simulated";
 import type { VerilaneDb } from "./db";
 
@@ -188,7 +197,6 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
   const payments = await db.payments.toArray();
   const emails = await db.emails.toArray();
   const dataIssues = await db.dataIssues.toArray();
-  const disputes = await db.disputes.toArray();
 
   const extractions = emails.map((e) => simulateExtraction(e));
   await db.extractions.clear();
@@ -197,24 +205,80 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
   const byMessage = new Map(extractions.map((x) => [x.message_id, x]));
   const matches: Match[] = [];
   const reviewItems: ReviewItem[] = [];
+  const disputes: Dispute[] = [];
   for (const email of emails) {
     const ext = byMessage.get(email.message_id);
     if (!ext) continue;
     const m = match(ext, email, { customers, invoices });
     matches.push(m);
     reviewItems.push(...reviewItemsFor(m, ext, { invoices, payments }));
+    disputes.push(...disputesFor(m, ext, email, invoices));
   }
   await db.matches.clear();
   await db.matches.bulkPut(matches);
   await syncReviewItems(db, reviewItems);
+  await syncDisputes(db, disputes);
+  const allDisputes = await db.disputes.toArray();
 
-  const signals = deriveSignals({ asOf: today, extractions, matches, disputes });
+  const signals = deriveSignals({ asOf: today, extractions, matches, disputes: allDisputes });
   const customerHistory = buildCustomerHistory(invoices, payments);
   const ctx: PriorityCtx = { asOf: today, payments, customerHistory, signals, dataIssues };
 
   const priorities: Priority[] = invoices.map((invoice) => prioritise(invoice, ctx));
   await db.priorities.clear();
   await db.priorities.bulkPut(priorities);
+}
+
+/**
+ * Dispute rows a matched, valid "dispute" or "duplicate" email raises
+ * (TASK-17.1). One row per source message, so re-running recompute never
+ * duplicates a dispute already opened from the same email. For a
+ * "duplicate" pairing, the first candidate stands in for the invoice — the
+ * pair itself lives in the row's claim text / the match's own candidates.
+ */
+function disputesFor(m: Match, x: Extraction, email: EmailMessage, invoices: Invoice[]): Dispute[] {
+  if (m.outcome !== "matched" || x.status !== "valid") return [];
+  if (x.email_class !== "dispute" && x.email_class !== "duplicate") return [];
+
+  const invoiceId = x.email_class === "duplicate" ? m.candidates[0] : m.invoice_id;
+  const customerId =
+    (invoiceId !== undefined ? invoices.find((i) => i.invoice_id === invoiceId)?.customer_id : undefined) ??
+    m.customer_id ??
+    "";
+  const ai_recommendation =
+    x.email_class === "duplicate"
+      ? "Check whether these invoices bill the same supply; cancel one only after review"
+      : "Open a dispute and hold reminders until it is resolved";
+
+  return [
+    {
+      dispute_id: `D-${x.message_id}`,
+      ...(invoiceId !== undefined && { invoice_id: invoiceId }),
+      customer_id: customerId,
+      type: x.dispute_type ?? "unknown",
+      source_message_id: x.message_id,
+      claim_text: email.body,
+      ai_recommendation,
+      status: "new",
+    },
+  ];
+}
+
+/**
+ * Upserts computed Dispute rows, keeping any existing row's status — unlike
+ * `syncReviewItems`, nothing is ever deleted: a Dispute is a permanent
+ * workflow record once opened, not a transient suggestion tied to the
+ * email that's still present. A manually-opened dispute (`mark_disputed`,
+ * no `source_message_id`) is never touched here.
+ */
+async function syncDisputes(db: VerilaneDb, computed: Dispute[]): Promise<void> {
+  const existing = new Map((await db.disputes.toArray()).map((d) => [d.dispute_id, d]));
+  await db.disputes.bulkPut(
+    computed.map((d) => {
+      const prev = existing.get(d.dispute_id);
+      return prev ? { ...prev, ...d, status: prev.status } : d;
+    }),
+  );
 }
 
 const EMAIL_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation", "dispute"]);

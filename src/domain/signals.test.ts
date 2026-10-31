@@ -45,8 +45,8 @@ describe("deriveSignals", () => {
     const s = deriveSignals(
       input({
         disputes: [
-          { dispute_id: "D-1", invoice_id: "INV-C", status: "under_review" },
-          { dispute_id: "D-2", invoice_id: "INV-X", status: "resolved" },
+          { dispute_id: "D-1", invoice_id: "INV-C", status: "under_review", type: "incorrect_amount" },
+          { dispute_id: "D-2", invoice_id: "INV-X", status: "resolved", type: "incorrect_amount" },
         ],
       }),
     );
@@ -59,7 +59,7 @@ describe("deriveSignals", () => {
       input({
         extractions: [ext("E-011-1", { email_class: "dispute", dispute_type: "incorrect_amount" })],
         matches: [matched("E-011-1", "INV-015")],
-        disputes: [{ dispute_id: "D-1", invoice_id: "INV-015", status: "resolved" }],
+        disputes: [{ dispute_id: "D-1", invoice_id: "INV-015", status: "resolved", type: "incorrect_amount" }],
       }),
     );
     expect(s.disputed?.has("INV-015")).toBe(false);

@@ -10,7 +10,7 @@ import { AS_OF_DATE } from "@/domain/clock";
 import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
+import type { Customer, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
 import { DraftSchema, type Draft } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
@@ -256,4 +256,64 @@ export function useInvoiceDraft(invoiceId: string): Draft | null | undefined {
     drafts.sort((a, b) => draftSeq(b.draft_id) - draftSeq(a.draft_id));
     return drafts[0] ?? null;
   }, [db, invoiceId]);
+}
+
+/**
+ * How many disputes are still open (not resolved/rejected), live — for the
+ * sidebar badge (TASK-17.3). Tolerates a missing db like `useQueueCount()`.
+ */
+export function useDisputeCount(): number | undefined {
+  const db = useContext(DbContext);
+  return useLiveQuery(
+    async () => (db ? db.disputes.where("status").noneOf(["resolved", "rejected"]).count() : undefined),
+    [db],
+  );
+}
+
+export interface DisputeWithContext {
+  dispute: Dispute;
+  customer?: Customer;
+  invoice?: Invoice;
+  email?: EmailMessage;
+}
+
+/** Every dispute with its customer, invoice and source-email context, for the `/disputes` list (TASK-17.3). */
+export function useDisputes(): DisputeWithContext[] | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const [disputes, customers, invoices, emails] = await Promise.all([
+      db.disputes.toArray(),
+      db.customers.toArray(),
+      db.invoices.toArray(),
+      db.emails.toArray(),
+    ]);
+    const customerById = new Map(customers.map((c) => [c.customer_id, c]));
+    const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
+    const emailById = new Map(emails.map((e) => [e.message_id, e]));
+    return disputes
+      .map((dispute) => ({
+        dispute,
+        customer: customerById.get(dispute.customer_id),
+        invoice: dispute.invoice_id !== undefined ? invoiceById.get(dispute.invoice_id) : undefined,
+        email: dispute.source_message_id !== undefined ? emailById.get(dispute.source_message_id) : undefined,
+      }))
+      .sort((a, b) => a.dispute.dispute_id.localeCompare(b.dispute.dispute_id));
+  }, [db]);
+}
+
+/** One dispute with its context, by `dispute_id`, for `/disputes/[id]` (TASK-17.3). */
+export function useDispute(disputeId: string): DisputeWithContext | undefined | null {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const dispute = await db.disputes.get(disputeId);
+    if (!dispute) return null;
+    const [customer, invoice, email] = await Promise.all([
+      db.customers.get(dispute.customer_id),
+      dispute.invoice_id !== undefined
+        ? db.invoices.toCollection().filter((i) => i.invoice_id === dispute.invoice_id).first()
+        : undefined,
+      dispute.source_message_id !== undefined ? db.emails.get(dispute.source_message_id) : undefined,
+    ]);
+    return { dispute, customer, invoice, email };
+  }, [db, disputeId]);
 }

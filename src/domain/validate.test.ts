@@ -111,9 +111,9 @@ describe("validate (TC-041)", () => {
   });
 
   it("6 fails on an open dispute record, and passes once it is resolved", () => {
-    const open = sources({ disputes: [{ dispute_id: "DS-1", invoice_id: "INV-A", status: "under_review" }] });
+    const open = sources({ disputes: [{ dispute_id: "DS-1", invoice_id: "INV-A", status: "under_review", type: "incorrect_amount" }] });
     expect(failedIds(open)).toEqual([6]);
-    const closed = sources({ disputes: [{ dispute_id: "DS-1", invoice_id: "INV-A", status: "resolved" }] });
+    const closed = sources({ disputes: [{ dispute_id: "DS-1", invoice_id: "INV-A", status: "resolved", type: "incorrect_amount" }] });
     expect(failedIds(closed)).toEqual([]);
   });
 

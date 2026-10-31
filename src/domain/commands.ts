@@ -19,7 +19,13 @@ import {
   type Subject,
   type SubjectKind,
 } from "./permissions";
-import { CustomerSchema, DataIssueSchema, InvoiceSchema, PaymentSchema } from "./schema";
+import {
+  CustomerSchema,
+  DataIssueSchema,
+  DisputeTypeSchema,
+  InvoiceSchema,
+  PaymentSchema,
+} from "./schema";
 import { transition } from "./transitions";
 import { buildDraft, factsFor, locateFootnotes } from "./draft";
 import { VerifiedFactSchema, type VerifiedFact } from "./schema";
@@ -223,12 +229,6 @@ function amountNote(row: Row | undefined): string {
     : "";
 }
 
-const notYet =
-  (owner: string): Handler =>
-  async ({ cmd }) => {
-    throw new CommandNotImplemented(cmd.type, owner);
-  };
-
 const DRAFT_TEXT_FIELDS = ["subject", "body"] as const;
 const DISPUTE_EVENTS = ["start_review", "await_customer", "customer_replied"];
 
@@ -376,7 +376,44 @@ const HANDLERS: Record<Action, Handler> = {
   },
 
   generate_draft: (ctx) => generateDraft(ctx),
-  mark_disputed: notYet("TASK-17"),
+
+  /**
+   * Opens a Dispute by hand (no source email), so it's bespoke rather than
+   * `step()`-based: it creates the row instead of transitioning an existing
+   * one. `disputes`' state machine still governs it from here on
+   * (dispute_transition / resolve_dispute).
+   */
+  mark_disputed: async (ctx) => {
+    const invoiceId = ctx.cmd.subject.id;
+    const customerId = str(ctx.row?.customer_id) ?? "";
+    const typeResult = DisputeTypeSchema.safeParse(ctx.payload.type ?? "unknown");
+    if (!typeResult.success) {
+      throw new InvalidCommand("Choose a valid dispute type.");
+    }
+    const claimText = (str(ctx.payload.claim_text) ?? "").trim();
+    if (claimText === "") {
+      throw new InvalidCommand("A dispute needs a reason.");
+    }
+    // Sanitized, not the raw ISO string: `/disputes/[id]` puts this in a URL
+    // path segment, and a literal `:` there breaks Next's PPR dynamic-param
+    // substitution (the detail page would 404 on its own freshly-created row).
+    const disputeId = `D-manual-${invoiceId}-${ctx.tx.now().replace(/[^0-9A-Za-z]/g, "")}`;
+    const dispute: Row = {
+      dispute_id: disputeId,
+      invoice_id: invoiceId,
+      customer_id: customerId,
+      type: typeResult.data,
+      claim_text: claimText,
+      ai_recommendation: "Opened manually; review and resolve or reject.",
+      status: "new",
+    };
+    await ctx.tx.put("disputes", dispute);
+    return {
+      summary: `Marked invoice ${invoiceId} as disputed${amountNote(ctx.row)}`,
+      after: { dispute_id: disputeId, status: "new" },
+    };
+  },
+
   import_csv: async ({ tx, payload }) => {
     const kind = payload.kind;
     if (!isImportKind(kind)) {
