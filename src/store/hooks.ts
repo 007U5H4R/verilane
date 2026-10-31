@@ -10,7 +10,7 @@ import { AS_OF_DATE } from "@/domain/clock";
 import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, EmailMessage, Extraction, Invoice, Payment, Priority } from "@/domain/schema";
+import type { Customer, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
@@ -189,4 +189,45 @@ export function useInvoiceCommunication(invoiceId: string): InvoiceMessage[] | u
     });
     return out.sort((a, b) => a.email.sent_at.localeCompare(b.email.sent_at));
   }, [db, invoiceId]);
+}
+
+export interface PaymentsData {
+  payments: Payment[];
+  invoices: Map<string, Invoice>;
+  customers: Map<string, Customer>;
+  emails: Map<string, EmailMessage>;
+  matches: Map<string, Match>;
+  /** Open uncertain-match and reconciliation items, by email then id. */
+  reviewItems: ReviewItem[];
+}
+
+const PAYMENT_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation"]);
+
+/**
+ * Everything the Payments page shows (TASK-13.4): the ledger, plus the open
+ * review items the matcher raised, with the emails and matches they cite.
+ */
+export function usePaymentsData(): PaymentsData | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const [payments, invoices, customers, emails, matches, items] = await Promise.all([
+      db.payments.toArray(),
+      db.invoices.toArray(),
+      db.customers.toArray(),
+      db.emails.toArray(),
+      db.matches.toArray(),
+      db.reviewItems.toArray(),
+    ]);
+    const reviewItems = (items as ReviewItem[])
+      .filter((r) => r.status === "open" && PAYMENT_REVIEW_KINDS.has(r.kind))
+      .sort((a, b) => a.message_id.localeCompare(b.message_id) || a.review_id.localeCompare(b.review_id));
+    return {
+      payments: [...payments].sort((a, b) => b.paid_on.localeCompare(a.paid_on)),
+      invoices: new Map(invoices.map((i) => [i.invoice_id, i])),
+      customers: new Map(customers.map((c) => [c.customer_id, c])),
+      emails: new Map(emails.map((e) => [e.message_id, e])),
+      matches: new Map((matches as Match[]).map((m) => [m.message_id, m])),
+      reviewItems,
+    };
+  }, [db]);
 }

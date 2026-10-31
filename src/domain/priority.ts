@@ -1,24 +1,24 @@
 /**
  * The priority engine, config `priority.v1` (Architecture.md §5). Scores and
- * bands run only over ledger facts and (eventually, TASK-13) matched,
- * validated email signals — `PrioritySignals` is the seam for those, empty
- * until then.
+ * bands run only over ledger facts and matched, validated email signals
+ * (`PrioritySignals`, built by `signals.ts`).
  */
 import { daysBetween } from "./clock";
-import type { Invoice, Payment, Priority, PriorityBand, PriorityFactor } from "./schema";
+import type { DataIssue, Invoice, Payment, Priority, PriorityBand, PriorityFactor } from "./schema";
 
 const CONFIG_VERSION = "priority.v1";
 
 /**
- * Email-derived facts the gates/scoring need (G4, G5, G7, broken-promise).
- * Nothing populates these until TASK-13's evidence-matching lands; callers
- * pass an empty/absent `signals` until then.
+ * Email-derived facts the gates/scoring need (G4, G5, G7, broken-promise),
+ * built by `signals.ts` from matched, validated extractions and open
+ * disputes. Each map is invoice_id → the evidence id that caused it, so a
+ * gate's reason can cite its source (TC-029).
  */
 export interface PrioritySignals {
-  disputed?: Set<string>;
-  holdReconcile?: Set<string>;
-  activeCommitment?: Set<string>;
-  brokenPromise?: Set<string>;
+  disputed?: ReadonlyMap<string, string>;
+  holdReconcile?: ReadonlyMap<string, string>;
+  activeCommitment?: ReadonlyMap<string, string>;
+  brokenPromise?: ReadonlyMap<string, string>;
 }
 
 export interface PriorityCtx {
@@ -27,6 +27,8 @@ export interface PriorityCtx {
   /** Average days late on each customer's paid invoices; `null`/absent = no history. */
   customerHistory: Map<string, number | null>;
   signals?: PrioritySignals;
+  /** Ingest data issues; an `outstanding_amount` conflict on the invoice → G5 (FS8). */
+  dataIssues?: DataIssue[];
 }
 
 /** A `prioritise()` result paired with its source invoice, for `rank()` — the
@@ -113,6 +115,7 @@ function gateResult(
   band: PriorityBand,
   recommendedAction: string,
   daysOverdue: number | null,
+  cause?: string,
 ): Priority {
   return {
     invoice_id: invoiceId,
@@ -120,7 +123,7 @@ function gateResult(
     band,
     factors: [],
     gate,
-    reason: `${bandLabel(band)}: ${recommendedAction}`,
+    reason: `${bandLabel(band)}: ${recommendedAction}${cause ? ` [${cause}]` : ""}`,
     recommended_action: recommendedAction,
     days_overdue: daysOverdue,
   };
@@ -135,8 +138,8 @@ export function prioritise(inv: Invoice, ctx: PriorityCtx): Priority {
   const daysOverdue = daysOverdueOf(inv, ctx);
   const signals = ctx.signals ?? {};
 
-  // G1: closed.
-  if (inv.status === "paid" || inv.status === "written_off" || derivedOutstanding === 0) {
+  // G1: closed. Overpaid (negative outstanding) closes too (R12).
+  if (inv.status === "paid" || inv.status === "written_off" || derivedOutstanding <= 0) {
     return gateResult(inv.invoice_id, "G1", "closed", "None", daysOverdue);
   }
   // G2: unparseable/unknown status (FS10).
@@ -156,25 +159,50 @@ export function prioritise(inv: Invoice, ctx: PriorityCtx): Priority {
     return gateResult(inv.invoice_id, "G3", "needs_review", "Complete missing field", daysOverdue);
   }
   // G4: open dispute.
-  if (signals.disputed?.has(inv.invoice_id)) {
-    return gateResult(inv.invoice_id, "G4", "disputed", "Resolve dispute (Manager)", daysOverdue);
+  const disputeCause = signals.disputed?.get(inv.invoice_id);
+  if (disputeCause !== undefined) {
+    return gateResult(
+      inv.invoice_id,
+      "G4",
+      "disputed",
+      "Resolve dispute (Manager)",
+      daysOverdue,
+      disputeCause,
+    );
   }
-  // G5: payment-confirmation claim or ledger/email conflict.
-  if (signals.holdReconcile?.has(inv.invoice_id)) {
-    return gateResult(inv.invoice_id, "G5", "hold_reconcile", "Reconcile payment", daysOverdue);
+  // G5: payment-confirmation claim, ledger/email conflict, or a ledger
+  // outstanding conflict from ingest (FS8).
+  const outstandingConflict = ctx.dataIssues?.find(
+    (d) =>
+      d.record_id === inv.invoice_id && d.kind === "conflict" && d.field === "outstanding_amount",
+  );
+  const reconcileCause =
+    signals.holdReconcile?.get(inv.invoice_id) ??
+    (outstandingConflict ? `row ${inv.row_id} · outstanding_amount` : undefined);
+  if (reconcileCause !== undefined) {
+    return gateResult(
+      inv.invoice_id,
+      "G5",
+      "hold_reconcile",
+      "Reconcile payment",
+      daysOverdue,
+      reconcileCause,
+    );
   }
   // G6: not yet due.
   if (daysOverdue !== null && daysOverdue < 0) {
     return gateResult(inv.invoice_id, "G6", "not_due", "Monitor", daysOverdue);
   }
   // G7: active commitment with a promised date not yet broken.
-  if (signals.activeCommitment?.has(inv.invoice_id)) {
+  const commitmentCause = signals.activeCommitment?.get(inv.invoice_id);
+  if (commitmentCause !== undefined) {
     return gateResult(
       inv.invoice_id,
       "G7",
       "on_hold_promised",
       "Follow up after promised date",
       daysOverdue,
+      commitmentCause,
     );
   }
 
@@ -184,7 +212,8 @@ export function prioritise(inv: Invoice, ctx: PriorityCtx): Priority {
   const outstandingPts = outstandingPoints(derivedOutstanding);
   const avgDaysLate = ctx.customerHistory.get(inv.customer_id);
   const behaviorPts = behaviorPoints(avgDaysLate);
-  const brokenPromise = signals.brokenPromise?.has(inv.invoice_id) ?? false;
+  const brokenPromiseCause = signals.brokenPromise?.get(inv.invoice_id);
+  const brokenPromise = brokenPromiseCause !== undefined;
   const brokenPromisePts = brokenPromise ? 10 : 0;
 
   const score = daysPts + outstandingPts + behaviorPts + brokenPromisePts;
@@ -214,7 +243,7 @@ export function prioritise(inv: Invoice, ctx: PriorityCtx): Priority {
     factors.push({
       name: "promise broken",
       points: brokenPromisePts,
-      evidenceId: `invoice ${inv.invoice_id} · commitment`,
+      evidenceId: brokenPromiseCause || `invoice ${inv.invoice_id} · commitment`,
     });
   }
   factors.sort((a, b) => b.points - a.points);

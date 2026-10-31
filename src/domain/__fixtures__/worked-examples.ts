@@ -45,7 +45,35 @@ export const exampleA = {
   }),
   ctx: baseCtx({
     customerHistory: new Map([["C-001", 12]]),
-    signals: { brokenPromise: new Set(["INV-A"]) },
+    signals: { brokenPromise: new Map([["INV-A", "E-001-1:emails.json:commitment_date"]]) },
+  }),
+};
+
+// C — 90 days overdue, ₹6,00,000, open "incorrect amount" dispute → G4 Disputed, not scored.
+export const exampleC = {
+  invoice: baseInvoice({
+    row_id: 15,
+    invoice_id: "INV-C",
+    customer_id: "C-003",
+    due_date: "2026-08-01", // 90 days before AS_OF_DATE.
+    amount_paise: 60_000_000, // ₹6,00,000.
+  }),
+  ctx: baseCtx({
+    signals: { disputed: new Map([["INV-C", "E-011-1:emails.json:email_class"]]) },
+  }),
+};
+
+// D — 20 days overdue, email says "paid yesterday", ledger unpaid → G5 Hold – reconcile.
+export const exampleD = {
+  invoice: baseInvoice({
+    row_id: 16,
+    invoice_id: "INV-D",
+    customer_id: "C-004",
+    due_date: "2026-10-10", // 20 days before AS_OF_DATE.
+    amount_paise: 15_000_000,
+  }),
+  ctx: baseCtx({
+    signals: { holdReconcile: new Map([["INV-D", "E-006-1:emails.json:email_class"]]) },
   }),
 };
 
