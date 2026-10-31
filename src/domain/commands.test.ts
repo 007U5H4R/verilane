@@ -426,4 +426,34 @@ describe("draft commands (TASK-15)", () => {
     await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
     expect(m.tables.get("drafts")?.get("DR-INV-A-1")).toMatchObject({ status: "blocked", failed_checks: [6] });
   });
+
+  it("approve_draft re-validates against live data: a payment recorded after validation blocks it (TC-046)", async () => {
+    const src = sources();
+    const m = ledgerTx(src);
+    await gen(m);
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("validated");
+
+    // A payment comes in after validation, changing the outstanding amount
+    // the draft states — check 3 should fail on re-validation.
+    src.payments.push({ payment_id: "P-1", invoice_id: "INV-A", paid_on: "2026-10-29", amount_paise: 10_000_000 });
+
+    const before = m.audits.length;
+    const e = await run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    const row = m.tables.get("drafts")?.get("DR-INV-A-1");
+    expect(row?.status).toBe("validated");
+    expect(row?.failed_checks).toEqual([3]);
+    expect(e.action).toBe("validation_failure");
+    expect(e.summary).toContain("1 failed check");
+    expect(m.audits).toHaveLength(before + 1);
+  });
+
+  it("approve_draft moves a clean, re-validated draft to sent_simulated", async () => {
+    const m = ledgerTx();
+    await gen(m);
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    const e = await run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
+    expect(e.action).toBe("approve_draft");
+  });
 });

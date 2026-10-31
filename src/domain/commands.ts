@@ -43,7 +43,7 @@ export type ImportKind = (typeof IMPORT_KINDS)[number];
  * rejected import is logged as `import_rejected` and a reset as
  * `demo_reset` (TKT-14, TC-057 / TC-060).
  */
-export type AuditAction = Action | "import_rejected" | "demo_reset";
+export type AuditAction = Action | "import_rejected" | "demo_reset" | "validation_failure";
 
 /** `meta` key of the per-browser as-of override (clock.ts `asOf()`). */
 export const AS_OF_KEY = "asOf";
@@ -308,8 +308,27 @@ const HANDLERS: Record<Action, Handler> = {
     };
   },
 
+  /**
+   * TASK-16: the nine checks are re-run against the live ledger inside this
+   * transaction before a draft is approved and sent (simulated). A check
+   * that fails now — e.g. a payment since recorded changed the outstanding
+   * amount — blocks the approval; the draft stays `validated` with its
+   * `failed_checks` refreshed, and the audit event is a `validation_failure`
+   * rather than `approve_draft`.
+   */
   approve_draft: async (ctx) => {
-    const { from, to } = await step(ctx, "draft", "drafts", ["approve", "send"]);
+    const rechecked = await recheckDraft(ctx, str(ctx.row?.body));
+    const failed = rechecked?.failed_checks.length ?? 0;
+    if (rechecked && failed > 0) {
+      await ctx.tx.put("drafts", { ...ctx.row, ...rechecked });
+      return {
+        action: "validation_failure",
+        summary: `Reminder ${ctx.cmd.subject.id} failed re-validation on approval (${failed} failed check${failed === 1 ? "" : "s"})`,
+        before: { status: status(ctx.row) },
+        after: { status: status(ctx.row), failed_checks: rechecked.failed_checks },
+      };
+    }
+    const { from, to } = await step(ctx, "draft", "drafts", ["approve", "send"], rechecked ?? {});
     return {
       summary: `Approved reminder ${ctx.cmd.subject.id}${amountNote(ctx.row)} (simulated send)`,
       before: { status: from },

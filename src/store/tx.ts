@@ -151,7 +151,7 @@ export async function execute(
 }
 
 /** Draft commands re-run the nine checks, so they also read the ledger (TASK-15). */
-const DRAFT_COMMANDS: ReadonlySet<string> = new Set(["generate_draft", "edit_draft", "submit_draft"]);
+const DRAFT_COMMANDS: ReadonlySet<string> = new Set(["generate_draft", "edit_draft", "submit_draft", "approve_draft"]);
 const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractions, db.matches];
 
 /** Everything the nine draft checks read, as of the persisted "today". */
