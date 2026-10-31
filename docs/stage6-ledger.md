@@ -27,7 +27,7 @@ IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK n
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 | TASK-16 | done, merged | fd6e4ad (head 7b17f0a, base 041ff7a) | approve/confirm/send + Drafts; EXE18; vitest 593/593, e2e 123/1-skip (`--workers=1`); Done; T16-4 + T16-R1 parked (failed-recheck draft still counts as ready) |
 | TASK-18 | done, merged | cfe0f4c (head 4d396a5) | Home KPIs/feed/charts; EXE16; vitest 575/575, e2e 99/1-skip (`--workers=1`); Done |
-| TASK-23 | re-review (fix round 1 done: 8bfd60a, vitest 615, e2e 113/1-skip, check:secrets clean) | 8bfd60a (base 041ff7a, merged be197ae), port 3110 | live Claude provider; `liveProvider` unused → log as EXE deviation at merge |
+| TASK-23 | done, merged | 2f52f80 (head 8bfd60a, base 041ff7a) | live Claude provider; EXE19 (deviation: `liveProvider` unused); vitest 623/623, e2e 123/1-skip, check:secrets clean; Done |
 | TASK-24 | done, merged | be197ae (head fb23656) | 3aa052a (base 041ff7a), port 3111 | PWA; EXE17; vitest 585/585, e2e 113/1-skip (`--workers=1`); Done; SW off globally in playwright.config (on only in pwa.spec); seed manifest network-first; at TASK-23 merge: disable live-LLM trigger offline via `useOnline()` |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
@@ -72,3 +72,4 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - TASK-24 × TASK-23 merge: TopBar.tsx conflict — keep `<LlmStatusBadge />`, drop `Sparkles` import, add `<InstallChip />` after the badge.
 - TASK-23 review parked (close-out wave): T23-6 (no request/context size limit), T23-7 (no system prompt; untrusted email text not delimited), T23-10 (effort unset), T23-11 (thin tests). HITL: live path never exercised with a real key.
 - TASK-24 re-review parked (close-out wave): N1 (`seedBypass` not reset when manifest falls back to cache → offline seed load fails after a bad deploy), N2 (writes to old cache between copy and delete are lost). Playwright browsers/temp not redirected to E Drive in playwright.config.ts — runs need PLAYWRIGHT_BROWSERS_PATH + TMPDIR (asked user).
+- TASK-23 re-review parked (close-out wave): T23-R1 (truncated/refused → generic invalid_output), T23-R2 (minified error class in logs), T23-R3 (cost assumes Opus 5.5 under override), T23-R4 (no literal ANTHROPIC test). First live UI trigger must be gated by `useOnline()`.
