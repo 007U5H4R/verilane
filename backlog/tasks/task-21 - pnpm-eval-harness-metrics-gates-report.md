@@ -1,10 +1,10 @@
 ---
 id: TASK-21
 title: 'pnpm eval harness, metrics, gates, report'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 17:07'
 labels:
   - P0
   - 'sp:5'
