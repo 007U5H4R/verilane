@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import { BannerHost } from "@/components/shell/Banner";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar activeHref={active?.href ?? "/"} />
       <div className="flex min-w-0 flex-col">
         <TopBar crumb={crumb} />
+        <BannerHost />
         <SeedUpdatePrompt />
         <main className="min-w-0 flex-1">{children}</main>
       </div>

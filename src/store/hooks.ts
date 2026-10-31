@@ -20,6 +20,13 @@ export function useSeedUpdateAvailable(): boolean {
   return useContext(SeedUpdateContext);
 }
 
+/** `false` when `openDb()` fell back to in-memory storage (SR9, TASK-10). */
+export const PersistentContext = createContext<boolean>(true);
+
+export function usePersistentStorage(): boolean {
+  return useContext(PersistentContext);
+}
+
 export function useDb(): VerilaneDb {
   const db = useContext(DbContext);
   if (!db) throw new Error("useDb() called outside <DataProvider>");

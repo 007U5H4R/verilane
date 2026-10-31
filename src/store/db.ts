@@ -4,7 +4,7 @@
  * recomputed from source + workflow tables by `loader.recompute()` — never
  * written to directly by commands.
  */
-import Dexie, { type Table } from "dexie";
+import Dexie, { type DexieOptions, type Table } from "dexie";
 import type {
   Customer,
   DataIssue,
@@ -85,8 +85,8 @@ export class VerilaneDb extends Dexie {
   audit!: Table<AuditEventRow, number>;
   meta!: Table<MetaRow, string>;
 
-  constructor(name: string) {
-    super(name);
+  constructor(name: string, options?: DexieOptions) {
+    super(name, options);
     this.version(1).stores({
       customers: "customer_id",
       invoices: "row_id, &invoice_number, customer_id, status",
@@ -111,15 +111,69 @@ export interface OpenDbResult {
   persistent: boolean;
 }
 
+/** Dexie/DOM error names that mean "this browser won't give us IndexedDB"
+ * (private mode, blocked storage, quota) — SR9 falls back instead of failing.
+ * `MissingAPIError` is what Dexie throws when reading `window.indexedDB`
+ * itself throws (it then sees no API at all). Anything else is a real bug
+ * and propagates. */
+const STORAGE_ERRORS = new Set([
+  "OpenFailedError",
+  "SecurityError",
+  "QuotaExceededError",
+  "MissingAPIError",
+]);
+
+function isStorageUnavailable(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (STORAGE_ERRORS.has(err.name)) return true;
+  const inner = (err as { inner?: unknown }).inner;
+  return inner instanceof Error && STORAGE_ERRORS.has(inner.name);
+}
+
 /**
- * Opens the `verilane` Dexie database. SR9's full in-memory fallback (on
- * `OpenFailedError`/`SecurityError`/`QuotaExceededError`, swap to an
- * in-memory Dexie-compatible store and surface the storage banner) is
- * TASK-10's job; this just establishes the `{db, persistent}` shape its
- * caller depends on.
+ * Where merely reading `globalThis.indexedDB` throws (blocked storage), two
+ * Dexie internals break even for an in-memory db: `open()` compares its
+ * factory with that global (a Safari 14 workaround) and throws, and
+ * `liveQuery` silently never runs while `Dexie.dependencies.indexedDB` is
+ * null (Dexie captured it as null at import). In that case only, point both
+ * at the memory factory.
+ */
+function adoptMemoryFactoryIfGlobalUnusable(
+  factory: IDBFactory,
+  keyRange: typeof IDBKeyRange,
+): void {
+  try {
+    // Reflect.get, not a bare `void` read — the minifier drops the latter.
+    Reflect.get(globalThis, "indexedDB");
+  } catch {
+    Object.defineProperty(globalThis, "indexedDB", { value: factory, configurable: true });
+  }
+  if (!Dexie.dependencies.indexedDB) {
+    Dexie.dependencies.indexedDB = factory;
+    Dexie.dependencies.IDBKeyRange = keyRange;
+  }
+}
+
+/**
+ * Opens the `verilane` Dexie database. If the browser refuses IndexedDB
+ * (SR9), falls back to an in-memory Dexie on `fake-indexeddb`'s memory
+ * factory — same Dexie code path, nothing survives reload — and reports
+ * `persistent:false` so the shell shows the storage banner.
  */
 export async function openDb(name = "verilane"): Promise<OpenDbResult> {
-  const db = new VerilaneDb(name);
-  await db.open();
-  return { db, persistent: true };
+  try {
+    const db = new VerilaneDb(name);
+    await db.open();
+    return { db, persistent: true };
+  } catch (err) {
+    if (!isStorageUnavailable(err)) throw err;
+    console.error("[verilane] storage unavailable", err);
+    // Loaded only on the failure path, so the happy path never ships it.
+    const { IDBFactory, IDBKeyRange } = await import("fake-indexeddb");
+    const indexedDB = new IDBFactory();
+    adoptMemoryFactoryIfGlobalUnusable(indexedDB, IDBKeyRange);
+    const db = new VerilaneDb(name, { indexedDB, IDBKeyRange });
+    await db.open();
+    return { db, persistent: false };
+  }
 }

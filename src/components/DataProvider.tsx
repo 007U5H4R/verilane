@@ -1,15 +1,15 @@
 /**
  * Opens the Dexie db, ensures the seed is loaded, and provides it via
- * `DbContext` (TASK-7.6, A4). SR9's storage-fallback banner and richer
- * loading/empty/error states are TASK-9.4/TASK-10's job — this is the
- * happy-path shape.
+ * `DbContext` (TASK-7.6, A4), plus whether storage is persistent via
+ * `PersistentContext` (SR9 banner, TASK-10). Richer loading/empty/error
+ * states are TASK-9.4's job.
  */
 "use client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { openDb, type VerilaneDb } from "@/store/db";
 import { ensureSeeded } from "@/store/loader";
-import { DbContext, SeedUpdateContext } from "@/store/hooks";
+import { DbContext, PersistentContext, SeedUpdateContext } from "@/store/hooks";
 
 interface DataProviderProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ interface DataProviderProps {
 
 type Status =
   | { kind: "loading" }
-  | { kind: "ready"; db: VerilaneDb; updateAvailable: boolean }
+  | { kind: "ready"; db: VerilaneDb; updateAvailable: boolean; persistent: boolean }
   | { kind: "error"; error: Error };
 
 export function DataProvider({ children }: DataProviderProps) {
@@ -27,10 +27,15 @@ export function DataProvider({ children }: DataProviderProps) {
     let cancelled = false;
     (async () => {
       try {
-        const { db } = await openDb();
+        const { db, persistent } = await openDb();
         const result = await ensureSeeded(db);
         if (!cancelled) {
-          setStatus({ kind: "ready", db, updateAvailable: result === "update-available" });
+          setStatus({
+            kind: "ready",
+            db,
+            updateAvailable: result === "update-available",
+            persistent,
+          });
         }
       } catch (err) {
         if (!cancelled) {
@@ -50,9 +55,11 @@ export function DataProvider({ children }: DataProviderProps) {
   }
   return (
     <DbContext.Provider value={status.db}>
-      <SeedUpdateContext.Provider value={status.updateAvailable}>
-        {children}
-      </SeedUpdateContext.Provider>
+      <PersistentContext.Provider value={status.persistent}>
+        <SeedUpdateContext.Provider value={status.updateAvailable}>
+          {children}
+        </SeedUpdateContext.Provider>
+      </PersistentContext.Provider>
     </DbContext.Provider>
   );
 }
