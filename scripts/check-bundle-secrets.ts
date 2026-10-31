@@ -36,8 +36,15 @@ function main(): void {
     process.exit(1);
   }
 
+  const files = walk(STATIC_DIR);
+  if (files.length === 0) {
+    // Nothing scanned is not "clean" — a broken/partial build would pass.
+    console.error(`check-bundle-secrets: ${STATIC_DIR} has 0 files — run "pnpm build" first.`);
+    process.exit(1);
+  }
+
   const hits: string[] = [];
-  for (const file of walk(STATIC_DIR)) {
+  for (const file of files) {
     const contents = readFileSync(file, "utf-8");
     if (SECRET_PATTERN.test(contents)) {
       hits.push(file);
@@ -52,7 +59,7 @@ function main(): void {
     process.exit(1);
   }
 
-  console.log(`check-bundle-secrets: clean (${STATIC_DIR})`);
+  console.log(`check-bundle-secrets: clean — scanned ${files.length} files (${STATIC_DIR})`);
 }
 
 main();
