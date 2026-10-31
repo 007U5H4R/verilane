@@ -1,16 +1,23 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
+import { useCommand } from "@/components/useCommand";
 import { buildInvoiceEvidence, INVOICE_FACT_LABELS } from "@/domain/evidence";
 import { formatInr, paise } from "@/domain/money";
 import { outstandingOf } from "@/domain/priority";
 import type { Evidence } from "@/domain/schema";
-import { useCustomers, useInvoice, usePayments } from "@/store/hooks";
+import type { CommandInput } from "@/store/tx";
+import { useCustomers, useInvoice, useInvoiceDraft, usePayments, useRole } from "@/store/hooks";
+import { ActionBar } from "./ActionBar";
 import { ActivityLog } from "./ActivityLog";
+import { ChecksPanel } from "./ChecksPanel";
 import { CommunicationTable } from "./CommunicationTable";
 import { DocumentCard, formatDate } from "./DocumentCard";
+import { DraftPanel } from "./DraftPanel";
+import { nextStep } from "./draftActions";
 import { EvidenceTable } from "./EvidenceTable";
+import { NextStepCallout } from "./NextStepCallout";
 import { PriorityReason } from "./PriorityReason";
 
 function factValue(ev: Evidence): ReactNode {
@@ -62,12 +69,37 @@ export function InvestigationSkeleton() {
  * invoice id client-side via `useParams` (the page is a static shell; the
  * data lives in IndexedDB).
  */
-export function InvestigationView() {
+export interface InvestigationViewProps {
+  /** Approve & send (TASK-16); absent, the Manager's primary is disabled with a reason. */
+  onApprove?: (draftId: string) => void;
+  /** Mark disputed (TASK-17); absent, the button is disabled with a reason. */
+  onMarkDisputed?: (invoiceId: string) => void;
+}
+
+export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationViewProps = {}) {
   const { id } = useParams<{ id: string }>();
   const invoiceId = decodeURIComponent(id);
   const found = useInvoice(invoiceId);
   const customers = useCustomers();
   const payments = usePayments();
+  const draft = useInvoiceDraft(invoiceId);
+  const role = useRole();
+  const run = useCommand();
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function command(cmd: CommandInput, after?: () => void) {
+    if (!run || busy) return;
+    setBusy(true);
+    try {
+      await run(cmd);
+      after?.();
+    } catch {
+      // The refusal is shown as a toast by useCommand.
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (found === undefined || !customers || !payments) return <InvestigationSkeleton />;
 
@@ -93,6 +125,18 @@ export function InvestigationView() {
       <p className="mb-4">
         <BackToQueue />
       </p>
+      <ActionBar
+        role={role}
+        draft={draft}
+        busy={busy}
+        onEdit={() => setEditing(true)}
+        onSubmit={() => {
+          if (draft) void command({ type: "submit_draft", subject: { kind: "draft", id: draft.draft_id } });
+        }}
+        onApprove={onApprove && draft ? () => onApprove(draft.draft_id) : undefined}
+        onMarkDisputed={onMarkDisputed ? () => onMarkDisputed(invoice.invoice_id) : undefined}
+      />
+      {draft !== undefined ? <NextStepCallout text={nextStep(role, draft)} /> : null}
       {/* Design.md §16: two columns at ≥1280px (evidence | activity), one below. */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <DocumentCard
@@ -111,8 +155,27 @@ export function InvestigationView() {
             }))}
           />
           <CommunicationTable invoiceId={invoice.invoice_id} />
+          <DraftPanel
+            draft={draft}
+            editing={editing}
+            busy={busy}
+            canRun={run !== null}
+            onGenerate={() =>
+              void command({ type: "generate_draft", subject: { kind: "invoice", id: invoice.invoice_id } })
+            }
+            onSave={(body) => {
+              if (draft) {
+                void command(
+                  { type: "edit_draft", subject: { kind: "draft", id: draft.draft_id }, payload: { body } },
+                  () => setEditing(false),
+                );
+              }
+            }}
+            onCancel={() => setEditing(false)}
+          />
         </DocumentCard>
         <aside className="min-w-0">
+          <ChecksPanel checks={draft === undefined ? undefined : (draft?.checks ?? null)} onEdit={() => setEditing(true)} />
           <ActivityLog invoiceId={invoice.invoice_id} />
         </aside>
       </div>
