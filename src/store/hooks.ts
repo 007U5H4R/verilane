@@ -6,7 +6,8 @@
 "use client";
 import { createContext, useCallback, useContext } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { AuditEventInput } from "@/domain/commands";
+import { AS_OF_DATE } from "@/domain/clock";
+import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
 import type { Customer, EmailMessage, Extraction, Invoice, Payment, Priority } from "@/domain/schema";
@@ -103,6 +104,19 @@ export function useInvoice(invoiceId: string): InvoiceWithPriority | undefined |
     if (!priority) return null;
     return { invoice, priority };
   }, [db, invoiceId]);
+}
+
+/**
+ * The effective as-of date (`meta.asOf`, else `AS_OF_DATE`), live (TC-061).
+ * Tolerates a missing db like `useQueueCount()`, so the shell can show it.
+ */
+export function useAsOf(): string {
+  const db = useContext(DbContext);
+  const stored = useLiveQuery(
+    async () => (db ? (await db.meta.get(AS_OF_KEY))?.value : undefined),
+    [db],
+  );
+  return typeof stored === "string" ? stored : AS_OF_DATE;
 }
 
 /** The persisted demo role (`meta.role`), live; Analyst until it loads. */

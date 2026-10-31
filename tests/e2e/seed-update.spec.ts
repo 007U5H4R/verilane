@@ -42,8 +42,8 @@ test("a newer seed shows the update prompt and keeps the user's note", async ({ 
 
   const prompt = page.getByRole("status").filter({ hasText: "New demo data available" });
   await expect(prompt).toBeVisible();
-  await expect(prompt.getByRole("button", { name: "Reset" })).toBeDisabled();
-  await expect(prompt.getByText("Reset arrives with Settings")).toBeVisible();
+  // TASK-19: Reset is live now, but nothing changes until it is confirmed.
+  await expect(prompt.getByRole("button", { name: "Reset" })).toBeEnabled();
   await expect(page.locator('a[href^="/invoices/"]')).toHaveCount(25);
   await expect(page.getByTestId("result-count")).toHaveText("50 of 50 shown");
 

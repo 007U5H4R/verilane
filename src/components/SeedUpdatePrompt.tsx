@@ -1,15 +1,21 @@
 /**
  * TASK-8.5: shown when the stored seed is older than the served manifest.
  * The loader never auto-wipes (TC-014); Reset is the only way to the new
- * data, and it stays disabled with a reason until Settings lands (TASK-19).
+ * data. TASK-19: Reset uses the same confirmed, audited `reset_demo` path as
+ * Settings (TC-060).
  */
 "use client";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+
+import { ResetDialog } from "@/components/settings/ResetDialog";
 import { useSeedUpdateAvailable } from "@/store/hooks";
 
 export function SeedUpdatePrompt() {
   const updateAvailable = useSeedUpdateAvailable();
-  if (!updateAvailable) return null;
+  // The update flag is computed once at load; after a reset the stored seed
+  // is current, so hide the prompt for the rest of this session.
+  const [hidden, setHidden] = useState(false);
+  if (!updateAvailable || hidden) return null;
 
   return (
     <div
@@ -18,18 +24,8 @@ export function SeedUpdatePrompt() {
     >
       <span className="font-semibold">New demo data available</span>
       <span className="text-text-muted">Your current data and notes are kept until you reset.</span>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled
-        aria-describedby="seed-reset-reason"
-        className="ml-auto"
-      >
-        Reset
-      </Button>
-      <span id="seed-reset-reason" className="text-text-muted">
-        Reset arrives with Settings
+      <span className="ml-auto">
+        <ResetDialog label="Reset" onReset={() => setHidden(true)} />
       </span>
     </div>
   );

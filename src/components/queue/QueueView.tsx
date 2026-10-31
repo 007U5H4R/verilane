@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -10,8 +11,9 @@ import { RowSkeleton } from "@/components/states/RowSkeleton";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusSchema, PriorityBandSchema } from "@/domain/schema";
 import type { VerilaneDb } from "@/store/db";
-import { DbContext, useCustomers, usePayments, useQueue } from "@/store/hooks";
-import { loadDemoData } from "@/store/loader";
+import { formatDate } from "@/components/investigation/DocumentCard";
+import { resetDemo } from "@/store/dataCommands";
+import { DbContext, useAsOf, useCustomers, usePayments, useQueue } from "@/store/hooks";
 import { applyUpdate, initIntent, onUrl } from "./filterIntent";
 import { FiltersPanel, type ApplyFilters } from "./FiltersPanel";
 import { DEFAULT_FILTERS, DEFAULT_SORT_DESC, SORT_COLUMNS, parse, type QueueFilters, type SortColumn } from "./queueParams";
@@ -35,6 +37,7 @@ const SORT_LABELS: Record<SortColumn, string> = {
 export function QueueView() {
   const db = useContext(DbContext);
   const params = useSearchParams();
+  const asOf = useAsOf();
   // E2E-only state override (TP7): a normal build inlines `false` here.
   const forced = process.env.NEXT_PUBLIC_E2E === "1" ? params.get("__state") : null;
 
@@ -46,11 +49,16 @@ export function QueueView() {
 
   return (
     <section className="flex flex-col gap-4 p-7" aria-labelledby="queue-title">
-      <header className="flex flex-col gap-1">
-        <h1 id="queue-title" className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
-          Collections queue
-        </h1>
-        <p className="text-text-muted">Ranked by priority.v1 · as of 30 Oct 2026</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 id="queue-title" className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
+            Collections queue
+          </h1>
+          <p className="text-text-muted">Ranked by priority.v1 · as of {formatDate(asOf)}</p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/settings#import">Import data</Link>
+        </Button>
       </header>
       {body}
     </section>
@@ -68,7 +76,8 @@ function NoData({ db }: { db: VerilaneDb | null }) {
     if (!db || busy) return;
     setBusy(true);
     try {
-      await loadDemoData(db);
+      // R5: through the audited reset_demo command, never a raw load.
+      await resetDemo(db);
     } catch {
       toast.error("Couldn’t load the demo data. Try again.");
     } finally {

@@ -9,6 +9,7 @@
  * `execute()` wraps this in a single read-write transaction, so any throw
  * rolls back the writes and the audit event together.
  */
+import { AS_OF_DATE } from "./clock";
 import { formatInr, paise } from "./money";
 import {
   can,
@@ -18,10 +19,25 @@ import {
   type Subject,
   type SubjectKind,
 } from "./permissions";
+import { CustomerSchema, DataIssueSchema, InvoiceSchema, PaymentSchema } from "./schema";
 import { transition } from "./transitions";
 
 export type Row = Record<string, unknown>;
 export type TableName = "invoices" | "drafts" | "disputes" | "reviewItems" | "meta";
+
+/** The source tables a CSV import may replace (TASK-19). */
+export const IMPORT_KINDS = ["invoices", "customers", "payments"] as const;
+export type ImportKind = (typeof IMPORT_KINDS)[number];
+
+/**
+ * What the audit log records: normally the command's own action, but a
+ * rejected import is logged as `import_rejected` and a reset as
+ * `demo_reset` (TKT-14, TC-057 / TC-060).
+ */
+export type AuditAction = Action | "import_rejected" | "demo_reset";
+
+/** `meta` key of the per-browser as-of override (clock.ts `asOf()`). */
+export const AS_OF_KEY = "asOf";
 
 export interface Command {
   type: Action;
@@ -34,7 +50,7 @@ export interface AuditEventInput {
   at: string;
   actor_role: Role;
   actor_label: string;
-  action: Action;
+  action: AuditAction;
   /** `${kind}:${id}`, e.g. `invoice:INV-1042`. */
   subject: string;
   subject_kind: SubjectKind;
@@ -56,6 +72,25 @@ export interface Tx {
   audit(e: AuditEventInput): Promise<void>;
   /** Event timestamp (ISO). Injected so the domain stays pure. */
   now(): string;
+  /** Whole-table operations (import / reset / re-rank); only the store's
+   * transaction provides them. */
+  data?: DataOps;
+}
+
+/**
+ * The bulk operations behind `import_csv`, `reset_demo` and `set_as_of`.
+ * Each runs inside the command's transaction, so a throw rolls it back
+ * together with the audit event.
+ */
+export interface DataOps {
+  /** Replaces one source table wholesale (for invoices, the data issues
+   * too), then recomputes the derived tables. */
+  replaceSource(kind: ImportKind, rows: Row[], dataIssues: Row[]): Promise<void>;
+  /** Clears every table (the audit log included), keeps the demo role,
+   * loads `seed`, then recomputes. Returns row counts for the audit. */
+  resetToSeed(seed: unknown, seedVersion: string): Promise<Row>;
+  /** Recomputes the derived tables, e.g. after the as-of date moves. */
+  recompute(): Promise<void>;
 }
 
 export class PermissionDenied extends Error {
@@ -120,6 +155,8 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
 };
 
 type Effect = {
+  /** Overrides the audited action (defaults to the command's own). */
+  action?: AuditAction;
   summary: string;
   before?: Row;
   after?: Row;
@@ -322,10 +359,102 @@ const HANDLERS: Record<Action, Handler> = {
 
   generate_draft: notYet("TASK-15"),
   mark_disputed: notYet("TASK-17"),
-  import_csv: notYet("TASK-19"),
-  reset_demo: notYet("TASK-19"),
-  set_as_of: notYet("TASK-19"),
+  import_csv: async ({ tx, payload }) => {
+    const kind = payload.kind;
+    if (!isImportKind(kind)) {
+      throw new InvalidCommand("Choose invoices, customers or payments.");
+    }
+    const file = str(payload.file_name) ?? "file";
+
+    // A rejected file is still audited (SR11): nothing is written and the
+    // event lists why, so this returns instead of throwing.
+    if (Array.isArray(payload.errors)) {
+      const errors = payload.errors.filter(isRowError);
+      if (errors.length === 0) {
+        throw new InvalidCommand("A rejected import must list its errors.");
+      }
+      return {
+        action: "import_rejected",
+        summary: `Rejected ${file}: ${errors.length} problem${errors.length === 1 ? "" : "s"}, nothing imported`,
+        after: { kind, file_name: file, errors },
+      };
+    }
+
+    const rows = IMPORT_ROW_SCHEMA[kind].safeParse(payload.rows);
+    if (!rows.success || rows.data.length === 0) {
+      throw new InvalidCommand(`The ${kind} rows are not valid; nothing was imported.`);
+    }
+    const issues = DataIssueSchema.array().safeParse(payload.data_issues ?? []);
+    if (!issues.success) {
+      throw new InvalidCommand("The import's data issues are not valid.");
+    }
+    await dataOps(tx).replaceSource(kind, rows.data as Row[], issues.data as Row[]);
+    return {
+      summary: `Imported ${rows.data.length} ${kind} from ${file}, replacing the previous ${kind}`,
+      after: { kind, file_name: file, rows: rows.data.length },
+    };
+  },
+
+  reset_demo: async ({ tx, payload }) => {
+    const version = str(payload.seed_version);
+    if (!version || payload.seed === undefined) {
+      throw new InvalidCommand("Reset needs the demo seed.");
+    }
+    const counts = await dataOps(tx).resetToSeed(payload.seed, version);
+    return {
+      action: "demo_reset",
+      summary: `Reset the demo data to seed ${version}`,
+      after: { seed_version: version, ...counts },
+    };
+  },
+
+  set_as_of: async ({ tx, payload }) => {
+    const raw = payload.as_of;
+    if (raw !== null && !(typeof raw === "string" && isIsoDay(raw))) {
+      throw new InvalidCommand("The as-of date must be a real date (YYYY-MM-DD).");
+    }
+    const stored = (await tx.get("meta", AS_OF_KEY))?.value;
+    const prev = typeof stored === "string" ? stored : AS_OF_DATE;
+    const next = raw ?? AS_OF_DATE;
+    if (prev === next) {
+      throw new InvalidCommand(`The as-of date is already ${next}.`);
+    }
+    await tx.put("meta", { key: AS_OF_KEY, value: next });
+    await dataOps(tx).recompute();
+    return {
+      summary: `Moved the as-of date from ${prev} to ${next}; the queue was re-ranked`,
+      before: { as_of: prev },
+      after: { as_of: next },
+    };
+  },
 };
+
+const IMPORT_ROW_SCHEMA = {
+  invoices: InvoiceSchema.array(),
+  customers: CustomerSchema.array(),
+  payments: PaymentSchema.array(),
+} as const;
+
+function isImportKind(v: unknown): v is ImportKind {
+  return typeof v === "string" && (IMPORT_KINDS as readonly string[]).includes(v);
+}
+
+function isRowError(v: unknown): v is Row {
+  if (typeof v !== "object" || v === null) return false;
+  const e = v as Row;
+  return typeof e.field === "string" && typeof e.reason === "string";
+}
+
+function isIsoDay(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
+function dataOps(tx: Tx): DataOps {
+  if (!tx.data) throw new InvalidCommand("Data operations are not available here.");
+  return tx.data;
+}
 
 function invoiceIdOf(cmd: Command, row: Row | undefined): string | undefined {
   if (cmd.subject.kind === "invoice") return cmd.subject.id;
@@ -358,7 +487,7 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
     at: tx.now(),
     actor_role: cmd.actor,
     actor_label: ROLE_LABEL[cmd.actor],
-    action: cmd.type,
+    action: effect.action ?? cmd.type,
     subject: `${cmd.subject.kind}:${cmd.subject.id}`,
     subject_kind: cmd.subject.kind,
     subject_id: cmd.subject.id,

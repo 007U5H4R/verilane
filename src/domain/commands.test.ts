@@ -238,14 +238,39 @@ describe("run()", () => {
   it.each([
     ["generate_draft", { kind: "invoice", id: "INV-1" }, "TASK-15"],
     ["mark_disputed", { kind: "invoice", id: "INV-1" }, "TASK-17"],
-    ["import_csv", { kind: "system", id: "workspace" }, "TASK-19"],
-    ["reset_demo", { kind: "system", id: "workspace" }, "TASK-19"],
-    ["set_as_of", { kind: "system", id: "workspace" }, "TASK-19"],
   ] as const)("%s is owned by a later ticket", async (type, subject, owner) => {
     const m = memTx(seed());
     const err = await run(cmd({ type, subject }), m.tx).catch((x: unknown) => x);
     expect(err).toBeInstanceOf(CommandNotImplemented);
     expect((err as Error).message).toContain(owner);
+    expect(m.audits).toHaveLength(0);
+  });
+
+  it("import_rejected is audited without touching any table (TC-057 core)", async () => {
+    const m = memTx(seed());
+    const errors = [{ row: 3, field: "invoice_date", reason: "invoice_date must be a real date" }];
+    const event = await run(
+      cmd({
+        type: "import_csv",
+        subject: { kind: "system", id: "import" },
+        payload: { kind: "invoices", file_name: "bad.csv", errors },
+      }),
+      m.tx,
+    );
+    expect(event).toMatchObject({ action: "import_rejected", after: { errors } });
+    expect(m.audits).toHaveLength(1);
+  });
+
+  it.each([
+    ["import_csv", { kind: "invoices", file_name: "x.csv", rows: [{}] }],
+    ["reset_demo", { seed_version: "v", seed: {} }],
+    ["set_as_of", { as_of: "2026-11-15" }],
+  ] as const)("%s without the store's data ops is invalid, not half-applied", async (type, payload) => {
+    const m = memTx(seed());
+    const err = await run(cmd({ type, subject: { kind: "system", id: "x" }, payload }), m.tx).catch(
+      (x: unknown) => x,
+    );
+    expect(err).toBeInstanceOf(InvalidCommand);
     expect(m.audits).toHaveLength(0);
   });
 });

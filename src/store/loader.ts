@@ -7,7 +7,7 @@
  */
 import Papa from "papaparse";
 import { ingest, type Row } from "@/domain/ingest";
-import { AS_OF_DATE, daysBetween } from "@/domain/clock";
+import { asOf, daysBetween } from "@/domain/clock";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
 import type { Invoice, Payment, Priority } from "@/domain/schema";
 import { simulateExtraction } from "@/ai/simulated";
@@ -24,7 +24,7 @@ export interface SeedManifest {
 /** Matches the global `fetch` signature; injectable so tests can stub it. */
 export type Fetcher = typeof fetch;
 
-const SEED_VERSION_KEY = "seedVersion";
+export const SEED_VERSION_KEY = "seedVersion";
 
 export type EnsureSeededResult = "seeded" | "current" | "update-available";
 
@@ -52,9 +52,9 @@ async function fetchJson<T>(fetcher: Fetcher, url: string): Promise<T> {
 /**
  * Loads the manifest + seed files and ingests them, without touching the
  * database — split out so `ensureSeeded()` can run it before opening its
- * write transaction.
+ * write transaction (and `resetDemo()` before its command, TASK-19).
  */
-async function loadSeed(fetcher: Fetcher, manifestUrl: string) {
+export async function loadSeed(fetcher: Fetcher, manifestUrl: string) {
   const manifest = await fetchJson<SeedManifest>(fetcher, manifestUrl);
   const [invoicesCsv, customersCsv, paymentsCsv, emailsJson] = await Promise.all([
     fetchText(fetcher, manifest.invoices),
@@ -95,7 +95,7 @@ export async function ensureSeeded(
 
   const { manifest, ingested } = await loadSeed(fetcher, manifestUrl);
 
-  await db.transaction(
+  const seeded = await db.transaction(
     "rw",
     [
       db.customers,
@@ -108,31 +108,23 @@ export async function ensureSeeded(
       db.meta,
     ],
     async () => {
+      // Two first-run loads can race (StrictMode, two tabs); only the first
+      // writes (M-001 R4).
+      if (await db.meta.get(SEED_VERSION_KEY)) return false;
       await db.customers.bulkPut(ingested.customers);
       await db.invoices.bulkPut(ingested.invoices);
       await db.payments.bulkPut(ingested.payments);
       await db.emails.bulkPut(ingested.emails);
+      // `dataIssues` is keyed `++id`, so replace rather than append (R4).
+      await db.dataIssues.clear();
       await db.dataIssues.bulkPut(ingested.dataIssues);
       await recomputeCore(db);
       await db.meta.put({ key: SEED_VERSION_KEY, value: manifest.seedVersion });
+      return true;
     },
   );
 
-  return "seeded";
-}
-
-/**
- * The Queue's "Load demo data" (TASK-9.4): forgets the recorded seed version
- * and runs the first-run load again, so an emptied database gets the seed
- * back. Upserts only — it never wipes workflow data.
- */
-export async function loadDemoData(
-  db: VerilaneDb,
-  fetcher: Fetcher = fetch,
-  manifestUrl = "/seed/manifest.json",
-): Promise<void> {
-  await db.meta.delete(SEED_VERSION_KEY);
-  await ensureSeeded(db, fetcher, manifestUrl);
+  return seeded ? "seeded" : "current";
 }
 
 /** Average days late a customer's paid invoices ran, keyed by customer_id;
@@ -179,7 +171,12 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
   const invoices = await db.invoices.toArray();
   const payments = await db.payments.toArray();
   const customerHistory = buildCustomerHistory(invoices, payments);
-  const ctx: PriorityCtx = { asOf: AS_OF_DATE, payments, customerHistory };
+  const stored = (await db.meta.get("asOf"))?.value;
+  const ctx: PriorityCtx = {
+    asOf: asOf(typeof stored === "string" ? { asOf: stored } : undefined),
+    payments,
+    customerHistory,
+  };
 
   const emails = await db.emails.toArray();
   await db.extractions.clear();
@@ -195,7 +192,7 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
 export async function recompute(db: VerilaneDb): Promise<void> {
   await db.transaction(
     "rw",
-    [db.invoices, db.payments, db.emails, db.extractions, db.priorities],
+    [db.invoices, db.payments, db.emails, db.extractions, db.priorities, db.meta],
     () => recomputeCore(db),
   );
 }

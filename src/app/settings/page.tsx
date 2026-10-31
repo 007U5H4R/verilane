@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { SettingsView } from "@/components/settings/SettingsView";
 
 export default function SettingsPage() {
-  return <ComingSoon milestone="M-004" />;
+  return <SettingsView />;
 }

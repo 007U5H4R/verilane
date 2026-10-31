@@ -92,7 +92,7 @@ describe("execute() — TC-037 one audit event per command", () => {
 
   it("not-yet-implemented commands write nothing", async () => {
     await expect(
-      execute(db, { type: "reset_demo", subject: { kind: "system", id: "workspace" } }),
+      execute(db, { type: "mark_disputed", subject: { kind: "invoice", id: "INV-1" } }),
     ).rejects.toBeInstanceOf(CommandNotImplemented);
     expect(await db.audit.count()).toBe(0);
   });
