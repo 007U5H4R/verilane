@@ -1,5 +1,4 @@
-import { Sparkles } from "lucide-react";
-
+import { LlmStatusBadge } from "@/components/shell/LlmStatusBadge";
 import { RoleSwitcher } from "@/components/shell/RoleSwitcher";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 
@@ -12,10 +11,7 @@ export function TopBar({ crumb }: { crumb: string }) {
         <strong className="font-semibold text-text">{crumb}</strong>
       </div>
       <div className="flex shrink-0 flex-nowrap items-center gap-2 md:gap-3">
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs text-text-muted">
-          <Sparkles className="size-3.5" />
-          Simulated LLM
-        </span>
+        <LlmStatusBadge />
         <RoleSwitcher />
         <ThemeToggle />
       </div>
