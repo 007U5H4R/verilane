@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AS_OF_DATE } from "./clock";
 import { prioritise, rank, type PriorityCtx } from "./priority";
-import { exampleA, exampleB, exampleE } from "./__fixtures__/worked-examples";
+import { exampleA, exampleB, exampleC, exampleD, exampleE } from "./__fixtures__/worked-examples";
 import type { Invoice } from "./schema";
 
 function baseInvoice(overrides: Partial<Invoice>): Invoice {
@@ -185,6 +185,118 @@ describe("rank — TC-006 deterministic tie-break", () => {
         "INV-003",
       ]);
     }
+  });
+});
+
+// TC-029..TC-033 + milestone-review fixes R1, R12 (TASK-13).
+describe("prioritise — email gates G4/G5/G7 (TASK-13)", () => {
+  it("TC-032 C: 90 days overdue, ₹6,00,000, open dispute → G4 Disputed, not scored", () => {
+    const result = prioritise(exampleC.invoice, exampleC.ctx);
+    expect(result.gate).toBe("G4");
+    expect(result.band).toBe("disputed");
+    expect(result.score).toBeUndefined();
+    expect(result.days_overdue).toBe(90);
+  });
+
+  it("TC-029: the G4 reason cites the email evidence id", () => {
+    const result = prioritise(exampleC.invoice, exampleC.ctx);
+    expect(result.reason).toContain("E-011-1:emails.json:email_class");
+  });
+
+  it("TC-032 D: 20 days overdue, 'paid yesterday', ledger unpaid → G5 Hold – reconcile", () => {
+    const result = prioritise(exampleD.invoice, exampleD.ctx);
+    expect(result.gate).toBe("G5");
+    expect(result.band).toBe("hold_reconcile");
+    expect(result.reason).toContain("Hold – reconcile");
+    expect(result.reason).toContain("E-006-1:emails.json:email_class");
+  });
+
+  it("G4 outranks G5 when both fire", () => {
+    const result = prioritise(
+      baseInvoice({}),
+      baseCtx({
+        signals: {
+          disputed: new Map([["INV-001", "d"]]),
+          holdReconcile: new Map([["INV-001", "h"]]),
+        },
+      }),
+    );
+    expect(result.gate).toBe("G4");
+  });
+
+  it("R1: an outstanding_amount conflict DataIssue (seed INV-G) → G5", () => {
+    // Seed row 10: amount ₹1,00,000, payment P-009 ₹30,000, supplied outstanding
+    // ₹80,000 vs derived ₹70,000 → ingest raises the conflict.
+    const inv = baseInvoice({
+      row_id: 10,
+      invoice_id: "INV-G",
+      customer_id: "C-003",
+      due_date: "2026-09-20",
+      amount_paise: 10_000_000,
+    });
+    const ctx = baseCtx({
+      payments: [{ payment_id: "P-009", invoice_id: "INV-G", paid_on: "2026-10-01", amount_paise: 3_000_000 }],
+      dataIssues: [
+        {
+          issue_id: "DI-1",
+          record_id: "INV-G",
+          field: "outstanding_amount",
+          kind: "conflict",
+          message: "supplied 80000.00 vs derived 70000.00",
+          suggested_action: "Reconcile",
+        },
+      ],
+    });
+    const result = prioritise(inv, ctx);
+    expect(result.gate).toBe("G5");
+    expect(result.band).toBe("hold_reconcile");
+    expect(result.reason).toContain("row 10 · outstanding_amount");
+  });
+
+  it("R1: an invoice_number conflict is a data-quality issue, not a reconcile hold", () => {
+    const result = prioritise(
+      baseInvoice({ due_date: "2026-10-29" }),
+      baseCtx({
+        dataIssues: [
+          { issue_id: "DI-2", record_id: "INV-001", field: "invoice_number", kind: "conflict", message: "m", suggested_action: "s" },
+        ],
+      }),
+    );
+    expect(result.gate).toBeUndefined();
+  });
+
+  it("R12: an overpaid invoice (negative outstanding) closes at G1", () => {
+    const inv = baseInvoice({ amount_paise: 500_000 });
+    const result = prioritise(
+      inv,
+      baseCtx({
+        payments: [{ payment_id: "P-1", invoice_id: inv.invoice_id, paid_on: "2026-10-05", amount_paise: 600_000 }],
+      }),
+    );
+    expect(result.gate).toBe("G1");
+    expect(result.band).toBe("closed");
+  });
+
+  it("TC-031: an active commitment → G7 On hold, citing the promise", () => {
+    const result = prioritise(
+      baseInvoice({}),
+      baseCtx({ signals: { activeCommitment: new Map([["INV-001", "E-001-1:emails.json:commitment_date"]]) } }),
+    );
+    expect(result.gate).toBe("G7");
+    expect(result.band).toBe("on_hold_promised");
+    expect(result.reason).toContain("E-001-1:emails.json:commitment_date");
+  });
+
+  it("TC-031: a broken promise is scored with +10 'promise broken'", () => {
+    const inv = baseInvoice({ due_date: "2026-10-29", amount_paise: 1_000_000 });
+    const plain = prioritise(inv, baseCtx());
+    const broken = prioritise(
+      inv,
+      baseCtx({ signals: { brokenPromise: new Map([["INV-001", "E-001-1:emails.json:commitment_date"]]) } }),
+    );
+    expect(broken.score).toBe((plain.score ?? 0) + 10);
+    const factor = broken.factors.find((f) => f.name === "promise broken");
+    expect(factor?.evidenceId).toBe("E-001-1:emails.json:commitment_date");
   });
 });
 
