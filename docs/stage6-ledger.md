@@ -18,7 +18,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | M-001 review | done: pass-with-fixes (R1, R2 major) | read-only, main..4303a32 | max 2 fix rounds |
 | TASK-20 | dispatched (wave 3b) | worktree, port 3105 | base b336325; + review R2, R3, R13 |
 | TASK-13 | done | merged e544c89 | R1, R6, R12 fixed; EXE10 |
-| TASK-15 | in progress | base 183157b, port 3106 | drafts + nine checks |
+| TASK-15 | done, merged | 3388573 (base 183157b) | drafts + nine checks; EXE11; R18 now unblocked |
 | TASK-17 | in progress | base 183157b, port 3107 | disputes state machine |
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
 | TASK-29 | in progress | base 3c99593, port 3108 | M-002 fix round 1: R14–R17 |
@@ -57,5 +57,5 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 ## M-002 review routing (reports/M-002-review.md)
 - R14, R15, R16, R17 → TASK-29 (fix round 1).
 - R19 → TASK-17 (its brief already adds the non-nested dispute link on the muted Queue row); recheck the G5/G7 badges at merge.
-- R18 (G4/G5 evidence id hidden in Communication) → after TASK-15 merges, since TASK-15 owns the investigation components.
+- R18 (G4/G5 evidence id hidden in Communication) → TASK-15 merged (3388573); still open, now actionable against the merged investigation components.
 - R20 (held-out coverage assertion), R21 (axe + 390px on /payments and Communication) → parked for the Stage 6 close-out fix wave.
