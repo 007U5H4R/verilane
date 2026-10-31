@@ -213,7 +213,7 @@ test("TC-056: a real aggregate throwing on bad stored data fails only its own bl
     await db.priorities.update(target.invoice_id, { days_overdue: BigInt(target.days_overdue!) as unknown as number });
     return target.invoice_id;
   });
-  test.skip(corrupted === null, "seed has no uniquely-scored overdue high-priority invoice to corrupt");
+  expect(corrupted, "seed must contain a unique-score open invoice for the BigInt isolation test").not.toBeNull();
 
   await expect(page.getByTestId("home-block-kpi").getByRole("alert")).toContainText("Couldn’t load the KPI strip.");
   await expect(page.locator('[data-state="working"]')).toBeVisible();
