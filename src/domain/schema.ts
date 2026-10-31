@@ -268,3 +268,73 @@ export const ReviewItemSchema = z.object({
   ledger_outstanding_paise: z.number().int().optional(),
 });
 export type ReviewItem = z.infer<typeof ReviewItemSchema>;
+
+// --- Drafts and the nine pre-approval checks (TASK-15) ---------------------
+
+export const VerifiedFactKindSchema = z.enum([
+  "invoice_number",
+  "customer_name",
+  "amount",
+  "due_date",
+  "days_overdue",
+  "contact",
+]);
+export type VerifiedFactKind = z.infer<typeof VerifiedFactKindSchema>;
+
+/** A fact the reminder may state, with the evidence that verifies it. */
+export const VerifiedFactSchema = z.object({
+  claimId: z.string().min(1),
+  kind: VerifiedFactKindSchema,
+  value: z.string(),
+  evidenceId: z.string().min(1),
+});
+export type VerifiedFact = z.infer<typeof VerifiedFactSchema>;
+
+/** Where a verified fact sits in the body: `[start, end)` character offsets. */
+export const FootnoteSchema = z.object({
+  claimId: z.string().min(1),
+  span: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]),
+});
+export type Footnote = z.infer<typeof FootnoteSchema>;
+
+/** One of the nine pre-approval checks (validate.ts), ids 1-9. */
+export const CheckSchema = z.object({
+  id: z.number().int().min(1).max(9),
+  name: z.string(),
+  passed: z.boolean(),
+  reason: z.string(),
+});
+export type Check = z.infer<typeof CheckSchema>;
+
+export const DraftStatusSchema = z.enum([
+  "generated",
+  "edited",
+  "validated",
+  "blocked",
+  "approved",
+  "sent_simulated",
+  "rejected",
+]);
+export type DraftStatus = z.infer<typeof DraftStatusSchema>;
+
+export const DraftSchema = z.object({
+  draft_id: z.string().min(1),
+  invoice_id: z.string().min(1),
+  customer_id: z.string(),
+  status: DraftStatusSchema,
+  subject: z.string(),
+  body: z.string(),
+  facts: z.array(VerifiedFactSchema),
+  footnotes: z.array(FootnoteSchema),
+  /** Outstanding at generation; TASK-16's approve gate reads it (> ₹5L → Manager). */
+  amount_paise: z.number().int(),
+  /** The invoice rests on an ambiguous payment match (→ Manager approval). */
+  ambiguous_match: z.boolean(),
+  /** Conflicting payment information is open on the invoice (→ Manager approval). */
+  conflicting_payment: z.boolean(),
+  checks: z.array(CheckSchema),
+  /** Ids of the checks that failed at the last validation. */
+  failed_checks: z.array(z.number().int()),
+  created_at: isoTimestamp,
+});
+export type Draft = z.infer<typeof DraftSchema>;
