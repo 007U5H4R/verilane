@@ -178,3 +178,15 @@
 - Known gap: the seed has no clean open invoice over ₹5L, so no case covers an analyst blocked only by the manager threshold.
 - TASK-12 decides whether the duplicate scorer accepts any id in `invoice_ids`.
 **Rejected.** A single `invoice_id` only (cannot score duplicate pairs or ambiguous candidates).
+
+## EXE7 · Queue interaction and state choices (TASK-9) — accepted
+**Context.** The plan fixed URL-driven search, facets, sort, paging and four states, but left several behaviours open.
+**Decision.**
+- Every filter, sort and page control builds on `filterIntent.ts`. It holds the latest requested filters until the URL catches up, so rapid clicks don't drop each other (fix round 1). It follows the URL again on Back or a shared link.
+- Sort is a select, not sortable column headers.
+- A page number past the filtered results clamps to the last page.
+- Error-state Retry reloads the page.
+- The `?__state=` hook works only when `NEXT_PUBLIC_E2E` is set and is checked at runtime.
+- The sidebar Queue count is live via `QueueCount`. The Disputes and Drafts counts stay hard-coded until their tickets.
+- `loadDemoData` was added to the store for the empty-state action, and `BAND_LABELS` is exported.
+**Rejected.** Waiting for the URL between clicks in tests (hides a real user bug).

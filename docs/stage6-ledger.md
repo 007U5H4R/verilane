@@ -10,8 +10,9 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-7.9 | done, merged | e02ca22 → cb25855 | TC-010 e2e green; TASK-7 Done |
 | TASK-8 | done, merged | cabb714..8e6baa2 → dfc22d5 | TC-011–014 green; Done |
 | TASK-10 | done, merged | 53a976a → 79809ee | TC-018 e2e green; Done |
-| TASK-9 | dispatched (wave 2) | worktree, port 3101 | base 0cf1b34 |
+| TASK-9 | done, merged | 775a2ad + fix 0c91131 → 04da776 | TC-015/016/017 PASS; e2e 32/32; unit 269; EXE7 |
 | TASK-11 | done, merged | 2dbe8e7 → 96e14ca | TC-019 11/11; TC-020 git-order check at Stage 8; EXE6 |
+| TASK-12 | dispatched (wave 2b) | worktree, port 3102 | base 1bd97bf |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
@@ -33,3 +34,8 @@ Next wave after merge: TASK-9 (after 8), TASK-11 (after 8; commit before TASK-12
 ## Wave 1 close (2026-10-31)
 Merged and verified on 8a0a6aa: typecheck, lint, vitest 244/244, Playwright 22/22 (light+dark). Worktrees removed.
 Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse); breadcrumb shows "Home" on /invoices/<id>; a normal build serves /e2e-harness as 200 + not-found, not 404; TASK-15 drafts must store amount_paise + ambiguous_match; Reset disabled until TASK-19.
+
+## TASK-9 follow-ups (2026-10-31)
+- Row skeleton doesn't show while DataProvider is loading (only after the db is ready).
+- Sidebar nav labels have very low contrast in light theme (predates TASK-9). Stage 7.
+- Mobile Queue layout: TASK-20.
