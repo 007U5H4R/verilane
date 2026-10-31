@@ -28,7 +28,7 @@ export function Banner({ kind }: { kind: BannerKind }) {
       role="status"
       data-banner={kind}
       className={cn(
-        "flex items-start gap-2.5 border-b border-border px-7 py-2.5 text-[13px] text-text",
+        "flex items-start gap-2.5 border-b border-border px-4 py-2.5 text-[13px] md:px-7 text-text",
         tone,
       )}
     >
