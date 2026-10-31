@@ -10,6 +10,7 @@ import { ingest, type Row } from "@/domain/ingest";
 import { AS_OF_DATE, daysBetween } from "@/domain/clock";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
 import type { Invoice, Payment, Priority } from "@/domain/schema";
+import { simulateExtraction } from "@/ai/simulated";
 import type { VerilaneDb } from "./db";
 
 export interface SeedManifest {
@@ -96,7 +97,16 @@ export async function ensureSeeded(
 
   await db.transaction(
     "rw",
-    [db.customers, db.invoices, db.payments, db.emails, db.dataIssues, db.priorities, db.meta],
+    [
+      db.customers,
+      db.invoices,
+      db.payments,
+      db.emails,
+      db.extractions,
+      db.dataIssues,
+      db.priorities,
+      db.meta,
+    ],
     async () => {
       await db.customers.bulkPut(ingested.customers);
       await db.invoices.bulkPut(ingested.invoices);
@@ -147,14 +157,19 @@ function buildCustomerHistory(invoices: Invoice[], payments: Payment[]): Map<str
 
 /**
  * The derived-table recompute, callable from inside an already-open
- * transaction (e.g. `ensureSeeded`'s). Only `priorities` is recomputed here
- * for now — `extractions`/`matches`/`evidence` join once TASK-8/13 land.
+ * transaction (e.g. `ensureSeeded`'s). Recomputes `extractions` (the simulated
+ * provider over every email, TASK-12.5) and `priorities`; `matches`/`evidence`
+ * join once TASK-13 lands.
  */
 async function recomputeCore(db: VerilaneDb): Promise<void> {
   const invoices = await db.invoices.toArray();
   const payments = await db.payments.toArray();
   const customerHistory = buildCustomerHistory(invoices, payments);
   const ctx: PriorityCtx = { asOf: AS_OF_DATE, payments, customerHistory };
+
+  const emails = await db.emails.toArray();
+  await db.extractions.clear();
+  await db.extractions.bulkPut(emails.map((e) => simulateExtraction(e)));
 
   const priorities: Priority[] = invoices.map((invoice) => prioritise(invoice, ctx));
   await db.priorities.clear();
@@ -164,5 +179,9 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
 /** Recomputes every derived table from source + workflow tables, in its own
  * transaction. Call after any command that changes invoices/payments. */
 export async function recompute(db: VerilaneDb): Promise<void> {
-  await db.transaction("rw", [db.invoices, db.payments, db.priorities], () => recomputeCore(db));
+  await db.transaction(
+    "rw",
+    [db.invoices, db.payments, db.emails, db.extractions, db.priorities],
+    () => recomputeCore(db),
+  );
 }

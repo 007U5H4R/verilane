@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerilaneDb } from "./db";
-import { ensureSeeded, type Fetcher, type SeedManifest } from "./loader";
+import { ensureSeeded, recompute, type Fetcher, type SeedManifest } from "./loader";
 
 const CUSTOMERS_CSV = ["customer_id,name,contact_emails,payment_terms_days,segment", "C-001,Acme Co,ap@acme.test,30,SMB"].join("\n");
 
@@ -148,6 +148,24 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     expect(issues.some((i) => i.field === "due_date" && i.kind === "missing")).toBe(true);
     expect(issues.some((i) => i.field === "outstanding_amount" && i.kind === "conflict")).toBe(true);
     expect(issues.some((i) => i.field === "status_raw" && i.kind === "unparseable")).toBe(true);
+  });
+
+  it("TASK-12.5: writes one validated simulated extraction per email", async () => {
+    await ensureSeeded(db, realFetcher());
+    const emails = await db.emails.count();
+    const rows = await db.extractions.toArray();
+    expect(rows).toHaveLength(emails);
+    expect(rows.every((r) => r.mode === "simulated" && r.schemaVersion === "extraction.v1")).toBe(true);
+    expect(rows.every((r) => r.status === "valid")).toBe(true);
+    const e7 = rows.find((r) => r.thread_id === "E-007");
+    expect(e7).toMatchObject({ invoice_refs: ["INV-1042"], amounts: [30_000_000] });
+  });
+
+  it("TASK-12.5: recompute() rebuilds extractions from the emails table", async () => {
+    await ensureSeeded(db, realFetcher());
+    await db.extractions.clear();
+    await recompute(db);
+    expect(await db.extractions.count()).toBe(await db.emails.count());
   });
 
   it("keeps the worked-example scores: INV-A 60/high, INV-B 15/low, INV-E needs review", async () => {
