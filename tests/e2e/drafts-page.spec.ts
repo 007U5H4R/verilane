@@ -2,6 +2,8 @@ import { test, expect, type Page, type Request } from "@playwright/test";
 
 // TASK-16 · TC-048 / TC-049: approve → confirm → simulated send, the
 // Mark-disputed wiring, and the /drafts page with its live sidebar badge.
+// (technical-plan.md names TC-048's spec `approve.spec.ts`; it lives here
+// with the rest of TASK-16's flows.)
 // Seed facts: INV-A passes all nine checks.
 
 const SHOTS = "/Volumes/E Drive/Dev/.scratch/verilane/reports";
@@ -81,10 +83,20 @@ test("TC-048: Manager approves through a confirm dialog; the send is simulated w
   await expect(page.getByText(toastText, { exact: true })).toBeVisible();
   page.off("request", onRequest);
 
+  // Only the page's own document and static assets may load: no fetch/XHR (server
+  // actions, route handlers, RSC), no non-GET, nothing off-origin.
   const origin = new URL(page.url()).origin;
+  const STATIC = new Set(["document", "stylesheet", "image", "font", "script", "media"]);
   const offending = requests
-    .map((r) => r.url())
-    .filter((u) => !u.startsWith("data:") && (new URL(u).origin !== origin || new URL(u).pathname.startsWith("/api/")));
+    .filter((r) => !r.url().startsWith("data:"))
+    .filter(
+      (r) =>
+        new URL(r.url()).origin !== origin ||
+        r.method() !== "GET" ||
+        !STATIC.has(r.resourceType()) ||
+        r.headers()["next-action"] !== undefined,
+    )
+    .map((r) => `${r.method()} ${r.resourceType()} ${r.url()}`);
   expect(offending).toEqual([]);
 
   expect(await draftStatus(page, "INV-A")).toBe("sent_simulated");
