@@ -3,7 +3,14 @@
  * and ageing buckets sum to the total overdue outstanding.
  */
 import { describe, expect, it } from "vitest";
-import { ageingBuckets, ageingBucketOf, kpis, priorityMix, type HomeAggregateInput } from "./aggregates";
+import {
+  ageingBuckets,
+  ageingBucketOf,
+  ageingBucketOfPriority,
+  kpis,
+  priorityMix,
+  type HomeAggregateInput,
+} from "./aggregates";
 import type { Invoice, Payment, Priority, PriorityBand } from "./schema";
 
 function invoice(id: string, amountPaise: number, overrides: Partial<Invoice> = {}): Invoice {
@@ -57,12 +64,14 @@ const fixture: HomeAggregateInput = {
 };
 
 describe("kpis — TC-054", () => {
-  it("matches hand-computed outstanding, high count, open disputes and avg days overdue", () => {
+  it("matches hand-computed outstanding, high count and avg days overdue", () => {
     const result = kpis(fixture);
     // Open (non-closed) outstanding: 100000 + 150000(200000-50000) + 300000 + 50000 + 80000 + 120000 = 800000.
     expect(result.outstandingPaise).toBe(800_000);
     expect(result.highCount).toBe(2);
-    expect(result.openDisputesCount).toBe(1);
+    // "Open disputes" is not an invoice-band count: it comes from the dispute
+    // records, the same source as the sidebar badge (T18-10).
+    expect(result).not.toHaveProperty("openDisputesCount");
     // (10 + 20 + 40 + 70 + 5) / 5 = 29.
     expect(result.avgDaysOverdue).toBe(29);
   });
@@ -87,6 +96,12 @@ describe("ageingBucketOf — TC-054", () => {
     expect(ageingBucketOf(31)).toBe("31-60");
     expect(ageingBucketOf(60)).toBe("31-60");
     expect(ageingBucketOf(61)).toBe("60+");
+  });
+
+  it("gives a closed invoice no bucket, however overdue (T18-2: chart and Queue filter agree)", () => {
+    expect(ageingBucketOfPriority({ band: "closed", days_overdue: 100 })).toBeNull();
+    expect(ageingBucketOfPriority({ band: "high", days_overdue: 100 })).toBe("60+");
+    expect(ageingBucketOfPriority({ band: "not_due", days_overdue: null })).toBeNull();
   });
 });
 

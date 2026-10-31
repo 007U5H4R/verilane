@@ -5,8 +5,9 @@ import Link from "next/link";
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { DEFAULT_FILTERS, serialize } from "@/components/queue/queueParams";
-import type { PriorityMixBand, PriorityMixCount } from "@/domain/aggregates";
+import { PRIORITY_MIX_BANDS, type PriorityMixBand, type PriorityMixCount } from "@/domain/aggregates";
 import type { PriorityBand } from "@/domain/schema";
+import { TOOLTIP_STYLES } from "./chartStyles";
 
 const BAND_LABELS: Record<PriorityMixBand, string> = {
   high: "High",
@@ -28,8 +29,8 @@ function hrefFor(band: PriorityMixBand): string {
 
 /**
  * "Priority mix of the queue" (Design.md §15): one stacked bar, High /
- * Medium / Low / Disputed, each segment linking into the Queue filtered to
- * that band. Legend is always labelled (never colour-only). The SVG is
+ * Medium / Low / Disputed, each segment and legend item linking into the
+ * Queue filtered to that band. Legend is always labelled (never colour-only). The SVG is
  * `aria-hidden` and duplicated by a real, keyboard-reachable link list.
  */
 export function PriorityMixChart({ mix }: { mix: PriorityMixCount[] }) {
@@ -43,16 +44,28 @@ export function PriorityMixChart({ mix }: { mix: PriorityMixCount[] }) {
       <h2 className="text-sm font-medium text-text">Priority mix of the queue</h2>
       <div className="h-24 w-full" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 0 }}>
+          {/* accessibilityLayer off: the SVG is aria-hidden, so it must not take focus (T18-3). */}
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
+            accessibilityLayer={false}
+          >
             <XAxis type="number" hide />
             <YAxis type="category" dataKey="name" hide />
-            <Tooltip />
-            <Legend formatter={(value: string) => BAND_LABELS[value as PriorityMixBand] ?? value} />
+            <Tooltip {...TOOLTIP_STYLES} />
+            <Legend
+              wrapperStyle={{ cursor: "pointer" }}
+              onClick={(entry) => {
+                const band = PRIORITY_MIX_BANDS.find((b) => b === entry.dataKey);
+                if (band) router.push(hrefFor(band));
+              }}
+            />
             {mix.map((m) => (
               <Bar
                 key={m.band}
                 dataKey={m.band}
-                name={m.band}
+                name={BAND_LABELS[m.band]}
                 stackId="mix"
                 fill={BAND_COLORS[m.band]}
                 cursor="pointer"

@@ -9,7 +9,8 @@ interface FeedGroup {
   key: string;
   band: PriorityBand;
   noun: string;
-  verb: string;
+  /** Verb for one item / for several ("needs" / "need"). */
+  verb: { one: string; many: string };
   items: RankItem[];
 }
 
@@ -27,34 +28,44 @@ export function TaskFeed({ items }: { items: RankItem[] }) {
       key: "high",
       band: "high",
       noun: "high-priority invoice",
-      verb: "need a decision",
+      verb: { one: "needs a decision", many: "need a decision" },
       items: items.filter((i) => i.priority.band === "high"),
     },
     {
       key: "disputed",
       band: "disputed",
       noun: "disputed invoice",
-      verb: "need dispute resolution",
+      verb: { one: "needs dispute resolution", many: "need dispute resolution" },
       items: items.filter((i) => i.priority.band === "disputed"),
     },
   ];
   const groups = allGroups.filter((g) => g.items.length > 0);
 
-  if (groups.length === 0) {
-    return (
-      <p className="text-sm text-text-muted" data-testid="task-feed-empty">
-        Nothing needs your attention
-      </p>
-    );
-  }
+  return (
+    <section aria-labelledby="task-feed-title" className="flex flex-col gap-2">
+      <h2 id="task-feed-title" className="text-sm font-medium text-text">
+        Needs your attention
+      </h2>
+      {groups.length === 0 ? (
+        <p className="text-sm text-text-muted" data-testid="task-feed-empty">
+          Nothing needs your attention
+        </p>
+      ) : (
+        <FeedGroups groups={groups} />
+      )}
+    </section>
+  );
+}
 
+function FeedGroups({ groups }: { groups: FeedGroup[] }) {
   return (
     <div data-testid="task-feed" className="flex flex-col gap-2">
       {groups.map((group) => (
         <details key={group.key} className="rounded-lg border border-border bg-surface p-3" data-testid={`feed-${group.key}`}>
           <summary className="cursor-pointer text-sm font-medium text-text">
-            {group.items.length} {group.noun}
-            {group.items.length === 1 ? "" : "s"} {group.verb}
+            {group.items.length === 1
+              ? `1 ${group.noun} ${group.verb.one}`
+              : `${group.items.length} ${group.noun}s ${group.verb.many}`}
           </summary>
           <ul className="mt-2 flex flex-col gap-1.5">
             {group.items.slice(0, 5).map((item) => (

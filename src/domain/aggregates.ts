@@ -6,7 +6,7 @@
  * `usePayments()` data, never the other way round.
  */
 import { outstandingOf, type RankItem } from "./priority";
-import type { Payment } from "./schema";
+import type { Payment, Priority } from "./schema";
 
 export interface HomeAggregateInput {
   items: RankItem[];
@@ -18,8 +18,6 @@ export interface HomeKpis {
   outstandingPaise: number;
   /** Count of invoices currently in the `high` priority band. */
   highCount: number;
-  /** Count of invoices currently in the `disputed` priority band (G4). */
-  openDisputesCount: number;
   /** Mean days overdue across overdue, non-closed invoices; `null` when none are overdue. */
   avgDaysOverdue: number | null;
 }
@@ -29,7 +27,10 @@ function isOpen(item: RankItem): boolean {
   return item.priority.band !== "closed";
 }
 
-/** KPI strip: Outstanding, High priority, Open disputes, Avg days overdue (TKT-13). */
+/** KPI strip: Outstanding, High priority, Avg days overdue (TKT-13). The
+ * fourth KPI, "Open disputes", counts dispute *records* (status not
+ * resolved/rejected), the same source as the sidebar badge, so it is read
+ * from the store (`useDisputeCount()`), not derived from invoice bands. */
 export function kpis(input: HomeAggregateInput): HomeKpis {
   const open = input.items.filter(isOpen);
 
@@ -38,7 +39,6 @@ export function kpis(input: HomeAggregateInput): HomeKpis {
     0,
   );
   const highCount = open.filter((item) => item.priority.band === "high").length;
-  const openDisputesCount = open.filter((item) => item.priority.band === "disputed").length;
 
   const overdueDays = open
     .map((item) => item.priority.days_overdue)
@@ -46,21 +46,27 @@ export function kpis(input: HomeAggregateInput): HomeKpis {
   const avgDaysOverdue =
     overdueDays.length === 0 ? null : overdueDays.reduce((a, b) => a + b, 0) / overdueDays.length;
 
-  return { outstandingPaise, highCount, openDisputesCount, avgDaysOverdue };
+  return { outstandingPaise, highCount, avgDaysOverdue };
 }
 
 export const AGEING_BUCKETS = ["1-15", "16-30", "31-60", "60+"] as const;
 export type AgeingBucket = (typeof AGEING_BUCKETS)[number];
 
-/** Days overdue → ageing bucket; not overdue (or unknown) → no bucket. Mirrors
- * the Queue's `ageing` filter boundaries (`src/components/queue/queueParams.ts`)
- * so a chart bar's deep link selects exactly the invoices it counted. */
+/** Days overdue → ageing bucket (Design.md §15); not overdue (or unknown) →
+ * no bucket. The single definition: the Queue's `ageing` filter re-exports it. */
 export function ageingBucketOf(daysOverdue: number | null): AgeingBucket | null {
   if (daysOverdue === null || daysOverdue <= 0) return null;
   if (daysOverdue <= 15) return "1-15";
   if (daysOverdue <= 30) return "16-30";
   if (daysOverdue <= 60) return "31-60";
   return "60+";
+}
+
+/** An invoice's ageing bucket. A closed invoice (paid/written-off/overpaid,
+ * G1) has none however overdue it was, so Home's ageing chart and the
+ * Queue's `ageing` filter it deep-links to count the same invoices (T18-2). */
+export function ageingBucketOfPriority(priority: Pick<Priority, "band" | "days_overdue">): AgeingBucket | null {
+  return priority.band === "closed" ? null : ageingBucketOf(priority.days_overdue);
 }
 
 export interface AgeingBucketCount {
@@ -75,8 +81,8 @@ export function ageingBuckets(input: HomeAggregateInput): AgeingBucketCount[] {
   const totals = new Map<AgeingBucket, AgeingBucketCount>(
     AGEING_BUCKETS.map((bucket) => [bucket, { bucket, count: 0, outstandingPaise: 0 }]),
   );
-  for (const item of input.items.filter(isOpen)) {
-    const bucket = ageingBucketOf(item.priority.days_overdue);
+  for (const item of input.items) {
+    const bucket = ageingBucketOfPriority(item.priority);
     if (bucket === null) continue;
     const row = totals.get(bucket)!;
     row.count += 1;

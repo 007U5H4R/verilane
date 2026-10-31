@@ -44,4 +44,13 @@ describe("filterRows (TASK-9.1)", () => {
   it("buckets ageing and leaves not-overdue rows out of any ageing filter", () => {
     expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, ageing: ["1-15", "31-60"] }))).toEqual(["I0", "I2"]);
   });
+
+  it("leaves closed (paid/written-off) rows out of any ageing filter, matching Home's ageing chart (T18-2)", () => {
+    const withClosed = [
+      ...rows,
+      row(4, { name: "Ganga Mills", number: "INV-1050", band: "closed", status: "paid", days: 90, cust: "C3" }),
+    ];
+    expect(ids(filterRows(withClosed, { ...DEFAULT_FILTERS, ageing: ["60+"] }))).toEqual([]);
+    expect(ids(filterRows(withClosed, DEFAULT_FILTERS))).toContain("I4");
+  });
 });

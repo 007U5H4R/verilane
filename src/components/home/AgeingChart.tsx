@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { DEFAULT_FILTERS, serialize, type AgeingBucket } from "@/components/queue/queueParams";
-import type { AgeingBucketCount } from "@/domain/aggregates";
+import { DEFAULT_FILTERS, serialize } from "@/components/queue/queueParams";
+import type { AgeingBucket, AgeingBucketCount } from "@/domain/aggregates";
 import { formatInr, paise } from "@/domain/money";
+import { TOOLTIP_STYLES } from "./chartStyles";
 
 const BUCKET_LABELS: Record<AgeingBucket, string> = {
   "1-15": "1–15 days",
@@ -34,7 +35,13 @@ export function AgeingChart({ buckets }: { buckets: AgeingBucketCount[] }) {
       <h2 className="text-sm font-medium text-text">Outstanding by ageing bucket</h2>
       <div className="h-56 w-full" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 8 }}>
+          {/* accessibilityLayer off: the SVG is aria-hidden, so it must not take focus (T18-3). */}
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 8, right: 112, bottom: 8, left: 8 }}
+            accessibilityLayer={false}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               type="number"
@@ -43,7 +50,7 @@ export function AgeingChart({ buckets }: { buckets: AgeingBucketCount[] }) {
               fontSize={12}
             />
             <YAxis type="category" dataKey="label" stroke="var(--text-muted)" fontSize={12} width={88} />
-            <Tooltip formatter={(v) => formatInr(paise(Number(v)))} />
+            <Tooltip formatter={(v) => formatInr(paise(Number(v)))} {...TOOLTIP_STYLES} />
             <Legend formatter={() => "Outstanding"} />
             <Bar
               dataKey="outstandingPaise"
@@ -54,7 +61,15 @@ export function AgeingChart({ buckets }: { buckets: AgeingBucketCount[] }) {
                 const bucket = (entry as unknown as { payload: { bucket: AgeingBucket } }).payload.bucket;
                 router.push(hrefFor(bucket));
               }}
-            />
+            >
+              <LabelList
+                dataKey="outstandingPaise"
+                position="right"
+                fill="var(--text-muted)"
+                fontSize={12}
+                formatter={(v) => formatInr(paise(Number(v)))}
+              />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
