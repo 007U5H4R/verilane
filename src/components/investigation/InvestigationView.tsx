@@ -72,14 +72,7 @@ export function InvestigationSkeleton() {
  * invoice id client-side via `useParams` (the page is a static shell; the
  * data lives in IndexedDB).
  */
-export interface InvestigationViewProps {
-  /** Test-only override for Approve & send; by default opens `ApproveDialog` (TASK-16). */
-  onApprove?: (draftId: string) => void;
-  /** Test-only override for Mark disputed; by default opens `MarkDisputedDialog` (TASK-17). */
-  onMarkDisputed?: (invoiceId: string) => void;
-}
-
-export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationViewProps = {}) {
+export function InvestigationView() {
   const { id } = useParams<{ id: string }>();
   const invoiceId = decodeURIComponent(id);
   const found = useInvoice(invoiceId);
@@ -139,9 +132,9 @@ export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationVi
         onSubmit={() => {
           if (draft) void command({ type: "submit_draft", subject: { kind: "draft", id: draft.draft_id } });
         }}
-        onApprove={draft ? () => (onApprove ? onApprove(draft.draft_id) : setApproveOpen(true)) : undefined}
+        onApprove={draft ? () => setApproveOpen(true) : undefined}
         openDispute={openDispute}
-        onMarkDisputed={() => (onMarkDisputed ? onMarkDisputed(invoice.invoice_id) : setDisputeOpen(true))}
+        onMarkDisputed={() => setDisputeOpen(true)}
       />
       {draft ? (
         <ApproveDialog
