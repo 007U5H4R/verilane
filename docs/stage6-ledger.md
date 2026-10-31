@@ -2,6 +2,8 @@
 
 Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/briefs/`. Reports: `/Volumes/E Drive/Dev/.scratch/verilane/reports/`.
 
+IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK number exactly as written here. Only TKT ids need the +5 conversion (TKT-11 is TASK-16). On 2026-10-31 TASK-21 was set to Done by mistake and then restored.
+
 ## Status
 | Ticket | Status | Where | Notes |
 |---|---|---|---|
