@@ -15,7 +15,7 @@
     "e2e": "PLAYWRIGHT_BROWSERS_PATH='/Volumes/E Drive/Dev/.scratch/pw-browsers' TMPDIR='/Volumes/E Drive/Dev/.scratch/tmp' playwright test",
     "check:secrets": "tsx scripts/check-bundle-secrets.ts",
     "seed": "tsx scripts/seed.ts",
-    "eval:live": "tsx scripts/eval-live.ts",
+    "eval:live": "tsx --conditions=react-server scripts/eval-live.ts",
     "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm eval && pnpm build && pnpm check:secrets && pnpm build:e2e && pnpm e2e"
   },
   "dependencies": {
