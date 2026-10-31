@@ -12,11 +12,12 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-10 | done, merged | 53a976a → 79809ee | TC-018 e2e green; Done |
 | TASK-9 | done, merged | 775a2ad + fix 0c91131 → 04da776 | TC-015/016/017 PASS; e2e 32/32; unit 269; EXE7 |
 | TASK-11 | done, merged | 2dbe8e7 → 96e14ca | TC-019 11/11; TC-020 git-order check at Stage 8; EXE6 |
-| TASK-12 | dispatched (wave 2b) | worktree, port 3102 | base 1bd97bf |
+| TASK-12 | done, merged b336325 | — | 393 unit, e2e 36/36 on merged branch |
 | TASK-19 | dispatched (wave 3) | worktree, port 3103 | base 4303a32 |
 | TASK-27 | dispatched (wave 3), part 1 | worktree | stops at user gate D6 |
-| M-001 review | dispatched | read-only, main..4303a32 | max 2 fix rounds |
-| TASK-20 | held | — | waits for TASK-12 merge (Investigation/RowCard overlap) |
+| M-001 review | done: pass-with-fixes (R1, R2 major) | read-only, main..4303a32 | max 2 fix rounds |
+| TASK-20 | dispatched (wave 3b) | worktree, port 3105 | base b336325; + review R2, R3, R13 |
+| TASK-13 | dispatched (wave 3b) | worktree, port 3104 | base b336325; + review R1, R6, R12 |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
@@ -43,3 +44,9 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - Row skeleton doesn't show while DataProvider is loading (only after the db is ready).
 - Sidebar nav labels have very low contrast in light theme (predates TASK-9). Stage 7.
 - Mobile Queue layout: TASK-20.
+
+## M-001 review routing (reports/M-001-review.md)
+- R1, R6, R12 → TASK-13 (priority gates and recompute signals).
+- R2, R3, R13 → TASK-20 (axe + 390px, loading shell, back link).
+- R4, R5 → TASK-19 (sent mid-flight).
+- R7 (duplicate formatters), R8 (Paise brand at schema), R9 (ingest throws instead of DataIssue), R10 (EXE4 wording), R11 (tx scope) → parked for the Stage 6 close-out fix wave.

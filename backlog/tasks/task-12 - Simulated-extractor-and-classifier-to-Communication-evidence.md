@@ -1,10 +1,10 @@
 ---
 id: TASK-12
 title: Simulated extractor and classifier to Communication evidence
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-31 03:05'
+updated_date: '2026-10-31 03:32'
 labels:
   - P0
   - 'sp:5'

@@ -190,3 +190,10 @@
 - The sidebar Queue count is live via `QueueCount`. The Disputes and Drafts counts stay hard-coded until their tickets.
 - `loadDemoData` was added to the store for the empty-state action, and `BAND_LABELS` is exported.
 **Rejected.** Waiting for the URL between clicks in tests (hides a real user bug).
+
+## EXE8 · Simulated extractor contract (TASK-12) — accepted
+- Provider `mode` is `'simulated'` (plan said `'demo'`), which matches the UI label.
+- The provider interface has no `ctx` parameter and no `draft()`. Drafts are TASK-15.
+- Extraction runs synchronously inside the recompute Dexie transaction. TASK-23's live provider must extract **outside** the transaction (async network inside an IndexedDB tx auto-commits it).
+- Duplicate scoring (EXE6 open point): a predicted duplicate counts as correct if it names any id in the label's `invoice_ids`.
+- Seed eval: amount/ref exact match is 100% on all 25 threads, and nothing in `src/` reads the label files (checked by grep at merge).

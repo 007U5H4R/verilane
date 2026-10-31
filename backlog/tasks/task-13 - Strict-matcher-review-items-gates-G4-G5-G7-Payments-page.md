@@ -1,9 +1,10 @@
 ---
 id: TASK-13
 title: 'Strict matcher, review items, gates G4/G5/G7, Payments page'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 03:33'
 labels:
   - P0
   - 'sp:5'
