@@ -139,6 +139,16 @@ async function routeBumpedManifest(context: BrowserContext, seedVersion: string)
   );
 }
 
+async function cachedUrls(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys()) {
+      for (const req of await (await caches.open(name)).keys()) urls.push(new URL(req.url).pathname);
+    }
+    return urls;
+  });
+}
+
 test("TC-077: a seed version bump evicts the old cache and serves the new seed", async ({ page, context }) => {
   const bumpedVersion = "2026-10-30.1-tc077";
   await page.goto("/queue");
@@ -206,6 +216,13 @@ test("TC-077b: a bump whose seed files fail is not adopted and never serves stal
   // The 404 surfaces; the SW never answers with the old cached payments.csv.
   const status = await page.evaluate(() => fetch("/seed/payments.csv").then((r) => r.status));
   expect(status).toBe(404);
+});
+
+test("TC-075b: API responses are never cached by the service worker (T24-9)", async ({ page }) => {
+  await page.goto("/queue");
+  await swControlled(page);
+  await page.evaluate(() => fetch("/api/llm/status").then((r) => r.status).catch(() => 0));
+  expect((await cachedUrls(page)).filter((u) => u.startsWith("/api/"))).toEqual([]);
 });
 
 test("TC-078: the install chip is dismissible, non-modal, and Settings keeps Install app", async ({ page }, info) => {

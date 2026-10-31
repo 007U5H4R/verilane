@@ -10,6 +10,7 @@
  * - /seed/manifest.json: network-first (it is the version pointer).
  * - Navigations: network-first, falling back to the cached page, then "/".
  * - App shell statics, seed files, icons: cache-first within the current cache.
+ * - /api/**: never touched (TASK-23's live-LLM routes must stay live).
  *
  * Failures are logged as "[sw] …" and forwarded to open pages (PwaRegister
  * re-logs them), so nothing fails silently (T24-6).
@@ -188,6 +189,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // TASK-23's /api/llm/* routes are live calls: never cached or answered here.
+  if (url.pathname.startsWith("/api/")) return;
 
   if (url.pathname === SEED_MANIFEST_URL) {
     event.respondWith(manifestNetworkFirst(request));
