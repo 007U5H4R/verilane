@@ -23,10 +23,10 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
 | TASK-29 | done, merged | 6856260 | R14–R17 fixed; EXE13; vitest 561/561, e2e 71/1-skip (`--workers=1`) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
-| TASK-16 | fix round 1 (review PASS-WITH-FIXES: T16-1 major) | base 041ff7a, port 3108 | approve/confirm/send + Drafts; T16-4 parked (failed-recheck draft still counts as ready) |
+| TASK-16 | re-review (fix round 1 done: 7b17f0a, vitest 583, e2e 109/1-skip) | base 041ff7a, port 3108 | approve/confirm/send + Drafts; T16-4 parked (failed-recheck draft still counts as ready) |
 | TASK-18 | done, merged | cfe0f4c (head 4d396a5) | Home KPIs/feed/charts; EXE16; vitest 575/575, e2e 99/1-skip (`--workers=1`); Done |
-| TASK-23 | in progress | base 041ff7a, port 3110 | live Claude provider |
-| TASK-24 | in progress | base 041ff7a, port 3111 | PWA manifest/SW/offline/install |
+| TASK-23 | fix round 1 (review PASS-WITH-FIXES: T23-1/2/3 major; fresh implementer, original not resumable) | c63fc69 (base 041ff7a), port 3110 | live Claude provider; `liveProvider` unused → log as EXE deviation at merge |
+| TASK-24 | done, merged | be197ae (head fb23656) | 3aa052a (base 041ff7a), port 3111 | PWA; EXE17; vitest 585/585, e2e 113/1-skip (`--workers=1`); Done; SW off globally in playwright.config (on only in pwa.spec); seed manifest network-first; at TASK-23 merge: disable live-LLM trigger offline via `useOnline()` |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
 Next wave after merge: TASK-9 (after 8), TASK-11 (after 8; commit before TASK-12), TASK-27 (after 9, user gate D6).
@@ -66,3 +66,7 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - R18 (G4/G5 evidence id hidden in Communication) → TASK-15 merged (3388573); still open, now actionable against the merged investigation components.
 - R20 (held-out coverage assertion), R21 (axe + 390px on /payments and Communication) → parked for the Stage 6 close-out fix wave.
 - T18-N2 follow-up: `tests/e2e/home.spec.ts` still has 7 seed-guard `test.skip` calls (lines 66–182) that would silently pass on an empty/changed seed → close-out wave (convert to hard asserts).
+- TASK-24 review parked (close-out wave): T24-5 (offline nav to unvisited URL serves Home HTML; query-string URLs miss cache), T24-7 (dev doesn't unregister a prod SW on same origin), T24-11 (icon crop 1px narrow), T24-12 (chunk cache unbounded until seed bump). Follow-ups: one e2e journey with `serviceWorkers: "allow"` (TASK-26); manual Lighthouse installable check (HITL).
+- TASK-24 × TASK-23 merge: TopBar.tsx conflict — keep `<LlmStatusBadge />`, drop `Sparkles` import, add `<InstallChip />` after the badge.
+- TASK-23 review parked (close-out wave): T23-6 (no request/context size limit), T23-7 (no system prompt; untrusted email text not delimited), T23-10 (effort unset), T23-11 (thin tests). HITL: live path never exercised with a real key.
+- TASK-24 re-review parked (close-out wave): N1 (`seedBypass` not reset when manifest falls back to cache → offline seed load fails after a bad deploy), N2 (writes to old cache between copy and delete are lost). Playwright browsers/temp not redirected to E Drive in playwright.config.ts — runs need PLAYWRIGHT_BROWSERS_PATH + TMPDIR (asked user).
