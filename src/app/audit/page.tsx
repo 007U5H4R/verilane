@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { AuditView } from "@/components/audit/AuditView";
 
 export default function AuditPage() {
-  return <ComingSoon milestone="M-003" />;
+  return <AuditView />;
 }
