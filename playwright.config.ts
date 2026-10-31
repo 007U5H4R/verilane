@@ -8,6 +8,9 @@ export default defineConfig({
   outputDir: "test-results",
   use: {
     baseURL: `http://127.0.0.1:${port}`,
+    // The PWA service worker would answer requests before page.route mocks
+    // see them; only tests/e2e/pwa.spec.ts opts back in (TASK-24).
+    serviceWorkers: "block",
   },
   webServer: {
     command: `pnpm start -p ${port}`,

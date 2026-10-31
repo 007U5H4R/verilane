@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 
+import { InstallChip } from "@/components/shell/InstallChip";
 import { RoleSwitcher } from "@/components/shell/RoleSwitcher";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 
@@ -16,6 +17,7 @@ export function TopBar({ crumb }: { crumb: string }) {
           <Sparkles className="size-3.5" />
           Simulated LLM
         </span>
+        <InstallChip />
         <RoleSwitcher />
         <ThemeToggle />
       </div>

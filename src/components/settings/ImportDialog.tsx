@@ -8,6 +8,7 @@ import { IMPORT_KINDS, type ImportKind } from "@/domain/commands";
 import type { RowError } from "@/store/csv";
 import { importCsv } from "@/store/dataCommands";
 import type { VerilaneDb } from "@/store/db";
+import { useOnline } from "@/lib/useOnline";
 
 const KIND_LABEL: Record<ImportKind, string> = {
   invoices: "Invoices",
@@ -32,6 +33,7 @@ export function ImportDialog({ db }: { db: VerilaneDb }) {
   const [kind, setKind] = useState<ImportKind>("invoices");
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>({ kind: "idle" });
+  const online = useOnline();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,13 +90,18 @@ export function ImportDialog({ db }: { db: VerilaneDb }) {
             className="max-w-full text-[13px] text-text file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-text"
           />
         </div>
-        <Button type="submit" size="sm" disabled={busy}>
+        <Button type="submit" size="sm" disabled={busy || !online}>
           {busy ? "Importing…" : "Import"}
         </Button>
       </form>
       <p className="text-[13px] text-text-muted">
         Replaces every row in the chosen table. A file with any invalid row is rejected whole, so nothing changes.
       </p>
+      {!online && (
+        <p role="status" data-testid="import-offline-reason" className="text-[13px] text-text-muted">
+          Unavailable offline — reconnect to import.
+        </p>
+      )}
       {outcome.kind === "accepted" && (
         <p role="status" className="text-[13px] text-text">
           Imported {outcome.count} rows from {outcome.fileName}. Priorities were recomputed.
