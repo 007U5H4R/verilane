@@ -132,20 +132,60 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     const result = await ensureSeeded(db, realFetcher());
     expect(result).toBe("seeded");
 
-    expect(await db.customers.count()).toBe(4);
-    expect(await db.invoices.count()).toBe(8);
-    expect(await db.payments.count()).toBe(2);
-    expect(await db.priorities.count()).toBe(8);
+    expect(await db.customers.count()).toBe(10);
+    expect(await db.invoices.count()).toBe(50);
+    expect(await db.payments.count()).toBe(11);
+    expect(await db.emails.count()).toBeGreaterThanOrEqual(25);
+    expect(await db.priorities.count()).toBe(50);
 
     const meta = await db.meta.get("seedVersion");
-    expect(meta?.value).toBe("2026-10-30.0");
+    expect(meta?.value).toBe("2026-10-30.1");
 
     // FS1 (missing invoice_number) + FS2 (missing due_date) + FS8 (conflicting
-    // outstanding_amount) + FS10 (unrecognized status_raw) each raised once.
+    // outstanding_amount) + FS10 (unrecognized status_raw) each raised.
     const issues = await db.dataIssues.toArray();
     expect(issues.some((i) => i.field === "invoice_number" && i.kind === "missing")).toBe(true);
     expect(issues.some((i) => i.field === "due_date" && i.kind === "missing")).toBe(true);
     expect(issues.some((i) => i.field === "outstanding_amount" && i.kind === "conflict")).toBe(true);
     expect(issues.some((i) => i.field === "status_raw" && i.kind === "unparseable")).toBe(true);
+  });
+
+  it("keeps the worked-example scores: INV-A 60/high, INV-B 15/low, INV-E needs review", async () => {
+    await ensureSeeded(db, realFetcher());
+    const a = await db.priorities.get("INV-A");
+    expect(a).toMatchObject({ score: 60, band: "high" });
+    const b = await db.priorities.get("INV-B");
+    expect(b).toMatchObject({ score: 15, band: "low" });
+    const e = await db.priorities.get("INV-E");
+    expect(e).toMatchObject({ band: "needs_review", gate: "G3" });
+  });
+
+  it("TC-014: a newer manifest reports update-available and keeps a user note (never wipes)", async () => {
+    const olderManifest = JSON.stringify({
+      ...(JSON.parse(readFileSync(join(process.cwd(), "public", "seed", "manifest.json"), "utf-8")) as SeedManifest),
+      seedVersion: "2026-10-30.0",
+    });
+    const real = realFetcher();
+    const olderFetcher = (async (url: string | URL | Request) =>
+      String(url) === "/seed/manifest.json" ? new Response(olderManifest, { status: 200 }) : real(url)) as Fetcher;
+
+    expect(await ensureSeeded(db, olderFetcher)).toBe("seeded");
+    await db.audit.add({ action: "note", subject: "INV-A", text: "Called AP, promised Friday" });
+
+    expect(await ensureSeeded(db, real)).toBe("update-available");
+    expect(await db.invoices.count()).toBe(50);
+    expect(await db.audit.where("action").equals("note").count()).toBe(1);
+    expect((await db.meta.get("seedVersion"))?.value).toBe("2026-10-30.0");
+  });
+
+  it("TC-013: a bulkAdd of a duplicate invoice_number throws ConstraintError", async () => {
+    await ensureSeeded(db, realFetcher());
+    const a = await db.invoices.where("invoice_number").equals("INV-1012").first();
+    expect(a?.invoice_id).toBe("INV-A");
+    await expect(
+      db.invoices.bulkAdd([{ ...a!, row_id: 999, invoice_id: "INV-DUP" }]),
+    ).rejects.toMatchObject({
+      failures: [expect.objectContaining({ name: "ConstraintError" })],
+    });
   });
 });
