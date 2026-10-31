@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { LogoCard } from "@/components/shell/LogoCard";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
+import { RoleLabel } from "@/components/shell/RoleSwitcher";
 
 // TASK-6.5: 216px emerald rail; active link is wired per-page via the
 // `data-active` prop (server components can't read the pathname themselves).
@@ -21,7 +22,9 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
         </span>
         <span>
           <b className="block">Demo workspace</b>
-          <small className="block text-xs text-rail-muted">Analyst</small>
+          <small className="block text-xs text-rail-muted">
+            <RoleLabel />
+          </small>
         </span>
       </div>
       <nav aria-label="Main" className="flex flex-col gap-0.5">

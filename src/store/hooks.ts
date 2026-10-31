@@ -4,11 +4,14 @@
  * `priority.ts`/`rank()` need, since neither lives on `Priority` alone.
  */
 "use client";
-import { createContext, useContext } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import type { AuditEventInput } from "@/domain/commands";
+import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
 import type { Customer, Invoice, Payment, Priority } from "@/domain/schema";
-import type { VerilaneDb } from "./db";
+import type { AuditEventRow, VerilaneDb } from "./db";
+import { currentRole, execute, type CommandInput } from "./tx";
 
 export const DbContext = createContext<VerilaneDb | null>(null);
 
@@ -74,4 +77,44 @@ export function useInvoice(invoiceId: string): InvoiceWithPriority | undefined |
     if (!priority) return null;
     return { invoice, priority };
   }, [db, invoiceId]);
+}
+
+/** The persisted demo role (`meta.role`), live; Analyst until it loads. */
+export function useRole(): Role {
+  const db = useDb();
+  return useLiveQuery(() => currentRole(db), [db]) ?? "analyst";
+}
+
+/**
+ * Whether the current role may perform `action` on `subject` (TASK-14.5).
+ * UI hint only — `execute()` re-checks against the stored row.
+ */
+export function useCan(action: Action, subject: Subject): Permission {
+  return can(useRole(), action, subject);
+}
+
+/** `execute()` bound to the provided db. */
+export function useExecute(): (cmd: CommandInput) => Promise<AuditEventInput> {
+  const db = useDb();
+  return useCallback((cmd: CommandInput) => execute(db, cmd), [db]);
+}
+
+/** Every audit event, newest first (event ids are monotonic). */
+export function useAudit(): AuditEventRow[] | undefined {
+  const db = useDb();
+  return useLiveQuery(() => db.audit.orderBy("event_id").reverse().toArray(), [db]);
+}
+
+/** Audit events about one invoice, newest first (Activity log). */
+export function useInvoiceActivity(invoiceId: string): AuditEventRow[] | undefined {
+  const db = useDb();
+  return useLiveQuery(
+    () =>
+      db.audit
+        .orderBy("event_id")
+        .reverse()
+        .filter((e) => e.invoice_id === invoiceId || e.subject === `invoice:${invoiceId}`)
+        .toArray(),
+    [db, invoiceId],
+  );
 }
