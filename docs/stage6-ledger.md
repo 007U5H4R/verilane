@@ -21,7 +21,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-15 | done, merged | 3388573 (base 183157b) | drafts + nine checks; EXE11; R18 now unblocked |
 | TASK-17 | in progress | base 183157b, port 3107 | disputes state machine |
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
-| TASK-29 | in progress | base 3c99593, port 3108 | M-002 fix round 1: R14–R17 |
+| TASK-29 | done, merged | 6856260 | R14–R17 fixed; EXE13; vitest 561/561, e2e 71/1-skip (`--workers=1`) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
@@ -37,6 +37,7 @@ Next wave after merge: TASK-9 (after 8), TASK-11 (after 8; commit before TASK-12
 ## Open threads
 - Missing deps for later tickets: @tanstack/react-table (TASK-9), recharts (TASK-18), prettier.
 - Rewrite HANDOFF.md at stage end.
+- This machine's default `pnpm e2e` worker count (4) produces intermittent false failures on `responsive.spec.ts` (axe R2, TC-062) and occasionally `drafts.spec.ts`/`investigation.spec.ts` under concurrent Chromium/axe-core load — not a code defect (confirmed by file- and worker-count-level bisection, disk space ruled out). Re-run the e2e gate with `--workers=1` on this machine for a trustworthy signal before merging.
 
 - NavItems.tsx sidebar counts are hard-coded; after the TASK-8 seed, Queue shows 48 instead of the real count. Wire them to live data (TASK-9 scope or a follow-up).
 
@@ -55,7 +56,7 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - R4, R5 → TASK-19 (sent mid-flight).
 - R7 (duplicate formatters), R8 (Paise brand at schema), R9 (ingest throws instead of DataIssue), R10 (EXE4 wording), R11 (tx scope) → parked for the Stage 6 close-out fix wave.
 ## M-002 review routing (reports/M-002-review.md)
-- R14, R15, R16, R17 → TASK-29 (fix round 1).
+- R14, R15, R16, R17 → TASK-29 (fix round 1). Fixed, merged 6856260.
 - R19 → TASK-17 (its brief already adds the non-nested dispute link on the muted Queue row); recheck the G5/G7 badges at merge.
 - R18 (G4/G5 evidence id hidden in Communication) → TASK-15 merged (3388573); still open, now actionable against the merged investigation components.
 - R20 (held-out coverage assertion), R21 (axe + 390px on /payments and Communication) → parked for the Stage 6 close-out fix wave.
