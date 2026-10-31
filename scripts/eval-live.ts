@@ -14,20 +14,9 @@ import { join } from "node:path";
 import { EmailMessageSchema } from "@/domain/schema";
 import { extractLive, isLiveLlmEnabled, liveModelId } from "@/server/llm";
 
+import { estimateCostUsd, toReportRow } from "./eval-live-report";
+
 const ROOT = process.cwd();
-
-// Rough per-call cost estimate for the console notice below; not billed by
-// this script itself — the real cost comes from Anthropic's API.
-const EST_INPUT_TOKENS_PER_CALL = 400;
-const EST_OUTPUT_TOKENS_PER_CALL = 200;
-const EST_USD_PER_MILLION_INPUT = 5;
-const EST_USD_PER_MILLION_OUTPUT = 25;
-
-function estimateCostUsd(callCount: number): number {
-  const inputCost = (callCount * EST_INPUT_TOKENS_PER_CALL * EST_USD_PER_MILLION_INPUT) / 1_000_000;
-  const outputCost = (callCount * EST_OUTPUT_TOKENS_PER_CALL * EST_USD_PER_MILLION_OUTPUT) / 1_000_000;
-  return inputCost + outputCost;
-}
 
 async function main(): Promise<void> {
   const yes = process.argv.includes("--yes");
@@ -57,14 +46,7 @@ async function main(): Promise<void> {
 
   const results = [];
   for (const msg of emails) {
-    const result = await extractLive(msg);
-    results.push({
-      message_id: msg.message_id,
-      thread_id: msg.thread_id,
-      ok: result.ok,
-      value: result.ok ? result.value : undefined,
-      error: result.ok ? undefined : result.error,
-    });
+    results.push(toReportRow(msg, await extractLive(msg)));
   }
 
   const report = {
