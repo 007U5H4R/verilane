@@ -318,6 +318,16 @@ const HANDLERS: Record<Action, Handler> = {
    */
   approve_draft: async (ctx) => {
     const rechecked = await recheckDraft(ctx, str(ctx.row?.body));
+    // T16-1: `run()` gated on the stored facts; an ambiguous match or a
+    // payment conflict that appeared since makes this Manager-only now.
+    if (rechecked) {
+      const permission = can(ctx.cmd.actor, "approve_draft", {
+        ...subjectFacts(ctx.cmd, ctx.row),
+        ambiguous_match: rechecked.ambiguous_match === true,
+        conflicting_payment: rechecked.conflicting_payment === true,
+      });
+      if (!permission.allowed) throw new PermissionDenied("approve_draft", permission.reason);
+    }
     const failed = rechecked?.failed_checks.length ?? 0;
     if (rechecked && failed > 0) {
       await ctx.tx.put("drafts", { ...ctx.row, ...rechecked });

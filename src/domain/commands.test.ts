@@ -456,4 +456,80 @@ describe("draft commands (TASK-15)", () => {
     expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
     expect(e.action).toBe("approve_draft");
   });
-});
+
+  /** Generates and submits INV-A's draft, leaving it `validated`. */
+  const validatedDraft = async (src: DraftSources = sources()) => {
+    const m = ledgerTx(src);
+    await gen(m);
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("validated");
+    return m;
+  };
+  const approve = (m: ReturnType<typeof memTx>, actor: Command["actor"]) =>
+    run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-INV-A-1" }, actor }), m.tx);
+  const conflictItem = {
+    review_id: "RV-CONFLICT",
+    kind: "reconciliation",
+    message_id: "M-9",
+    invoice_id: "INV-A",
+    linked_review_ids: [],
+    recommendation: "Check the payment",
+    evidence_ids: [],
+    validation_status: "conflict",
+    escalation_reason: "Email and ledger disagree",
+    requires_role: "analyst",
+    status: "open",
+  } as DraftSources["reviewItems"][number];
+  const ambiguousMatch = {
+    message_id: "M-8",
+    outcome: "ambiguous",
+    candidates: ["INV-A", "INV-B"],
+    reason: "Two invoices fit",
+  } as DraftSources["matches"][number];
+
+  it("approve_draft re-gates the role on fresh facts: a conflict after submit is Manager-only (T16-1)", async () => {
+    const src = sources();
+    const m = await validatedDraft(src);
+    src.reviewItems.push(conflictItem);
+    const before = m.audits.length;
+
+    const err = await approve(m, "analyst").catch((x: unknown) => x);
+    expect(err).toBeInstanceOf(PermissionDenied);
+    expect((err as PermissionDenied).message).toBe(
+      "Only a Manager can approve a reminder with conflicting payment information.",
+    );
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("validated");
+    expect(m.audits).toHaveLength(before);
+
+    const e = await approve(m, "manager");
+    expect(e.action).toBe("approve_draft");
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
+  });
+
+  it("approve_draft re-gates the role on fresh facts: an ambiguous match after submit is Manager-only (T16-1)", async () => {
+    const src = sources();
+    const m = await validatedDraft(src);
+    src.matches.push(ambiguousMatch);
+
+    const err = await approve(m, "analyst").catch((x: unknown) => x);
+    expect(err).toBeInstanceOf(PermissionDenied);
+    expect((err as PermissionDenied).message).toBe(
+      "Only a Manager can approve a reminder that rests on an ambiguous payment match.",
+    );
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("validated");
+
+    await approve(m, "manager");
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
+  });
+
+  it("a Manager can approve a re-validated draft above ₹5,00,000", async () => {
+    const big = { ...invoice, amount_paise: 60_000_000 };
+    const src = sources({ invoices: [big] });
+    const m = ledgerTx(src);
+    m.tables.get("invoices")?.set("INV-A", { ...big });
+    await gen(m);
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    await expect(approve(m, "analyst")).rejects.toBeInstanceOf(PermissionDenied);
+    await approve(m, "manager");
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
+  });});
