@@ -105,7 +105,8 @@ test("TC-015: excluded bands stay in the queue, muted with a badge", async ({ pa
   await openQueue(page);
   await expect(rowsOf(page)).toHaveCount(PAGE_SIZE);
   const [first, second] = await shownIds(page);
-  // The seed has no excluded bands; mark two rows as excluded.
+  // The seed has disputed / promised rows (TASK-13); mark two more as excluded
+  // and count the expected set from the db.
   await page.evaluate(
     async ([a, b]) => {
       const db = window.__verilane!.db;
@@ -115,14 +116,18 @@ test("TC-015: excluded bands stay in the queue, muted with a badge", async ({ pa
     [first, second],
   );
   const total = await page.evaluate(() => window.__verilane!.db.priorities.count());
+  const excludedTotal = await page.evaluate(() =>
+    window.__verilane!.db.priorities.where("band").anyOf("disputed", "on_hold_promised").count(),
+  );
+  expect(excludedTotal).toBeGreaterThanOrEqual(2);
   await page.getByRole("combobox", { name: "Sort by" }).selectOption("invoice_number");
   await page.getByRole("group", { name: "Priority" }).getByRole("button", { name: "Disputed" }).click();
   await page.getByRole("group", { name: "Priority" }).getByRole("button", { name: /promised/i }).click();
   await expect(page).toHaveURL(/band=disputed,on_hold_promised/);
 
   const excluded = page.locator("a[data-excluded]");
-  await expect(excluded).toHaveCount(2);
-  await expect(excluded.getByTestId("excluded-badge")).toHaveCount(2);
+  await expect(excluded).toHaveCount(Math.min(excludedTotal, PAGE_SIZE));
+  await expect(excluded.getByTestId("excluded-badge")).toHaveCount(Math.min(excludedTotal, PAGE_SIZE));
   await expect(excluded.first().getByTestId("excluded-badge")).toContainText("excluded from queue");
 
   // Never removed: with the facets cleared they're still counted and listed.

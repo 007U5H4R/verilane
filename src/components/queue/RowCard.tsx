@@ -48,7 +48,14 @@ export function RowCard({
       </span>
       <span className="min-w-0 flex-[2] truncate text-text-muted">{priority.reason}</span>
       {excluded && (
-        <Badge variant="outline" className="shrink-0" data-testid="excluded-badge">
+        // The row is one link, so the badge carries its cause (G4/G5/G7) as a title, not a nested link.
+        <Badge
+          variant="outline"
+          className="shrink-0"
+          data-testid="excluded-badge"
+          data-band={priority.band}
+          title={priority.reason}
+        >
           {BAND_LABELS[priority.band]} — excluded from queue
         </Badge>
       )}
