@@ -1,45 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-// Chrome/Edge's `beforeinstallprompt` isn't in the lib.dom.d.ts types yet.
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import { createInstallPromptStore, type InstallPromptSnapshot, type InstallPromptStore } from "./installPromptStore";
+
+// One store per document, listening from module evaluation (before hydration),
+// so an early `beforeinstallprompt` isn't missed (T24-2).
+const store: InstallPromptStore | null = typeof window === "undefined" ? null : createInstallPromptStore(window);
+
+const SERVER_SNAPSHOT: InstallPromptSnapshot = { canInstall: false, installed: false };
+const noopSubscribe = () => () => undefined;
 
 /**
- * TASK-24.5: shares the captured `beforeinstallprompt` event between the
- * header install chip and the Settings "Install app" entry, so either can
- * trigger the same native prompt.
+ * TASK-24.5: the header install chip and the Settings "Install app" entry
+ * share the single captured `beforeinstallprompt` event.
  */
 export function useInstallPrompt() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
-
-  useEffect(() => {
-    function onPrompt(e: Event) {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    }
-    function onInstalled() {
-      setInstalled(true);
-      setDeferred(null);
-    }
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
-
-  const promptInstall = useCallback(async () => {
-    if (!deferred) return;
-    await deferred.prompt();
-    await deferred.userChoice;
-    setDeferred(null);
-  }, [deferred]);
-
-  return { canInstall: deferred !== null && !installed, installed, promptInstall };
+  const snapshot = useSyncExternalStore(
+    store ? store.subscribe : noopSubscribe,
+    store ? store.getSnapshot : () => SERVER_SNAPSHOT,
+    () => SERVER_SNAPSHOT,
+  );
+  const promptInstall = store ? store.promptInstall : async () => undefined;
+  return { ...snapshot, promptInstall };
 }

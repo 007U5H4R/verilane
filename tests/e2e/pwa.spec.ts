@@ -193,8 +193,16 @@ test("TC-078: the install chip is dismissible, non-modal, and Settings keeps Ins
   await fireInstallPrompt(page);
   await expect(page.getByTestId("install-chip")).toHaveCount(0);
 
-  await page.goto("/settings");
+  // T24-2: Chromium fires beforeinstallprompt once per document. The event
+  // captured on /queue must reach Settings after in-app navigation, with no
+  // re-fire. The window marker proves this was a client navigation.
+  await page.evaluate(() => Object.assign(window, { __tc078SameDocument: true }));
+  await page.locator('nav[aria-label="Main"] a[href="/settings"]:visible').first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
-  await fireInstallPrompt(page);
-  await expect(page.locator("#install").getByRole("button", { name: "Install app" })).toBeVisible();
+  expect(await page.evaluate(() => (window as { __tc078SameDocument?: boolean }).__tc078SameDocument)).toBe(true);
+  const install = page.locator("#install").getByRole("button", { name: "Install app" });
+  await expect(install).toBeVisible();
+  // One prompt per event: using it clears it for every consumer.
+  await install.click();
+  await expect(page.locator("#install").getByText(/Not installable right now/)).toBeVisible();
 });
