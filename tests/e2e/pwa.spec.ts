@@ -86,6 +86,15 @@ test("TC-075: manifest declares standalone install metadata and the SW registers
   expect(await cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
 });
 
+test("TC-075c: /sw.js is served uncached with a strict CSP (T24-10)", async ({ page }) => {
+  const res = await page.request.get("/sw.js");
+  expect(res.ok()).toBe(true);
+  const headers = res.headers();
+  expect(headers["cache-control"]).toBe("no-cache, no-store, must-revalidate");
+  expect(headers["content-type"]).toBe("application/javascript; charset=utf-8");
+  expect(headers["content-security-policy"]).toBe("default-src 'self'; script-src 'self'");
+});
+
 test("TC-076: offline loads from cache with the offline banner; import/reset disabled", async ({ page, context }, info) => {
   // IndexedDB refused → the storage banner would show; offline must win.
   await page.addInitScript(() => {
