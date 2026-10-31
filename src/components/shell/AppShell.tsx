@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 import { SeedUpdatePrompt } from "@/components/SeedUpdatePrompt";
+import { useOnline } from "@/lib/useOnline";
 
 // TASK-20 (Design.md §13): ≥1024 216px sidebar · 768–1023 72px icon rail ·
 // <768 a rail-coloured top strip + fixed bottom tabs. DOM order is visual
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const active = NAV_ITEMS.find((item) => item.href === pathname);
   const crumb = active?.label ?? "Home";
   const activeHref = active?.href ?? "/";
+  const online = useOnline();
 
   return (
     <div className="grid min-h-full grid-cols-1 md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[216px_minmax(0,1fr)]">
@@ -34,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
         <TopBar crumb={crumb} />
-        <BannerHost />
+        <BannerHost offline={!online} />
         <SeedUpdatePrompt />
         <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>
       </div>
