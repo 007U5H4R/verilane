@@ -1,15 +1,15 @@
 /**
  * Opens the Dexie db, ensures the seed is loaded, and provides it via
- * `DbContext` (TASK-7.6, A4). SR9's storage-fallback banner and richer
- * loading/empty/error states are TASK-9.4/TASK-10's job — this is the
- * happy-path shape.
+ * `DbContext` (TASK-7.6, A4), plus whether storage is persistent via
+ * `PersistentContext` (SR9 banner, TASK-10). Richer loading/empty/error
+ * states are TASK-9.4's job.
  */
 "use client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { openDb, type VerilaneDb } from "@/store/db";
 import { ensureSeeded } from "@/store/loader";
-import { DbContext } from "@/store/hooks";
+import { DbContext, PersistentContext } from "@/store/hooks";
 
 interface DataProviderProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ interface DataProviderProps {
 
 type Status =
   | { kind: "loading" }
-  | { kind: "ready"; db: VerilaneDb }
+  | { kind: "ready"; db: VerilaneDb; persistent: boolean }
   | { kind: "error"; error: Error };
 
 export function DataProvider({ children }: DataProviderProps) {
@@ -27,12 +27,12 @@ export function DataProvider({ children }: DataProviderProps) {
     let cancelled = false;
     (async () => {
       try {
-        const { db } = await openDb();
+        const { db, persistent } = await openDb();
         const result = await ensureSeeded(db);
         if (result === "update-available") {
           console.warn("[verilane] seed update available");
         }
-        if (!cancelled) setStatus({ kind: "ready", db });
+        if (!cancelled) setStatus({ kind: "ready", db, persistent });
       } catch (err) {
         if (!cancelled) {
           setStatus({ kind: "error", error: err instanceof Error ? err : new Error(String(err)) });
@@ -49,5 +49,9 @@ export function DataProvider({ children }: DataProviderProps) {
     console.error("[verilane] failed to open database", status.error);
     return <>{children}</>;
   }
-  return <DbContext.Provider value={status.db}>{children}</DbContext.Provider>;
+  return (
+    <DbContext.Provider value={status.db}>
+      <PersistentContext.Provider value={status.persistent}>{children}</PersistentContext.Provider>
+    </DbContext.Provider>
+  );
 }
