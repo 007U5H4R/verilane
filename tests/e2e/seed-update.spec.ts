@@ -12,7 +12,9 @@ test("a newer seed shows the update prompt and keeps the user's note", async ({ 
     await route.fulfill({ response, json: { ...manifest, seedVersion: "2026-10-30.0" } });
   });
   await page.goto("/queue");
-  await expect(page.locator('a[href^="/invoices/"]')).toHaveCount(50);
+  // TASK-9: 25 rows per page; all 50 seeded rows are counted.
+  await expect(page.locator('a[href^="/invoices/"]')).toHaveCount(25);
+  await expect(page.getByTestId("result-count")).toHaveText("50 of 50 shown");
   await expect(page.getByText("New demo data available")).toHaveCount(0);
 
   // A user note, written straight to the audit table.
@@ -42,7 +44,8 @@ test("a newer seed shows the update prompt and keeps the user's note", async ({ 
   await expect(prompt).toBeVisible();
   await expect(prompt.getByRole("button", { name: "Reset" })).toBeDisabled();
   await expect(prompt.getByText("Reset arrives with Settings")).toBeVisible();
-  await expect(page.locator('a[href^="/invoices/"]')).toHaveCount(50);
+  await expect(page.locator('a[href^="/invoices/"]')).toHaveCount(25);
+  await expect(page.getByTestId("result-count")).toHaveText("50 of 50 shown");
 
   const stored = await page.evaluate(
     () =>

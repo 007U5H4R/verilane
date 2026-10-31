@@ -8,14 +8,19 @@ test("queue route loads", async ({ page }) => {
 });
 
 // TASK-8: the full seed (TC-011) renders as 50 rows, in rank order (TC-006).
+// TASK-9: the Queue pages at 25 rows, so the 50 rows span pages 1 and 2.
 test("queue renders all 50 seed invoices in rank order", async ({ page }, testInfo) => {
   await page.goto("/queue");
   const rows = page.locator('a[href^="/invoices/"]');
-  await expect(rows).toHaveCount(50);
-
-  const shown = await rows.evaluateAll((links) =>
-    links.map((a) => (a.getAttribute("href") ?? "").replace("/invoices/", "")),
-  );
+  const hrefs = () =>
+    rows.evaluateAll((links) => links.map((a) => (a.getAttribute("href") ?? "").replace("/invoices/", "")));
+  await expect(rows).toHaveCount(25);
+  const page1 = await hrefs();
+  await page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Next" }).click();
+  await expect(page.getByTestId("page-indicator")).toHaveText("Page 2 of 2");
+  await expect(rows).toHaveCount(25);
+  const shown = [...page1, ...(await hrefs())];
+  expect(shown).toHaveLength(50);
 
   // Independent oracle: re-sort the stored priorities with rank()'s
   // comparator (score ↓, days overdue ↓, outstanding ↓, invoice_number ↑).

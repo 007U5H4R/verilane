@@ -3,7 +3,7 @@ import type { PriorityBand } from "@/domain/schema";
 
 // Labels mirror priority.ts's private bandLabel() — kept local to avoid
 // widening the domain layer's public surface for a pure-presentation string.
-const LABELS: Record<PriorityBand, string> = {
+export const BAND_LABELS: Record<PriorityBand, string> = {
   high: "High",
   medium: "Medium",
   low: "Low",
@@ -51,7 +51,7 @@ export function PriorityChip({ band }: { band: PriorityBand }) {
         className="size-1.5 rounded-full"
         style={{ backgroundColor: DOT_COLORS[band] }}
       />
-      {LABELS[band]}
+      {BAND_LABELS[band]}
     </Badge>
   );
 }

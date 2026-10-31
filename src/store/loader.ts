@@ -111,6 +111,20 @@ export async function ensureSeeded(
   return "seeded";
 }
 
+/**
+ * The Queue's "Load demo data" (TASK-9.4): forgets the recorded seed version
+ * and runs the first-run load again, so an emptied database gets the seed
+ * back. Upserts only — it never wipes workflow data.
+ */
+export async function loadDemoData(
+  db: VerilaneDb,
+  fetcher: Fetcher = fetch,
+  manifestUrl = "/seed/manifest.json",
+): Promise<void> {
+  await db.meta.delete(SEED_VERSION_KEY);
+  await ensureSeeded(db, fetcher, manifestUrl);
+}
+
 /** Average days late a customer's paid invoices ran, keyed by customer_id;
  * absent = no payment history (`priority.ts` scores that as neutral). */
 function buildCustomerHistory(invoices: Invoice[], payments: Payment[]): Map<string, number> {

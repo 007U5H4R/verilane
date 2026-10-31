@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerilaneDb } from "./db";
-import { ensureSeeded, type Fetcher, type SeedManifest } from "./loader";
+import { ensureSeeded, loadDemoData, type Fetcher, type SeedManifest } from "./loader";
 
 const CUSTOMERS_CSV = ["customer_id,name,contact_emails,payment_terms_days,segment", "C-001,Acme Co,ap@acme.test,30,SMB"].join("\n");
 
@@ -187,5 +187,20 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     ).rejects.toMatchObject({
       failures: [expect.objectContaining({ name: "ConstraintError" })],
     });
+  });
+});
+
+describe("loadDemoData — TASK-9.4 (Queue empty state)", () => {
+  it("reloads the seed when the tables are empty but the seed version is recorded", async () => {
+    await ensureSeeded(db, makeFetcher());
+    await db.invoices.clear();
+    await db.priorities.clear();
+    expect(await ensureSeeded(db, makeFetcher())).toBe("current");
+    expect(await db.invoices.count()).toBe(0);
+
+    await loadDemoData(db, makeFetcher());
+    expect(await db.invoices.count()).toBe(2);
+    expect(await db.priorities.count()).toBe(2);
+    expect((await db.meta.get("seedVersion"))?.value).toBe("test.0");
   });
 });

@@ -55,6 +55,17 @@ export function useQueue(): RankItem[] | undefined {
   }, [db]);
 }
 
+/**
+ * How many invoices the Queue ranks (one priority per invoice), live — for
+ * the sidebar badge (TASK-9.5). Unlike the other hooks it tolerates a
+ * missing db (the shell renders even when the database failed to open):
+ * `undefined` while loading or without a db.
+ */
+export function useQueueCount(): number | undefined {
+  const db = useContext(DbContext);
+  return useLiveQuery(async () => (db ? db.priorities.count() : undefined), [db]);
+}
+
 /** `customer_id → Customer`, for the Queue row's customer name (TASK-7.8). */
 export function useCustomers(): Map<string, Customer> | undefined {
   const db = useDb();
