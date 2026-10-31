@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -12,8 +12,9 @@ import { InvoiceStatusSchema, PriorityBandSchema } from "@/domain/schema";
 import type { VerilaneDb } from "@/store/db";
 import { DbContext, useCustomers, usePayments, useQueue } from "@/store/hooks";
 import { loadDemoData } from "@/store/loader";
+import { applyUpdate, initIntent, onUrl } from "./filterIntent";
 import { FiltersPanel, type ApplyFilters } from "./FiltersPanel";
-import { DEFAULT_FILTERS, DEFAULT_SORT_DESC, SORT_COLUMNS, parse, serialize, type QueueFilters, type SortColumn } from "./queueParams";
+import { DEFAULT_FILTERS, DEFAULT_SORT_DESC, SORT_COLUMNS, parse, type QueueFilters, type SortColumn } from "./queueParams";
 import { RowCard } from "./RowCard";
 import { buildQueueRows, useQueueTable } from "./useQueueTable";
 
@@ -102,9 +103,16 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
   );
   const table = useQueueTable(allRows ?? [], filters);
 
+  // Latest requested filters; the URL lags router.push (fix round 1).
+  const intent = useRef(initIntent(filters));
+  useEffect(() => {
+    intent.current = onUrl(intent.current, filters);
+  }, [filters]);
+
   const apply = useCallback<ApplyFilters>(
-    (next, mode) => {
-      const qs = serialize(next);
+    (update, mode) => {
+      const { state, qs } = applyUpdate(intent.current, update);
+      intent.current = state;
       const url = qs ? `/queue?${qs}` : "/queue";
       if (mode === "push") router.push(url, { scroll: false });
       else router.replace(url, { scroll: false });
@@ -143,7 +151,7 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
           title="No invoices match these filters"
           state="empty-filtered"
           action={
-            <Button variant="outline" size="sm" onClick={() => apply({ ...DEFAULT_FILTERS, sort: filters.sort }, "push")}>
+            <Button variant="outline" size="sm" onClick={() => apply((prev) => ({ ...DEFAULT_FILTERS, sort: prev.sort }), "push")}>
               Clear filters
             </Button>
           }
@@ -169,7 +177,7 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
               variant="outline"
               size="sm"
               disabled={table.page <= 1}
-              onClick={() => apply({ ...filters, page: table.page - 1 }, "push")}
+              onClick={() => apply((prev) => ({ ...prev, page: table.page - 1 }), "push")}
             >
               Previous
             </Button>
@@ -177,7 +185,7 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
               variant="outline"
               size="sm"
               disabled={table.page >= table.pageCount}
-              onClick={() => apply({ ...filters, page: table.page + 1 }, "push")}
+              onClick={() => apply((prev) => ({ ...prev, page: table.page + 1 }), "push")}
             >
               Next
             </Button>
@@ -200,7 +208,7 @@ function SortControl({ filters, apply }: { filters: QueueFilters; apply: ApplyFi
           onChange={(e) => {
             const column = e.target.value as SortColumn;
             const next = column === "priority" ? null : { column, desc: DEFAULT_SORT_DESC[column] };
-            apply({ ...filters, sort: next, page: 1 }, "push");
+            apply((prev) => ({ ...prev, sort: next, page: 1 }), "push");
           }}
           className="min-h-9 rounded-md border border-border bg-surface px-2 text-text"
         >
@@ -216,7 +224,7 @@ function SortControl({ filters, apply }: { filters: QueueFilters; apply: ApplyFi
           variant="ghost"
           size="sm"
           aria-label={`Sort direction: ${sort.desc ? "descending" : "ascending"}. Switch`}
-          onClick={() => apply({ ...filters, sort: { ...sort, desc: !sort.desc }, page: 1 }, "push")}
+          onClick={() => apply((prev) => ({ ...prev, sort: { ...sort, desc: !sort.desc }, page: 1 }), "push")}
         >
           {sort.desc ? "Descending" : "Ascending"}
         </Button>

@@ -117,7 +117,6 @@ test("TC-015: excluded bands stay in the queue, muted with a badge", async ({ pa
   const total = await page.evaluate(() => window.__verilane!.db.priorities.count());
   await page.getByRole("combobox", { name: "Sort by" }).selectOption("invoice_number");
   await page.getByRole("group", { name: "Priority" }).getByRole("button", { name: "Disputed" }).click();
-  await expect(page).toHaveURL(/band=disputed/);
   await page.getByRole("group", { name: "Priority" }).getByRole("button", { name: /promised/i }).click();
   await expect(page).toHaveURL(/band=disputed,on_hold_promised/);
 
@@ -131,6 +130,24 @@ test("TC-015: excluded bands stay in the queue, muted with a badge", async ({ pa
   await expect(page.getByTestId("result-count")).toHaveText(`${total} of ${total} shown`);
   await expect(page.getByTestId("queue-count")).toHaveText(String(total));
   await page.screenshot({ path: `${REPORTS_DIR}/TASK-9-queue-excluded-${testInfo.project.name}.png`, fullPage: true });
+});
+
+test("TC-015: rapid facet toggles compose (no click is dropped)", async ({ page }) => {
+  await openQueue(page);
+  await expect(rowsOf(page)).toHaveCount(PAGE_SIZE);
+  // Both clicks in one JS tick: the second runs before the first push re-renders.
+  await page.evaluate(() => {
+    const group = [...document.querySelectorAll('[role="group"]')].find((g) =>
+      g.getAttribute("aria-labelledby") && document.getElementById(g.getAttribute("aria-labelledby")!)?.textContent === "Priority",
+    )!;
+    const pill = (label: string) => [...group.querySelectorAll("button")].find((b) => b.textContent === label)!;
+    pill("High").click();
+    pill("Medium").click();
+  });
+  await expect(page).toHaveURL(/band=high,medium/);
+  const priority = page.getByRole("group", { name: "Priority" });
+  await expect(priority.getByRole("button", { name: "High", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(priority.getByRole("button", { name: "Medium", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("TC-016: loading, empty, filtered-empty and error states", async ({ page, browser }, testInfo) => {

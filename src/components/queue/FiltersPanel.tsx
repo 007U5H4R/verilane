@@ -23,8 +23,12 @@ const AGEING_LABELS: Record<(typeof AGEING_BUCKETS)[number], string> = {
   "60+": "60+ days",
 };
 
-/** `push` adds a history entry (facets, Clear); `replace` doesn't (typing). */
-export type ApplyFilters = (next: QueueFilters, mode: "push" | "replace") => void;
+/**
+ * `update` gets the latest requested filters, not the render-time URL, so
+ * rapid clicks compose. `push` adds a history entry (facets, Clear);
+ * `replace` doesn't (typing).
+ */
+export type ApplyFilters = (update: (prev: QueueFilters) => QueueFilters, mode: "push" | "replace") => void;
 
 /**
  * Search + facet filters for the Queue (TASK-9.3). Collapsible ("Hide
@@ -60,9 +64,11 @@ export function FiltersPanel({
   if (!focused && text !== filters.q) setText(filters.q);
 
   function toggle<K extends "band" | "status" | "customer" | "ageing">(key: K, value: QueueFilters[K][number]) {
-    const current = filters[key] as string[];
-    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
-    apply({ ...filters, [key]: next, page: 1 }, "push");
+    apply((prev) => {
+      const current = prev[key] as string[];
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      return { ...prev, [key]: next, page: 1 };
+    }, "push");
   }
 
   return (
@@ -79,8 +85,9 @@ export function FiltersPanel({
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onChange={(e) => {
-              setText(e.target.value);
-              apply({ ...filters, q: e.target.value, page: 1 }, "replace");
+              const q = e.target.value;
+              setText(q);
+              apply((prev) => ({ ...prev, q, page: 1 }), "replace");
             }}
           />
         </label>
@@ -95,7 +102,7 @@ export function FiltersPanel({
           {count > 0 && <span data-testid="active-filter-count">({count})</span>}
         </Button>
         {count > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => apply({ ...DEFAULT_FILTERS, sort: filters.sort }, "push")}>
+          <Button variant="ghost" size="sm" onClick={() => apply((prev) => ({ ...DEFAULT_FILTERS, sort: prev.sort }), "push")}>
             Clear filters
           </Button>
         )}
