@@ -168,10 +168,11 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     expect(await db.extractions.count()).toBe(await db.emails.count());
   });
 
-  it("keeps the worked-example scores: INV-A 60/high, INV-B 15/low, INV-E needs review", async () => {
+  it("keeps the worked-example scores: INV-A 70/high (broken promise), INV-B 15/low, INV-E needs review", async () => {
     await ensureSeeded(db, realFetcher());
     const a = await db.priorities.get("INV-A");
-    expect(a).toMatchObject({ score: 60, band: "high" });
+    expect(a).toMatchObject({ score: 70, band: "high" });
+    expect(a?.factors.some((f) => f.evidenceId === "E-001-1:emails.json:commitment_date")).toBe(true);
     const b = await db.priorities.get("INV-B");
     expect(b).toMatchObject({ score: 15, band: "low" });
     const e = await db.priorities.get("INV-E");
@@ -205,6 +206,57 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     ).rejects.toMatchObject({
       failures: [expect.objectContaining({ name: "ConstraintError" })],
     });
+  });
+
+  it("TASK-13: writes one match per email and gates the seed's dispute, claim and data conflict", async () => {
+    await ensureSeeded(db, realFetcher());
+    expect(await db.matches.count()).toBe(await db.emails.count());
+
+    const disputed = await db.priorities.get("INV-C");
+    expect(disputed).toMatchObject({ gate: "G4", band: "disputed" });
+    expect(disputed?.reason).toContain("E-011-1:emails.json:email_class");
+
+    expect(await db.priorities.get("INV-042")).toMatchObject({ gate: "G5", band: "hold_reconcile" });
+    // R1: seed row 10's outstanding_amount conflict holds INV-G for reconcile.
+    const g = await db.priorities.get("INV-G");
+    expect(g).toMatchObject({ gate: "G5", band: "hold_reconcile" });
+    expect(g?.reason).toContain("row 10 · outstanding_amount");
+  });
+
+  it("TC-030: the E-007 claim becomes a reconciliation item with both amounts; the ledger is untouched", async () => {
+    await ensureSeeded(db, realFetcher());
+    const items = await db.reviewItems.where("kind").equals("reconciliation").toArray();
+    const e7 = items.find((r) => r.message_id === "E-007-1");
+    expect(e7).toMatchObject({
+      invoice_id: "INV-042",
+      email_amount_paise: 30_000_000,
+      ledger_outstanding_paise: 34_000_000,
+    });
+    expect(await db.payments.where("invoice_id").equals("INV-042").count()).toBe(0);
+  });
+
+  it("every non-matched email has an uncertain_match review item", async () => {
+    await ensureSeeded(db, realFetcher());
+    const unmatched = (await db.matches.toArray()).filter((m) => m.outcome !== "matched");
+    expect(unmatched.length).toBeGreaterThan(0);
+    const uncertain = await db.reviewItems.where("kind").equals("uncertain_match").toArray();
+    expect(uncertain.map((r) => r.message_id).sort()).toEqual(unmatched.map((m) => m.message_id).sort());
+  });
+
+  it("recompute() keeps a reviewer's decision on an existing item", async () => {
+    await ensureSeeded(db, realFetcher());
+    const item = (await db.reviewItems.toArray())[0]!;
+    await db.reviewItems.update(item.review_id, { status: "dismissed" });
+    await recompute(db);
+    expect((await db.reviewItems.get(item.review_id))?.status).toBe("dismissed");
+  });
+
+  it("R6: recompute() uses meta.asOf as today", async () => {
+    await ensureSeeded(db, realFetcher());
+    const before = (await db.priorities.get("INV-B"))?.days_overdue;
+    await db.meta.put({ key: "asOf", value: "2026-11-09" });
+    await recompute(db);
+    expect((await db.priorities.get("INV-B"))?.days_overdue).toBe((before ?? 0) + 10);
   });
 });
 

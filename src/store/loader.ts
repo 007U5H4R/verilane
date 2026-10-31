@@ -7,9 +7,12 @@
  */
 import Papa from "papaparse";
 import { ingest, type Row } from "@/domain/ingest";
-import { AS_OF_DATE, daysBetween } from "@/domain/clock";
+import { asOf, daysBetween } from "@/domain/clock";
+import { match } from "@/domain/match";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
-import type { Invoice, Payment, Priority } from "@/domain/schema";
+import { reviewItemsFor } from "@/domain/review";
+import { deriveSignals } from "@/domain/signals";
+import type { Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
 import { simulateExtraction } from "@/ai/simulated";
 import type { VerilaneDb } from "./db";
 
@@ -97,16 +100,7 @@ export async function ensureSeeded(
 
   await db.transaction(
     "rw",
-    [
-      db.customers,
-      db.invoices,
-      db.payments,
-      db.emails,
-      db.extractions,
-      db.dataIssues,
-      db.priorities,
-      db.meta,
-    ],
+    recomputeTables(db),
     async () => {
       await db.customers.bulkPut(ingested.customers);
       await db.invoices.bulkPut(ingested.invoices);
@@ -169,33 +163,92 @@ function buildCustomerHistory(invoices: Invoice[], payments: Payment[]): Map<str
   return history;
 }
 
+/** Every table `recomputeCore` reads or writes. */
+function recomputeTables(db: VerilaneDb) {
+  return [
+    db.customers,
+    db.invoices,
+    db.payments,
+    db.emails,
+    db.extractions,
+    db.matches,
+    db.reviewItems,
+    db.disputes,
+    db.dataIssues,
+    db.priorities,
+    db.meta,
+  ];
+}
+
 /**
  * The derived-table recompute, callable from inside an already-open
  * transaction (e.g. `ensureSeeded`'s). Recomputes `extractions` (the simulated
- * provider over every email, TASK-12.5) and `priorities`; `matches`/`evidence`
- * join once TASK-13 lands.
+ * provider over every email, TASK-12.5), `matches` and review items
+ * (TASK-13), then `priorities` with the email-derived signals and DataIssues.
+ * "Today" is `meta.asOf` when set, else AS_OF_DATE (R6).
  */
 async function recomputeCore(db: VerilaneDb): Promise<void> {
+  const storedAsOf = (await db.meta.get("asOf"))?.value;
+  const today = asOf({ asOf: typeof storedAsOf === "string" ? storedAsOf : undefined });
+
+  const customers = await db.customers.toArray();
   const invoices = await db.invoices.toArray();
   const payments = await db.payments.toArray();
-  const customerHistory = buildCustomerHistory(invoices, payments);
-  const ctx: PriorityCtx = { asOf: AS_OF_DATE, payments, customerHistory };
-
   const emails = await db.emails.toArray();
+  const dataIssues = await db.dataIssues.toArray();
+  const disputes = await db.disputes.toArray();
+
+  const extractions = emails.map((e) => simulateExtraction(e));
   await db.extractions.clear();
-  await db.extractions.bulkPut(emails.map((e) => simulateExtraction(e)));
+  await db.extractions.bulkPut(extractions);
+
+  const byMessage = new Map(extractions.map((x) => [x.message_id, x]));
+  const matches: Match[] = [];
+  const reviewItems: ReviewItem[] = [];
+  for (const email of emails) {
+    const ext = byMessage.get(email.message_id);
+    if (!ext) continue;
+    const m = match(ext, email, { customers, invoices });
+    matches.push(m);
+    reviewItems.push(...reviewItemsFor(m, ext, { invoices, payments }));
+  }
+  await db.matches.clear();
+  await db.matches.bulkPut(matches);
+  await syncReviewItems(db, reviewItems);
+
+  const signals = deriveSignals({ asOf: today, extractions, matches, disputes });
+  const customerHistory = buildCustomerHistory(invoices, payments);
+  const ctx: PriorityCtx = { asOf: today, payments, customerHistory, signals, dataIssues };
 
   const priorities: Priority[] = invoices.map((invoice) => prioritise(invoice, ctx));
   await db.priorities.clear();
   await db.priorities.bulkPut(priorities);
 }
 
+const EMAIL_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation", "dispute"]);
+
+/**
+ * Review items are workflow rows: a person may action or dismiss one. Upsert
+ * the computed email items keeping any existing row's status; drop open
+ * email items the data no longer raises; leave closed ones as history.
+ */
+async function syncReviewItems(db: VerilaneDb, computed: ReviewItem[]): Promise<void> {
+  const existing = new Map((await db.reviewItems.toArray()).map((r) => [r.review_id, r]));
+  const keep = new Set(computed.map((r) => r.review_id));
+  const stale = [...existing.values()]
+    .filter((r) => r.status === "open" && EMAIL_REVIEW_KINDS.has(r.kind) && !keep.has(r.review_id))
+    .map((r) => r.review_id);
+  await db.reviewItems.bulkDelete(stale);
+  await db.reviewItems.bulkPut(
+    computed.map((r) => {
+      const prev = existing.get(r.review_id);
+      return prev ? { ...prev, ...r, status: prev.status } : r;
+    }),
+  );
+}
+
 /** Recomputes every derived table from source + workflow tables, in its own
  * transaction. Call after any command that changes invoices/payments. */
 export async function recompute(db: VerilaneDb): Promise<void> {
-  await db.transaction(
-    "rw",
-    [db.invoices, db.payments, db.emails, db.extractions, db.priorities],
-    () => recomputeCore(db),
-  );
+  await db.transaction("rw", recomputeTables(db), () => recomputeCore(db));
 }

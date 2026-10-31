@@ -31,7 +31,8 @@ export type EmailExtractionRow = Extraction;
 
 export interface EmailMatchRow {
   message_id: string;
-  invoice_id: string;
+  /** Absent unless the outcome is `matched` (TASK-13); never null. */
+  invoice_id?: string;
   [key: string]: unknown;
 }
 
