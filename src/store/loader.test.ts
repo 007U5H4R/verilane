@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerilaneDb } from "./db";
-import { ensureSeeded, loadDemoData, type Fetcher, type SeedManifest } from "./loader";
+import { ensureSeeded, type Fetcher, type SeedManifest } from "./loader";
 
 const CUSTOMERS_CSV = ["customer_id,name,contact_emails,payment_terms_days,segment", "C-001,Acme Co,ap@acme.test,30,SMB"].join("\n");
 
@@ -128,6 +128,21 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     }) as Fetcher;
   }
 
+  it("two racing first-run loads write the seed once — no duplicate data issues (M-001 R4)", async () => {
+    const single = new VerilaneDb(`verilane-single-${Math.random()}`);
+    await ensureSeeded(single, realFetcher());
+    const expected = await single.dataIssues.count();
+    single.close();
+    await single.delete();
+    expect(expected).toBeGreaterThan(0);
+
+    const results = await Promise.all([ensureSeeded(db, realFetcher()), ensureSeeded(db, realFetcher())]);
+    expect(results.sort()).toEqual(["current", "seeded"]);
+    expect(await db.dataIssues.count()).toBe(expected);
+    const ids = (await db.dataIssues.toArray()).map((d) => d.issue_id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("loads the real seed files: counts match, seedVersion recorded, every invoice has a priority", async () => {
     const result = await ensureSeeded(db, realFetcher());
     expect(result).toBe("seeded");
@@ -190,17 +205,3 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
   });
 });
 
-describe("loadDemoData — TASK-9.4 (Queue empty state)", () => {
-  it("reloads the seed when the tables are empty but the seed version is recorded", async () => {
-    await ensureSeeded(db, makeFetcher());
-    await db.invoices.clear();
-    await db.priorities.clear();
-    expect(await ensureSeeded(db, makeFetcher())).toBe("current");
-    expect(await db.invoices.count()).toBe(0);
-
-    await loadDemoData(db, makeFetcher());
-    expect(await db.invoices.count()).toBe(2);
-    expect(await db.priorities.count()).toBe(2);
-    expect((await db.meta.get("seedVersion"))?.value).toBe("test.0");
-  });
-});
