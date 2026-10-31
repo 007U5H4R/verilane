@@ -20,7 +20,7 @@ import {
 import { outstandingOf } from "@/domain/priority";
 import type { RankItem } from "@/domain/priority";
 import type { Customer, Invoice, InvoiceStatus, Payment, Priority } from "@/domain/schema";
-import { ageingBucketOf, type QueueFilters } from "./queueParams";
+import { ageingBucketOfPriority, type QueueFilters } from "./queueParams";
 
 export const PAGE_SIZE = 25;
 
@@ -67,7 +67,7 @@ export function filterRows(rows: QueueRow[], f: QueueFilters): QueueRow[] {
     if (f.status.length > 0 && !f.status.includes(r.invoice.status)) return false;
     if (f.customer.length > 0 && !f.customer.includes(r.invoice.customer_id)) return false;
     if (f.ageing.length > 0) {
-      const bucket = ageingBucketOf(r.priority.days_overdue);
+      const bucket = ageingBucketOfPriority(r.priority);
       if (bucket === null || !f.ageing.includes(bucket)) return false;
     }
     return true;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/shell/AppShell";
 import { DataProviderLoader } from "@/components/DataProviderLoader";
+import { PwaRegister } from "@/components/PwaRegister";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppShell>{children}</AppShell>
         </DataProviderLoader>
         <Toaster />
+        <PwaRegister />
       </body>
     </html>
   );

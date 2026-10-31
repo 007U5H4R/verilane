@@ -1,10 +1,10 @@
 ---
 id: TASK-24
 title: 'PWA: manifest, icon, service worker, offline, install chip'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 09:01'
 labels:
   - P1
   - 'sp:3'

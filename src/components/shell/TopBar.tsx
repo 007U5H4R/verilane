@@ -1,3 +1,4 @@
+import { InstallChip } from "@/components/shell/InstallChip";
 import { LlmStatusBadge } from "@/components/shell/LlmStatusBadge";
 import { RoleSwitcher } from "@/components/shell/RoleSwitcher";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
@@ -12,6 +13,7 @@ export function TopBar({ crumb }: { crumb: string }) {
       </div>
       <div className="flex shrink-0 flex-nowrap items-center gap-2 md:gap-3">
         <LlmStatusBadge />
+        <InstallChip />
         <RoleSwitcher />
         <ThemeToggle />
       </div>

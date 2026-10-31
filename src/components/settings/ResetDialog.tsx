@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { resetDemo } from "@/store/dataCommands";
 import { DbContext } from "@/store/hooks";
+import { useOnline } from "@/lib/useOnline";
 
 /**
  * Reset demo data behind a confirmation (TC-060). Settings and the
@@ -34,6 +35,7 @@ export function ResetDialog({
   const db = useContext(DbContext);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const online = useOnline();
 
   async function confirm() {
     if (!db || busy) return;
@@ -52,11 +54,18 @@ export function ResetDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
-      <AlertDialogTrigger asChild>
-        <Button type="button" variant="outline" size={size} disabled={!db}>
-          {label}
-        </Button>
-      </AlertDialogTrigger>
+      <div className="flex flex-col gap-1.5">
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant="outline" size={size} disabled={!db || !online}>
+            {label}
+          </Button>
+        </AlertDialogTrigger>
+        {!online && (
+          <p role="status" data-testid="reset-offline-reason" className="text-[13px] text-text-muted">
+            Unavailable offline — reconnect to reset.
+          </p>
+        )}
+      </div>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Reset demo data?</AlertDialogTitle>
