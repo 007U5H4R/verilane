@@ -1,0 +1,7 @@
+{
+  "seedVersion": "2026-10-30.0",
+  "invoices": "/seed/invoices.csv",
+  "customers": "/seed/customers.csv",
+  "payments": "/seed/payments.csv",
+  "emails": "/seed/emails.json"
+}

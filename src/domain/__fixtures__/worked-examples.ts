@@ -1,0 +1,74 @@
+/**
+ * The Solution-PRD / Architecture.md §5.4 worked examples, as `Invoice` +
+ * `PriorityCtx` pairs. TC-004 asserts `prioritise()` reproduces their band,
+ * score, gate and reason exactly.
+ */
+import { AS_OF_DATE } from "../clock";
+import type { Invoice } from "../schema";
+import type { PriorityCtx } from "../priority";
+
+function baseInvoice(overrides: Partial<Invoice>): Invoice {
+  return {
+    row_id: 1,
+    invoice_id: "INV-A",
+    invoice_number: "1001",
+    customer_id: "C-001",
+    invoice_date: "2026-01-01",
+    due_date: "2026-09-13",
+    amount_paise: 0,
+    currency: "INR",
+    status_raw: "open",
+    status: "open",
+    billing_period: null,
+    po_number: null,
+    ...overrides,
+  };
+}
+
+function baseCtx(overrides: Partial<PriorityCtx> = {}): PriorityCtx {
+  return {
+    asOf: AS_OF_DATE,
+    payments: [],
+    customerHistory: new Map(),
+    ...overrides,
+  };
+}
+
+// A — 47 days overdue, ₹3,40,000, avg 12 days late, broken promise.
+// 35 (31-60 bucket) + 20 (₹2,00,000-4,99,999 bucket) + 5 (6-20 avg late) + 10 (broken promise) = 70 → High.
+export const exampleA = {
+  invoice: baseInvoice({
+    row_id: 12,
+    invoice_id: "INV-A",
+    due_date: "2026-09-13", // 47 days before AS_OF_DATE (2026-10-30).
+    amount_paise: 34_000_000, // ₹3,40,000.
+  }),
+  ctx: baseCtx({
+    customerHistory: new Map([["C-001", 12]]),
+    signals: { brokenPromise: new Set(["INV-A"]) },
+  }),
+};
+
+// B — 10 days overdue, ₹40,000, avg 2 days late. 10 + 5 + 0 = 15 → Low.
+export const exampleB = {
+  invoice: baseInvoice({
+    row_id: 13,
+    invoice_id: "INV-B",
+    due_date: "2026-10-20", // 10 days before AS_OF_DATE.
+    amount_paise: 4_000_000, // ₹40,000.
+  }),
+  ctx: baseCtx({
+    customerHistory: new Map([["C-001", 2]]),
+  }),
+};
+
+// E — due date missing. G3 → Needs review.
+export const exampleE = {
+  invoice: baseInvoice({
+    row_id: 14,
+    invoice_id: "INV-E",
+    due_date: null,
+    amount_paise: 1_000_000,
+  }),
+  ctx: baseCtx(),
+};

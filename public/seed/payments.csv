@@ -1,0 +1,3 @@
+payment_id,invoice_id,paid_on,amount_paise
+P-001,INV-G,2026-10-15,3000000
+P-002,INV-I,2026-10-01,5000000

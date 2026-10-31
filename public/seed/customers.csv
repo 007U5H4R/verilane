@@ -1,0 +1,5 @@
+customer_id,name,contact_emails,payment_terms_days,segment
+C-001,Acme Co,ap@acme.test,30,SMB
+C-002,Beta Corp,accounts@beta.test,30,SMB
+C-003,Gamma LLC,billing@gamma.test,45,Mid-Market
+C-004,Delta Inc,finance@delta.test,30,Mid-Market

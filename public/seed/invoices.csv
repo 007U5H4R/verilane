@@ -1,0 +1,9 @@
+row_id,invoice_id,invoice_number,customer_id,invoice_date,due_date,amount_paise,currency,status_raw,outstanding_amount,billing_period,po_number
+1,INV-A,1001,C-001,2026-01-01,2026-09-13,34000000,INR,open,,,
+2,INV-B,1002,C-001,2026-01-01,2026-10-20,4000000,INR,open,,,
+3,INV-E,1003,C-002,2026-01-01,,1000000,INR,open,,,
+4,INV-F,,C-002,2026-01-01,2026-10-25,2500000,INR,open,,,
+5,INV-G,1005,C-003,2026-01-01,2026-09-30,10000000,INR,open,8000000,,
+6,INV-H,1006,C-003,2026-01-01,2026-10-05,1800000,INR,pending_review,,,
+7,INV-I,1007,C-004,2026-01-01,2026-09-20,5000000,INR,paid,,,
+8,INV-J,1008,C-004,2026-01-01,2026-10-10,1500000,INR,open,,,
