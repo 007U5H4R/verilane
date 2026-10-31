@@ -522,6 +522,18 @@ describe("draft commands (TASK-15)", () => {
     expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
   });
 
+  it("approve_draft rejects a draft whose invoice was disputed after validation (T16-2)", async () => {
+    const src = sources();
+    const m = await validatedDraft(src);
+    src.disputes.push({ dispute_id: "DS-1", invoice_id: "INV-A", status: "new", type: "incorrect_amount" });
+
+    const e = await approve(m, "manager");
+    const row = m.tables.get("drafts")?.get("DR-INV-A-1");
+    expect(e.action).toBe("validation_failure");
+    expect(row?.status).toBe("validated");
+    expect(row?.failed_checks).toContain(6);
+  });
+
   it("a Manager can approve a re-validated draft above ₹5,00,000", async () => {
     const big = { ...invoice, amount_paise: 60_000_000 };
     const src = sources({ invoices: [big] });
