@@ -18,6 +18,9 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | M-001 review | done: pass-with-fixes (R1, R2 major) | read-only, main..4303a32 | max 2 fix rounds |
 | TASK-20 | dispatched (wave 3b) | worktree, port 3105 | base b336325; + review R2, R3, R13 |
 | TASK-13 | done | merged e544c89 | R1, R6, R12 fixed; EXE10 |
+| TASK-15 | in progress | base 183157b, port 3106 | drafts + nine checks |
+| TASK-17 | in progress | base 183157b, port 3107 | disputes state machine |
+| M-002 | in progress | review of TASK-11/12/13 | read-only |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
