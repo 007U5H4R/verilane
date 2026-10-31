@@ -66,11 +66,13 @@ function closedReason(status: Draft["status"]): string | null {
  * The bar's one primary action: an Analyst submits for approval, a Manager
  * approves and sends. `approveWired` is false until the approve flow
  * (TASK-16) is mounted, so the button says so instead of failing silently.
+ * `openDispute` is the live dispute state (TASK-16): a dispute opened after
+ * validation blocks the primary even though the stored checks predate it.
  */
 export function primaryAction(
   role: Role,
   draft: Draft | null,
-  opts: { approveWired: boolean },
+  opts: { approveWired: boolean; openDispute?: boolean },
 ): PrimaryAction {
   const base =
     role === "manager"
@@ -83,6 +85,7 @@ export function primaryAction(
   if (closed) return disabled(closed);
   const failing = draft.checks.filter((c) => !c.passed).length;
   if (failing > 0) return disabled(failingReason(failing));
+  if (opts.openDispute) return disabled("This invoice has an open dispute");
 
   if (base.action === "submit") {
     if (draft.status === "validated") return disabled("Already submitted for approval");

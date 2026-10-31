@@ -20,17 +20,19 @@ async function draftStatus(page: Page): Promise<unknown> {
 test("TC-039: Analyst cannot approve a >₹5L reminder, even when forced", async ({ page }, info) => {
   await page.goto("/e2e-harness");
   await bridge(page);
-  await page.evaluate(
-    (id) =>
-      window.__verilane!.db.drafts.put({
-        draft_id: id,
-        invoice_id: "INV-A",
-        kind: "reminder",
-        status: "validated",
-        amount_paise: 60_000_000, // ₹6,00,000
-      }),
-    DRAFT_ID,
-  );
+  // A real generated draft (TASK-16: approve re-runs the nine checks, so a
+  // bare fixture would fail re-validation), cloned with a >₹5L amount.
+  await page.evaluate(async (id) => {
+    const v = window.__verilane!;
+    await v.execute({ type: "generate_draft", subject: { kind: "invoice", id: "INV-A" } });
+    const generated = await v.db.drafts.where("invoice_id").equals("INV-A").first();
+    await v.db.drafts.put({
+      ...generated!,
+      draft_id: id,
+      status: "validated",
+      amount_paise: 60_000_000, // ₹6,00,000
+    });
+  }, DRAFT_ID);
 
   const approve = page.getByRole("button", { name: "Approve & send" });
   await expect(page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Analyst" })).toHaveAttribute(

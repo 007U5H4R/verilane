@@ -57,8 +57,8 @@ test("TC-045: a failing check is listed first with its fix, and blocks the one p
   await expect(primary).toHaveAttribute("aria-disabled", "true");
   await expect(bar.getByTestId("primary-reason")).toHaveText("Unavailable: 1 pre-approval check is failing");
   await expect(primary).toHaveAccessibleDescription("Unavailable: 1 pre-approval check is failing");
-  await expect(bar.getByRole("button", { name: "Mark disputed" })).toBeDisabled();
-  await expect(bar).toContainText("Available once disputes are enabled");
+  // TASK-16: Mark disputed is wired to the disputes state machine.
+  await expect(bar.getByRole("button", { name: "Mark disputed" })).toBeEnabled();
 
   await expect(page.getByTestId("next-step")).toContainText("No open dispute");
 
@@ -98,7 +98,8 @@ test("TC-045: a clean draft submits for approval; a Manager sees Approve & send"
   await page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" }).click();
   await expect(primary).toHaveText("Approve & send");
   await expect(bar.getByRole("button", { name: /Submit for approval/ })).toHaveCount(0);
-  await expect(bar.getByTestId("primary-reason")).toHaveText("Unavailable: Available once approval is enabled");
+  // TASK-16: approval is wired, so the Manager's primary is live.
+  await expect(primary).toHaveAttribute("aria-disabled", "false");
   await expect(page.getByTestId("next-step")).toContainText("Approve and send");
 
   await page.screenshot({ path: `${SHOTS}/TASK-15-tc045-manager-${info.project.name}.png`, fullPage: true });

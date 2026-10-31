@@ -317,3 +317,64 @@ export function useDispute(disputeId: string): DisputeWithContext | undefined | 
     return { dispute, customer, invoice, email };
   }, [db, disputeId]);
 }
+
+/**
+ * How many drafts are awaiting approval (status `validated`), live — for the
+ * sidebar badge (TASK-16.5). Tolerates a missing db like `useQueueCount()`.
+ */
+export function useDraftCount(): number | undefined {
+  const db = useContext(DbContext);
+  return useLiveQuery(
+    async () => (db ? db.drafts.where("status").equals("validated").count() : undefined),
+    [db],
+  );
+}
+
+export interface DraftAwaitingApproval {
+  draft: Draft;
+  customer?: Customer;
+  invoice?: Invoice;
+}
+
+/** Every draft awaiting approval (status `validated`), with its invoice/customer context, for `/drafts` (TASK-16.5). */
+export function useDraftsAwaitingApproval(): DraftAwaitingApproval[] | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const [rows, customers, invoices] = await Promise.all([
+      db.drafts.where("status").equals("validated").toArray(),
+      db.customers.toArray(),
+      db.invoices.toArray(),
+    ]);
+    const customerById = new Map(customers.map((c) => [c.customer_id, c]));
+    const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
+    const drafts: Draft[] = [];
+    for (const row of rows) {
+      const parsed = DraftSchema.safeParse(row);
+      if (parsed.success) drafts.push(parsed.data);
+    }
+    return drafts
+      .map((draft) => ({
+        draft,
+        customer: customerById.get(draft.customer_id),
+        invoice: invoiceById.get(draft.invoice_id),
+      }))
+      .sort((a, b) => a.draft.draft_id.localeCompare(b.draft.draft_id));
+  }, [db]);
+}
+
+/**
+ * Whether the invoice has a dispute that is still open (not resolved or
+ * rejected), live — blocks Approve in the Investigation action bar (TASK-16).
+ */
+export function useHasOpenDispute(invoiceId: string): boolean | undefined {
+  const db = useDb();
+  return useLiveQuery(
+    async () =>
+      (await db.disputes
+        .where("invoice_id")
+        .equals(invoiceId)
+        .filter((d) => d.status !== "resolved" && d.status !== "rejected")
+        .count()) > 0,
+    [db, invoiceId],
+  );
+}

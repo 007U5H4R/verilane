@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PermissionDenied } from "@/domain/commands";
-import type { Invoice } from "@/domain/schema";
+import type { Customer, Invoice } from "@/domain/schema";
 import { VerilaneDb } from "./db";
 import { execute, type CommandInput } from "./tx";
 
@@ -13,10 +13,45 @@ let db: VerilaneDb;
 beforeEach(async () => {
   db = new VerilaneDb(`verilane-tx-${Math.random()}`);
   await db.invoices.add({ row_id: 1, invoice_id: "INV-1", invoice_number: "1001" } as unknown as Invoice);
+  // INV-2 is dispute-free (INV-1 carries the open disputes D-T/D-R below), so
+  // DR-A's approve_draft recheck (TASK-16) can pass all nine checks cleanly.
+  await db.invoices.add({
+    row_id: 2,
+    invoice_id: "INV-2",
+    invoice_number: "1002",
+    customer_id: "C-2",
+    invoice_date: "2026-10-01",
+    due_date: "2026-11-15",
+    amount_paise: 1_000_000,
+    currency: "INR",
+    status_raw: "Open",
+    status: "open",
+    billing_period: null,
+    po_number: null,
+  } as unknown as Invoice);
+  await db.customers.add({
+    customer_id: "C-2",
+    name: "Acme Co",
+    contact_emails: [],
+    payment_terms_days: 30,
+    segment: "sme",
+  } as unknown as Customer);
   await db.drafts.bulkAdd([
     { draft_id: "DR-E", invoice_id: "INV-1", status: "validated", amount_paise: 1_000_000 },
     { draft_id: "DR-S", invoice_id: "INV-1", status: "edited" },
-    { draft_id: "DR-A", invoice_id: "INV-1", status: "validated", amount_paise: 1_000_000 },
+    {
+      draft_id: "DR-A",
+      invoice_id: "INV-2",
+      status: "validated",
+      amount_paise: 1_000_000,
+      facts: [
+        { claimId: "c1", kind: "invoice_number", value: "1002", evidenceId: "e1" },
+        { claimId: "c2", kind: "customer_name", value: "Acme Co", evidenceId: "e2" },
+        { claimId: "c3", kind: "amount", value: "₹10,000.00", evidenceId: "e3" },
+      ],
+      footnotes: [],
+      body: "",
+    },
     { draft_id: "DR-R", invoice_id: "INV-1", status: "generated" },
     { draft_id: "DR-BIG", invoice_id: "INV-1", status: "validated", amount_paise: 60_000_000 },
   ]);

@@ -88,10 +88,12 @@ test("TC-060: Reset behind a confirmation restores the fresh seed", async ({ pag
   // Add a note and approve a draft (as Manager) through the audited commands.
   await page.evaluate(async () => {
     const v = window.__verilane!;
-    await v.db.drafts.put({ draft_id: "E2E-DR-1", invoice_id: "INV-A", kind: "reminder", status: "validated" });
+    // A real generated + submitted draft: approve re-runs the nine checks (TASK-16).
+    await v.execute({ type: "generate_draft", subject: { kind: "invoice", id: "INV-A" } });
+    await v.execute({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } });
     await v.execute({ type: "switch_role", subject: { kind: "system", id: "workspace" }, payload: { role: "manager" } });
     await v.execute({ type: "add_note", subject: { kind: "invoice", id: "INV-A" }, payload: { text: "Called AP" } });
-    await v.execute({ type: "approve_draft", subject: { kind: "draft", id: "E2E-DR-1" } });
+    await v.execute({ type: "approve_draft", subject: { kind: "draft", id: "DR-INV-A-1" } });
   });
   expect(await auditActions(page)).toEqual(expect.arrayContaining(["add_note", "approve_draft"]));
 
