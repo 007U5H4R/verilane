@@ -166,3 +166,15 @@
 **Context.** SR9 (TASK-10) needs in-memory storage when IndexedDB throws.
 **Decision.** `fake-indexeddb` moves to `dependencies` and is loaded with a dynamic import only on the fallback path. Users then see a banner saying their changes will not persist.
 **Rejected.** A hand-written in-memory store (would duplicate Dexie's semantics).
+
+## EXE6 · Eval label schema and draft-case semantics (TASK-11) — accepted
+**Context.** The plan fixed one `invoice_id` per thread label and did not define draft-case semantics.
+**Decision.**
+- Labels gain two fields. `invoice_ids[]` lists every invoice the thread concerns: candidates for ambiguous matches, both invoices for duplicates, and empty for `customer_only` or `unresolved`. `note?` records why a label was chosen.
+- For a duplicate claim, `invoice_id` is the invoice the customer asks to cancel. If they don't name one, it is the later re-issue.
+- `ambiguous` is true for every ambiguous outcome. It is also true for `customer_only` when the customer has several open invoices.
+- `commitment_date` also holds the claimed payment date for a confirmation or a `payment_already_completed` dispute.
+- A DraftCase has `{invoice_id, role, edit?: append | replace_fact, tags, expected: {approvable, must_fail[1–9], requires_manager?}}`. Check numbers follow Architecture.md §7.
+- Known gap: the seed has no clean open invoice over ₹5L, so no case covers an analyst blocked only by the manager threshold.
+- TASK-12 decides whether the duplicate scorer accepts any id in `invoice_ids`.
+**Rejected.** A single `invoice_id` only (cannot score duplicate pairs or ambiguous candidates).

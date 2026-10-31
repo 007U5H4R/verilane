@@ -10,6 +10,8 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-7.9 | done, merged | e02ca22 → cb25855 | TC-010 e2e green; TASK-7 Done |
 | TASK-8 | done, merged | cabb714..8e6baa2 → dfc22d5 | TC-011–014 green; Done |
 | TASK-10 | done, merged | 53a976a → 79809ee | TC-018 e2e green; Done |
+| TASK-9 | dispatched (wave 2) | worktree, port 3101 | base 0cf1b34 |
+| TASK-11 | done, merged | 2dbe8e7 → 96e14ca | TC-019 11/11; TC-020 git-order check at Stage 8; EXE6 |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).

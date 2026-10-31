@@ -1,9 +1,10 @@
 ---
 id: TASK-9
 title: 'Queue: search, filters, sort, paging, four states'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 02:50'
 labels:
   - P0
   - 'sp:3'
