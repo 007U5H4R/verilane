@@ -1,10 +1,10 @@
 ---
 id: TASK-18
 title: 'Home: KPIs, task feed, two charts'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 09:01'
 labels:
   - P1
   - 'sp:3'

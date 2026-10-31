@@ -23,6 +23,10 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
 | TASK-29 | done, merged | 6856260 | R14–R17 fixed; EXE13; vitest 561/561, e2e 71/1-skip (`--workers=1`) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
+| TASK-16 | in progress | base 041ff7a, port 3108 | approve/confirm/send + Drafts |
+| TASK-18 | review PASS, full e2e 99/1-skip/0-fail (`--workers=1`) on 4d396a5 — ready to merge | 4d396a5 (base 041ff7a), port 3109 | Home KPIs/feed/charts; 2 fix rounds; at merge: EXE for T18-2 (Queue ageing excludes closed) + T18-10 (KPI = sidebar dispute count) |
+| TASK-23 | in progress | base 041ff7a, port 3110 | live Claude provider |
+| TASK-24 | in progress | base 041ff7a, port 3111 | PWA manifest/SW/offline/install |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
 Next wave after merge: TASK-9 (after 8), TASK-11 (after 8; commit before TASK-12), TASK-27 (after 9, user gate D6).
@@ -61,3 +65,4 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - R19 → resolved at TASK-17 merge (36f8269): the dispute link was added as a sibling of the row's `<a>`, and the merge conflict resolution preserved TASK-13's G4/G5/G7 badge logic unchanged alongside it.
 - R18 (G4/G5 evidence id hidden in Communication) → TASK-15 merged (3388573); still open, now actionable against the merged investigation components.
 - R20 (held-out coverage assertion), R21 (axe + 390px on /payments and Communication) → parked for the Stage 6 close-out fix wave.
+- T18-N2 follow-up: `tests/e2e/home.spec.ts` still has 7 seed-guard `test.skip` calls (lines 66–182) that would silently pass on an empty/changed seed → close-out wave (convert to hard asserts).
