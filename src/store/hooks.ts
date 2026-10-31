@@ -9,7 +9,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import type { AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, Invoice, Payment, Priority } from "@/domain/schema";
+import type { Customer, EmailMessage, Extraction, Invoice, Payment, Priority } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
@@ -143,4 +143,36 @@ export function useInvoiceActivity(invoiceId: string): AuditEventRow[] | undefin
         .toArray(),
     [db, invoiceId],
   );
+}
+
+export interface InvoiceMessage {
+  email: EmailMessage;
+  extraction: Extraction;
+}
+
+/**
+ * Messages whose extraction cites this invoice's `invoice_number`, oldest
+ * first (TASK-12.6). An invoice with no number can't be cited, so it has no
+ * communication (FS9 empty state).
+ */
+export function useInvoiceCommunication(invoiceId: string): InvoiceMessage[] | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const invoice = await db.invoices
+      .toCollection()
+      .filter((i) => i.invoice_id === invoiceId)
+      .first();
+    const number = invoice?.invoice_number;
+    if (!number) return [];
+    const extractions = await db.extractions
+      .filter((x) => x.invoice_refs.includes(number))
+      .toArray();
+    const emails = await db.emails.bulkGet(extractions.map((x) => x.message_id));
+    const out: InvoiceMessage[] = [];
+    extractions.forEach((extraction, i) => {
+      const email = emails[i];
+      if (email) out.push({ email, extraction });
+    });
+    return out.sort((a, b) => a.email.sent_at.localeCompare(b.email.sent_at));
+  }, [db, invoiceId]);
 }

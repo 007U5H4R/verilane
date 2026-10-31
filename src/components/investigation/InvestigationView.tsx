@@ -8,6 +8,7 @@ import { outstandingOf } from "@/domain/priority";
 import type { Evidence } from "@/domain/schema";
 import { useCustomers, useInvoice, usePayments } from "@/store/hooks";
 import { ActivityLog } from "./ActivityLog";
+import { CommunicationTable } from "./CommunicationTable";
 import { DocumentCard, formatDate } from "./DocumentCard";
 import { EvidenceTable } from "./EvidenceTable";
 import { PriorityReason } from "./PriorityReason";
@@ -109,6 +110,7 @@ export function InvestigationView() {
               evidence: ev,
             }))}
           />
+          <CommunicationTable invoiceId={invoice.invoice_id} />
         </DocumentCard>
         <aside className="min-w-0">
           <ActivityLog invoiceId={invoice.invoice_id} />

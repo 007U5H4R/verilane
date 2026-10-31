@@ -9,6 +9,7 @@ import type {
   Customer,
   DataIssue,
   Evidence,
+  Extraction,
   Invoice,
   Payment,
   Priority,
@@ -22,13 +23,11 @@ export type EmailRow = EmailMessage;
  * the domain `DataIssue`'s own `issue_id` field. */
 export type DataIssueRow = DataIssue & { id?: number };
 
+/** `extractions` holds one provider output per message (TASK-12), keyed by `message_id`. */
+export type EmailExtractionRow = Extraction;
+
 // --- Tables with no domain type yet (TASK-8+) — minimal row shapes, kept
 // loose until their owning ticket defines the real type. ------------------
-
-export interface EmailExtractionRow {
-  message_id: string;
-  [key: string]: unknown;
-}
 
 export interface EmailMatchRow {
   message_id: string;

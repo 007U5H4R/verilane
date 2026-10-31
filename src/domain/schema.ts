@@ -137,3 +137,87 @@ export const EvidenceSchema = z.object({
   validation_status: EvidenceValidationStatusSchema,
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
+
+// --- Extraction (Data-Model.md §3, TASK-12) -------------------------------
+
+export const EmailClassSchema = z.enum([
+  "commitment",
+  "confirmation",
+  "dispute",
+  "duplicate",
+  "delay",
+  "enquiry",
+  "unknown",
+]);
+export type EmailClass = z.infer<typeof EmailClassSchema>;
+
+export const DisputeTypeSchema = z.enum([
+  "duplicate_invoice",
+  "incorrect_amount",
+  "incorrect_billing_period",
+  "missing_po",
+  "not_received",
+  "payment_already_completed",
+  "unknown",
+]);
+export type DisputeType = z.infer<typeof DisputeTypeSchema>;
+
+/** Phrase families the classifier detects (phrases.ts). */
+export const SignalFamilySchema = z.enum([
+  "dispute",
+  "duplicate",
+  "confirmation",
+  "commitment",
+  "delay",
+  "enquiry",
+  "missing_info",
+]);
+export type SignalFamily = z.infer<typeof SignalFamilySchema>;
+
+export const EXTRACTION_SCHEMA_VERSION = "extraction.v1";
+
+export const PaymentClaimSchema = z.object({
+  paid_on: isoDate.nullable(),
+  amount_paise: z.number().int().nonnegative().nullable(),
+});
+export type PaymentClaim = z.infer<typeof PaymentClaimSchema>;
+
+export const ExtractionSchema = z
+  .object({
+    message_id: z.string().min(1),
+    thread_id: z.string().min(1),
+    mode: z.enum(["simulated", "live"]),
+    provider: z.string().min(1),
+    model: z.string().optional(),
+    schemaVersion: z.literal(EXTRACTION_SCHEMA_VERSION),
+    email_class: EmailClassSchema,
+    signals: z.array(SignalFamilySchema),
+    invoice_refs: z.array(z.string().regex(/^INV-\d+$/, "expected INV-<digits>")),
+    amounts: z.array(z.number().int().nonnegative()),
+    dates: z.array(isoDate),
+    /** Promised date (commitment), or the claimed payment date (confirmation / already-paid dispute). */
+    commitment_date: isoDate.nullable(),
+    payment_claim: PaymentClaimSchema.nullable(),
+    dispute_type: DisputeTypeSchema.optional(),
+    missing_info: z.array(z.string()),
+    status: z.enum(["valid", "rejected"]),
+    rejection_reason: z.string().optional(),
+  })
+  .superRefine((x, ctx) => {
+    const needsType = x.email_class === "dispute" || x.email_class === "duplicate";
+    if (needsType !== (x.dispute_type !== undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dispute_type"],
+        message: "dispute_type is required for dispute/duplicate and forbidden otherwise",
+      });
+    }
+    if ((x.status === "rejected") !== (x.rejection_reason !== undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rejection_reason"],
+        message: "rejection_reason is required iff status is rejected",
+      });
+    }
+  });
+export type Extraction = z.infer<typeof ExtractionSchema>;

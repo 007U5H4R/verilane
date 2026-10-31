@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildInvoiceEvidence, provenanceOf } from "./evidence";
-import { EvidenceSchema, type Invoice } from "./schema";
+import { buildEmailEvidence, buildInvoiceEvidence, emailFactLabel, provenanceOf } from "./evidence";
+import { EvidenceSchema, type Extraction, type Invoice } from "./schema";
 
 function baseInvoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -69,5 +69,86 @@ describe("provenanceOf", () => {
   it("formats an invoice fact as `invoices.csv · Row N · field`", () => {
     const due = buildInvoiceEvidence(baseInvoice(), 12).find((e) => e.source_field === "due_date");
     expect(due && provenanceOf(due)).toBe("invoices.csv · Row 12 · due_date");
+  });
+
+  it("formats an email fact as `emails.json · <thread> · <token path>` (TC-025)", () => {
+    const amount = buildEmailEvidence(extraction()).find((e) => e.source_field === "amounts[0]");
+    expect(amount && provenanceOf(amount)).toBe("emails.json · E-007 · amounts[0]");
+  });
+});
+
+function extraction(overrides: Partial<Extraction> = {}): Extraction {
+  return {
+    message_id: "E-007-1",
+    thread_id: "E-007",
+    mode: "simulated",
+    provider: "simulated",
+    schemaVersion: "extraction.v1",
+    email_class: "confirmation",
+    signals: ["confirmation"],
+    invoice_refs: ["INV-1042"],
+    amounts: [30_000_000],
+    dates: ["2026-10-27"],
+    commitment_date: "2026-10-27",
+    payment_claim: { paid_on: "2026-10-27", amount_paise: 30_000_000 },
+    missing_info: [],
+    status: "valid",
+    ...overrides,
+  };
+}
+
+describe("buildEmailEvidence (TASK-12.5)", () => {
+  it("returns one schema-valid, verified item per extracted fact", () => {
+    const ev = buildEmailEvidence(extraction());
+    expect(ev.map((e) => e.source_field)).toEqual([
+      "email_class",
+      "invoice_refs[0]",
+      "amounts[0]",
+      "commitment_date",
+    ]);
+    for (const e of ev) {
+      expect(EvidenceSchema.safeParse(e).success).toBe(true);
+      expect(e).toMatchObject({
+        source_type: "email",
+        source_record_id: "E-007-1",
+        source_row_or_email_id: "E-007",
+        validation_status: "verified",
+      });
+    }
+    expect(ev.find((e) => e.source_field === "amounts[0]")?.original_value).toBe(30_000_000);
+  });
+
+  it("includes dispute type and missing-info items when present", () => {
+    const fields = buildEmailEvidence(
+      extraction({
+        email_class: "dispute",
+        dispute_type: "missing_po",
+        commitment_date: null,
+        missing_info: ["GSTIN"],
+      }),
+    ).map((e) => e.source_field);
+    expect(fields).toContain("dispute_type");
+    expect(fields).toContain("missing_info[0]");
+    expect(fields).not.toContain("commitment_date");
+  });
+
+  it("a rejected extraction yields one unsupported item and no facts", () => {
+    const ev = buildEmailEvidence(
+      extraction({
+        status: "rejected",
+        rejection_reason: "schema validation failed",
+        email_class: "unknown",
+        invoice_refs: [],
+        amounts: [],
+      }),
+    );
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ source_field: "status", validation_status: "unsupported" });
+  });
+
+  it("labels the date by what it means", () => {
+    expect(emailFactLabel("commitment_date", { email_class: "commitment" })).toBe("Promised date");
+    expect(emailFactLabel("commitment_date", { email_class: "confirmation" })).toBe("Claimed paid on");
+    expect(emailFactLabel("amounts[2]", { email_class: "confirmation" })).toBe("Amount mentioned");
   });
 });
