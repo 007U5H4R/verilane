@@ -221,3 +221,50 @@ export const ExtractionSchema = z
     }
   });
 export type Extraction = z.infer<typeof ExtractionSchema>;
+
+// --- Match / ReviewItem (Data-Model.md §3–4, TASK-13) ----------------------
+
+export const MatchOutcomeSchema = z.enum(["matched", "ambiguous", "customer_only", "unresolved"]);
+export type MatchOutcome = z.infer<typeof MatchOutcomeSchema>;
+
+export const MatchSchema = z.object({
+  message_id: z.string().min(1),
+  outcome: MatchOutcomeSchema,
+  customer_id: z.string().optional(),
+  /** Set only when `outcome` is `matched`. */
+  invoice_id: z.string().optional(),
+  /** invoice_ids a reviewer should look at: cited, foreign, or transposition suspects. */
+  candidates: z.array(z.string()),
+  reason: z.string(),
+});
+export type Match = z.infer<typeof MatchSchema>;
+
+export const ReviewItemKindSchema = z.enum([
+  "draft",
+  "uncertain_match",
+  "dispute",
+  "missing_info",
+  "reconciliation",
+]);
+export type ReviewItemKind = z.infer<typeof ReviewItemKindSchema>;
+
+export const ReviewItemSchema = z.object({
+  review_id: z.string().min(1),
+  kind: ReviewItemKindSchema,
+  /** The email that raised it. */
+  message_id: z.string().min(1),
+  /** The invoice it concerns, when one is known. */
+  invoice_id: z.string().optional(),
+  /** Items the same email raised about other invoices (FS6 duplicate pair). */
+  linked_review_ids: z.array(z.string()),
+  recommendation: z.string(),
+  evidence_ids: z.array(z.string()),
+  validation_status: EvidenceValidationStatusSchema,
+  escalation_reason: z.string(),
+  requires_role: z.enum(["analyst", "manager"]),
+  status: z.enum(["open", "actioned", "dismissed"]),
+  /** Reconciliation only: the email's claim and the ledger's outstanding, side by side. */
+  email_amount_paise: z.number().int().nonnegative().optional(),
+  ledger_outstanding_paise: z.number().int().optional(),
+});
+export type ReviewItem = z.infer<typeof ReviewItemSchema>;
