@@ -141,3 +141,28 @@
 **Context.** D5 needs a small offline cache keyed to the seed version.
 **Decision.** A hand-written `public/sw.js` with cache name `verilane-<seedVersion>`, cache-first for static assets and seed, and old caches deleted on activate.
 **Rejected.** Workbox / next-pwa (extra dependency and config surface for a few routes).
+
+## EXE1 · Lint excludes the SR2 fixture; TC-002 not yet enforced — accepted
+**Context.** `src/domain/__lint__/` holds a deliberately non-compliant fixture that proves the SR2 domain-purity rule fires.
+**Decision.** `pnpm lint` ignores `src/domain/__lint__/**`; `pnpm lint:domain-fixture` lints it alone and must fail. The fixture re-exports `useState` instead of calling it, so `rules-of-hooks` cannot mask a missing SR2 rule. The SR2 override in `eslint.config.mjs` is pending the user's edit, and until it lands TC-002 is unenforced (the fixture script exits 0).
+**Rejected.** Calling the hook in the fixture (a different rule would fail and hide the missing SR2 rule).
+
+## EXE2 · Tooling additions for parallel execution — accepted
+**Context.** The commit hook needs a compact eslint formatter, and parallel worktree agents ran e2e at the same time.
+**Decision.** Add the devDep `eslint-formatter-compact`. Add an `E2E_PORT` env (default 3100) so each worktree serves on its own port. Drop `--no-lint` from `build:e2e`, because Next 16 removed the flag.
+**Rejected.** A shared e2e port with serialized runs (blocks parallel agents).
+
+## EXE3 · Investigation is a static shell read on the client — accepted
+**Context.** Invoice data lives only in per-visitor IndexedDB (S9, TP2), so the server cannot know invoice ids.
+**Decision.** `/invoices/[id]` renders a static shell: a Suspense boundary around a client component that reads the id with `useParams`. There is no `generateStaticParams`, so the build reports the route as PPR.
+**Rejected.** `generateStaticParams` over the seed (couples the build to the seed and breaks for user-ingested invoices).
+
+## EXE4 · Duplicate `invoice_number` on ingest is a conflict, not an overwrite — accepted
+**Context.** The full seed (TASK-8) includes a deliberate duplicate invoice number.
+**Decision.** Ingest flags a row whose `invoice_number` duplicates an existing one as a conflict and does not write it. That matches the unique `&invoice_number` index.
+**Rejected.** Last-write-wins (silently loses evidence).
+
+## EXE5 · `fake-indexeddb` is a runtime dependency on the fallback path — accepted
+**Context.** SR9 (TASK-10) needs in-memory storage when IndexedDB throws.
+**Decision.** `fake-indexeddb` moves to `dependencies` and is loaded with a dynamic import only on the fallback path. Users then see a banner saying their changes will not persist.
+**Rejected.** A hand-written in-memory store (would duplicate Dexie's semantics).
