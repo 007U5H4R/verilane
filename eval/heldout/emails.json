@@ -1,0 +1,242 @@
+[
+  {
+    "thread_id": "H-001",
+    "message_id": "H-001-1",
+    "from_address": "accounts@nilgirileafworks.test",
+    "sent_at": "2026-10-21T09:10:00Z",
+    "subject": "re: inv-2003",
+    "body": "Hi,\n\nNoted on inv-2003. The Rs. 86,400 will go out next Friday from our Coimbatore account.\n\nThanks,\nDeepa Raman\nNilgiri Leafworks"
+  },
+  {
+    "thread_id": "H-002",
+    "message_id": "H-002-1",
+    "from_address": "accounts@nilgirileafworks.test",
+    "sent_at": "2026-10-27T11:00:00Z",
+    "subject": "INV-2004 - not paid yet",
+    "body": "Hello,\n\nWe have not transferred anything for INV-2004 yet, so please don't mark it as received. The transfer is booked for 05/11/2026.\n\nDeepa Raman\nNilgiri Leafworks"
+  },
+  {
+    "thread_id": "H-003",
+    "message_id": "H-003-1",
+    "from_address": "ap@sahyadricartons.test",
+    "sent_at": "2026-10-19T06:30:00Z",
+    "subject": "Re: INV-2011",
+    "body": "Hi,\n\nWe might be able to release about 1.2 lakh against INV-2011 later this month, but honestly it depends on our own collections. Can't promise a date right now.\n\nSuresh Patil\nSahyadri Cartons"
+  },
+  {
+    "thread_id": "H-004",
+    "message_id": "H-004-1",
+    "from_address": "finance@sahyadricartons.test",
+    "sent_at": "2026-10-28T08:45:00Z",
+    "subject": "Payment sent - INV-2012",
+    "body": "Dear team,\n\n2.75 lakh for INV-2012 went out on Monday. UTR SAHY2610260012 for your reference.\n\nFinance, Sahyadri Cartons"
+  },
+  {
+    "thread_id": "H-005",
+    "message_id": "H-005-1",
+    "from_address": "payables@vindhyawirecraft.test",
+    "sent_at": "2026-10-14T10:20:00Z",
+    "subject": "Rate on INV-2021",
+    "body": "Hello,\n\nINV-2021 charges ₹450 per coil, but our contract rate is ₹410. On 400 coils that comes to ₹1,64,000, not ₹1,80,000. Please send a corrected invoice.\n\nAmit Tiwari\nVindhya Wirecraft"
+  },
+  {
+    "thread_id": "H-006",
+    "message_id": "H-006-1",
+    "from_address": "payables@vindhyawirecraft.test",
+    "sent_at": "2026-10-16T07:05:00Z",
+    "subject": "INV-2022 - PO missing",
+    "body": "Hi,\n\nWe're not questioning the amount of ₹92,000 on INV-2022, but it carries no PO number, so our system rejects it. Please reissue with our PO quoted.\n\nAmit Tiwari\nVindhya Wirecraft"
+  },
+  {
+    "thread_id": "H-007",
+    "message_id": "H-007-1",
+    "from_address": "accounts@malabarcoastline.test",
+    "sent_at": "2026-10-09T05:50:00Z",
+    "subject": "INV-2031",
+    "body": "Dear team,\n\nThe shipment on INV-2031 hasn't arrived. Our stores have no GRN for it, so we can't pay until it is received.\n\nJoseph Mathew\nMalabar Coastline Spices"
+  },
+  {
+    "thread_id": "H-008",
+    "message_id": "H-008-1",
+    "from_address": "accounts@malabarcoastline.test",
+    "sent_at": "2026-10-13T09:15:00Z",
+    "subject": "Wrong period on INV-2032",
+    "body": "Hello,\n\nINV-2032 is billed for July, but the work was done in August. Please correct the period and resend.\n\nJoseph Mathew\nMalabar Coastline Spices"
+  },
+  {
+    "thread_id": "H-009",
+    "message_id": "H-009-1",
+    "from_address": "finance@tharpeaksolar.test",
+    "sent_at": "2026-10-20T12:30:00Z",
+    "subject": "Re: Reminder INV-2041",
+    "body": "Hi,\n\nINV-2041 was settled in full, ₹2,40,000 by RTGS on 3rd October. This reminder is in error; please check your receipts.\n\nKaran Bhati\nTharpeak Solar"
+  },
+  {
+    "thread_id": "H-010",
+    "message_id": "H-010-1",
+    "from_address": "finance@tharpeaksolar.test",
+    "sent_at": "2026-10-22T08:00:00Z",
+    "subject": "INV-2042 on hold",
+    "body": "Hello,\n\nWe do not agree with INV-2042 and are holding it pending our internal audit. We will come back to you once the audit closes.\n\nKaran Bhati\nTharpeak Solar"
+  },
+  {
+    "thread_id": "H-011",
+    "message_id": "H-011-1",
+    "from_address": "ap@chilikapaperboard.test",
+    "sent_at": "2026-10-08T06:40:00Z",
+    "subject": "Second copy? INV-2052",
+    "body": "Hi,\n\nINV-2052 appears to be a second copy of INV-2051: same PO-7711, same September period, ₹58,250 each. Please cancel INV-2052.\n\nRitu Mohanty\nChilika Paperboard"
+  },
+  {
+    "thread_id": "H-012",
+    "message_id": "H-012-1",
+    "from_address": "accounts@kaverigearline.test",
+    "sent_at": "2026-10-12T10:00:00Z",
+    "subject": "same bill twice",
+    "body": "Hello,\n\ninv 2061 and inv 2062 are the same bill raised twice. We'll settle one once you withdraw the other.\n\nAccounts, Kaveri Gearline"
+  },
+  {
+    "thread_id": "H-013",
+    "message_id": "H-013-1",
+    "from_address": "payables@narmadaresinworks.test",
+    "sent_at": "2026-10-15T07:25:00Z",
+    "subject": "Billed twice for September",
+    "body": "Hi,\n\nYou've billed us 1.5 lakh each on INV-2072 and INV-2071 for the same September maintenance. One of these is a duplicate, so please withdraw INV-2072.\n\nNikhil Dubey\nNarmada Resinworks"
+  },
+  {
+    "thread_id": "H-014",
+    "message_id": "H-014-1",
+    "from_address": "ap@chilikapaperboard.test",
+    "sent_at": "2026-10-23T11:35:00Z",
+    "subject": "INV-2053 payment",
+    "body": "Dear team,\n\nWe'll clear INV-2053 for ₹1,05,000 on Friday, 13 November.\n\nRitu Mohanty\nChilika Paperboard"
+  },
+  {
+    "thread_id": "H-015",
+    "message_id": "H-015-1",
+    "from_address": "treasury@kaverigearline.test",
+    "sent_at": "2026-10-26T05:30:00Z",
+    "subject": "Re: INV-2063",
+    "body": "Hello,\n\nINV-2063 will be paid in two weeks.\n\nTreasury, Kaveri Gearline"
+  },
+  {
+    "thread_id": "H-016",
+    "message_id": "H-016-1",
+    "from_address": "payables@narmadaresinworks.test",
+    "sent_at": "2026-10-20T09:50:00Z",
+    "subject": "INV-2073",
+    "body": "Hi,\n\nINR 3,15,000 against INV-2073 will be paid by the end of this month.\n\nNikhil Dubey\nNarmada Resinworks"
+  },
+  {
+    "thread_id": "H-017",
+    "message_id": "H-017-1",
+    "from_address": "payables@vindhyawirecraft.test",
+    "sent_at": "2026-10-22T13:10:00Z",
+    "subject": "Part payment INV-2023",
+    "body": "Hello,\n\nWe've paid ₹40,000 today towards INV-2023 (₹1,00,000). The balance will follow next month.\n\nAmit Tiwari\nVindhya Wirecraft"
+  },
+  {
+    "thread_id": "H-018",
+    "message_id": "H-018-1",
+    "from_address": "accounts@malabarcoastline.test",
+    "sent_at": "2026-10-16T10:40:00Z",
+    "subject": "INV-2033 paid",
+    "body": "Dear team,\n\nWe transferred ₹70,000 for INV-2033 on 14/10.\n\nJoseph Mathew\nMalabar Coastline Spices"
+  },
+  {
+    "thread_id": "H-019",
+    "message_id": "H-019-1",
+    "from_address": "accounts@nilgirileafworks.test",
+    "sent_at": "2026-10-26T08:15:00Z",
+    "subject": "Payment for INV-2081",
+    "body": "Hi,\n\nPayment of ₹62,000 for INV-2081 was made last Thursday.\n\nDeepa Raman\nNilgiri Leafworks"
+  },
+  {
+    "thread_id": "H-020",
+    "message_id": "H-020-1",
+    "from_address": "accounts@kaverigearline.test",
+    "sent_at": "2026-10-29T06:20:00Z",
+    "subject": "INV-2056 schedule",
+    "body": "Hello,\n\nWe will pay INV-2056, ₹3,60,000, by 18/11/2026.\n\nAccounts, Kaveri Gearline"
+  },
+  {
+    "thread_id": "H-021",
+    "message_id": "H-021-1",
+    "from_address": "ap@chilikapaperboard.test",
+    "sent_at": "2026-10-12T09:00:00Z",
+    "subject": "Payment 09/10",
+    "body": "Hi,\n\nWe paid ₹44,000 on 09/10. It was for one of the two invoices INV-2054 / INV-2055; our clerk isn't sure which.\n\nRitu Mohanty\nChilika Paperboard"
+  },
+  {
+    "thread_id": "H-022",
+    "message_id": "H-022-1",
+    "from_address": "ap@sahyadricartons.test",
+    "sent_at": "2026-10-24T07:30:00Z",
+    "subject": "Clearing our dues",
+    "body": "Dear team,\n\nWe'll clear everything outstanding with you by 20/11/2026.\n\nSuresh Patil\nSahyadri Cartons"
+  },
+  {
+    "thread_id": "H-023",
+    "message_id": "H-023-1",
+    "from_address": "finance@tharpeaksolar.test",
+    "sent_at": "2026-10-27T10:10:00Z",
+    "subject": "Vendor payments paused",
+    "body": "Hello,\n\nOur group has frozen all vendor payments until the new fiscal controls are in place. We'll write again once they are lifted.\n\nKaran Bhati\nTharpeak Solar"
+  },
+  {
+    "thread_id": "H-024",
+    "message_id": "H-024-1",
+    "from_address": "payables@narmadaresinworks.test",
+    "sent_at": "2026-10-28T12:00:00Z",
+    "subject": "Statement please",
+    "body": "Hi,\n\nCan you send us a statement of account for all open bills?\n\nNikhil Dubey\nNarmada Resinworks"
+  },
+  {
+    "thread_id": "H-025",
+    "message_id": "H-025-1",
+    "from_address": "r.kapoor.home@mailbox.test",
+    "sent_at": "2026-10-27T15:40:00Z",
+    "subject": "INV-2063",
+    "body": "Hi,\n\nThis is Rahul from Kaveri Gearline. INV-2063 will be paid tomorrow.\n\nRahul"
+  },
+  {
+    "thread_id": "H-026",
+    "message_id": "H-026-1",
+    "from_address": "billing@orbitfreight.test",
+    "sent_at": "2026-10-21T04:55:00Z",
+    "subject": "Status of INV-2099",
+    "body": "Hello,\n\nPlease share the status of INV-2099.\n\nBilling, Orbit Freight"
+  },
+  {
+    "thread_id": "H-027",
+    "message_id": "H-027-1",
+    "from_address": "noreply@paygate-alerts.test",
+    "sent_at": "2026-10-25T00:30:00Z",
+    "subject": "Your payment link has expired",
+    "body": "Your payment link has expired. Generate a new one from your dashboard.\n\nThis is an automated message."
+  },
+  {
+    "thread_id": "H-028",
+    "message_id": "H-028-1",
+    "from_address": "accounts@malabarcoastline.test",
+    "sent_at": "2026-10-26T03:00:00Z",
+    "subject": "Out of office: Re: INV reminder",
+    "body": "I am out of office until 4 November with limited access to email. For urgent matters please call the office."
+  },
+  {
+    "thread_id": "H-029",
+    "message_id": "H-029-1",
+    "from_address": "payables@vindhyawirecraft.test",
+    "sent_at": "2026-10-27T06:45:00Z",
+    "subject": "INV-2024 - GST?",
+    "body": "Hi,\n\nIs the INR 45,500 on INV-2024 inclusive of GST? We need to know before we book it.\n\nAmit Tiwari\nVindhya Wirecraft"
+  },
+  {
+    "thread_id": "H-030",
+    "message_id": "H-030-1",
+    "from_address": "treasury@kaverigearline.test",
+    "sent_at": "2026-10-28T09:20:00Z",
+    "subject": "Re: INV-2064",
+    "body": "Hello,\n\nSorry, we can't make the 30/10 date we gave for INV-2064. No new date yet; we will update you.\n\nTreasury, Kaveri Gearline"
+  }
+]

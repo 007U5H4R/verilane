@@ -1,0 +1,9 @@
+customer_id,name,contact_emails,payment_terms_days,segment
+HC-01,Nilgiri Leafworks Pvt Ltd,accounts@nilgirileafworks.test,30,SMB
+HC-02,Sahyadri Cartons Pvt Ltd,ap@sahyadricartons.test;finance@sahyadricartons.test,45,Mid-Market
+HC-03,Vindhya Wirecraft Ltd,payables@vindhyawirecraft.test,30,Mid-Market
+HC-04,Malabar Coastline Spices,accounts@malabarcoastline.test,30,SMB
+HC-05,Tharpeak Solar LLP,finance@tharpeaksolar.test,60,Enterprise
+HC-06,Chilika Paperboard Ltd,ap@chilikapaperboard.test,30,SMB
+HC-07,Kaveri Gearline Pvt Ltd,accounts@kaverigearline.test;treasury@kaverigearline.test,45,Mid-Market
+HC-08,Narmada Resinworks Ltd,payables@narmadaresinworks.test,30,SMB

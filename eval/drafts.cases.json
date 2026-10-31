@@ -1,0 +1,472 @@
+[
+  {
+    "case_id": "D-001",
+    "description": "Clean overdue reminder for INV-1012 (Aravalli, ₹3,40,000, under ₹5L)",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "tags": [
+      "clean"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-002",
+    "description": "Clean reminder for INV-1013 (Bharat Polymers, ₹40,000)",
+    "invoice_id": "INV-B",
+    "role": "analyst",
+    "tags": [
+      "clean"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-003",
+    "description": "Clean reminder for INV-1018 (Deccan, ₹15,000, no thread)",
+    "invoice_id": "INV-J",
+    "role": "analyst",
+    "tags": [
+      "clean"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-004",
+    "description": "Reminder for INV-1040: a delay email is not a blocking condition",
+    "invoice_id": "INV-040",
+    "role": "analyst",
+    "tags": [
+      "clean",
+      "delay-thread"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-005",
+    "description": "Reminder for INV-1041: an enquiry is not a blocking condition",
+    "invoice_id": "INV-041",
+    "role": "analyst",
+    "tags": [
+      "clean",
+      "enquiry-thread"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-006",
+    "description": "INV-1015 has an open incorrect_amount dispute (E-011) and is over ₹5L",
+    "invoice_id": "INV-C",
+    "role": "analyst",
+    "tags": [
+      "check-6",
+      "over-5l"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        6
+      ],
+      "requires_manager": true
+    }
+  },
+  {
+    "case_id": "D-007",
+    "description": "INV-1036 has an open billing-period dispute (E-012)",
+    "invoice_id": "INV-036",
+    "role": "analyst",
+    "tags": [
+      "check-6"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        6
+      ]
+    }
+  },
+  {
+    "case_id": "D-008",
+    "description": "INV-1016 has a payment-confirmation claim (E-006)",
+    "invoice_id": "INV-D",
+    "role": "analyst",
+    "tags": [
+      "check-7"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        7
+      ]
+    }
+  },
+  {
+    "case_id": "D-009",
+    "description": "INV-1033 has a payment-confirmation claim (E-008)",
+    "invoice_id": "INV-033",
+    "role": "analyst",
+    "tags": [
+      "check-7"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        7
+      ]
+    }
+  },
+  {
+    "case_id": "D-010",
+    "description": "INV-1017 is paid",
+    "invoice_id": "INV-I",
+    "role": "analyst",
+    "tags": [
+      "check-8"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        8
+      ]
+    }
+  },
+  {
+    "case_id": "D-011",
+    "description": "INV-1050 is written off",
+    "invoice_id": "INV-050",
+    "role": "analyst",
+    "tags": [
+      "check-8"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        8
+      ]
+    }
+  },
+  {
+    "case_id": "D-012",
+    "description": "INV-1014 has no due date",
+    "invoice_id": "INV-E",
+    "role": "analyst",
+    "tags": [
+      "check-5"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        5
+      ]
+    }
+  },
+  {
+    "case_id": "D-013",
+    "description": "INV-1045 has no due date",
+    "invoice_id": "INV-045",
+    "role": "analyst",
+    "tags": [
+      "check-5"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        5
+      ]
+    }
+  },
+  {
+    "case_id": "D-014",
+    "description": "INV-1020 is under an open duplicate-invoice dispute (E-016)",
+    "invoice_id": "INV-020",
+    "role": "analyst",
+    "tags": [
+      "check-6",
+      "duplicate"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        6
+      ]
+    }
+  },
+  {
+    "case_id": "D-015",
+    "description": "INV-1042 has a partial confirmation (E-007, ₹3,00,000 of ₹3,40,000): conflicting payment info",
+    "invoice_id": "INV-042",
+    "role": "analyst",
+    "tags": [
+      "check-7",
+      "conflicting-payment"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        7
+      ],
+      "requires_manager": true
+    }
+  },
+  {
+    "case_id": "D-016",
+    "description": "Edit changes the amount to ₹3,00,000",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "replace_fact",
+      "fact_kind": "amount",
+      "text": "₹3,00,000"
+    },
+    "tags": [
+      "fs12-amount"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-017",
+    "description": "Edit adds a payment-by date",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "Please pay by 5 November 2026."
+    },
+    "tags": [
+      "fs12-date"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-018",
+    "description": "Edit adds a new invoice ref",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "This also covers INV-1048."
+    },
+    "tags": [
+      "fs12-ref"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-019",
+    "description": "Edit swaps the customer name to another customer",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "replace_fact",
+      "fact_kind": "customer_name",
+      "text": "Bharat Polymers Ltd"
+    },
+    "tags": [
+      "fs12-customer"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-020",
+    "description": "Edit adds an amount in lakh form",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "The balance of 3.4 lakh is overdue."
+    },
+    "tags": [
+      "fs12-amount"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-021",
+    "description": "Edit changes days overdue",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "replace_fact",
+      "fact_kind": "days_overdue",
+      "text": "15"
+    },
+    "tags": [
+      "fs12-number"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-022",
+    "description": "Edit adds a DD/MM date",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "We noted your promise for 20/10/2026."
+    },
+    "tags": [
+      "fs12-date"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-023",
+    "description": "Edit adds another customer's invoice ref",
+    "invoice_id": "INV-B",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "Ref: INV-1031"
+    },
+    "tags": [
+      "fs12-ref"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  },
+  {
+    "case_id": "D-024",
+    "description": "Benign edit with no factual token stays approvable",
+    "invoice_id": "INV-A",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "Thank you for your continued business."
+    },
+    "tags": [
+      "benign-edit"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-025",
+    "description": "Benign courtesy line stays approvable",
+    "invoice_id": "INV-J",
+    "role": "analyst",
+    "edit": {
+      "op": "append",
+      "text": "Please let us know if you have any questions."
+    },
+    "tags": [
+      "benign-edit"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-026",
+    "description": "Manager can approve a clean draft",
+    "invoice_id": "INV-A",
+    "role": "manager",
+    "tags": [
+      "role"
+    ],
+    "expected": {
+      "approvable": true,
+      "must_fail": [],
+      "requires_manager": false
+    }
+  },
+  {
+    "case_id": "D-027",
+    "description": "Manager role does not override an open dispute",
+    "invoice_id": "INV-C",
+    "role": "manager",
+    "tags": [
+      "role",
+      "check-6"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        6
+      ],
+      "requires_manager": true
+    }
+  },
+  {
+    "case_id": "D-028",
+    "description": "Manager role does not override an unfootnoted amount edit",
+    "invoice_id": "INV-B",
+    "role": "manager",
+    "edit": {
+      "op": "replace_fact",
+      "fact_kind": "amount",
+      "text": "₹4,500"
+    },
+    "tags": [
+      "role",
+      "fs12-amount"
+    ],
+    "expected": {
+      "approvable": false,
+      "must_fail": [
+        9
+      ]
+    }
+  }
+]
