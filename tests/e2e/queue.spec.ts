@@ -186,7 +186,7 @@ test("TC-016: loading, empty, filtered-empty and error states", async ({ page, b
   await expect(rowsOf(page)).toHaveCount(PAGE_SIZE);
 
   // Seed fetch 500 in a fresh context → error with Retry; Retry recovers once the fault clears.
-  const ctx = await browser.newContext({ colorScheme: testInfo.project.use.colorScheme });
+  const ctx = await browser.newContext({ colorScheme: testInfo.project.use.colorScheme, serviceWorkers: "block" });
   const fresh = await ctx.newPage();
   await fresh.route("**/seed/**", (route) => route.fulfill({ status: 500, body: "boom" }));
   await fresh.goto("/queue");
