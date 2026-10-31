@@ -11,7 +11,7 @@
     "lint:domain-fixture": "eslint src/domain/__lint__/forbidden.fixture.ts",
     "test": "vitest run --project unit",
     "eval": "vitest run --project eval",
-    "build:e2e": "NEXT_PUBLIC_E2E=1 next build --no-lint",
+    "build:e2e": "NEXT_PUBLIC_E2E=1 next build",
     "e2e": "PLAYWRIGHT_BROWSERS_PATH='/Volumes/E Drive/Dev/.scratch/pw-browsers' TMPDIR='/Volumes/E Drive/Dev/.scratch/tmp' playwright test",
     "check:secrets": "tsx scripts/check-bundle-secrets.ts",
     "seed": "tsx scripts/seed.ts",
