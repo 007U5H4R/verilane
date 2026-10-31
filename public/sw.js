@@ -10,6 +10,9 @@
  * - /seed/manifest.json: network-first (it is the version pointer).
  * - Navigations: network-first, falling back to the cached page, then "/".
  * - App shell statics, seed files, icons: cache-first within the current cache.
+ *
+ * Failures are logged as "[sw] …" and forwarded to open pages (PwaRegister
+ * re-logs them), so nothing fails silently (T24-6).
  */
 const CACHE_PREFIX = "verilane-";
 const SEED_MANIFEST_URL = "/seed/manifest.json";
@@ -23,34 +26,66 @@ const SHELL_URLS = [
 
 /** In-memory copy of the current cache name; lost when the SW is stopped. */
 let activeCacheName = null;
+/**
+ * Set when the server's manifest names a seed version that couldn't be cached
+ * (e.g. a seed file 404s). Until a later adoption succeeds, /seed/* goes to
+ * the network so the cache can never pair the new manifest with old seed files.
+ */
+let seedBypass = false;
+
+async function reportError(message, err) {
+  console.error(`[sw] ${message}`, err);
+  const detail = err instanceof Error ? err.message : String(err);
+  for (const client of await self.clients.matchAll({ includeUncontrolled: true })) {
+    client.postMessage({ type: "sw-error", message: `${message}: ${detail}` });
+  }
+}
 
 function seedUrls(manifest) {
   return [manifest.invoices, manifest.customers, manifest.payments, manifest.emails];
 }
 
 /**
- * Makes `manifest.seedVersion` the current cache: stores the manifest in it,
- * precaches the seed files (+ shell when asked), and evicts all other
- * `verilane-*` caches.
+ * Makes `manifest.seedVersion` the current cache: precaches the seed files
+ * (+ shell when asked), carries the shell and visited pages over from the
+ * previous cache (T24-1), stores the manifest, and evicts all other
+ * `verilane-*` caches. On failure the half-built cache is dropped and the
+ * previous one stays current.
  */
 async function adoptManifest(manifestResponse, { withShell = false } = {}) {
   const manifest = await manifestResponse.clone().json();
   const name = CACHE_PREFIX + manifest.seedVersion;
+  const existed = await caches.has(name);
   const cache = await caches.open(name);
-  await cache.put(SEED_MANIFEST_URL, manifestResponse.clone());
-  if (name !== activeCacheName || withShell) {
-    const missing = [];
-    for (const url of [...(withShell ? SHELL_URLS : []), ...seedUrls(manifest)]) {
-      if (!(await cache.match(url))) missing.push(url);
+  try {
+    if (name !== activeCacheName || withShell) {
+      const missing = [];
+      for (const url of [...(withShell ? SHELL_URLS : []), ...seedUrls(manifest)]) {
+        if (!(await cache.match(url))) missing.push(url);
+      }
+      await cache.addAll(missing);
     }
-    await cache.addAll(missing);
+    const others = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX) && key !== name);
+    // Everything but seed data is version-independent: keep it.
+    for (const key of others) {
+      const old = await caches.open(key);
+      for (const request of await old.keys()) {
+        if (new URL(request.url).pathname.startsWith("/seed/")) continue;
+        if (await cache.match(request)) continue;
+        const response = await old.match(request);
+        if (response) await cache.put(request, response);
+      }
+    }
+    // Last, so a cache holding the manifest is always complete.
+    await cache.put(SEED_MANIFEST_URL, manifestResponse.clone());
+    activeCacheName = name;
+    seedBypass = false;
+    await Promise.all(others.map((key) => caches.delete(key)));
+    return name;
+  } catch (err) {
+    if (!existed && name !== activeCacheName) await caches.delete(name);
+    throw err;
   }
-  activeCacheName = name;
-  const keys = await caches.keys();
-  await Promise.all(
-    keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== name).map((key) => caches.delete(key)),
-  );
-  return name;
 }
 
 async function fetchManifest() {
@@ -59,13 +94,15 @@ async function fetchManifest() {
   return res;
 }
 
-/** The current cache name; after an SW restart, the single surviving cache. */
+/** The current cache name; after an SW restart, the surviving complete cache. */
 async function currentCacheName() {
   if (activeCacheName) return activeCacheName;
-  const keys = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX));
-  if (keys.length > 0) {
-    activeCacheName = keys[0];
-    return activeCacheName;
+  for (const key of await caches.keys()) {
+    if (!key.startsWith(CACHE_PREFIX)) continue;
+    if (await (await caches.open(key)).match(SEED_MANIFEST_URL)) {
+      activeCacheName = key;
+      return activeCacheName;
+    }
   }
   return adoptManifest(await fetchManifest(), { withShell: true });
 }
@@ -84,8 +121,9 @@ self.addEventListener("activate", (event) => {
     (async () => {
       try {
         await adoptManifest(await fetchManifest());
-      } catch {
-        // Offline while activating: keep the cache install created.
+      } catch (err) {
+        // Offline (or a bad seed) while activating: keep the cache install created.
+        await reportError("activate: seed manifest not adopted", err);
       }
       await self.clients.claim();
     })(),
@@ -93,16 +131,31 @@ self.addEventListener("activate", (event) => {
 });
 
 async function manifestNetworkFirst(request) {
+  let response;
   try {
-    const response = await fetch(request);
-    if (response.ok) await adoptManifest(response.clone());
-    return response;
-  } catch {
+    response = await fetch(request);
+  } catch (err) {
+    // Network failure (offline): the cached manifest matches the cached seed.
+    console.warn("[sw] seed manifest unreachable, serving the cached copy", err);
     const cache = await caches.open(await currentCacheName());
     const cached = await cache.match(SEED_MANIFEST_URL);
     if (cached) return cached;
     throw new Error("offline and no cached seed manifest");
   }
+  if (!response.ok) {
+    await reportError("seed manifest fetch failed", new Error(`HTTP ${response.status}`));
+    return response;
+  }
+  try {
+    await adoptManifest(response.clone());
+  } catch (err) {
+    // Adoption failure while online (e.g. a seed file 404s): serve the real
+    // manifest and send seed files to the network, so the loader sees the
+    // real failure instead of silently getting the old cached seed.
+    seedBypass = true;
+    await reportError("new seed version not cached", err);
+  }
+  return response;
 }
 
 async function cacheFirst(request) {
@@ -144,6 +197,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(navigationNetworkFirst(request));
     return;
   }
+  if (seedBypass && url.pathname.startsWith("/seed/")) return;
   if (
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/seed/") ||
@@ -177,7 +231,16 @@ self.addEventListener("message", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(await currentCacheName());
-      await Promise.all(urls.map(async (u) => ((await cache.match(u)) ? undefined : cache.add(u).catch(() => undefined))));
+      await Promise.all(
+        urls.map(async (u) => {
+          if (await cache.match(u)) return;
+          try {
+            await cache.add(u);
+          } catch (err) {
+            await reportError(`could not cache ${u}`, err);
+          }
+        }),
+      );
     })(),
   );
 });

@@ -14,6 +14,13 @@ export function PwaRegister() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
+    // The SW forwards its failures here (T24-6), so they show in the page console.
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: unknown; message?: unknown } | null;
+      if (data?.type === "sw-error") console.error(`[sw] ${String(data.message)}`);
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    navigator.serviceWorker.startMessages();
     navigator.serviceWorker
       .register("/sw.js")
       .then(() => navigator.serviceWorker.ready)
@@ -27,6 +34,7 @@ export function PwaRegister() {
       .catch((err) => {
         console.error("Service worker registration failed", err);
       });
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, []);
 
   return null;

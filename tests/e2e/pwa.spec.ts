@@ -172,6 +172,40 @@ test("TC-077: a seed version bump evicts the old cache and serves the new seed",
   await expect.poll(() => storedSeedVersion(page)).toBe(bumpedVersion);
   expect(await cacheKeys(page)).toEqual([`verilane-${bumpedVersion}`]);
 
+  // T24-1: the bump carried the shell and visited pages over, so an offline
+  // reload still works.
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.getByRole("status").filter({ hasText: OFFLINE_BANNER })).toBeVisible();
+    await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
+test("TC-077b: a bump whose seed files fail is not adopted and never serves stale seed", async ({ page, context }) => {
+  await page.goto("/queue");
+  await swControlled(page);
+  await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
+  await expect.poll(() => storedSeedVersion(page)).toBe("2026-10-30.1");
+
+  const swErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error" && msg.text().includes("[sw]")) swErrors.push(msg.text());
+  });
+  await routeBumpedManifest(context, "2026-10-30.1-broken");
+  await context.route("**/seed/payments.csv", (route) => route.fulfill({ status: 404, body: "missing" }));
+
+  await page.reload();
+  await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
+  // T24-6: the failure reaches the page instead of vanishing inside the SW.
+  await expect.poll(() => swErrors.length).toBeGreaterThan(0);
+  // The half-built cache is dropped; the consistent old one stays.
+  await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
+  // The 404 surfaces; the SW never answers with the old cached payments.csv.
+  const status = await page.evaluate(() => fetch("/seed/payments.csv").then((r) => r.status));
+  expect(status).toBe(404);
 });
 
 test("TC-078: the install chip is dismissible, non-modal, and Settings keeps Install app", async ({ page }, info) => {
