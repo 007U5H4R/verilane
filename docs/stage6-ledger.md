@@ -31,7 +31,7 @@ IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK n
 | TASK-24 | done, merged | be197ae (head fb23656) | 3aa052a (base 041ff7a), port 3111 | PWA; EXE17; vitest 585/585, e2e 113/1-skip (`--workers=1`); Done; SW off globally in playwright.config (on only in pwa.spec); seed manifest network-first; at TASK-23 merge: disable live-LLM trigger offline via `useOnline()` |
 | TASK-21 | in progress | worktree, base d217d0c, port 3108 | eval harness + /settings/eval |
 | TASK-25 | in progress | worktree, base d217d0c, port 3109 | quality sweep; R21 folded in |
-| TASK-26 | in progress | worktree, base d217d0c, port 3112 | trust walk; SW-allowed journey (T24 follow-up) |
+| TASK-26 | done, merged | f1bc396 (head 09b9625, base 437b834) | trust-walk e2e; TC-086/087 PASS both themes; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
 Next wave after merge: TASK-9 (after 8), TASK-11 (after 8; commit before TASK-12), TASK-27 (after 9, user gate D6).
