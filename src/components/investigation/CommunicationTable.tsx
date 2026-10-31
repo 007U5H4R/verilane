@@ -73,22 +73,22 @@ function Message({ email, extraction }: InvoiceMessage) {
         </Badge>
         <span className="min-w-0 truncate text-[13px] font-medium text-text">{email.subject}</span>
       </header>
-      <p className="mt-1 text-xs text-text-muted">
+      <p className="mt-1 break-words text-xs text-text-muted">
         {email.from_address} · {formatDate(email.sent_at.slice(0, 10))} ·{" "}
         <span className="font-mono">{email.thread_id}</span>
       </p>
       {facts.length > 0 && (
-        <table className="mt-2 w-full border-collapse text-[13px]">
-          <tbody>
+        <table className="mt-2 w-full border-collapse text-[13px] max-md:block">
+          <tbody className="max-md:block">
             {facts.map((ev) => (
-              <tr key={ev.evidence_id} data-field={ev.source_field}>
+              <tr key={ev.evidence_id} data-field={ev.source_field} className="max-md:block max-md:py-1.5">
                 <th
                   scope="row"
-                  className="w-[38%] py-1.5 pr-4 text-left align-top font-medium text-text-muted"
+                  className="py-1.5 pr-4 text-left align-top font-medium text-text-muted max-md:block max-md:p-0 md:w-[38%]"
                 >
                   {emailFactLabel(ev.source_field, extraction)}
                 </th>
-                <td className="py-1.5 align-top text-text">
+                <td className="py-1.5 align-top text-text break-words max-md:block max-md:pb-0 max-md:pt-0.5">
                   {factValue(ev, extraction)}
                   <ProvenanceLine evidence={ev} />
                 </td>

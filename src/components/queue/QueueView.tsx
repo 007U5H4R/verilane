@@ -45,7 +45,7 @@ export function QueueView() {
   else body = <QueueBody db={db} params={params.toString()} />;
 
   return (
-    <section className="flex flex-col gap-4 p-7" aria-labelledby="queue-title">
+    <section className="flex flex-col gap-4 p-4 md:p-7" aria-labelledby="queue-title">
       <header className="flex flex-col gap-1">
         <h1 id="queue-title" className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
           Collections queue
