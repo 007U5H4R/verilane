@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { openDb, type VerilaneDb } from "@/store/db";
 import { ensureSeeded } from "@/store/loader";
 import { DbContext } from "@/store/hooks";
+import { E2EBridge } from "@/components/E2EBridge";
 
 interface DataProviderProps {
   children: ReactNode;
@@ -49,5 +50,10 @@ export function DataProvider({ children }: DataProviderProps) {
     console.error("[verilane] failed to open database", status.error);
     return <>{children}</>;
   }
-  return <DbContext.Provider value={status.db}>{children}</DbContext.Provider>;
+  return (
+    <DbContext.Provider value={status.db}>
+      {process.env.NEXT_PUBLIC_E2E === "1" && <E2EBridge db={status.db} />}
+      {children}
+    </DbContext.Provider>
+  );
 }
