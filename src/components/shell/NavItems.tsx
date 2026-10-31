@@ -14,13 +14,16 @@ export type NavItem = {
   href: string;
   icon: LucideIcon;
   count?: number;
+  /** Count comes from live data instead of `count` (TASK-9.5: Queue). */
+  liveCount?: boolean;
 };
 
 // TASK-6.5: Home / Queue / Disputes / Payments / Drafts / Audit log / Settings.
-// Counts are static placeholders until the Queue/Disputes/Drafts data land (TASK-7+).
+// Queue's count is live (TASK-9.5); Disputes/Drafts are still static
+// placeholders until their data land.
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/", icon: Home },
-  { label: "Queue", href: "/queue", icon: ListChecks, count: 48 },
+  { label: "Queue", href: "/queue", icon: ListChecks, liveCount: true },
   { label: "Disputes", href: "/disputes", icon: Flag, count: 3 },
   { label: "Payments", href: "/payments", icon: Wallet },
   { label: "Drafts", href: "/drafts", icon: Mail, count: 2 },
