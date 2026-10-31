@@ -84,3 +84,25 @@ describe("detectSignals — positive phrases", () => {
     expect(families("Following up on our call last week about the pending items.")).toEqual([]);
   });
 });
+
+// M-002 R16: the hedge "may" must not match the month "May".
+describe("detectSignals — the month May is not a hedge (R16)", () => {
+  it.each<[string, SignalFamily]>([
+    ["The May invoice INV-2041 is a duplicate of INV-2038.", "duplicate"],
+    ["The amount is incorrect on the May invoice INV-2041.", "dispute"],
+    ["We have paid INV-2041 in full on 3 May.", "confirmation"],
+    ["Payment will be released on 15 May.", "commitment"],
+  ])("%s → %s", (text, family) => {
+    expect(families(text)).toContain(family);
+  });
+
+  it.each<[string, SignalFamily]>([
+    ["It may be a duplicate of INV-2038.", "duplicate"],
+    ["We may dispute INV-2041.", "dispute"],
+    ["We may have paid INV-2041 already.", "confirmation"],
+    ["We may release the payment on 15 May.", "commitment"],
+    ["May have been paid by our Delhi office.", "confirmation"],
+  ])("a genuine hedge still blocks: %s", (text, family) => {
+    expect(families(text)).not.toContain(family);
+  });
+});

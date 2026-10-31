@@ -42,6 +42,11 @@ export interface SignalHit {
 const PAY_PAST = "paid|settled|released|remitted|transferred|cleared";
 const PAY_FUTURE = "pay|release|clear|transfer|remit|settle|process|make (?:the )?payment";
 
+// "may" hedges only as a modal before a verb ("we may have paid", "may be
+// released"), so the month ("on 3 May", "the May invoice") never does (M-002 R16).
+const MAY_HEDGE =
+  /\bmay\s+(?:not\s+|well\s+|also\s+)?(?:have|has|be|been|pay|release|clear|transfer|remit|settle|process|make|dispute|need|take|get)\b/i;
+
 export const PHRASE_FAMILIES: Record<SignalFamily, PhraseFamily> = {
   duplicate: {
     patterns: [
@@ -50,7 +55,7 @@ export const PHRASE_FAMILIES: Record<SignalFamily, PhraseFamily> = {
       { re: /\b(?:repeats|same\s+as)\s+INV\b/i },
     ],
     negations: [/\bnot\s+(?:a\s+)?duplicate\b/i, /\bno\s+duplicate\b/i],
-    hedges: [/\b(?:not\s+sure|unsure|perhaps|possibly|might|may)\b/i],
+    hedges: [/\b(?:not\s+sure|unsure|perhaps|possibly|might)\b/i, MAY_HEDGE],
   },
   dispute: {
     patterns: [
@@ -98,7 +103,7 @@ export const PHRASE_FAMILIES: Record<SignalFamily, PhraseFamily> = {
       { re: /\bdisput(?:e|ed|ing)\b/i, dispute_type: "unknown" },
     ],
     negations: [/\bno\s+(?:dispute|issue|objection)s?\b/i, /\bnot\s+disput/i],
-    hedges: [/\b(?:not\s+sure|unsure|perhaps|possibly|might|may)\b/i],
+    hedges: [/\b(?:not\s+sure|unsure|perhaps|possibly|might)\b/i, MAY_HEDGE],
   },
   confirmation: {
     patterns: [
@@ -110,7 +115,8 @@ export const PHRASE_FAMILIES: Record<SignalFamily, PhraseFamily> = {
     ],
     negations: [/\bpaid\s+(?:neither|none|nothing)\b/i, /\bnot\s+(?:yet\s+)?(?:been\s+)?paid\b/i],
     hedges: [
-      /\b(?:might|may|probably|possibly|perhaps|should\s+have|i\s+think|i\s+believe|hopefully)\b/i,
+      /\b(?:might|probably|possibly|perhaps|should\s+have|i\s+think|i\s+believe|hopefully)\b/i,
+      MAY_HEDGE,
     ],
   },
   commitment: {
@@ -127,7 +133,8 @@ export const PHRASE_FAMILIES: Record<SignalFamily, PhraseFamily> = {
     ],
     negations: [],
     hedges: [
-      /\b(?:might|may|maybe|could|would|possibly|perhaps|hope|hoping|try|trying|if|subject\s+to|tentative(?:ly)?)\b/i,
+      /\b(?:might|maybe|could|would|possibly|perhaps|hope|hoping|try|trying|if|subject\s+to|tentative(?:ly)?)\b/i,
+      MAY_HEDGE,
     ],
   },
   delay: {
@@ -168,7 +175,8 @@ const NEGATOR = /\b(?:not|never|no|neither|nor|cannot|without)\b|n't\b/i;
 // Sentence/clause boundaries; "Rs." and decimals ("3.4") are not boundaries.
 const BOUNDARY = /(?<!\bRs)[.;!?](?=\s|$)|\n/gi;
 
-function clauseAt(text: string, index: number): [number, number] {
+/** The [start, end) of the sentence/clause around `index`. */
+export function clauseAt(text: string, index: number): [number, number] {
   let start = 0;
   for (const m of text.matchAll(BOUNDARY)) {
     const at = m.index ?? 0;

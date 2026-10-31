@@ -58,6 +58,57 @@ test("TC-034: working state — ledger, reconciliation and unmatched items link 
   await expect(page.getByTestId("communication-message").and(page.locator('[data-thread="E-007"]'))).toBeVisible();
 });
 
+// M-002 R14: "Open email" must reach the email even with no invoice to link
+// to (customer_only / unresolved with no candidates, transposition included).
+// No seed email happens to land in that state (every sender either is
+// unknown with no citable ref, or a known customer with open invoices or a
+// resolvable ref) — this test seeds an `unresolved`, zero-candidate item
+// directly, the same way the "empty state" test clears tables directly.
+test("TC-034 / R14: an unmatched item with no invoice link still opens its email inline", async ({ page }) => {
+  await openPayments(page);
+  await page.evaluate(async () => {
+    const db = window.__verilane!.db;
+    const email = {
+      thread_id: "E-900",
+      message_id: "E-900-1",
+      from_address: "unknown@nowhere.test",
+      subject: "Where is my refund?",
+      body: "Hi, I think you owe us a refund. Please check.",
+      sent_at: "2026-10-01T00:00:00Z",
+    };
+    await db.emails.put(email);
+    await db.matches.put({
+      message_id: email.message_id,
+      outcome: "unresolved",
+      candidates: [],
+      reason: "Sender unknown@nowhere.test is not a known customer contact",
+    });
+    await db.reviewItems.put({
+      review_id: "RV-E-900-1-match",
+      message_id: email.message_id,
+      kind: "uncertain_match",
+      status: "open",
+      linked_review_ids: [],
+      evidence_ids: [],
+      recommendation: "Identify the sender before linking this email to any invoice",
+      validation_status: "missing",
+      escalation_reason: "Sender unknown@nowhere.test is not a known customer contact",
+      requires_role: "analyst",
+    });
+  });
+
+  const item = page
+    .getByRole("list", { name: "Unmatched emails" })
+    .getByTestId("review-item")
+    .and(page.locator('[data-message="E-900-1"]'));
+  await expect(item).toHaveCount(1);
+  await expect(item.getByRole("link")).toHaveCount(0); // no invoice link exists for this one
+  await item.getByText("Open email E-900-1").click();
+  const message = item.getByTestId("communication-message");
+  await expect(message).toBeVisible();
+  await expect(message).toHaveAttribute("data-thread", "E-900");
+});
+
 test("TC-034: loading, empty and error states", async ({ page }, testInfo) => {
   const shot = (name: string) =>
     page.screenshot({ path: `${REPORTS_DIR}/TASK-13-payments-${name}-${testInfo.project.name}.png`, fullPage: true });
