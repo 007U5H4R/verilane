@@ -1,0 +1,537 @@
+[
+  {
+    "thread_id": "H-001",
+    "customer_id": "HC-01",
+    "invoice_id": "HO-2003",
+    "invoice_ids": [
+      "HO-2003"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      8640000
+    ],
+    "invoice_refs": [
+      "INV-2003"
+    ],
+    "commitment_date": "2026-10-30",
+    "ambiguous": false,
+    "note": "lower-case ref; 'next Friday' sent Wed 2026-10-21 -> Friday of the following week"
+  },
+  {
+    "thread_id": "H-002",
+    "customer_id": "HC-01",
+    "invoice_id": "HO-2004",
+    "invoice_ids": [
+      "HO-2004"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2004"
+    ],
+    "commitment_date": "2026-11-05",
+    "ambiguous": false,
+    "note": "negation: 'have not transferred' is not a confirmation; 05/11 is DD/MM"
+  },
+  {
+    "thread_id": "H-003",
+    "customer_id": "HC-02",
+    "invoice_id": "HO-2011",
+    "invoice_ids": [
+      "HO-2011"
+    ],
+    "match_outcome": "matched",
+    "email_class": "delay",
+    "amounts": [
+      12000000
+    ],
+    "invoice_refs": [
+      "INV-2011"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "hedged ('might', 'can't promise'): delay, no commitment date; 1.2 lakh = 1,20,000"
+  },
+  {
+    "thread_id": "H-004",
+    "customer_id": "HC-02",
+    "invoice_id": "HO-2012",
+    "invoice_ids": [
+      "HO-2012"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      27500000
+    ],
+    "invoice_refs": [
+      "INV-2012"
+    ],
+    "commitment_date": "2026-10-26",
+    "ambiguous": false,
+    "note": "'on Monday' sent Wed 2026-10-28 -> most recent Monday; UTR is not an amount"
+  },
+  {
+    "thread_id": "H-005",
+    "customer_id": "HC-03",
+    "invoice_id": "HO-2021",
+    "invoice_ids": [
+      "HO-2021"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "incorrect_amount",
+    "amounts": [
+      45000,
+      41000,
+      16400000,
+      18000000
+    ],
+    "invoice_refs": [
+      "INV-2021"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "unit rates count as stated amounts; order of appearance"
+  },
+  {
+    "thread_id": "H-006",
+    "customer_id": "HC-03",
+    "invoice_id": "HO-2022",
+    "invoice_ids": [
+      "HO-2022"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "missing_po",
+    "amounts": [
+      9200000
+    ],
+    "invoice_refs": [
+      "INV-2022"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "negated amount complaint; the dispute is the missing PO"
+  },
+  {
+    "thread_id": "H-007",
+    "customer_id": "HC-04",
+    "invoice_id": "HO-2031",
+    "invoice_ids": [
+      "HO-2031"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "not_received",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2031"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "H-008",
+    "customer_id": "HC-04",
+    "invoice_id": "HO-2032",
+    "invoice_ids": [
+      "HO-2032"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "incorrect_billing_period",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2032"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "H-009",
+    "customer_id": "HC-05",
+    "invoice_id": "HO-2041",
+    "invoice_ids": [
+      "HO-2041"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "payment_already_completed",
+    "amounts": [
+      24000000
+    ],
+    "invoice_refs": [
+      "INV-2041"
+    ],
+    "commitment_date": "2026-10-03",
+    "ambiguous": false,
+    "note": "paid-already claim against a reminder: dispute outranks confirmation"
+  },
+  {
+    "thread_id": "H-010",
+    "customer_id": "HC-05",
+    "invoice_id": "HO-2042",
+    "invoice_ids": [
+      "HO-2042"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "unknown",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2042"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "disagreement with no stated reason -> dispute_type unknown"
+  },
+  {
+    "thread_id": "H-011",
+    "customer_id": "HC-06",
+    "invoice_id": "HO-2052",
+    "invoice_ids": [
+      "HO-2052",
+      "HO-2051"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      5825000
+    ],
+    "invoice_refs": [
+      "INV-2052",
+      "INV-2051"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "PO-7711 is a PO number, not an amount"
+  },
+  {
+    "thread_id": "H-012",
+    "customer_id": "HC-07",
+    "invoice_id": "HO-2062",
+    "invoice_ids": [
+      "HO-2061",
+      "HO-2062"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2061",
+      "INV-2062"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "refs written 'inv 2061' normalise to INV-2061; invoice_id = later re-issue"
+  },
+  {
+    "thread_id": "H-013",
+    "customer_id": "HC-08",
+    "invoice_id": "HO-2072",
+    "invoice_ids": [
+      "HO-2072",
+      "HO-2071"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      15000000
+    ],
+    "invoice_refs": [
+      "INV-2072",
+      "INV-2071"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "H-014",
+    "customer_id": "HC-06",
+    "invoice_id": "HO-2053",
+    "invoice_ids": [
+      "HO-2053"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      10500000
+    ],
+    "invoice_refs": [
+      "INV-2053"
+    ],
+    "commitment_date": "2026-11-13",
+    "ambiguous": false,
+    "note": "year inferred as 2026"
+  },
+  {
+    "thread_id": "H-015",
+    "customer_id": "HC-07",
+    "invoice_id": "HO-2063",
+    "invoice_ids": [
+      "HO-2063"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2063"
+    ],
+    "commitment_date": "2026-11-09",
+    "ambiguous": false,
+    "note": "'in two weeks' = sent 2026-10-26 + 14 days"
+  },
+  {
+    "thread_id": "H-016",
+    "customer_id": "HC-08",
+    "invoice_id": "HO-2073",
+    "invoice_ids": [
+      "HO-2073"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      31500000
+    ],
+    "invoice_refs": [
+      "INV-2073"
+    ],
+    "commitment_date": "2026-10-31",
+    "ambiguous": false,
+    "note": "'end of this month' = last day of October"
+  },
+  {
+    "thread_id": "H-017",
+    "customer_id": "HC-03",
+    "invoice_id": "HO-2023",
+    "invoice_ids": [
+      "HO-2023"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      4000000,
+      10000000
+    ],
+    "invoice_refs": [
+      "INV-2023"
+    ],
+    "commitment_date": "2026-10-22",
+    "ambiguous": false,
+    "note": "partial payment 'today'"
+  },
+  {
+    "thread_id": "H-018",
+    "customer_id": "HC-04",
+    "invoice_id": "HO-2033",
+    "invoice_ids": [
+      "HO-2033"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      7000000
+    ],
+    "invoice_refs": [
+      "INV-2033"
+    ],
+    "commitment_date": "2026-10-14",
+    "ambiguous": false,
+    "note": "claimed amount conflicts with ledger 75,000; DD/MM, year inferred"
+  },
+  {
+    "thread_id": "H-019",
+    "customer_id": "HC-01",
+    "invoice_id": null,
+    "invoice_ids": [
+      "HO-2018",
+      "HO-2081"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "confirmation",
+    "amounts": [
+      6200000
+    ],
+    "invoice_refs": [
+      "INV-2081"
+    ],
+    "commitment_date": "2026-10-22",
+    "ambiguous": true,
+    "note": "FS3: INV-2081 belongs to HC-08; sender's own INV-2018 is the transposition (same amount); 'last Thursday' from Mon 2026-10-26"
+  },
+  {
+    "thread_id": "H-020",
+    "customer_id": "HC-07",
+    "invoice_id": null,
+    "invoice_ids": [
+      "HO-2065"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "commitment",
+    "amounts": [
+      36000000
+    ],
+    "invoice_refs": [
+      "INV-2056"
+    ],
+    "commitment_date": "2026-11-18",
+    "ambiguous": true,
+    "note": "INV-2056 does not exist; sender's INV-2065 is a transposition near-miss -> ambiguous, never auto-matched"
+  },
+  {
+    "thread_id": "H-021",
+    "customer_id": "HC-06",
+    "invoice_id": null,
+    "invoice_ids": [
+      "HO-2054",
+      "HO-2055"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "confirmation",
+    "amounts": [
+      4400000
+    ],
+    "invoice_refs": [
+      "INV-2054",
+      "INV-2055"
+    ],
+    "commitment_date": "2026-10-09",
+    "ambiguous": true,
+    "note": "two equal-amount candidates, sender cannot say which"
+  },
+  {
+    "thread_id": "H-022",
+    "customer_id": "HC-02",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": "2026-11-20",
+    "ambiguous": true,
+    "note": "FS4: no ref, several open invoices"
+  },
+  {
+    "thread_id": "H-023",
+    "customer_id": "HC-05",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "delay",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true,
+    "note": "no ref, no date"
+  },
+  {
+    "thread_id": "H-024",
+    "customer_id": "HC-08",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true
+  },
+  {
+    "thread_id": "H-025",
+    "customer_id": null,
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "unresolved",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2063"
+    ],
+    "commitment_date": "2026-10-28",
+    "ambiguous": false,
+    "note": "sender not a Kaveri contact; a name mention never establishes identity; 'tomorrow' = 2026-10-28"
+  },
+  {
+    "thread_id": "H-026",
+    "customer_id": null,
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "unresolved",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2099"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "unknown sender, ref does not exist"
+  },
+  {
+    "thread_id": "H-027",
+    "customer_id": null,
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "unresolved",
+    "email_class": "unknown",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "automated notice, not a customer"
+  },
+  {
+    "thread_id": "H-028",
+    "customer_id": "HC-04",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "unknown",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true,
+    "note": "auto-reply; the return date is not a payment commitment"
+  },
+  {
+    "thread_id": "H-029",
+    "customer_id": "HC-03",
+    "invoice_id": "HO-2024",
+    "invoice_ids": [
+      "HO-2024"
+    ],
+    "match_outcome": "matched",
+    "email_class": "enquiry",
+    "amounts": [
+      4550000
+    ],
+    "invoice_refs": [
+      "INV-2024"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "H-030",
+    "customer_id": "HC-07",
+    "invoice_id": "HO-2064",
+    "invoice_ids": [
+      "HO-2064"
+    ],
+    "match_outcome": "matched",
+    "email_class": "delay",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-2064"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "earlier date retracted, no new date -> delay, commitment_date null"
+  }
+]

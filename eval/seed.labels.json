@@ -1,0 +1,476 @@
+[
+  {
+    "thread_id": "E-001",
+    "customer_id": "C-001",
+    "invoice_id": "INV-A",
+    "invoice_ids": [
+      "INV-A"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      34000000
+    ],
+    "invoice_refs": [
+      "INV-1012"
+    ],
+    "commitment_date": "2026-10-20",
+    "ambiguous": false,
+    "note": "'by 20 Oct 2026'"
+  },
+  {
+    "thread_id": "E-002",
+    "customer_id": "C-010",
+    "invoice_id": "INV-029",
+    "invoice_ids": [
+      "INV-029"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      21000000
+    ],
+    "invoice_refs": [
+      "INV-1029"
+    ],
+    "commitment_date": "2026-11-06",
+    "ambiguous": false,
+    "note": "'by 6 November 2026'"
+  },
+  {
+    "thread_id": "E-003",
+    "customer_id": "C-010",
+    "invoice_id": "INV-030",
+    "invoice_ids": [
+      "INV-030"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1030"
+    ],
+    "commitment_date": "2026-11-12",
+    "ambiguous": false,
+    "note": "'Payment date is 2026-11-12'; 'approved' is not a payment claim"
+  },
+  {
+    "thread_id": "E-004",
+    "customer_id": "C-006",
+    "invoice_id": "INV-031",
+    "invoice_ids": [
+      "INV-031"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      9500000
+    ],
+    "invoice_refs": [
+      "INV-1031"
+    ],
+    "commitment_date": "2026-11-02",
+    "ambiguous": false,
+    "note": "'next Monday' sent Thu 2026-10-29 -> Monday of the following week"
+  },
+  {
+    "thread_id": "E-005",
+    "customer_id": "C-007",
+    "invoice_id": "INV-032",
+    "invoice_ids": [
+      "INV-032"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      14000000
+    ],
+    "invoice_refs": [
+      "INV-1032"
+    ],
+    "commitment_date": "2026-11-15",
+    "ambiguous": false,
+    "note": "'on or before 15/11/2026' (DD/MM)"
+  },
+  {
+    "thread_id": "E-006",
+    "customer_id": "C-004",
+    "invoice_id": "INV-D",
+    "invoice_ids": [
+      "INV-D"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      12500000
+    ],
+    "invoice_refs": [
+      "INV-1016"
+    ],
+    "commitment_date": "2026-10-28",
+    "ambiguous": false,
+    "note": "'paid yesterday' sent 2026-10-29"
+  },
+  {
+    "thread_id": "E-007",
+    "customer_id": "C-006",
+    "invoice_id": "INV-042",
+    "invoice_ids": [
+      "INV-042"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      30000000
+    ],
+    "invoice_refs": [
+      "INV-1042"
+    ],
+    "commitment_date": "2026-10-27",
+    "ambiguous": false,
+    "note": "'27/10/2026'; UTR is not an amount; sender treasury@ is a Ganga contact"
+  },
+  {
+    "thread_id": "E-008",
+    "customer_id": "C-002",
+    "invoice_id": "INV-033",
+    "invoice_ids": [
+      "INV-033"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      7250000
+    ],
+    "invoice_refs": [
+      "INV-1033"
+    ],
+    "commitment_date": "2026-10-24",
+    "ambiguous": false,
+    "note": "'paid on 24 Oct 2026'"
+  },
+  {
+    "thread_id": "E-009",
+    "customer_id": "C-004",
+    "invoice_id": "INV-034",
+    "invoice_ids": [
+      "INV-034"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      5000000
+    ],
+    "invoice_refs": [
+      "INV-1034"
+    ],
+    "commitment_date": "2026-10-20",
+    "ambiguous": false,
+    "note": "part payment '20/10/2026'"
+  },
+  {
+    "thread_id": "E-010",
+    "customer_id": "C-010",
+    "invoice_id": "INV-035",
+    "invoice_ids": [
+      "INV-035"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      11000000
+    ],
+    "invoice_refs": [
+      "INV-1035"
+    ],
+    "commitment_date": "2026-10-26",
+    "ambiguous": false,
+    "note": "'processed today' sent 2026-10-26"
+  },
+  {
+    "thread_id": "E-011",
+    "customer_id": "C-003",
+    "invoice_id": "INV-C",
+    "invoice_ids": [
+      "INV-C"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "incorrect_amount",
+    "amounts": [
+      60000000,
+      54000000
+    ],
+    "invoice_refs": [
+      "INV-1015"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "billed 6,00,000 vs agreed 5,40,000"
+  },
+  {
+    "thread_id": "E-012",
+    "customer_id": "C-003",
+    "invoice_id": "INV-036",
+    "invoice_ids": [
+      "INV-036"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "incorrect_billing_period",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1036"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "August vs September"
+  },
+  {
+    "thread_id": "E-013",
+    "customer_id": "C-007",
+    "invoice_id": "INV-037",
+    "invoice_ids": [
+      "INV-037"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "missing_po",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1037"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "E-014",
+    "customer_id": "C-009",
+    "invoice_id": "INV-038",
+    "invoice_ids": [
+      "INV-038"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "not_received",
+    "amounts": [
+      6400000
+    ],
+    "invoice_refs": [
+      "INV-1038"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "E-015",
+    "customer_id": "C-002",
+    "invoice_id": "INV-039",
+    "invoice_ids": [
+      "INV-039"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "payment_already_completed",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1039"
+    ],
+    "commitment_date": "2026-09-12",
+    "ambiguous": false,
+    "note": "claimed settlement date 12 Sep 2026; dispute outranks confirmation"
+  },
+  {
+    "thread_id": "E-016",
+    "customer_id": "C-009",
+    "invoice_id": "INV-020",
+    "invoice_ids": [
+      "INV-020",
+      "INV-019"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      4800000
+    ],
+    "invoice_refs": [
+      "INV-1020",
+      "INV-1019"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "invoice_id = the one asked to cancel (INV-1020)"
+  },
+  {
+    "thread_id": "E-017",
+    "customer_id": "C-009",
+    "invoice_id": "INV-022",
+    "invoice_ids": [
+      "INV-021",
+      "INV-022"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      13250000
+    ],
+    "invoice_refs": [
+      "INV-1021",
+      "INV-1022"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "no cancel target named; invoice_id = later re-issue (INV-1022)"
+  },
+  {
+    "thread_id": "E-018",
+    "customer_id": "C-007",
+    "invoice_id": "INV-024",
+    "invoice_ids": [
+      "INV-024",
+      "INV-023"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      7600000
+    ],
+    "invoice_refs": [
+      "INV-1024",
+      "INV-1023"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "'INV-1024 repeats INV-1023'"
+  },
+  {
+    "thread_id": "E-019",
+    "customer_id": "C-010",
+    "invoice_id": "INV-026",
+    "invoice_ids": [
+      "INV-026",
+      "INV-025"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      22500000
+    ],
+    "invoice_refs": [
+      "INV-1026",
+      "INV-1025"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "'INV-1026 duplicates INV-1025'"
+  },
+  {
+    "thread_id": "E-020",
+    "customer_id": "C-008",
+    "invoice_id": "INV-028",
+    "invoice_ids": [
+      "INV-027",
+      "INV-028"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      5900000
+    ],
+    "invoice_refs": [
+      "INV-1027",
+      "INV-1028"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "no cancel target named; invoice_id = later re-issue (INV-1028)"
+  },
+  {
+    "thread_id": "E-021",
+    "customer_id": "C-006",
+    "invoice_id": "INV-040",
+    "invoice_ids": [
+      "INV-040"
+    ],
+    "match_outcome": "matched",
+    "email_class": "delay",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1040"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "'will revert with a date' -> no commitment date"
+  },
+  {
+    "thread_id": "E-022",
+    "customer_id": "C-005",
+    "invoice_id": "INV-041",
+    "invoice_ids": [
+      "INV-041"
+    ],
+    "match_outcome": "matched",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1041"
+    ],
+    "commitment_date": null,
+    "ambiguous": false
+  },
+  {
+    "thread_id": "E-023",
+    "customer_id": "C-007",
+    "invoice_id": "INV-043",
+    "invoice_ids": [
+      "INV-043"
+    ],
+    "match_outcome": "matched",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-1043"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "note": "asks for GSTIN and delivery challan number"
+  },
+  {
+    "thread_id": "E-024",
+    "customer_id": "C-006",
+    "invoice_id": null,
+    "invoice_ids": [
+      "INV-042",
+      "INV-024"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "commitment",
+    "amounts": [
+      34000000
+    ],
+    "invoice_refs": [
+      "INV-1024"
+    ],
+    "commitment_date": "2026-11-10",
+    "ambiguous": true,
+    "note": "FS3: cites INV-1024 (owned by C-007); sender's own INV-1042 is the transposition near-miss with the same amount"
+  },
+  {
+    "thread_id": "E-025",
+    "customer_id": "C-008",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "unknown",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true,
+    "note": "FS4: sender is an Indus contact, no ref, several open invoices"
+  }
+]
