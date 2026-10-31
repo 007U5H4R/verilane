@@ -20,7 +20,8 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-13 | done | merged e544c89 | R1, R6, R12 fixed; EXE10 |
 | TASK-15 | in progress | base 183157b, port 3106 | drafts + nine checks |
 | TASK-17 | in progress | base 183157b, port 3107 | disputes state machine |
-| M-002 | in progress | review of TASK-11/12/13 | read-only |
+| M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
+| TASK-29 | in progress | base 3c99593, port 3108 | M-002 fix round 1: R14–R17 |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
@@ -53,3 +54,8 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - R2, R3, R13 → TASK-20 (axe + 390px, loading shell, back link).
 - R4, R5 → TASK-19 (sent mid-flight).
 - R7 (duplicate formatters), R8 (Paise brand at schema), R9 (ingest throws instead of DataIssue), R10 (EXE4 wording), R11 (tx scope) → parked for the Stage 6 close-out fix wave.
+## M-002 review routing (reports/M-002-review.md)
+- R14, R15, R16, R17 → TASK-29 (fix round 1).
+- R19 → TASK-17 (its brief already adds the non-nested dispute link on the muted Queue row); recheck the G5/G7 badges at merge.
+- R18 (G4/G5 evidence id hidden in Communication) → after TASK-15 merges, since TASK-15 owns the investigation components.
+- R20 (held-out coverage assertion), R21 (axe + 390px on /payments and Communication) → parked for the Stage 6 close-out fix wave.
