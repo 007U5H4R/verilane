@@ -6,6 +6,7 @@ const ACTION_LABEL: Record<string, string> = {
   edit_draft: "Draft edited",
   submit_draft: "Draft submitted",
   approve_draft: "Draft approved",
+  validation_failure: "Approval blocked: checks failed",
   reject_draft: "Draft rejected",
   mark_disputed: "Marked disputed",
   dispute_transition: "Dispute updated",
