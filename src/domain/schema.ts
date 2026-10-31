@@ -268,3 +268,30 @@ export const ReviewItemSchema = z.object({
   ledger_outstanding_paise: z.number().int().optional(),
 });
 export type ReviewItem = z.infer<typeof ReviewItemSchema>;
+
+// --- Dispute (Data-Model.md §4, TASK-17) -----------------------------------
+
+export const DisputeStatusSchema = z.enum([
+  "new",
+  "under_review",
+  "awaiting_customer",
+  "resolved",
+  "rejected",
+]);
+export type DisputeStatus = z.infer<typeof DisputeStatusSchema>;
+
+export const DisputeSchema = z.object({
+  dispute_id: z.string().min(1),
+  /** Absent only for the "duplicate" pairing case, where the claim names a
+   * candidate pair rather than one invoice. */
+  invoice_id: z.string().optional(),
+  customer_id: z.string(),
+  type: DisputeTypeSchema,
+  /** Absent for a dispute opened manually (`mark_disputed`) with no source email. */
+  source_message_id: z.string().optional(),
+  claim_text: z.string(),
+  ai_recommendation: z.string(),
+  assigned_reviewer: z.string().optional(),
+  status: DisputeStatusSchema,
+});
+export type Dispute = z.infer<typeof DisputeSchema>;

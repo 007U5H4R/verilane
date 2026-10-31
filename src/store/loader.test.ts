@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerilaneDb } from "./db";
 import { ensureSeeded, recompute, type Fetcher, type SeedManifest } from "./loader";
+import { execute } from "./tx";
 
 const CUSTOMERS_CSV = ["customer_id,name,contact_emails,payment_terms_days,segment", "C-001,Acme Co,ap@acme.test,30,SMB"].join("\n");
 
@@ -229,7 +230,9 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
 
     const disputed = await db.priorities.get("INV-C");
     expect(disputed).toMatchObject({ gate: "G4", band: "disputed" });
-    expect(disputed?.reason).toContain("E-011-1:emails.json:email_class");
+    // TASK-17: the dispute email now opens a real Dispute row (D-E-011-1),
+    // whose record the gate cites instead of the raw email evidence.
+    expect(disputed?.reason).toContain("dispute D-E-011-1");
 
     expect(await db.priorities.get("INV-042")).toMatchObject({ gate: "G5", band: "hold_reconcile" });
     // R1: seed row 10's outstanding_amount conflict holds INV-G for reconcile.
@@ -272,6 +275,42 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     await db.meta.put({ key: "asOf", value: "2026-11-09" });
     await recompute(db);
     expect((await db.priorities.get("INV-B"))?.days_overdue).toBe((before ?? 0) + 10);
+  });
+
+  it("TC-050: recomputing twice never duplicates a dispute raised from the same email", async () => {
+    await ensureSeeded(db, realFetcher());
+    const before = await db.disputes.toArray();
+    await recompute(db);
+    await recompute(db);
+    const after = await db.disputes.toArray();
+    expect(after.length).toBe(before.length);
+    const bySource = new Map<string, number>();
+    for (const d of after) {
+      if (d.source_message_id) bySource.set(d.source_message_id, (bySource.get(d.source_message_id) ?? 0) + 1);
+    }
+    for (const count of bySource.values()) expect(count).toBe(1);
+  });
+
+  it("TC-051: a Manager resolving a dispute releases G4 and the invoice re-enters the queue", async () => {
+    await ensureSeeded(db, realFetcher());
+    expect(await db.priorities.get("INV-C")).toMatchObject({ gate: "G4", band: "disputed" });
+
+    await db.meta.put({ key: "role", value: "manager" });
+    await execute(db, {
+      type: "dispute_transition",
+      subject: { kind: "dispute", id: "D-E-011-1" },
+      payload: { event: "start_review" },
+    });
+    await execute(db, {
+      type: "resolve_dispute",
+      subject: { kind: "dispute", id: "D-E-011-1" },
+      payload: { outcome: "resolved" },
+    });
+    await recompute(db);
+
+    const after = await db.priorities.get("INV-C");
+    expect(after?.band).not.toBe("disputed");
+    expect(after?.gate).not.toBe("G4");
   });
 });
 

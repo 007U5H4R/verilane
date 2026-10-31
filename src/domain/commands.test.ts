@@ -235,14 +235,65 @@ describe("run()", () => {
     ).rejects.toBeInstanceOf(InvalidCommand);
   });
 
-  it.each([
-    ["generate_draft", { kind: "invoice", id: "INV-1" }, "TASK-15"],
-    ["mark_disputed", { kind: "invoice", id: "INV-1" }, "TASK-17"],
-  ] as const)("%s is owned by a later ticket", async (type, subject, owner) => {
+  it.each([["generate_draft", { kind: "invoice", id: "INV-1" }, "TASK-15"]] as const)(
+    "%s is owned by a later ticket",
+    async (type, subject, owner) => {
+      const m = memTx(seed());
+      const err = await run(cmd({ type, subject }), m.tx).catch((x: unknown) => x);
+      expect(err).toBeInstanceOf(CommandNotImplemented);
+      expect((err as Error).message).toContain(owner);
+      expect(m.audits).toHaveLength(0);
+    },
+  );
+
+  it("mark_disputed opens a new Dispute row for the invoice (TASK-17)", async () => {
     const m = memTx(seed());
-    const err = await run(cmd({ type, subject }), m.tx).catch((x: unknown) => x);
-    expect(err).toBeInstanceOf(CommandNotImplemented);
-    expect((err as Error).message).toContain(owner);
+    const e = await run(
+      cmd({
+        type: "mark_disputed",
+        subject: { kind: "invoice", id: "INV-1" },
+        payload: { type: "incorrect_amount", claim_text: "Customer says the amount is wrong" },
+      }),
+      m.tx,
+    );
+    expect(m.audits).toEqual([e]);
+    expect(e).toMatchObject({ action: "mark_disputed", subject: "invoice:INV-1" });
+    const disputeId = (e.after as { dispute_id: string }).dispute_id;
+    expect(m.tables.get("disputes")?.get(disputeId)).toMatchObject({
+      invoice_id: "INV-1",
+      type: "incorrect_amount",
+      claim_text: "Customer says the amount is wrong",
+      status: "new",
+    });
+  });
+
+  it("mark_disputed rejects a blank reason", async () => {
+    const m = memTx(seed());
+    await expect(
+      run(
+        cmd({
+          type: "mark_disputed",
+          subject: { kind: "invoice", id: "INV-1" },
+          payload: { type: "incorrect_amount", claim_text: "   " },
+        }),
+        m.tx,
+      ),
+    ).rejects.toBeInstanceOf(InvalidCommand);
+    expect(m.audits).toHaveLength(0);
+  });
+
+  it("mark_disputed rejects an invalid dispute type", async () => {
+    const m = memTx(seed());
+    await expect(
+      run(
+        cmd({
+          type: "mark_disputed",
+          subject: { kind: "invoice", id: "INV-1" },
+          payload: { type: "not_a_real_type", claim_text: "Reason" },
+        }),
+        m.tx,
+      ),
+    ).rejects.toBeInstanceOf(InvalidCommand);
     expect(m.audits).toHaveLength(0);
   });
 

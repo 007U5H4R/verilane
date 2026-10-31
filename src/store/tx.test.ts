@@ -21,8 +21,24 @@ beforeEach(async () => {
     { draft_id: "DR-BIG", invoice_id: "INV-1", status: "validated", amount_paise: 60_000_000 },
   ]);
   await db.disputes.bulkAdd([
-    { dispute_id: "D-T", invoice_id: "INV-1", status: "new" },
-    { dispute_id: "D-R", invoice_id: "INV-1", status: "under_review" },
+    {
+      dispute_id: "D-T",
+      invoice_id: "INV-1",
+      customer_id: "C-1",
+      type: "unknown",
+      claim_text: "x",
+      ai_recommendation: "x",
+      status: "new",
+    },
+    {
+      dispute_id: "D-R",
+      invoice_id: "INV-1",
+      customer_id: "C-1",
+      type: "unknown",
+      claim_text: "x",
+      ai_recommendation: "x",
+      status: "under_review",
+    },
   ]);
   await db.reviewItems.bulkAdd([
     { review_id: "RV-A", kind: "data_issue", status: "open" },
@@ -92,7 +108,7 @@ describe("execute() — TC-037 one audit event per command", () => {
 
   it("not-yet-implemented commands write nothing", async () => {
     await expect(
-      execute(db, { type: "mark_disputed", subject: { kind: "invoice", id: "INV-1" } }),
+      execute(db, { type: "generate_draft", subject: { kind: "invoice", id: "INV-1" } }),
     ).rejects.toBeInstanceOf(CommandNotImplemented);
     expect(await db.audit.count()).toBe(0);
   });

@@ -16,8 +16,12 @@ const OPEN_DISPUTE = new Set(["new", "under_review", "awaiting_customer"]);
 
 export interface DisputeRecord {
   dispute_id: string;
-  invoice_id: string;
+  /** Absent for a "duplicate" pairing dispute, which gates via `holdReconcile`
+   * instead (see the `duplicate_invoice` guard below) — never for any other
+   * dispute type. */
+  invoice_id?: string;
   status: string;
+  type: string;
 }
 
 export interface SignalInput {
@@ -41,6 +45,10 @@ export function deriveSignals(input: SignalInput): PrioritySignals {
 
   const closedDispute = new Set<string>();
   for (const d of input.disputes) {
+    // Duplicate-pairing disputes gate at G5 (holdReconcile) via the match
+    // loop below, never at G4 — otherwise an open "duplicate_invoice" row
+    // would double-gate an invoice already held for reconciliation (EXE10).
+    if (d.type === "duplicate_invoice" || d.invoice_id === undefined) continue;
     if (OPEN_DISPUTE.has(d.status)) setOnce(disputed, d.invoice_id, `dispute ${d.dispute_id}`);
     else closedDispute.add(d.invoice_id);
   }

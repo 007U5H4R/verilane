@@ -16,15 +16,17 @@ export type NavItem = {
   count?: number;
   /** Count comes from live data instead of `count` (TASK-9.5: Queue). */
   liveCount?: boolean;
+  /** Count comes from live open-dispute data instead of `count` (TASK-17.3). */
+  disputeCount?: boolean;
 };
 
 // TASK-6.5: Home / Queue / Disputes / Payments / Drafts / Audit log / Settings.
-// Queue's count is live (TASK-9.5); Disputes/Drafts are still static
-// placeholders until their data land.
+// Queue's and Disputes' counts are live (TASK-9.5, TASK-17.3); Drafts is
+// still a static placeholder until its data lands.
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/", icon: Home },
   { label: "Queue", href: "/queue", icon: ListChecks, liveCount: true },
-  { label: "Disputes", href: "/disputes", icon: Flag, count: 3 },
+  { label: "Disputes", href: "/disputes", icon: Flag, disputeCount: true },
   { label: "Payments", href: "/payments", icon: Wallet },
   { label: "Drafts", href: "/drafts", icon: Mail, count: 2 },
   { label: "Audit log", href: "/audit", icon: ScrollText },

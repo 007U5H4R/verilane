@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AsOfLabel } from "@/components/shell/AsOfLabel";
 import { LogoCard } from "@/components/shell/LogoCard";
+import { DisputeCount } from "@/components/shell/DisputeCount";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 import { QueueCount } from "@/components/shell/QueueCount";
 import { RoleLabel } from "@/components/shell/RoleSwitcher";
@@ -45,6 +46,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
               <Icon className="size-4 shrink-0" />
               <span>{item.label}</span>
               {item.liveCount && <QueueCount />}
+              {item.disputeCount && <DisputeCount />}
               {item.count !== undefined && (
                 <span className="ml-auto text-xs text-rail-muted">
                   {item.count}
