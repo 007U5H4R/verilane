@@ -23,8 +23,8 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
 | TASK-29 | done, merged | 6856260 | R14–R17 fixed; EXE13; vitest 561/561, e2e 71/1-skip (`--workers=1`) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
-| TASK-16 | in progress | base 041ff7a, port 3108 | approve/confirm/send + Drafts |
-| TASK-18 | review PASS, full e2e 99/1-skip/0-fail (`--workers=1`) on 4d396a5 — ready to merge | 4d396a5 (base 041ff7a), port 3109 | Home KPIs/feed/charts; 2 fix rounds; at merge: EXE for T18-2 (Queue ageing excludes closed) + T18-10 (KPI = sidebar dispute count) |
+| TASK-16 | fix round 1 (review PASS-WITH-FIXES: T16-1 major) | base 041ff7a, port 3108 | approve/confirm/send + Drafts; T16-4 parked (failed-recheck draft still counts as ready) |
+| TASK-18 | done, merged | cfe0f4c (head 4d396a5) | Home KPIs/feed/charts; EXE16; vitest 575/575, e2e 99/1-skip (`--workers=1`); Done |
 | TASK-23 | in progress | base 041ff7a, port 3110 | live Claude provider |
 | TASK-24 | in progress | base 041ff7a, port 3111 | PWA manifest/SW/offline/install |
 
