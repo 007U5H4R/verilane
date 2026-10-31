@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatDate } from "@/components/investigation/DocumentCard";
 import { Badge } from "@/components/ui/badge";
 import { formatInr, paise } from "@/domain/money";
 import type { EmailMessage, Invoice, Match, ReviewItem } from "@/domain/schema";
@@ -87,6 +88,27 @@ function Item({
           </>
         )}
       </p>
+
+      {/* No invoice to link to (e.g. customer_only / unresolved with no
+          candidates): the email still has to be reachable (M-002 R14). */}
+      {!emailInvoice && email && (
+        <details className="text-xs">
+          <summary aria-label={`Open email ${item.message_id}`} className={`cursor-pointer ${LINK}`}>
+            Open email {item.message_id}
+          </summary>
+          <article
+            data-testid="communication-message"
+            data-thread={email.thread_id}
+            className="mt-1 rounded-md border border-border bg-background p-2 text-text"
+          >
+            <p className="font-medium">{email.subject}</p>
+            <p className="text-text-muted">
+              {email.from_address} · {formatDate(email.sent_at.slice(0, 10))} · {email.thread_id}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap">{email.body}</p>
+          </article>
+        </details>
+      )}
 
       <p className="text-xs text-text-muted">
         {item.invoice_id ? "Invoice " : invoiceIds.length > 0 ? "Possible invoices " : "No invoice identified"}
