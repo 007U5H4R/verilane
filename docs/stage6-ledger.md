@@ -16,7 +16,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-19 | done | merged c7d6e63 | R4, R5 fixed; EXE9 |
 | TASK-27 | dispatched (wave 3), part 1 | worktree | stops at user gate D6 |
 | M-001 review | done: pass-with-fixes (R1, R2 major) | read-only, main..4303a32 | max 2 fix rounds |
-| TASK-20 | dispatched (wave 3b) | worktree, port 3105 | base b336325; + review R2, R3, R13 |
+| TASK-20 | done, merged | b888ae3 | R2/R3/R13 fixed; EXE12; vitest 542/542, e2e 69/1-skip |
 | TASK-13 | done | merged e544c89 | R1, R6, R12 fixed; EXE10 |
 | TASK-15 | done, merged | 3388573 (base 183157b) | drafts + nine checks; EXE11; R18 now unblocked |
 | TASK-17 | in progress | base 183157b, port 3107 | disputes state machine |
@@ -51,7 +51,7 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 
 ## M-001 review routing (reports/M-001-review.md)
 - R1, R6, R12 → TASK-13 (priority gates and recompute signals).
-- R2, R3, R13 → TASK-20 (axe + 390px, loading shell, back link).
+- R2, R3, R13 → TASK-20 (axe + 390px, loading shell, back link). Fixed, merged b888ae3.
 - R4, R5 → TASK-19 (sent mid-flight).
 - R7 (duplicate formatters), R8 (Paise brand at schema), R9 (ingest throws instead of DataIssue), R10 (EXE4 wording), R11 (tx scope) → parked for the Stage 6 close-out fix wave.
 ## M-002 review routing (reports/M-002-review.md)
