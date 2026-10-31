@@ -13,6 +13,10 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-9 | done, merged | 775a2ad + fix 0c91131 → 04da776 | TC-015/016/017 PASS; e2e 32/32; unit 269; EXE7 |
 | TASK-11 | done, merged | 2dbe8e7 → 96e14ca | TC-019 11/11; TC-020 git-order check at Stage 8; EXE6 |
 | TASK-12 | dispatched (wave 2b) | worktree, port 3102 | base 1bd97bf |
+| TASK-19 | dispatched (wave 3) | worktree, port 3103 | base 4303a32 |
+| TASK-27 | dispatched (wave 3), part 1 | worktree | stops at user gate D6 |
+| M-001 review | dispatched | read-only, main..4303a32 | max 2 fix rounds |
+| TASK-20 | held | — | waits for TASK-12 merge (Investigation/RowCard overlap) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
