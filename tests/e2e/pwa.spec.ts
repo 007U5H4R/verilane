@@ -1,12 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+
+import SEED_MANIFEST from "../../public/seed/manifest.json";
 
 // TASK-24 (TKT-19): PWA manifest, service worker, offline, install chip.
 // TC numbers follow test-cases.md. Runs against the production build
 // (`next start`), where the service worker is registered.
 const SHOTS = "/Volumes/E Drive/Dev/.scratch/verilane/reports";
-const SEED_MANIFEST = path.resolve("public/seed/manifest.json");
 const OFFLINE_BANNER = "You're offline — viewing cached data; some actions are paused";
 const STORAGE_BANNER = "Changes won't survive reload — storage unavailable";
 
@@ -128,46 +127,51 @@ test("TC-076: offline loads from cache with the offline banner; import/reset dis
   await expect(page.getByTestId("reset-offline-reason")).toHaveCount(0);
 });
 
-test("TC-077: a seed version bump evicts the old cache and serves the new seed", async ({ page }) => {
-  const original = fs.readFileSync(SEED_MANIFEST, "utf8");
+/** Serves a bumped seed manifest. Never touches the tracked file (T24-3). */
+async function routeBumpedManifest(context: BrowserContext, seedVersion: string) {
+  await context.route("**/seed/manifest.json", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "cache-control": "no-store" },
+      body: JSON.stringify({ ...SEED_MANIFEST, seedVersion }),
+    }),
+  );
+}
+
+test("TC-077: a seed version bump evicts the old cache and serves the new seed", async ({ page, context }) => {
   const bumpedVersion = "2026-10-30.1-tc077";
-  try {
-    await page.goto("/queue");
-    await swControlled(page);
-    await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
-    // First-run seeding must have recorded the old version before the bump.
-    await expect.poll(() => storedSeedVersion(page)).toBe("2026-10-30.1");
+  await page.goto("/queue");
+  await swControlled(page);
+  await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
+  // First-run seeding must have recorded the old version before the bump.
+  await expect.poll(() => storedSeedVersion(page)).toBe("2026-10-30.1");
 
-    // A real bump: the file the server serves changes on disk.
-    const manifest = JSON.parse(original) as Record<string, unknown>;
-    fs.writeFileSync(SEED_MANIFEST, `${JSON.stringify({ ...manifest, seedVersion: bumpedVersion }, null, 2)}\n`);
+  await routeBumpedManifest(context, bumpedVersion);
+  await page.reload();
+  await expect(page.getByText("New demo data available")).toBeVisible();
+  await expect.poll(() => cacheKeys(page)).toEqual([`verilane-${bumpedVersion}`]);
 
-    await page.reload();
-    await expect(page.getByText("New demo data available")).toBeVisible();
-    await expect.poll(() => cacheKeys(page)).toEqual([`verilane-${bumpedVersion}`]);
+  // The page's view of the manifest (through the SW) is the new one.
+  const served = await page.evaluate(() => fetch("/seed/manifest.json").then((r) => r.json()));
+  expect((served as { seedVersion: string }).seedVersion).toBe(bumpedVersion);
+  // The new cache holds the seed files, not just the manifest.
+  const cachedSeed = await page.evaluate(
+    async (name) => (await (await caches.open(name)).match("/seed/invoices.csv")) !== undefined,
+    `verilane-${bumpedVersion}`,
+  );
+  expect(cachedSeed).toBe(true);
 
-    // The page's view of the manifest (through the SW) is the new one.
-    const served = await page.evaluate(() => fetch("/seed/manifest.json").then((r) => r.json()));
-    expect((served as { seedVersion: string }).seedVersion).toBe(bumpedVersion);
-    // The new cache holds the seed files, not just the manifest.
-    const cachedSeed = await page.evaluate(
-      async (name) => (await (await caches.open(name)).match("/seed/invoices.csv")) !== undefined,
-      `verilane-${bumpedVersion}`,
-    );
-    expect(cachedSeed).toBe(true);
+  // Reset after the bump re-seeds from the new cache's data.
+  const prompt = page.getByRole("status").filter({ hasText: "New demo data available" });
+  await prompt.getByRole("button", { name: "Reset" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Reset demo data?" });
+  await dialog.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("New demo data available")).toHaveCount(0);
+  await expect.poll(() => storedSeedVersion(page)).toBe(bumpedVersion);
+  expect(await cacheKeys(page)).toEqual([`verilane-${bumpedVersion}`]);
 
-    // Reset after the bump re-seeds from the new cache's data.
-    const prompt = page.getByRole("status").filter({ hasText: "New demo data available" });
-    await prompt.getByRole("button", { name: "Reset" }).click();
-    const dialog = page.getByRole("alertdialog", { name: "Reset demo data?" });
-    await dialog.getByRole("button", { name: "Reset", exact: true }).click();
-    await expect(dialog).toHaveCount(0);
-    await expect(page.getByText("New demo data available")).toHaveCount(0);
-    await expect.poll(() => storedSeedVersion(page)).toBe(bumpedVersion);
-    expect(await cacheKeys(page)).toEqual([`verilane-${bumpedVersion}`]);
-  } finally {
-    fs.writeFileSync(SEED_MANIFEST, original);
-  }
 });
 
 test("TC-078: the install chip is dismissible, non-modal, and Settings keeps Install app", async ({ page }, info) => {
