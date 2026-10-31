@@ -4,14 +4,16 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCommand } from "@/components/useCommand";
+import { MarkDisputedDialog } from "@/components/disputes/MarkDisputedDialog";
 import { buildInvoiceEvidence, INVOICE_FACT_LABELS } from "@/domain/evidence";
 import { formatInr, paise } from "@/domain/money";
 import { outstandingOf } from "@/domain/priority";
 import type { Evidence } from "@/domain/schema";
 import type { CommandInput } from "@/store/tx";
-import { useCustomers, useInvoice, useInvoiceDraft, usePayments, useRole } from "@/store/hooks";
+import { useCustomers, useHasOpenDispute, useInvoice, useInvoiceDraft, usePayments, useRole } from "@/store/hooks";
 import { ActionBar } from "./ActionBar";
 import { ActivityLog } from "./ActivityLog";
+import { ApproveDialog } from "./ApproveDialog";
 import { ChecksPanel } from "./ChecksPanel";
 import { CommunicationTable } from "./CommunicationTable";
 import { DocumentCard, formatDate } from "./DocumentCard";
@@ -71,9 +73,9 @@ export function InvestigationSkeleton() {
  * data lives in IndexedDB).
  */
 export interface InvestigationViewProps {
-  /** Approve & send (TASK-16); absent, the Manager's primary is disabled with a reason. */
+  /** Test-only override for Approve & send; by default opens `ApproveDialog` (TASK-16). */
   onApprove?: (draftId: string) => void;
-  /** Mark disputed (TASK-17); absent, the button is disabled with a reason. */
+  /** Test-only override for Mark disputed; by default opens `MarkDisputedDialog` (TASK-17). */
   onMarkDisputed?: (invoiceId: string) => void;
 }
 
@@ -84,10 +86,13 @@ export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationVi
   const customers = useCustomers();
   const payments = usePayments();
   const draft = useInvoiceDraft(invoiceId);
+  const openDispute = useHasOpenDispute(invoiceId) ?? false;
   const role = useRole();
   const run = useCommand();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
 
   async function command(cmd: CommandInput, after?: () => void) {
     if (!run || busy) return;
@@ -134,9 +139,21 @@ export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationVi
         onSubmit={() => {
           if (draft) void command({ type: "submit_draft", subject: { kind: "draft", id: draft.draft_id } });
         }}
-        onApprove={onApprove && draft ? () => onApprove(draft.draft_id) : undefined}
-        onMarkDisputed={onMarkDisputed ? () => onMarkDisputed(invoice.invoice_id) : undefined}
+        onApprove={draft ? () => (onApprove ? onApprove(draft.draft_id) : setApproveOpen(true)) : undefined}
+        openDispute={openDispute}
+        onMarkDisputed={() => (onMarkDisputed ? onMarkDisputed(invoice.invoice_id) : setDisputeOpen(true))}
       />
+      {draft ? (
+        <ApproveDialog
+          draftId={draft.draft_id}
+          invoiceId={invoice.invoice_id}
+          customerName={customers.get(invoice.customer_id)?.name ?? invoice.customer_id}
+          amountPaise={draft.amount_paise}
+          open={approveOpen}
+          onOpenChange={setApproveOpen}
+        />
+      ) : null}
+      <MarkDisputedDialog invoiceId={invoice.invoice_id} open={disputeOpen} onOpenChange={setDisputeOpen} />
       {draft !== undefined ? <NextStepCallout text={nextStep(role, draft)} /> : null}
       {/* Design.md §16: two columns at ≥1280px (evidence | activity), one below. */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">

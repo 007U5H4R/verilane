@@ -104,6 +104,20 @@ describe("primaryAction (TC-045)", () => {
     expect(primaryAction("manager", draft({ status: "validated" }), { approveWired: true }).enabled).toBe(true);
   });
 
+  it("blocks Approve & send inline when the invoice has an open dispute, even with stale passing checks (TASK-16)", () => {
+    expect(
+      primaryAction("manager", draft({ status: "validated" }), { approveWired: true, openDispute: true }),
+    ).toMatchObject({ enabled: false, reason: "This invoice has an open dispute" });
+    expect(
+      primaryAction("manager", draft({ status: "validated" }), { approveWired: true, openDispute: false }).enabled,
+    ).toBe(true);
+    // Checks that already reflect the dispute keep their more specific reason.
+    expect(
+      primaryAction("manager", draft({ status: "validated", checks: checks([6]) }), { approveWired: true, openDispute: true })
+        .reason,
+    ).toBe("1 pre-approval check is failing");
+  });
+
   it("is disabled once the reminder has gone out", () => {
     expect(primaryAction("manager", draft({ status: "sent_simulated" }), { approveWired: true })).toMatchObject({
       enabled: false,

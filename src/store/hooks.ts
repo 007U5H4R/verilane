@@ -361,3 +361,20 @@ export function useDraftsAwaitingApproval(): DraftAwaitingApproval[] | undefined
       .sort((a, b) => a.draft.draft_id.localeCompare(b.draft.draft_id));
   }, [db]);
 }
+
+/**
+ * Whether the invoice has a dispute that is still open (not resolved or
+ * rejected), live — blocks Approve in the Investigation action bar (TASK-16).
+ */
+export function useHasOpenDispute(invoiceId: string): boolean | undefined {
+  const db = useDb();
+  return useLiveQuery(
+    async () =>
+      (await db.disputes
+        .where("invoice_id")
+        .equals(invoiceId)
+        .filter((d) => d.status !== "resolved" && d.status !== "rejected")
+        .count()) > 0,
+    [db, invoiceId],
+  );
+}
