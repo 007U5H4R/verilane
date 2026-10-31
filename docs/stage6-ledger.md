@@ -19,7 +19,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-20 | done, merged | b888ae3 | R2/R3/R13 fixed; EXE12; vitest 542/542, e2e 69/1-skip |
 | TASK-13 | done | merged e544c89 | R1, R6, R12 fixed; EXE10 |
 | TASK-15 | done, merged | 3388573 (base 183157b) | drafts + nine checks; EXE11; R18 now unblocked |
-| TASK-17 | in progress | base 183157b, port 3107 | disputes state machine |
+| TASK-17 | done, merged | 36f8269 (impl 5c59853, base 183157b) | disputes state machine; EXE15; PPR `:`-in-id fix; vitest 568/568, e2e 83/1-skip (`--workers=1`) |
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
 | TASK-29 | done, merged | 6856260 | R14–R17 fixed; EXE13; vitest 561/561, e2e 71/1-skip (`--workers=1`) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
@@ -58,6 +58,6 @@ Follow-ups from agents: 375px shell overflows sideways (sidebar doesn't collapse
 - R7 (duplicate formatters), R8 (Paise brand at schema), R9 (ingest throws instead of DataIssue), R10 (EXE4 wording), R11 (tx scope) → parked for the Stage 6 close-out fix wave.
 ## M-002 review routing (reports/M-002-review.md)
 - R14, R15, R16, R17 → TASK-29 (fix round 1). Fixed, merged 6856260.
-- R19 → TASK-17 (its brief already adds the non-nested dispute link on the muted Queue row); recheck the G5/G7 badges at merge.
+- R19 → resolved at TASK-17 merge (36f8269): the dispute link was added as a sibling of the row's `<a>`, and the merge conflict resolution preserved TASK-13's G4/G5/G7 badge logic unchanged alongside it.
 - R18 (G4/G5 evidence id hidden in Communication) → TASK-15 merged (3388573); still open, now actionable against the merged investigation components.
 - R20 (held-out coverage assertion), R21 (axe + 390px on /payments and Communication) → parked for the Stage 6 close-out fix wave.
