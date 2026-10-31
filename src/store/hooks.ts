@@ -12,6 +12,14 @@ import type { VerilaneDb } from "./db";
 
 export const DbContext = createContext<VerilaneDb | null>(null);
 
+/** True when the stored seed is older than the served manifest (TC-014);
+ * set by `DataProvider`, read by `SeedUpdatePrompt`. */
+export const SeedUpdateContext = createContext(false);
+
+export function useSeedUpdateAvailable(): boolean {
+  return useContext(SeedUpdateContext);
+}
+
 export function useDb(): VerilaneDb {
   const db = useContext(DbContext);
   if (!db) throw new Error("useDb() called outside <DataProvider>");

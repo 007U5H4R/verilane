@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { openDb, type VerilaneDb } from "@/store/db";
 import { ensureSeeded } from "@/store/loader";
-import { DbContext } from "@/store/hooks";
+import { DbContext, SeedUpdateContext } from "@/store/hooks";
 
 interface DataProviderProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ interface DataProviderProps {
 
 type Status =
   | { kind: "loading" }
-  | { kind: "ready"; db: VerilaneDb }
+  | { kind: "ready"; db: VerilaneDb; updateAvailable: boolean }
   | { kind: "error"; error: Error };
 
 export function DataProvider({ children }: DataProviderProps) {
@@ -29,10 +29,9 @@ export function DataProvider({ children }: DataProviderProps) {
       try {
         const { db } = await openDb();
         const result = await ensureSeeded(db);
-        if (result === "update-available") {
-          console.warn("[verilane] seed update available");
+        if (!cancelled) {
+          setStatus({ kind: "ready", db, updateAvailable: result === "update-available" });
         }
-        if (!cancelled) setStatus({ kind: "ready", db });
       } catch (err) {
         if (!cancelled) {
           setStatus({ kind: "error", error: err instanceof Error ? err : new Error(String(err)) });
@@ -49,5 +48,11 @@ export function DataProvider({ children }: DataProviderProps) {
     console.error("[verilane] failed to open database", status.error);
     return <>{children}</>;
   }
-  return <DbContext.Provider value={status.db}>{children}</DbContext.Provider>;
+  return (
+    <DbContext.Provider value={status.db}>
+      <SeedUpdateContext.Provider value={status.updateAvailable}>
+        {children}
+      </SeedUpdateContext.Provider>
+    </DbContext.Provider>
+  );
 }
