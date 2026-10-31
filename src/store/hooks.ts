@@ -11,6 +11,7 @@ import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
 import type { Customer, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
+import { DraftSchema, type Draft } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
@@ -230,4 +231,29 @@ export function usePaymentsData(): PaymentsData | undefined {
       reviewItems,
     };
   }, [db]);
+}
+
+/** The draft id's per-invoice sequence number (`DR-<invoice>-<n>`); 0 if absent. */
+function draftSeq(id: string): number {
+  const n = Number(id.slice(id.lastIndexOf("-") + 1));
+  return Number.isInteger(n) ? n : 0;
+}
+
+/**
+ * The invoice's current reminder draft (TASK-15.5): the newest one not
+ * rejected, or `null` when there is none. Rows that fail `DraftSchema`
+ * (e.g. hand-made test fixtures) are ignored. `undefined` while loading.
+ */
+export function useInvoiceDraft(invoiceId: string): Draft | null | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const rows = await db.drafts.where("invoice_id").equals(invoiceId).toArray();
+    const drafts: Draft[] = [];
+    for (const row of rows) {
+      const parsed = DraftSchema.safeParse(row);
+      if (parsed.success && parsed.data.status !== "rejected") drafts.push(parsed.data);
+    }
+    drafts.sort((a, b) => draftSeq(b.draft_id) - draftSeq(a.draft_id));
+    return drafts[0] ?? null;
+  }, [db, invoiceId]);
 }

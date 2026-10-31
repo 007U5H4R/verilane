@@ -12,7 +12,7 @@ import type { Extraction, Match } from "./schema";
 /** Days after the promised date a commitment still holds the invoice (G7). */
 export const PROMISE_GRACE_DAYS = 3;
 
-const OPEN_DISPUTE = new Set(["new", "under_review", "awaiting_customer"]);
+export const OPEN_DISPUTE = new Set(["new", "under_review", "awaiting_customer"]);
 
 export interface DisputeRecord {
   dispute_id: string;

@@ -14,7 +14,9 @@ import {
 } from "@/domain/commands";
 import type { IngestResult } from "@/domain/ingest";
 import { isRole, type Role } from "@/domain/permissions";
-import type { Customer, DataIssue, Invoice, Payment } from "@/domain/schema";
+import type { Customer, DataIssue, Invoice, Match, Payment, ReviewItem } from "@/domain/schema";
+import { asOf } from "@/domain/clock";
+import type { DraftSources } from "@/domain/validate";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { recompute, SEED_VERSION_KEY } from "./loader";
 
@@ -57,6 +59,7 @@ function dexieTx(db: VerilaneDb): Tx {
     },
     now: () => new Date().toISOString(),
     data: dexieDataOps(db),
+    draftSources: () => readDraftSources(db),
   };
 }
 
@@ -131,7 +134,10 @@ export async function execute(
 ) {
   const scope = WHOLE_DB.has(input.type)
     ? db.tables
-    : [db.invoices, db.drafts, db.disputes, db.reviewItems, db.meta, db.audit];
+    : [
+        ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.meta, db.audit],
+        ...(DRAFT_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
+      ];
   return db.transaction(
     "rw",
     scope,
@@ -142,4 +148,32 @@ export async function execute(
       return event;
     },
   );
+}
+
+/** Draft commands re-run the nine checks, so they also read the ledger (TASK-15). */
+const DRAFT_COMMANDS: ReadonlySet<string> = new Set(["generate_draft", "edit_draft", "submit_draft"]);
+const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractions, db.matches];
+
+/** Everything the nine draft checks read, as of the persisted "today". */
+export async function readDraftSources(db: VerilaneDb): Promise<DraftSources> {
+  const stored = (await db.meta.get("asOf"))?.value;
+  const [invoices, customers, payments, extractions, matches, disputes, reviewItems] = await Promise.all([
+    db.invoices.toArray(),
+    db.customers.toArray(),
+    db.payments.toArray(),
+    db.extractions.toArray(),
+    db.matches.toArray(),
+    db.disputes.toArray(),
+    db.reviewItems.toArray(),
+  ]);
+  return {
+    asOf: asOf({ asOf: typeof stored === "string" ? stored : undefined }),
+    invoices,
+    customers,
+    payments,
+    extractions,
+    matches: matches as unknown as Match[],
+    disputes,
+    reviewItems: reviewItems as unknown as ReviewItem[],
+  };
 }
