@@ -24,5 +24,16 @@ async function extractRaw(msg: EmailMessage): Promise<unknown> {
 
 export const liveProvider: Provider = {
   name: "live",
-  extract: async (msg) => validateExtraction(await extractRaw(msg), msg),
+  extract: async (msg) => {
+    const result = validateExtraction(await extractRaw(msg), msg);
+    // A schema-valid row for a *different* message must not be stored
+    // against this one — the identity fields are checked, not trusted.
+    if (result.ok && (result.value.message_id !== msg.message_id || result.value.thread_id !== msg.thread_id)) {
+      return {
+        ok: false,
+        error: { message_id: msg.message_id, reason: "live response is for a different message", issues: [] },
+      };
+    }
+    return result;
+  },
 };

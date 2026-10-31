@@ -63,6 +63,12 @@ describe("liveProvider (T23-3)", () => {
     expect(result.error.message_id).toBe("E-900-1");
   });
 
+  it("a tampered payload for a different message is rejected", async () => {
+    stubFetch(200, { ...validRow, message_id: "E-999-1", thread_id: "E-999" });
+    const result = await liveProvider.extract(msg);
+    expect(result.ok).toBe(false);
+  });
+
   it("a 503 (live mode disabled / upstream down) is rejected, not thrown", async () => {
     stubFetch(503, { error: "live_mode_disabled" });
     const result = await liveProvider.extract(msg);
