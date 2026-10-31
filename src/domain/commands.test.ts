@@ -121,16 +121,13 @@ describe("run()", () => {
     expect(m.audits).toHaveLength(0);
   });
 
-  it("approve_draft moves validated → sent_simulated in one audit", async () => {
+  it("approve_draft refuses to approve without the ledger to re-validate against (T16-3)", async () => {
     const m = memTx(seed());
-    const e = await run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-OK" } }), m.tx);
-    expect(m.tables.get("drafts")?.get("DR-OK")?.status).toBe("sent_simulated");
-    expect(e).toMatchObject({
-      before: { status: "validated" },
-      after: { status: "sent_simulated" },
-      invoice_id: "INV-1",
-    });
-    expect(m.audits).toHaveLength(1);
+    await expect(
+      run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-OK" } }), m.tx),
+    ).rejects.toBeInstanceOf(InvalidCommand);
+    expect(m.tables.get("drafts")?.get("DR-OK")?.status).toBe("validated");
+    expect(m.audits).toHaveLength(0);
   });
 
   it("permission facts come from the stored row: Analyst cannot approve > ₹5,00,000", async () => {
@@ -147,12 +144,6 @@ describe("run()", () => {
     );
     expect(m.tables.get("drafts")?.get("DR-BIG")?.status).toBe("validated");
     expect(m.audits).toHaveLength(0);
-  });
-
-  it("a Manager can approve > ₹5,00,000", async () => {
-    const m = memTx(seed());
-    await run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-BIG" }, actor: "manager" }), m.tx);
-    expect(m.tables.get("drafts")?.get("DR-BIG")?.status).toBe("sent_simulated");
   });
 
   it("illegal transitions throw and write nothing", async () => {
@@ -544,4 +535,5 @@ describe("draft commands (TASK-15)", () => {
     await expect(approve(m, "analyst")).rejects.toBeInstanceOf(PermissionDenied);
     await approve(m, "manager");
     expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
-  });});
+  });
+});
