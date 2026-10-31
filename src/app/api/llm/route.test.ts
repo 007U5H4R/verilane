@@ -251,4 +251,10 @@ describe("TASK-23 fix round 1: SDK failures never escape as a 500 or leak upstre
     expect((await res.json()).status).toBe("rejected");
   });
 
+  it("the client is built with an explicit timeout and retry budget", async () => {
+    parseMock.mockResolvedValueOnce({ stop_reason: "refusal", parsed_output: null });
+    const { POST } = await import("./extract/route");
+    await POST(jsonRequest(msg));
+    expect(ctorMock).toHaveBeenCalledWith({ timeout: 60_000, maxRetries: 1 });
+  });
 });

@@ -51,8 +51,16 @@ const LiveExtractionFieldsSchema = z.object({
   missing_info: z.array(z.string()),
 });
 
+/**
+ * Explicit client budget (TASK-23 fix round 1, T23-5). The SDK default is a
+ * 10-minute timeout with 2 retries — and timeouts are retried — so one
+ * request could hold a route open for ~30 min. 60 s × (1 + 1 retry) caps the
+ * worst case near 2 min, well above a normal structured-output call.
+ */
+export const LIVE_CLIENT_OPTIONS = { timeout: 60_000, maxRetries: 1 } as const;
+
 function liveClient(): Anthropic {
-  return new Anthropic();
+  return new Anthropic(LIVE_CLIENT_OPTIONS);
 }
 
 /**
