@@ -13,7 +13,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-9 | done, merged | 775a2ad + fix 0c91131 → 04da776 | TC-015/016/017 PASS; e2e 32/32; unit 269; EXE7 |
 | TASK-11 | done, merged | 2dbe8e7 → 96e14ca | TC-019 11/11; TC-020 git-order check at Stage 8; EXE6 |
 | TASK-12 | done, merged b336325 | — | 393 unit, e2e 36/36 on merged branch |
-| TASK-19 | dispatched (wave 3) | worktree, port 3103 | base 4303a32 |
+| TASK-19 | done | merged c7d6e63 | R4, R5 fixed; EXE9 |
 | TASK-27 | dispatched (wave 3), part 1 | worktree | stops at user gate D6 |
 | M-001 review | done: pass-with-fixes (R1, R2 major) | read-only, main..4303a32 | max 2 fix rounds |
 | TASK-20 | dispatched (wave 3b) | worktree, port 3105 | base b336325; + review R2, R3, R13 |
