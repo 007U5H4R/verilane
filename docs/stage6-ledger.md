@@ -23,7 +23,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | M-002 | PASS-WITH-FIXES | review of TASK-11/12/13 | R14–R21 |
 | TASK-29 | done, merged | 6856260 | R14–R17 fixed; EXE13; vitest 561/561, e2e 71/1-skip (`--workers=1`) |
 | TASK-14 | done, merged | ec6b61c → 8f440a6 | TC-039/040 e2e green; ActivityLog mounted 8a0a6aa; Done |
-| TASK-16 | re-review (fix round 1 done: 7b17f0a, vitest 583, e2e 109/1-skip) | base 041ff7a, port 3108 | approve/confirm/send + Drafts; T16-4 parked (failed-recheck draft still counts as ready) |
+| TASK-16 | done, merged | fd6e4ad (head 7b17f0a, base 041ff7a) | approve/confirm/send + Drafts; EXE18; vitest 593/593, e2e 123/1-skip (`--workers=1`); Done; T16-4 + T16-R1 parked (failed-recheck draft still counts as ready) |
 | TASK-18 | done, merged | cfe0f4c (head 4d396a5) | Home KPIs/feed/charts; EXE16; vitest 575/575, e2e 99/1-skip (`--workers=1`); Done |
 | TASK-23 | fix round 1 (review PASS-WITH-FIXES: T23-1/2/3 major; fresh implementer, original not resumable) | c63fc69 (base 041ff7a), port 3110 | live Claude provider; `liveProvider` unused → log as EXE deviation at merge |
 | TASK-24 | done, merged | be197ae (head fb23656) | 3aa052a (base 041ff7a), port 3111 | PWA; EXE17; vitest 585/585, e2e 113/1-skip (`--workers=1`); Done; SW off globally in playwright.config (on only in pwa.spec); seed manifest network-first; at TASK-23 merge: disable live-LLM trigger offline via `useOnline()` |
