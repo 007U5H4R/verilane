@@ -11,6 +11,7 @@ import {
   type Tx,
 } from "./commands";
 import { IllegalTransition } from "./transitions";
+import type { DraftSources } from "./validate";
 
 /** In-memory Tx for pure tests. */
 function memTx(seed: Partial<Record<TableName, Row[]>> = {}) {
@@ -236,7 +237,6 @@ describe("run()", () => {
   });
 
   it.each([
-    ["generate_draft", { kind: "invoice", id: "INV-1" }, "TASK-15"],
     ["mark_disputed", { kind: "invoice", id: "INV-1" }, "TASK-17"],
   ] as const)("%s is owned by a later ticket", async (type, subject, owner) => {
     const m = memTx(seed());
@@ -272,5 +272,118 @@ describe("run()", () => {
     );
     expect(err).toBeInstanceOf(InvalidCommand);
     expect(m.audits).toHaveLength(0);
+  });
+});
+
+describe("draft commands (TASK-15)", () => {
+  const invoice = {
+    row_id: 12,
+    invoice_id: "INV-A",
+    invoice_number: "INV-1012",
+    customer_id: "C-001",
+    invoice_date: "2026-08-14",
+    due_date: "2026-09-13",
+    amount_paise: 34_000_000,
+    currency: "INR",
+    status_raw: "Open",
+    status: "open",
+    billing_period: null,
+    po_number: null,
+  } as const;
+  const sources = (over: Partial<DraftSources> = {}): DraftSources => ({
+    asOf: "2026-10-30",
+    invoices: [{ ...invoice }],
+    customers: [
+      { customer_id: "C-001", name: "Aravalli Textiles Pvt Ltd", contact_emails: [], payment_terms_days: 30, segment: "SME" },
+    ],
+    payments: [],
+    extractions: [],
+    matches: [],
+    disputes: [],
+    reviewItems: [],
+    ...over,
+  });
+  const ledgerTx = (src: DraftSources = sources()) => {
+    const m = memTx({ invoices: [{ ...invoice }] });
+    m.tx.draftSources = async () => src;
+    return m;
+  };
+  const gen = (m: ReturnType<typeof memTx>) =>
+    run(cmd({ type: "generate_draft", subject: { kind: "invoice", id: "INV-A" } }), m.tx);
+
+  it("generate_draft stores a footnoted draft with its nine checks and one audit event", async () => {
+    const m = ledgerTx();
+    const e = await gen(m);
+    const row = m.tables.get("drafts")?.get("DR-INV-A-1");
+    expect(row).toMatchObject({
+      status: "generated",
+      invoice_id: "INV-A",
+      amount_paise: 34_000_000,
+      ambiguous_match: false,
+      conflicting_payment: false,
+      failed_checks: [],
+    });
+    expect((row?.checks as unknown[]).length).toBe(9);
+    expect(String(row?.body)).toContain("₹3,40,000.00");
+    expect(m.audits).toEqual([e]);
+    expect(e).toMatchObject({ action: "generate_draft", invoice_id: "INV-A" });
+    expect(e.evidence_ids).toContain("INV-A:invoices.csv:amount_paise");
+  });
+
+  it("generate_draft refuses a second open draft, but allows one after a rejection", async () => {
+    const m = ledgerTx();
+    await gen(m);
+    await expect(gen(m)).rejects.toBeInstanceOf(InvalidCommand);
+    await run(cmd({ type: "reject_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    await gen(m);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-2")?.status).toBe("generated");
+  });
+
+  it("generate_draft needs the ledger", async () => {
+    const m = memTx({ invoices: [{ ...invoice }] });
+    await expect(gen(m)).rejects.toBeInstanceOf(InvalidCommand);
+    expect(m.audits).toHaveLength(0);
+  });
+
+  it("edit_draft re-runs all nine checks on the new body (FS12)", async () => {
+    const m = ledgerTx();
+    await gen(m);
+    const body = String(m.tables.get("drafts")?.get("DR-INV-A-1")?.body);
+    const e = await run(
+      cmd({
+        type: "edit_draft",
+        subject: { kind: "draft", id: "DR-INV-A-1" },
+        payload: { body: body.replace("₹3,40,000.00", "₹3,00,000") },
+      }),
+      m.tx,
+    );
+    const row = m.tables.get("drafts")?.get("DR-INV-A-1");
+    expect(row).toMatchObject({ status: "edited", failed_checks: [9] });
+    expect(e.after).toMatchObject({ failed_checks: [9] });
+    expect(e.summary).toContain("8 of 9 checks pass");
+  });
+
+  it("submit_draft blocks a failing draft and validates a clean one", async () => {
+    const m = ledgerTx();
+    await gen(m);
+    const body = String(m.tables.get("drafts")?.get("DR-INV-A-1")?.body);
+    await run(
+      cmd({ type: "edit_draft", subject: { kind: "draft", id: "DR-INV-A-1" }, payload: { body: `${body}\nDue 2026-11-05.` } }),
+      m.tx,
+    );
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("blocked");
+    await run(cmd({ type: "edit_draft", subject: { kind: "draft", id: "DR-INV-A-1" }, payload: { body } }), m.tx);
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")).toMatchObject({ status: "validated", failed_checks: [] });
+  });
+
+  it("submit_draft re-checks against the current ledger (a dispute opened after generation)", async () => {
+    const src = sources();
+    const m = ledgerTx(src);
+    await gen(m);
+    src.disputes.push({ dispute_id: "DS-1", invoice_id: "INV-A", status: "new" });
+    await run(cmd({ type: "submit_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
+    expect(m.tables.get("drafts")?.get("DR-INV-A-1")).toMatchObject({ status: "blocked", failed_checks: [6] });
   });
 });

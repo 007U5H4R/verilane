@@ -21,6 +21,9 @@ import {
 } from "./permissions";
 import { CustomerSchema, DataIssueSchema, InvoiceSchema, PaymentSchema } from "./schema";
 import { transition } from "./transitions";
+import { buildDraft, factsFor, locateFootnotes } from "./draft";
+import { VerifiedFactSchema, type VerifiedFact } from "./schema";
+import { draftContextFor, validate, type DraftSources } from "./validate";
 
 export type Row = Record<string, unknown>;
 export type TableName = "invoices" | "drafts" | "disputes" | "reviewItems" | "meta";
@@ -75,6 +78,9 @@ export interface Tx {
   /** Whole-table operations (import / reset / re-rank); only the store's
    * transaction provides them. */
   data?: DataOps;
+  /** Everything the nine draft checks read (TASK-15); only the store's
+   * transaction provides it. */
+  draftSources?(): Promise<DraftSources>;
 }
 
 /**
@@ -261,11 +267,17 @@ const HANDLERS: Record<Action, Handler> = {
       const v = str(ctx.payload[f]);
       if (v !== undefined) changes[f] = v;
     }
-    const { from, to } = await step(ctx, "draft", "drafts", ["edit"], changes);
+    // FS12: an edit re-runs all nine checks on the new text.
+    const rechecked = await recheckDraft(ctx, str(changes.body) ?? str(ctx.row?.body));
+    const { from, to } = await step(ctx, "draft", "drafts", ["edit"], { ...changes, ...rechecked });
     return {
-      summary: `Edited reminder ${ctx.cmd.subject.id}; it needs re-validation`,
+      summary: rechecked
+        ? `Edited reminder ${ctx.cmd.subject.id}; ${passedNote(rechecked)}`
+        : `Edited reminder ${ctx.cmd.subject.id}; it needs re-validation`,
       before: { status: from },
-      after: { status: to, ...changes },
+      after: rechecked
+        ? { status: to, ...changes, failed_checks: rechecked.failed_checks }
+        : { status: to, ...changes },
     };
   },
 
@@ -274,12 +286,18 @@ const HANDLERS: Record<Action, Handler> = {
    * are TASK-15; it will compute them inside this same transaction).
    */
   submit_draft: async (ctx) => {
-    const failed = Array.isArray(ctx.row?.failed_checks)
-      ? ctx.row.failed_checks.length
-      : 0;
-    const { from, to } = await step(ctx, "draft", "drafts", [
-      failed === 0 ? "validate_pass" : "validate_fail",
-    ]);
+    // With the ledger in reach the nine checks are re-run here, in this
+    // transaction; otherwise the stored `failed_checks` decide.
+    const rechecked = await recheckDraft(ctx, str(ctx.row?.body));
+    const stored = rechecked?.failed_checks ?? ctx.row?.failed_checks;
+    const failed = Array.isArray(stored) ? stored.length : 0;
+    const { from, to } = await step(
+      ctx,
+      "draft",
+      "drafts",
+      [failed === 0 ? "validate_pass" : "validate_fail"],
+      rechecked ?? {},
+    );
     return {
       summary:
         to === "validated"
@@ -357,7 +375,7 @@ const HANDLERS: Record<Action, Handler> = {
     };
   },
 
-  generate_draft: notYet("TASK-15"),
+  generate_draft: (ctx) => generateDraft(ctx),
   mark_disputed: notYet("TASK-17"),
   import_csv: async ({ tx, payload }) => {
     const kind = payload.kind;
@@ -501,4 +519,103 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
 
   await tx.audit(event);
   return event;
+}
+
+// --- Reminder drafts (TASK-15) ----------------------------------------------
+
+/** A draft in one of these states no longer blocks a new one. */
+const CLOSED_DRAFT = new Set(["rejected", "sent_simulated"]);
+/** Stop rule for the draft-id probe: no invoice gets this many drafts. */
+const MAX_DRAFTS_PER_INVOICE = 500;
+
+type Recheck = Row & { failed_checks: number[] };
+
+function passedNote(r: Recheck): string {
+  const total = Array.isArray(r.checks) ? r.checks.length : 9;
+  return `${total - r.failed_checks.length} of ${total} checks pass`;
+}
+
+function storedFacts(row: Row | undefined): VerifiedFact[] {
+  const parsed = VerifiedFactSchema.array().safeParse(row?.facts);
+  return parsed.success ? parsed.data : [];
+}
+
+/**
+ * Re-runs the nine checks for a draft row against the current ledger:
+ * footnotes are re-located in `body`, so an edited-away fact loses its
+ * citation and check 9 sees whatever replaced it. Null when the tx has no
+ * ledger access (pure tests); the stored outcome then stands.
+ */
+async function recheckDraft(ctx: Ctx, body: string | undefined): Promise<Recheck | null> {
+  const invoiceId = str(ctx.row?.invoice_id);
+  if (!ctx.tx.draftSources || invoiceId === undefined) return null;
+  const sources = await ctx.tx.draftSources();
+  const facts = storedFacts(ctx.row);
+  const text = body ?? "";
+  const footnotes = locateFootnotes(text, facts);
+  const context = draftContextFor(invoiceId, sources);
+  const checks = validate({ body: text, facts, footnotes }, context);
+  return {
+    footnotes,
+    checks,
+    failed_checks: checks.filter((c) => !c.passed).map((c) => c.id),
+    ambiguous_match: context.ambiguousMatch,
+    conflicting_payment: context.conflictingPayment,
+  };
+}
+
+/** Builds a reminder for the subject invoice from verified facts only. */
+async function generateDraft(ctx: Ctx): Promise<Effect> {
+  if (!ctx.tx.draftSources) {
+    throw new InvalidCommand("Drafts can only be generated against the ledger.");
+  }
+  const invoiceId = ctx.cmd.subject.id;
+
+  // Ids are sequential per invoice, so probing them also finds any open draft.
+  let draftId: string | undefined;
+  for (let n = 1; n <= MAX_DRAFTS_PER_INVOICE; n++) {
+    const id = `DR-${invoiceId}-${n}`;
+    const existing = await ctx.tx.get("drafts", id);
+    if (!existing) {
+      draftId = id;
+      break;
+    }
+    if (!CLOSED_DRAFT.has(status(existing))) {
+      throw new InvalidCommand(`${invoiceId} already has an open reminder (${id}).`);
+    }
+  }
+  if (draftId === undefined) {
+    throw new InvalidCommand(`${invoiceId} has too many reminders.`);
+  }
+
+  const sources = await ctx.tx.draftSources();
+  const context = draftContextFor(invoiceId, sources);
+  if (!context.invoice) throw new InvalidCommand(`No invoice ${invoiceId}.`);
+  const outstanding = paise(Math.max(0, context.outstanding));
+  const facts = factsFor(context.invoice, context.customer, outstanding, sources.asOf);
+  const built = buildDraft(facts);
+  const checks = validate({ body: built.body, facts, footnotes: built.footnotes }, context);
+  const failed = checks.filter((c) => !c.passed).map((c) => c.id);
+
+  await ctx.tx.put("drafts", {
+    draft_id: draftId,
+    invoice_id: invoiceId,
+    customer_id: context.invoice.customer_id,
+    status: "generated",
+    subject: built.subject,
+    body: built.body,
+    facts,
+    footnotes: built.footnotes,
+    checks,
+    failed_checks: failed,
+    amount_paise: outstanding,
+    ambiguous_match: context.ambiguousMatch,
+    conflicting_payment: context.conflictingPayment,
+    created_at: ctx.tx.now(),
+  });
+  return {
+    summary: `Generated reminder ${draftId} for ${formatInr(outstanding)}; ${checks.length - failed.length} of ${checks.length} checks pass`,
+    after: { draft_id: draftId, status: "generated", failed_checks: failed },
+    evidence_ids: [...new Set(facts.map((f) => f.evidenceId))],
+  };
 }
