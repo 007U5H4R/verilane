@@ -103,12 +103,29 @@ function ingestInvoices(
   paymentsByInvoice: Map<string, number>,
   dataIssues: DataIssue[],
 ): Invoice[] {
+  const seenNumbers = new Map<string, string>();
   return rows.map((row) => {
     const invoiceId = field(row, "invoice_id");
 
     // FS1: a blank invoice_number is explicit missing data, not "".
-    const invoiceNumber = nullableField(row, "invoice_number");
-    if (invoiceNumber === null) {
+    let invoiceNumber = nullableField(row, "invoice_number");
+    // invoice_number is unique when present (Data-Model §5): a repeat is a
+    // conflict, and the later row's number is dropped so the store's
+    // `&invoice_number` index never sees two rows with one number.
+    const firstHolder = invoiceNumber === null ? undefined : seenNumbers.get(invoiceNumber);
+    if (invoiceNumber !== null && firstHolder !== undefined) {
+      addIssue(
+        dataIssues,
+        invoiceId,
+        "invoice_number",
+        "conflict",
+        `invoice_number '${invoiceNumber}' is already used by invoice ${firstHolder}.`,
+        "Confirm the correct invoice number with the source system; one of the two rows is mis-numbered or a duplicate.",
+      );
+      invoiceNumber = null;
+    } else if (invoiceNumber !== null) {
+      seenNumbers.set(invoiceNumber, invoiceId);
+    } else {
       addIssue(
         dataIssues,
         invoiceId,

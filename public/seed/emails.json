@@ -1,1 +1,202 @@
-[]
+[
+  {
+    "thread_id": "E-001",
+    "message_id": "E-001-1",
+    "from_address": "accounts@aravalli-textiles.test",
+    "sent_at": "2026-10-08T10:15:00Z",
+    "subject": "Re: Payment reminder INV-1012",
+    "body": "Hello,\n\nApologies for the delay on INV-1012. We will release ₹3,40,000 by 20 Oct 2026 once our quarterly budget is approved.\n\nRegards,\nMeera Iyer\nAccounts, Aravalli Textiles"
+  },
+  {
+    "thread_id": "E-002",
+    "message_id": "E-002-1",
+    "from_address": "payables@konkanagro.test",
+    "sent_at": "2026-10-27T06:40:00Z",
+    "subject": "INV-1029 payment schedule",
+    "body": "Dear team,\n\nWe have scheduled payment of ₹2,10,000 for INV-1029 and will clear it by 6 November 2026.\n\nThanks,\nRohan Desai\nKonkan Agro Exports"
+  },
+  {
+    "thread_id": "E-003",
+    "message_id": "E-003-1",
+    "from_address": "payables@konkanagro.test",
+    "sent_at": "2026-10-21T09:05:00Z",
+    "subject": "Re: Overdue INV-1030",
+    "body": "Hi,\n\nINV-1030 is approved in our system. Payment date is 2026-11-12 as per our next payment run.\n\nRohan Desai\nKonkan Agro Exports"
+  },
+  {
+    "thread_id": "E-004",
+    "message_id": "E-004-1",
+    "from_address": "ap@gangasteel.test",
+    "sent_at": "2026-10-29T11:30:00Z",
+    "subject": "INV-1031",
+    "body": "Hello,\n\nWe will pay INV-1031 (₹95,000) next Monday.\n\nBest,\nSanjay Kulkarni\nGanga Steel Works"
+  },
+  {
+    "thread_id": "E-005",
+    "message_id": "E-005-1",
+    "from_address": "accounts@himalayaelectricals.test",
+    "sent_at": "2026-10-22T07:50:00Z",
+    "subject": "Re: Reminder - INV-1032",
+    "body": "Dear Sir/Madam,\n\nPayment of ₹1,40,000 against INV-1032 will be made on or before 15/11/2026.\n\nRegards,\nPriya Negi\nHimalaya Electricals"
+  },
+  {
+    "thread_id": "E-006",
+    "message_id": "E-006-1",
+    "from_address": "accounts@deccanlogistics.test",
+    "sent_at": "2026-10-29T08:20:00Z",
+    "subject": "Re: INV-1016 overdue",
+    "body": "Hi,\n\nWe paid INV-1016 yesterday via NEFT, ₹1,25,000. Please check and update your records.\n\nThanks,\nAnil Reddy\nDeccan Logistics"
+  },
+  {
+    "thread_id": "E-007",
+    "message_id": "E-007-1",
+    "from_address": "treasury@gangasteel.test",
+    "sent_at": "2026-10-28T05:45:00Z",
+    "subject": "Payment advice INV-1042",
+    "body": "Dear team,\n\nWe have paid ₹3,00,000 against INV-1042 on 27/10/2026. UTR reference GSW2610270042.\n\nRegards,\nTreasury, Ganga Steel Works"
+  },
+  {
+    "thread_id": "E-008",
+    "message_id": "E-008-1",
+    "from_address": "ap@bharatpolymers.test",
+    "sent_at": "2026-10-26T10:00:00Z",
+    "subject": "Re: INV-1033",
+    "body": "Hello,\n\nINV-1033 for ₹72,500 was paid on 24 Oct 2026. Kindly confirm receipt.\n\nKavita Shah\nBharat Polymers"
+  },
+  {
+    "thread_id": "E-009",
+    "message_id": "E-009-1",
+    "from_address": "accounts@deccanlogistics.test",
+    "sent_at": "2026-10-21T12:10:00Z",
+    "subject": "Part payment INV-1034",
+    "body": "Hi,\n\nWe released ₹50,000 against INV-1034 on 20/10/2026 as a part payment. The balance will follow next month.\n\nAnil Reddy\nDeccan Logistics"
+  },
+  {
+    "thread_id": "E-010",
+    "message_id": "E-010-1",
+    "from_address": "payables@konkanagro.test",
+    "sent_at": "2026-10-26T13:25:00Z",
+    "subject": "INV-1035 processed",
+    "body": "Dear team,\n\nPayment for INV-1035 (₹1,10,000) has been processed today.\n\nRohan Desai\nKonkan Agro Exports"
+  },
+  {
+    "thread_id": "E-011",
+    "message_id": "E-011-1",
+    "from_address": "finance@coromandelfoods.test",
+    "sent_at": "2026-10-12T09:35:00Z",
+    "subject": "Dispute: INV-1015 amount",
+    "body": "Hello,\n\nINV-1015 is billed at ₹6,00,000, but the agreed rate card puts this order at ₹5,40,000. The amount is incorrect; please send a revised invoice. We will not process payment until then.\n\nLakshmi Narayanan\nCoromandel Foods"
+  },
+  {
+    "thread_id": "E-012",
+    "message_id": "E-012-1",
+    "from_address": "finance@coromandelfoods.test",
+    "sent_at": "2026-10-19T11:00:00Z",
+    "subject": "INV-1036 billing period",
+    "body": "Hi,\n\nINV-1036 is raised for August 2026, but the services under this work order were delivered in September 2026. Please correct the billing period and reissue.\n\nLakshmi Narayanan\nCoromandel Foods"
+  },
+  {
+    "thread_id": "E-013",
+    "message_id": "E-013-1",
+    "from_address": "accounts@himalayaelectricals.test",
+    "sent_at": "2026-10-16T06:55:00Z",
+    "subject": "INV-1037 - PO required",
+    "body": "Dear team,\n\nINV-1037 does not quote our purchase order number. Our system cannot book an invoice without a PO, so please reissue it with the PO reference.\n\nPriya Negi\nHimalaya Electricals"
+  },
+  {
+    "thread_id": "E-014",
+    "message_id": "E-014-1",
+    "from_address": "accounts@jaipurceramics.test",
+    "sent_at": "2026-10-23T10:40:00Z",
+    "subject": "Re: INV-1038 reminder",
+    "body": "Hello,\n\nThe consignment billed on INV-1038 (₹64,000) never reached our warehouse. We have not received the goods, so this invoice is not payable yet.\n\nVikram Singh\nJaipur Ceramics"
+  },
+  {
+    "thread_id": "E-015",
+    "message_id": "E-015-1",
+    "from_address": "ap@bharatpolymers.test",
+    "sent_at": "2026-10-20T08:15:00Z",
+    "subject": "INV-1039 already settled",
+    "body": "Hi,\n\nPlease stop the reminders for INV-1039. We already settled it on 12 Sep 2026 via RTGS. Kindly check your receipts.\n\nKavita Shah\nBharat Polymers"
+  },
+  {
+    "thread_id": "E-016",
+    "message_id": "E-016-1",
+    "from_address": "accounts@jaipurceramics.test",
+    "sent_at": "2026-10-14T07:30:00Z",
+    "subject": "Duplicate invoice INV-1020",
+    "body": "Hello,\n\nINV-1020 looks like a duplicate of INV-1019: same PO, same period, same amount of ₹48,000. Please cancel INV-1020.\n\nVikram Singh\nJaipur Ceramics"
+  },
+  {
+    "thread_id": "E-017",
+    "message_id": "E-017-1",
+    "from_address": "accounts@jaipurceramics.test",
+    "sent_at": "2026-10-17T09:10:00Z",
+    "subject": "Billed twice - INV-1021 / INV-1022",
+    "body": "Hi,\n\nWe have been billed twice for the same order: INV-1021 and INV-1022, both ₹1,32,500. We will pay one of them once the duplicate is withdrawn.\n\nVikram Singh\nJaipur Ceramics"
+  },
+  {
+    "thread_id": "E-018",
+    "message_id": "E-018-1",
+    "from_address": "accounts@himalayaelectricals.test",
+    "sent_at": "2026-10-18T05:20:00Z",
+    "subject": "INV-1024 duplicate?",
+    "body": "Dear team,\n\nINV-1024 repeats INV-1023 for ₹76,000 against the same PO. Please confirm which one stands and issue a credit note for the other.\n\nPriya Negi\nHimalaya Electricals"
+  },
+  {
+    "thread_id": "E-019",
+    "message_id": "E-019-1",
+    "from_address": "payables@konkanagro.test",
+    "sent_at": "2026-10-24T10:05:00Z",
+    "subject": "Duplicate billing INV-1026",
+    "body": "Hello,\n\nINV-1026 duplicates INV-1025 (₹2,25,000, same billing period). We have paid neither while this is open; please withdraw the duplicate.\n\nRohan Desai\nKonkan Agro Exports"
+  },
+  {
+    "thread_id": "E-020",
+    "message_id": "E-020-1",
+    "from_address": "finance@indussoftware.test",
+    "sent_at": "2026-10-25T12:45:00Z",
+    "subject": "INV-1027 and INV-1028 are the same",
+    "body": "Hi,\n\nINV-1027 and INV-1028 are for the same licence renewal, ₹59,000 each. This looks like a duplicate invoice. Please cancel one.\n\nArjun Mehta\nIndus Software Services"
+  },
+  {
+    "thread_id": "E-021",
+    "message_id": "E-021-1",
+    "from_address": "ap@gangasteel.test",
+    "sent_at": "2026-10-15T09:00:00Z",
+    "subject": "Re: INV-1040",
+    "body": "Hello,\n\nCash flow is tight this month and INV-1040 will be delayed. We need a few more weeks and will revert with a date.\n\nSanjay Kulkarni\nGanga Steel Works"
+  },
+  {
+    "thread_id": "E-022",
+    "message_id": "E-022-1",
+    "from_address": "payables@everestpharma.test",
+    "sent_at": "2026-10-27T07:15:00Z",
+    "subject": "Copy of INV-1041",
+    "body": "Hi,\n\nCould you send a copy of INV-1041 and confirm your bank details? We want to set up the payment.\n\nNeha Joshi\nEverest Pharma Distributors"
+  },
+  {
+    "thread_id": "E-023",
+    "message_id": "E-023-1",
+    "from_address": "accounts@himalayaelectricals.test",
+    "sent_at": "2026-10-28T08:30:00Z",
+    "subject": "INV-1043 - details needed",
+    "body": "Dear team,\n\nWe cannot process INV-1043 until you share your GSTIN and the delivery challan number. Please send both.\n\nPriya Negi\nHimalaya Electricals"
+  },
+  {
+    "thread_id": "E-024",
+    "message_id": "E-024-1",
+    "from_address": "ap@gangasteel.test",
+    "sent_at": "2026-10-15T10:20:00Z",
+    "subject": "Payment plan INV-1024",
+    "body": "Hello,\n\nRegarding INV-1024, we will pay ₹3,40,000 by 10 Nov 2026.\n\nSanjay Kulkarni\nGanga Steel Works"
+  },
+  {
+    "thread_id": "E-025",
+    "message_id": "E-025-1",
+    "from_address": "finance@indussoftware.test",
+    "sent_at": "2026-10-29T06:05:00Z",
+    "subject": "Following up",
+    "body": "Hi,\n\nFollowing up on our call last week about the pending items. Our finance head will look at this when she is back and get in touch.\n\nArjun Mehta\nIndus Software Services"
+  }
+]
