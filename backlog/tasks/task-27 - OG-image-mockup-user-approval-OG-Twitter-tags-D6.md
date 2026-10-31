@@ -1,10 +1,10 @@
 ---
 id: TASK-27
 title: 'OG image mockup, user approval, OG/Twitter tags (D6)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-31 03:25'
+updated_date: '2026-10-31 08:36'
 labels:
   - P0
   - 'sp:2'

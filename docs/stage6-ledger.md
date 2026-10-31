@@ -14,7 +14,7 @@ Branch: `build/verilane-v1`. Briefs: `/Volumes/E Drive/Dev/.scratch/verilane/bri
 | TASK-11 | done, merged | 2dbe8e7 → 96e14ca | TC-019 11/11; TC-020 git-order check at Stage 8; EXE6 |
 | TASK-12 | done, merged b336325 | — | 393 unit, e2e 36/36 on merged branch |
 | TASK-19 | done | merged c7d6e63 | R4, R5 fixed; EXE9 |
-| TASK-27 | dispatched (wave 3), part 1 | worktree | stops at user gate D6 |
+| TASK-27 | done, merged | a687573 | OG image wired; EXE14; vitest 565/565, e2e 73/1-skip (`--workers=1`) |
 | M-001 review | done: pass-with-fixes (R1, R2 major) | read-only, main..4303a32 | max 2 fix rounds |
 | TASK-20 | done, merged | b888ae3 | R2/R3/R13 fixed; EXE12; vitest 542/542, e2e 69/1-skip |
 | TASK-13 | done | merged e544c89 | R1, R6, R12 fixed; EXE10 |
@@ -38,6 +38,7 @@ Next wave after merge: TASK-9 (after 8), TASK-11 (after 8; commit before TASK-12
 - Missing deps for later tickets: @tanstack/react-table (TASK-9), recharts (TASK-18), prettier.
 - Rewrite HANDOFF.md at stage end.
 - This machine's default `pnpm e2e` worker count (4) produces intermittent false failures on `responsive.spec.ts` (axe R2, TC-062) and occasionally `drafts.spec.ts`/`investigation.spec.ts` under concurrent Chromium/axe-core load — not a code defect (confirmed by file- and worker-count-level bisection, disk space ruled out). Re-run the e2e gate with `--workers=1` on this machine for a trustworthy signal before merging.
+- Next.js 16 Cache Components: an explicit `openGraph.url` in the *root* layout's metadata forces `/invoices/[id]` into `blocking-prerender-metadata-runtime` at build time, even though the field is a constant string. Give the canonical `openGraph.url` to the specific static route that needs it instead (see EXE14) — Next 16 merges metadata per-segment, not as a deep merge.
 
 - NavItems.tsx sidebar counts are hard-coded; after the TASK-8 seed, Queue shows 48 instead of the real count. Wire them to live data (TASK-9 scope or a follow-up).
 
