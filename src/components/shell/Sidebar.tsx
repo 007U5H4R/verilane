@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AsOfLabel } from "@/components/shell/AsOfLabel";
 import { LogoCard } from "@/components/shell/LogoCard";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 import { QueueCount } from "@/components/shell/QueueCount";
@@ -57,7 +58,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
         <span className="w-fit rounded-full border border-white/20 px-2.5 py-1 text-xs font-bold tracking-wider text-rail-muted">
           DEMO DATA
         </span>
-        <p className="text-xs text-rail-muted">As of 30 Oct 2026</p>
+        <AsOfLabel className="text-xs text-rail-muted" />
       </div>
     </aside>
   );

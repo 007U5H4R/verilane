@@ -13,6 +13,7 @@ const ACTION_LABEL: Record<string, string> = {
   dismiss_review: "Review dismissed",
   action_review: "Review actioned",
   import_csv: "CSV imported",
+  import_rejected: "CSV rejected",
   reset_demo: "Demo reset",
   demo_reset: "Demo reset",
   switch_role: "Role switched",
