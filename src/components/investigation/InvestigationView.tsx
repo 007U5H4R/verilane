@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCommand } from "@/components/useCommand";
 import { buildInvoiceEvidence, INVOICE_FACT_LABELS } from "@/domain/evidence";
@@ -38,16 +39,16 @@ function factValue(ev: Evidence): ReactNode {
 
 function BackToQueue() {
   return (
-    <a href="/queue" className="text-sm text-brand hover:underline">
+    <Link href="/queue" className="text-sm text-brand hover:underline">
       ← Back to queue
-    </a>
+    </Link>
   );
 }
 
 /** Loading state: skeleton document card + evidence table (Design.md §17). */
 export function InvestigationSkeleton() {
   return (
-    <div className="p-7" aria-busy="true" aria-label="Loading invoice">
+    <div className="p-4 md:p-7" aria-busy="true" aria-label="Loading invoice">
       <div className="rounded-lg border border-border bg-surface p-6">
         <div className="h-5 w-24 animate-pulse rounded-full bg-surface-sunken" />
         <div className="mt-3 h-8 w-64 max-w-full animate-pulse rounded bg-surface-sunken" />
@@ -105,7 +106,7 @@ export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationVi
 
   if (found === null) {
     return (
-      <div className="p-7">
+      <div className="p-4 md:p-7">
         <h1 className="font-display text-2xl font-semibold text-text">Invoice not found</h1>
         <p className="mt-2 text-text-muted">
           No invoice <span className="font-mono">{invoiceId}</span> in the loaded data.
@@ -121,7 +122,7 @@ export function InvestigationView({ onApprove, onMarkDisputed }: InvestigationVi
   const facts = buildInvoiceEvidence(invoice, invoice.row_id);
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       <p className="mb-4">
         <BackToQueue />
       </p>

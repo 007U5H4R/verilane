@@ -11,6 +11,7 @@ import { openDb, type VerilaneDb } from "@/store/db";
 import { ensureSeeded } from "@/store/loader";
 import { DbContext, PersistentContext, SeedUpdateContext } from "@/store/hooks";
 import { E2EBridge } from "@/components/E2EBridge";
+import { ShellLoading } from "@/components/shell/ShellLoading";
 
 interface DataProviderProps {
   children: ReactNode;
@@ -49,7 +50,7 @@ export function DataProvider({ children }: DataProviderProps) {
     };
   }, []);
 
-  if (status.kind === "loading") return null;
+  if (status.kind === "loading") return <ShellLoading />;
   if (status.kind === "error") {
     console.error("[verilane] failed to open database", status.error);
     return <>{children}</>;

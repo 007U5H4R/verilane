@@ -15,7 +15,7 @@ export function AuditView() {
   const db = useContext(DbContext);
   const [attempt, setAttempt] = useState(0);
   return (
-    <section className="flex flex-col gap-4 p-7" aria-labelledby="audit-title">
+    <section className="flex flex-col gap-4 p-4 md:p-7" aria-labelledby="audit-title">
       <header className="flex flex-col gap-1">
         <h1 id="audit-title" className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
           Audit log

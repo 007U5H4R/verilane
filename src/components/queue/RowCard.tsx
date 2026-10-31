@@ -31,27 +31,31 @@ export function RowCard({
     <a
       href={`/invoices/${invoice.invoice_id}`}
       data-excluded={excluded || undefined}
-      className={`flex h-16 items-center gap-4 border-b border-border px-4 hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none ${
+      className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-3 hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none lg:h-16 lg:flex-nowrap lg:gap-4 lg:py-0 ${
         excluded ? "bg-[color-mix(in_srgb,var(--disp-bg)_45%,var(--surface))] text-text-muted" : ""
       }`}
     >
-      <PriorityChip band={priority.band} />
-      <span className="font-mono text-sm text-text-muted shrink-0">
+      <span className="order-6 lg:order-none">
+        <PriorityChip band={priority.band} />
+      </span>
+      <span className="order-4 font-mono text-sm text-text-muted shrink-0 lg:order-none">
         {invoice.invoice_number ?? "—"}
       </span>
-      <span className={`min-w-0 flex-1 truncate ${excluded ? "text-text-muted" : "text-text"}`}>
+      <span className={`order-1 min-w-0 flex-1 truncate lg:order-none ${excluded ? "text-text-muted" : "text-text"}`}>
         {customer?.name ?? invoice.customer_id}
       </span>
-      <span className={`tabular-nums shrink-0 ${excluded ? "text-text-muted" : "text-text"}`}>{formatInr(paise(outstanding))}</span>
-      <span className="w-28 shrink-0 text-text-muted">
+      <span className={`order-2 tabular-nums shrink-0 lg:order-none ${excluded ? "text-text-muted" : "text-text"}`}>{formatInr(paise(outstanding))}</span>
+      {/* <1024: forces line 2 (invoice no. · days overdue · chip), Design.md §13. */}
+      <span aria-hidden="true" className="order-3 h-0 basis-full lg:hidden" />
+      <span className="order-5 shrink-0 text-text-muted lg:order-none lg:w-28">
         {daysOverdue === null ? "—" : `${daysOverdue}d overdue`}
       </span>
-      <span className="min-w-0 flex-[2] truncate text-text-muted">{priority.reason}</span>
+      <span className="hidden min-w-0 flex-[2] truncate text-text-muted lg:block">{priority.reason}</span>
       {excluded && (
         // The row is one link, so the badge carries its cause (G4/G5/G7) as a title, not a nested link.
         <Badge
           variant="outline"
-          className="shrink-0"
+          className="order-7 shrink-0 lg:order-none"
           data-testid="excluded-badge"
           data-band={priority.band}
           title={priority.reason}

@@ -12,7 +12,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
   return (
     <aside
       aria-label="Primary"
-      className="flex w-[216px] flex-col gap-4 bg-rail p-4 text-rail-text"
+      className="hidden w-[216px] flex-col gap-4 bg-rail p-4 text-rail-text lg:flex"
     >
       <LogoCard />
       <div className="flex items-center gap-2.5">

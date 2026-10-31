@@ -2,7 +2,7 @@
 // but real content for most pages lands with their milestone.
 export function ComingSoon({ milestone }: { milestone: string }) {
   return (
-    <div className="flex flex-col items-start gap-1 p-7">
+    <div className="flex flex-col items-start gap-1 p-4 md:p-7">
       <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
         Coming soon
       </h1>

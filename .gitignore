@@ -43,3 +43,6 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# agent worktrees (orchestration scratch, never committed)
+.claude/worktrees/

@@ -9,7 +9,9 @@
 "use client";
 import dynamic from "next/dynamic";
 
+import { ShellLoading } from "@/components/shell/ShellLoading";
+
 export const DataProviderLoader = dynamic(
   () => import("./DataProvider").then((m) => m.DataProvider),
-  { ssr: false },
+  { ssr: false, loading: () => <ShellLoading /> },
 );

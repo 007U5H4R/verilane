@@ -21,21 +21,21 @@ export function EvidenceTable({ title, rows }: { title: string; rows: EvidenceRo
       <h2 id={headingId} className="mb-2 text-sm font-semibold text-text">
         {title}
       </h2>
-      <table className="w-full border-collapse text-[13px]">
-        <tbody>
+      <table className="w-full border-collapse text-[13px] max-md:block">
+        <tbody className="max-md:block">
           {rows.map(({ label, value, evidence }) => (
             <tr
               key={evidence.evidence_id}
               data-field={evidence.source_field}
-              className="border-b border-border"
+              className="border-b border-border max-md:block max-md:py-2"
             >
               <th
                 scope="row"
-                className="w-[38%] py-2 pr-4 text-left align-top font-medium text-text-muted"
+                className="py-2 pr-4 text-left align-top font-medium text-text-muted max-md:block max-md:p-0 md:w-[38%]"
               >
                 {label}
               </th>
-              <td className="py-2 align-top text-text">
+              <td className="py-2 align-top text-text break-words max-md:block max-md:pb-0 max-md:pt-0.5">
                 <span className="inline-flex flex-wrap items-center gap-2">
                   {value}
                   {evidence.validation_status === "missing" && <Badge variant="high">Missing</Badge>}

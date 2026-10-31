@@ -143,16 +143,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-  color: inherit;
-}
+/* In @layer base so text-* utilities win: unlayered, these beat every
+   Tailwind utility and painted sidebar labels brand-strong on the rail and
+   on-brand buttons in inherited text colour (axe color-contrast, R2). */
+@layer base {
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
 
-a {
-  color: var(--brand-strong);
+  a {
+    color: var(--brand-strong);
+  }
 }
 
 :focus-visible {
