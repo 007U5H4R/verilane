@@ -4,6 +4,7 @@
  * Keys, in order: `q, band, status, customer, ageing, sort, page`. Defaults
  * are omitted, list values are comma-joined, unknown values are dropped.
  */
+import { AGEING_BUCKETS, type AgeingBucket } from "@/domain/aggregates";
 import {
   InvoiceStatusSchema,
   PriorityBandSchema,
@@ -11,8 +12,8 @@ import {
   type PriorityBand,
 } from "@/domain/schema";
 
-export const AGEING_BUCKETS = ["1-15", "16-30", "31-60", "60+"] as const;
-export type AgeingBucket = (typeof AGEING_BUCKETS)[number];
+// Ageing buckets have one definition, in the domain (T18-6).
+export { AGEING_BUCKETS, ageingBucketOf, ageingBucketOfPriority, type AgeingBucket } from "@/domain/aggregates";
 
 export const SORT_COLUMNS = [
   "priority",
@@ -60,15 +61,6 @@ export const DEFAULT_FILTERS: QueueFilters = {
   sort: null,
   page: 1,
 };
-
-/** Days overdue → ageing bucket (Design.md §15); not overdue → `null`. */
-export function ageingBucketOf(daysOverdue: number | null): AgeingBucket | null {
-  if (daysOverdue === null || daysOverdue <= 0) return null;
-  if (daysOverdue <= 15) return "1-15";
-  if (daysOverdue <= 30) return "16-30";
-  if (daysOverdue <= 60) return "31-60";
-  return "60+";
-}
 
 function list(params: URLSearchParams, key: string): string[] {
   const raw = params.get(key);
