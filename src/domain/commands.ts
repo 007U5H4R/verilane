@@ -28,7 +28,7 @@ import {
 } from "./schema";
 import { transition } from "./transitions";
 import { buildDraft, factsFor, locateFootnotes } from "./draft";
-import { VerifiedFactSchema, type VerifiedFact } from "./schema";
+import { VerifiedFactSchema, type Extraction, type VerifiedFact } from "./schema";
 import { draftContextFor, validate, type DraftSources } from "./validate";
 
 export type Row = Record<string, unknown>;
@@ -592,6 +592,35 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
 // --- Reminder drafts (TASK-15) ----------------------------------------------
 
 /** A draft in one of these states no longer blocks a new one. */
+/**
+ * FS11 (TASK-22): records that a provider's output for one email was
+ * rejected. The email itself goes to review as an `uncertain_match` item
+ * (`RV-<message_id>-match`, raised by `reviewItemsFor`, since a rejected
+ * extraction never matches); this writes the one `validation_failure` audit
+ * event that says why. Call it inside the same transaction that stores the
+ * rejected row.
+ */
+export async function recordRejection(
+  x: Pick<Extraction, "message_id" | "thread_id" | "rejection_reason">,
+  actor: Role,
+  tx: Tx,
+): Promise<AuditEventInput> {
+  const reviewId = `RV-${x.message_id}-match`;
+  const event: AuditEventInput = {
+    at: tx.now(),
+    actor_role: actor,
+    actor_label: ROLE_LABEL[actor],
+    action: "validation_failure",
+    subject: `review:${reviewId}`,
+    subject_kind: "review",
+    subject_id: reviewId,
+    summary: `Email ${x.message_id} could not be read (${x.rejection_reason ?? "extraction rejected"}); sent to review`,
+    evidence_ids: [`${x.message_id}:emails.json:status`],
+  };
+  await tx.audit(event);
+  return event;
+}
+
 const CLOSED_DRAFT = new Set(["rejected", "sent_simulated"]);
 /** Stop rule for the draft-id probe: no invoice gets this many drafts. */
 const MAX_DRAFTS_PER_INVOICE = 500;
