@@ -63,3 +63,10 @@ export function formatInr(p: Paise): string {
   }).format(rupees);
   return `₹${formatted}`;
 }
+
+const WHOLE_RUPEES = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+
+/** Formats paise as whole rupees, e.g. `₹3,40,000` (queue reason chips). */
+export function formatInrWhole(p: Paise): string {
+  return `₹${WHOLE_RUPEES.format(Math.round(p / 100))}`;
+}

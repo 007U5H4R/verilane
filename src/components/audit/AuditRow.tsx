@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/domain/clock";
 import type { AuditEventRow } from "@/store/db";
 
 const ACTION_LABEL: Record<string, string> = {
@@ -25,16 +26,9 @@ export function actionLabel(action: string): string {
   return ACTION_LABEL[action] ?? action.replace(/_/g, " ");
 }
 
+/** An audit timestamp in the app's one date format (clock.ts); `—` if absent. */
 export function formatAt(at: unknown): string {
-  const ms = typeof at === "string" ? Date.parse(at) : Number.NaN;
-  if (Number.isNaN(ms)) return "—";
-  return new Date(ms).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return typeof at === "string" ? formatDateTime(at) : "—";
 }
 
 /** One read-only audit entry: summary, then actor · action · subject · time. */

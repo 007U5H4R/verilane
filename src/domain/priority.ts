@@ -4,6 +4,7 @@
  * (`PrioritySignals`, built by `signals.ts`).
  */
 import { daysBetween } from "./clock";
+import { formatInrWhole, paise } from "./money";
 import type { DataIssue, Invoice, Payment, Priority, PriorityBand, PriorityFactor } from "./schema";
 
 const CONFIG_VERSION = "priority.v1";
@@ -51,11 +52,6 @@ export function outstandingOf(inv: Invoice, ctx: RankCtx): number {
     .filter((p) => p.invoice_id === inv.invoice_id)
     .reduce((sum, p) => sum + p.amount_paise, 0);
   return inv.amount_paise - paid;
-}
-
-function formatRupeesNoDecimal(paise: number): string {
-  const rupees = Math.round(paise / 100);
-  return `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(rupees)}`;
 }
 
 function daysOverdueOf(inv: Invoice, ctx: PriorityCtx): number | null {
@@ -228,7 +224,7 @@ export function prioritise(inv: Invoice, ctx: PriorityCtx): Priority {
     });
   }
   factors.push({
-    name: `${formatRupeesNoDecimal(derivedOutstanding)} outstanding`,
+    name: `${formatInrWhole(paise(derivedOutstanding))} outstanding`,
     points: outstandingPts,
     evidenceId: `row ${inv.row_id} · outstanding_amount`,
   });

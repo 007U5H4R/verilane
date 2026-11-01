@@ -4,17 +4,10 @@ import { PriorityChip } from "@/components/queue/PriorityChip";
 import { formatInr, paise } from "@/domain/money";
 import type { Customer, Invoice, Priority } from "@/domain/schema";
 
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+import { formatDate } from "@/domain/clock";
 
-/** `2026-09-13` → `13 Sep 2026`. ISO dates are whole UTC days (clock.ts). */
-export function formatDate(iso: string): string {
-  return DATE_FMT.format(new Date(`${iso}T00:00:00Z`));
-}
+/** Re-exported for existing importers; the one formatter lives in clock.ts (R7). */
+export { formatDate };
 
 /**
  * The Investigation document card (Design.md §14): priority, customer
