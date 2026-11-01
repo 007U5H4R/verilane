@@ -335,3 +335,11 @@
 - **Single honest measurement on v2** (`58e1b34`): dispute recall 3/9 → 4/9, approval enforcement 38/56 → 42/58, matching 20/23 unchanged, email class 14/30 → 15/30. On v1: dispute 2/9 → 4/9, approval 38/54 → 54/62. No tuning against v2 followed.
 - **User decision (2026-11-01): TC-066 is a known limitation.** Phrase lists do not generalise far enough to reach the gates. The gates keep failing honestly, with thresholds and labels unchanged. TASK-30 and TASK-31 are Done, since their own checks pass. TASK-21 stays In Progress, and TC-066 will be listed as a known FAIL in the Stage 8 QA report and the README. The real fix is the live Claude provider, which needs a real key that only the user can supply.
 - Merged with no conflicts (impl `e310c1e`, 0 fix rounds, review PASS both stages). Gates: lint, tsc, unit 699/699, eval 14 passed / 8 known held-out failures (v1: 3, v2: 5), build + check:secrets clean, e2e 129 passed / 1 skipped under `--workers=1`.
+
+## EXE24 · FS11 fault injection and extraction cross-check (TASK-22) — accepted
+- `src/ai/validateExtraction.ts`: `crossCheck` flags any amount or invoice reference that doesn't appear as a token in the email body. When body and `sent_at` are given, `validateExtraction` runs it and rejects with "cross-check failed".
+- `src/domain/commands.ts`: `recordRejection` writes a `validation_failure` audit event (subject `review:RV-<message_id>-match`). `src/domain/validate.ts`: in `draftContextFor`, a rejected extraction with an open review item blocks drafts for its invoice or candidate invoices.
+- `src/ai/faulty.ts` + `eval/faults.eval.ts`: 6 fault kinds, each 100% rejected, sent to needs_review and audited. 0 of 218 approval attempts became approvable (TC-070, TC-071).
+- **Deviation:** there is no runtime ingest from a provider yet (extractions are seeded; `liveProvider` is unused per EXE19), so `recordRejection` is only called from eval. Wiring it into a real ingest path is parked for the close-out wave.
+- Review PASS on both stages. One quality fix round: `1d44703` moved an orphaned comment back to `CLOSED_DRAFT`. Merged at `45dd9f8`; the conflict in `eval/report.*` was resolved by regenerating.
+- Gates: lint and tsc pass, unit 723/723, eval 34 passed / 8 known held-out failures (v1: 3, v2: 5), build + check:secrets clean, e2e 129 passed / 1 skipped under `--workers=1`.
