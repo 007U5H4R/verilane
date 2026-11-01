@@ -39,9 +39,12 @@ async function main(): Promise<void> {
     JSON.parse(readFileSync(join(ROOT, "eval", "heldout", "emails.json"), "utf8")),
   );
 
+  const cost = estimateCostUsd(emails.length, liveModelId());
   console.log(
     `eval:live: ${emails.length} calls against model "${liveModelId()}", ` +
-      `estimated cost ~$${estimateCostUsd(emails.length).toFixed(4)} (rough estimate, not a bill).`,
+      (cost === null
+        ? `cost unknown for model "${liveModelId()}" (no rates on file).`
+        : `estimated cost ~$${cost.toFixed(4)} (rough estimate, not a bill).`),
   );
 
   const results = [];

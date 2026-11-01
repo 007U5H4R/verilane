@@ -60,4 +60,16 @@ describe("check-bundle-secrets (T23-8)", () => {
     const { status } = runIn(root);
     expect(status).toBe(1);
   }, 60_000);
+
+  // TASK-36 (T23-R4): the env-var name alone (e.g. an inlined
+  // `process.env.ANTHROPIC_API_KEY` reference) is also a hit.
+  it("fails and names the file when a chunk contains the literal ANTHROPIC", () => {
+    mkdirSync(join(root, ".next/static/chunks"), { recursive: true });
+    writeFileSync(join(root, ".next/static/chunks/clean.js"), "console.log('hi');");
+    writeFileSync(join(root, ".next/static/chunks/leak.js"), "var e=process.env.ANTHROPIC_API_KEY;");
+    const { status, output } = runIn(root);
+    expect(status).toBe(1);
+    expect(output).toContain("leak.js");
+    expect(output).not.toContain("clean.js");
+  }, 60_000);
 });
