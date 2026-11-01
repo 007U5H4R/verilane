@@ -57,9 +57,20 @@ describe("eval:live report rows (T23-9)", () => {
   });
 });
 
-describe("eval:live cost estimate (T23-9)", () => {
-  it("uses Opus 5.5 rates: 400 in @ $4/M + 200 out @ $20/M per call", () => {
+describe("eval:live cost estimate (T23-9, TASK-36 T23-R3)", () => {
+  it("uses Opus 5.5 rates for the default model: 400 in @ $4/M + 200 out @ $20/M per call", () => {
     // per call: 400 * 4 / 1e6 + 200 * 20 / 1e6 = 0.0016 + 0.004 = 0.0056
-    expect(estimateCostUsd(1000)).toBeCloseTo(5.6, 10);
+    expect(estimateCostUsd(1000, "claude-opus-5-5")).toBeCloseTo(5.6, 10);
+  });
+
+  it("uses the configured override model's rates, not Opus 5.5's", () => {
+    // Sonnet 4.6: $3 / $15 -> per call 0.0012 + 0.003 = 0.0042
+    expect(estimateCostUsd(1000, "claude-sonnet-4-6")).toBeCloseTo(4.2, 10);
+    // Haiku 4.5: $1 / $5 -> per call 0.0004 + 0.001 = 0.0014
+    expect(estimateCostUsd(1000, "claude-haiku-4-5")).toBeCloseTo(1.4, 10);
+  });
+
+  it("returns null (cost unknown) for a model it has no rates for", () => {
+    expect(estimateCostUsd(1000, "some-future-model")).toBeNull();
   });
 });
