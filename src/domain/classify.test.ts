@@ -3,6 +3,7 @@ import { classify } from "./classify";
 import { extractTokens } from "./extract";
 import { reviewItemsFor } from "./review";
 import { EXTRACTION_SCHEMA_VERSION, type Extraction, type Invoice, type Match } from "./schema";
+import { paise } from "./money";
 
 function run(body: string, sent_at = "2026-10-28T09:00:00Z") {
   return classify(extractTokens({ body, sent_at }), body);
@@ -160,7 +161,7 @@ describe("classify — payment claim amount (R15)", () => {
       customer_id: "C-006",
       invoice_date: "2026-09-01",
       due_date: "2026-10-01",
-      amount_paise: 34_000_000,
+      amount_paise: paise(34_000_000),
       currency: "INR",
       status_raw: "open",
       status: "open",

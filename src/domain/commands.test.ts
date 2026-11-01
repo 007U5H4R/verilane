@@ -12,6 +12,7 @@ import {
 } from "./commands";
 import { IllegalTransition } from "./transitions";
 import type { DraftSources } from "./validate";
+import { paise } from "./money";
 
 /** In-memory Tx for pure tests. */
 function memTx(seed: Partial<Record<TableName, Row[]>> = {}) {
@@ -315,7 +316,7 @@ describe("draft commands (TASK-15)", () => {
     customer_id: "C-001",
     invoice_date: "2026-08-14",
     due_date: "2026-09-13",
-    amount_paise: 34_000_000,
+    amount_paise: paise(34_000_000),
     currency: "INR",
     status_raw: "Open",
     status: "open",
@@ -428,7 +429,7 @@ describe("draft commands (TASK-15)", () => {
 
     // A payment comes in after validation, changing the outstanding amount
     // the draft states — check 3 should fail on re-validation.
-    src.payments.push({ payment_id: "P-1", invoice_id: "INV-A", paid_on: "2026-10-29", amount_paise: 10_000_000 });
+    src.payments.push({ payment_id: "P-1", invoice_id: "INV-A", paid_on: "2026-10-29", amount_paise: paise(10_000_000) });
 
     const before = m.audits.length;
     const e = await run(cmd({ type: "approve_draft", subject: { kind: "draft", id: "DR-INV-A-1" } }), m.tx);
@@ -527,7 +528,7 @@ describe("draft commands (TASK-15)", () => {
   });
 
   it("a Manager can approve a re-validated draft above ₹5,00,000", async () => {
-    const big = { ...invoice, amount_paise: 60_000_000 };
+    const big = { ...invoice, amount_paise: paise(60_000_000) };
     const src = sources({ invoices: [big] });
     const m = ledgerTx(src);
     m.tables.get("invoices")?.set("INV-A", { ...big });

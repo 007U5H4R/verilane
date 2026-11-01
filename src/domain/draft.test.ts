@@ -12,7 +12,7 @@ const invoice: Invoice = {
   customer_id: "C-001",
   invoice_date: "2026-08-14",
   due_date: "2026-09-13",
-  amount_paise: 34_000_000,
+  amount_paise: paise(34_000_000),
   currency: "INR",
   status_raw: "Open",
   status: "open",

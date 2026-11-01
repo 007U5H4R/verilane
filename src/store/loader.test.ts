@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerilaneDb } from "./db";
 import { ensureSeeded, recompute, type Fetcher, type SeedManifest } from "./loader";
 import { execute } from "./tx";
+import { paise } from "@/domain/money";
 
 const CUSTOMERS_CSV = ["customer_id,name,contact_emails,payment_terms_days,segment", "C-001,Acme Co,ap@acme.test,30,SMB"].join("\n");
 
@@ -100,7 +101,7 @@ describe("ensureSeeded — TASK-7.6", () => {
         customer_id: "C-001",
         invoice_date: "2026-01-01",
         due_date: "2026-10-01",
-        amount_paise: 1,
+        amount_paise: paise(1),
         currency: "INR",
         status_raw: "open",
         status: "open",

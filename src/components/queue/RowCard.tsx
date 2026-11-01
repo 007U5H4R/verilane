@@ -1,4 +1,4 @@
-import { formatInr, paise } from "@/domain/money";
+import { formatInr } from "@/domain/money";
 import { outstandingOf } from "@/domain/priority";
 import type { Customer, Invoice, Payment, Priority, PriorityBand } from "@/domain/schema";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,7 @@ export function RowCard({
         <span className={`order-1 min-w-0 flex-1 truncate lg:order-none ${excluded ? "text-text-muted" : "text-text"}`}>
           {customer?.name ?? invoice.customer_id}
         </span>
-        <span className={`order-2 tabular-nums shrink-0 lg:order-none ${excluded ? "text-text-muted" : "text-text"}`}>{formatInr(paise(outstanding))}</span>
+        <span className={`order-2 tabular-nums shrink-0 lg:order-none ${excluded ? "text-text-muted" : "text-text"}`}>{formatInr(outstanding)}</span>
         {/* <1024: forces line 2 (invoice no. · days overdue · chip), Design.md §13. */}
         <span aria-hidden="true" className="order-3 h-0 basis-full lg:hidden" />
         <span className="order-5 shrink-0 text-text-muted lg:order-none lg:w-28">

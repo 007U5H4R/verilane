@@ -2,8 +2,12 @@
  * Money is always paise (1 rupee = 100 paise), stored as an integer, so
  * arithmetic never hits floating-point rounding. The brand prevents a raw
  * `number` (e.g. a rupee value) from being passed where paise is expected.
+ * It is Zod's brand, so schema fields declared `.brand<"Paise">()`
+ * (schema.ts) parse straight to `Paise`.
  */
-export type Paise = number & { readonly __brand: "Paise" };
+import type { z } from "zod";
+
+export type Paise = number & z.$brand<"Paise">;
 
 /** Brands an integer as `Paise`. Throws if `n` is not an integer. */
 export function paise(n: number): Paise {
@@ -12,6 +16,16 @@ export function paise(n: number): Paise {
   }
   return n as Paise;
 }
+
+/** Paise arithmetic stays Paise (integers are closed under + and −), so
+ * derived figures keep the brand without a runtime check on a render path. */
+export function addPaise(a: Paise, b: Paise): Paise {
+  return (a + b) as Paise;
+}
+export function subPaise(a: Paise, b: Paise): Paise {
+  return (a - b) as Paise;
+}
+export const ZERO_PAISE = 0 as Paise;
 
 const CURRENCY_PREFIX = /^(₹|rs\.?|inr)\s*/i;
 const LAKH_SUFFIX = /\s*(lakhs?)\s*$/i;

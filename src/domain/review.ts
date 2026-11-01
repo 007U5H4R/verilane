@@ -5,6 +5,7 @@
  * the ledger's. The ledger is never overridden — these items only ask a
  * person to look.
  */
+import { paise } from "./money";
 import { outstandingOf } from "./priority";
 import type { Extraction, Invoice, Match, Payment, ReviewItem } from "./schema";
 
@@ -108,7 +109,7 @@ export function reviewItemsFor(m: Match, x: Extraction, ledger: ReviewLedger): R
             ? "Email's paid amount differs from the ledger outstanding"
             : "Email says paid; the ledger shows no matching payment",
           requires_role: "manager",
-          ...(claimed !== null && { email_amount_paise: claimed }),
+          ...(claimed !== null && { email_amount_paise: paise(claimed) }),
           ledger_outstanding_paise: ledgerOutstanding,
         },
       ];

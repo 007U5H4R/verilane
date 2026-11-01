@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { reviewItemsFor, type ReviewLedger } from "./review";
 import { EXTRACTION_SCHEMA_VERSION, ReviewItemSchema, type Extraction, type Invoice, type Match } from "./schema";
+import { paise } from "./money";
 
 function invoice(invoice_id: string, amount_paise: number): Invoice {
   return {
@@ -10,7 +11,7 @@ function invoice(invoice_id: string, amount_paise: number): Invoice {
     customer_id: "C-006",
     invoice_date: "2026-09-01",
     due_date: "2026-10-01",
-    amount_paise,
+    amount_paise: paise(amount_paise),
     currency: "INR",
     status_raw: "open",
     status: "open",
@@ -83,7 +84,7 @@ describe("reviewItemsFor", () => {
   it("no item when the ledger already shows the invoice settled", () => {
     const settled: ReviewLedger = {
       ...ledger,
-      payments: [{ payment_id: "P-1", invoice_id: "INV-042", paid_on: "2026-10-27", amount_paise: 34_000_000 }],
+      payments: [{ payment_id: "P-1", invoice_id: "INV-042", paid_on: "2026-10-27", amount_paise: paise(34_000_000) }],
     };
     expect(reviewItemsFor(matched("INV-042"), ext(), settled)).toEqual([]);
   });

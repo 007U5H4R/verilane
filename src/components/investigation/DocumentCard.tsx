@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { PriorityChip } from "@/components/queue/PriorityChip";
-import { formatInr, paise } from "@/domain/money";
-import type { Customer, Invoice, Priority } from "@/domain/schema";
-
 import { formatDate } from "@/domain/clock";
+import { formatInr, type Paise } from "@/domain/money";
+import type { Customer, Invoice, Priority } from "@/domain/schema";
 
 /** Re-exported for existing importers; the one formatter lives in clock.ts (R7). */
 export { formatDate };
@@ -24,7 +23,7 @@ export function DocumentCard({
   invoice: Invoice;
   priority: Priority;
   customer: Customer | undefined;
-  outstandingPaise: number;
+  outstandingPaise: Paise;
   children: ReactNode;
 }) {
   const days = priority.days_overdue;
@@ -54,7 +53,7 @@ export function DocumentCard({
         </div>
         <div className="sm:text-right">
           <div className="font-display text-[30px] font-semibold text-text tabular-nums">
-            {formatInr(paise(outstandingPaise))}
+            {formatInr(outstandingPaise)}
           </div>
           <div className="text-text-muted">
             {days === null

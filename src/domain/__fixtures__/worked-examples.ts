@@ -6,6 +6,7 @@
 import { AS_OF_DATE } from "../clock";
 import type { Invoice } from "../schema";
 import type { PriorityCtx } from "../priority";
+import { paise } from "../money";
 
 function baseInvoice(overrides: Partial<Invoice>): Invoice {
   return {
@@ -15,7 +16,7 @@ function baseInvoice(overrides: Partial<Invoice>): Invoice {
     customer_id: "C-001",
     invoice_date: "2026-01-01",
     due_date: "2026-09-13",
-    amount_paise: 0,
+    amount_paise: paise(0),
     currency: "INR",
     status_raw: "open",
     status: "open",
@@ -41,7 +42,7 @@ export const exampleA = {
     row_id: 12,
     invoice_id: "INV-A",
     due_date: "2026-09-13", // 47 days before AS_OF_DATE (2026-10-30).
-    amount_paise: 34_000_000, // ₹3,40,000.
+    amount_paise: paise(34_000_000), // ₹3,40,000.
   }),
   ctx: baseCtx({
     customerHistory: new Map([["C-001", 12]]),
@@ -56,7 +57,7 @@ export const exampleC = {
     invoice_id: "INV-C",
     customer_id: "C-003",
     due_date: "2026-08-01", // 90 days before AS_OF_DATE.
-    amount_paise: 60_000_000, // ₹6,00,000.
+    amount_paise: paise(60_000_000), // ₹6,00,000.
   }),
   ctx: baseCtx({
     signals: { disputed: new Map([["INV-C", "E-011-1:emails.json:email_class"]]) },
@@ -70,7 +71,7 @@ export const exampleD = {
     invoice_id: "INV-D",
     customer_id: "C-004",
     due_date: "2026-10-10", // 20 days before AS_OF_DATE.
-    amount_paise: 15_000_000,
+    amount_paise: paise(15_000_000),
   }),
   ctx: baseCtx({
     signals: { holdReconcile: new Map([["INV-D", "E-006-1:emails.json:email_class"]]) },
@@ -83,7 +84,7 @@ export const exampleB = {
     row_id: 13,
     invoice_id: "INV-B",
     due_date: "2026-10-20", // 10 days before AS_OF_DATE.
-    amount_paise: 4_000_000, // ₹40,000.
+    amount_paise: paise(4_000_000), // ₹40,000.
   }),
   ctx: baseCtx({
     customerHistory: new Map([["C-001", 2]]),
@@ -96,7 +97,7 @@ export const exampleE = {
     row_id: 14,
     invoice_id: "INV-E",
     due_date: null,
-    amount_paise: 1_000_000,
+    amount_paise: paise(1_000_000),
   }),
   ctx: baseCtx(),
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { match, normaliseAddress, normaliseRef, type MatchLedger } from "./match";
 import { EXTRACTION_SCHEMA_VERSION, type Customer, type EmailMessage, type Extraction, type Invoice } from "./schema";
+import { paise } from "./money";
 
 function customer(customer_id: string, contact_emails: string[]): Customer {
   return { customer_id, name: customer_id, contact_emails, payment_terms_days: 30, segment: "SMB" };
@@ -14,7 +15,7 @@ function invoice(invoice_id: string, invoice_number: string | null, customer_id:
     customer_id,
     invoice_date,
     due_date: "2026-10-01",
-    amount_paise: 34_000_000,
+    amount_paise: paise(34_000_000),
     currency: "INR",
     status_raw: "open",
     status: "open",

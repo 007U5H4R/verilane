@@ -4,7 +4,7 @@
  * (`PrioritySignals`, built by `signals.ts`).
  */
 import { daysBetween } from "./clock";
-import { formatInrWhole, paise } from "./money";
+import { addPaise, formatInrWhole, subPaise, ZERO_PAISE, type Paise } from "./money";
 import type { DataIssue, Invoice, Payment, Priority, PriorityBand, PriorityFactor } from "./schema";
 
 const CONFIG_VERSION = "priority.v1";
@@ -47,11 +47,11 @@ export interface RankCtx {
 
 /** Outstanding = amount − Σpayments. Exported so the Queue row (TASK-7.8)
  * shows the same figure `rank()`'s tie-break already uses. */
-export function outstandingOf(inv: Invoice, ctx: RankCtx): number {
+export function outstandingOf(inv: Invoice, ctx: RankCtx): Paise {
   const paid = ctx.payments
     .filter((p) => p.invoice_id === inv.invoice_id)
-    .reduce((sum, p) => sum + p.amount_paise, 0);
-  return inv.amount_paise - paid;
+    .reduce((sum, p) => addPaise(sum, p.amount_paise), ZERO_PAISE);
+  return subPaise(inv.amount_paise, paid);
 }
 
 function daysOverdueOf(inv: Invoice, ctx: PriorityCtx): number | null {
@@ -224,7 +224,7 @@ export function prioritise(inv: Invoice, ctx: PriorityCtx): Priority {
     });
   }
   factors.push({
-    name: `${formatInrWhole(paise(derivedOutstanding))} outstanding`,
+    name: `${formatInrWhole(derivedOutstanding)} outstanding`,
     points: outstandingPts,
     evidenceId: `row ${inv.row_id} · outstanding_amount`,
   });

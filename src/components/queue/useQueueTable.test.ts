@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Customer, Invoice, Priority } from "@/domain/schema";
 import { DEFAULT_FILTERS } from "./queueParams";
 import { filterRows, type QueueRow } from "./useQueueTable";
+import { paise } from "@/domain/money";
 
 function row(
   rank: number,
@@ -12,7 +13,7 @@ function row(
     priority: { invoice_id: `I${rank}`, band: over.band, days_overdue: over.days } as Priority,
     customer: { customer_id: over.cust, name: over.name } as Customer,
     customerName: over.name,
-    outstanding: 100 * rank,
+    outstanding: paise(100 * rank),
     rank,
   };
 }

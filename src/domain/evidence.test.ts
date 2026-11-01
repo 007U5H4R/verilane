@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildEmailEvidence, buildInvoiceEvidence, emailFactLabel, provenanceOf } from "./evidence";
 import { EvidenceSchema, type Extraction, type Invoice } from "./schema";
+import { paise } from "./money";
 
 function baseInvoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -10,7 +11,7 @@ function baseInvoice(overrides: Partial<Invoice> = {}): Invoice {
     customer_id: "C-001",
     invoice_date: "2026-01-01",
     due_date: "2026-09-13",
-    amount_paise: 34_000_000,
+    amount_paise: paise(34_000_000),
     currency: "INR",
     status_raw: "open",
     status: "open",

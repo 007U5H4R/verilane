@@ -12,6 +12,7 @@ import {
   type HomeAggregateInput,
 } from "./aggregates";
 import type { Invoice, Payment, Priority, PriorityBand } from "./schema";
+import { paise } from "./money";
 
 function invoice(id: string, amountPaise: number, overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -21,7 +22,7 @@ function invoice(id: string, amountPaise: number, overrides: Partial<Invoice> = 
     customer_id: "C-001",
     invoice_date: "2026-01-01",
     due_date: "2026-09-01",
-    amount_paise: amountPaise,
+    amount_paise: paise(amountPaise),
     currency: "INR",
     status_raw: "open",
     status: "open",
@@ -44,7 +45,7 @@ function priority(invoiceId: string, band: PriorityBand, daysOverdue: number | n
 }
 
 function payment(invoiceId: string, amountPaise: number): Payment {
-  return { payment_id: `PMT-${invoiceId}`, invoice_id: invoiceId, paid_on: "2026-09-10", amount_paise: amountPaise };
+  return { payment_id: `PMT-${invoiceId}`, invoice_id: invoiceId, paid_on: "2026-09-10", amount_paise: paise(amountPaise) };
 }
 
 // 7 invoices: two `high` (10d, 20d overdue), one `medium` (40d), one `low`

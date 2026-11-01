@@ -3,6 +3,7 @@ import { AS_OF_DATE } from "./clock";
 import { prioritise, rank, type PriorityCtx } from "./priority";
 import { exampleA, exampleB, exampleC, exampleD, exampleE } from "./__fixtures__/worked-examples";
 import type { Invoice } from "./schema";
+import { paise } from "./money";
 
 function baseInvoice(overrides: Partial<Invoice>): Invoice {
   return {
@@ -12,7 +13,7 @@ function baseInvoice(overrides: Partial<Invoice>): Invoice {
     customer_id: "C-001",
     invoice_date: "2026-01-01",
     due_date: "2026-10-01",
-    amount_paise: 1_000_000,
+    amount_paise: paise(1_000_000),
     currency: "INR",
     status_raw: "open",
     status: "open",
@@ -79,9 +80,9 @@ describe("prioritise — TC-005 gates and boundaries", () => {
   });
 
   it("G1: outstanding fully paid → closed", () => {
-    const inv = baseInvoice({ amount_paise: 500_000 });
+    const inv = baseInvoice({ amount_paise: paise(500_000) });
     const ctx = baseCtx({
-      payments: [{ payment_id: "P-1", invoice_id: inv.invoice_id, paid_on: "2026-10-05", amount_paise: 500_000 }],
+      payments: [{ payment_id: "P-1", invoice_id: inv.invoice_id, paid_on: "2026-10-05", amount_paise: paise(500_000) }],
     });
     const result = prioritise(inv, ctx);
     expect(result.band).toBe("closed");
@@ -113,14 +114,14 @@ describe("prioritise — TC-005 gates and boundaries", () => {
     // 15 days overdue (bucket 1-15 → 10) + <₹50,000 (5) + avg<=5 (0) = 15... use
     // direct boundary invoices instead: construct scores of exactly 29 and 30.
     const low = prioritise(
-      baseInvoice({ due_date: "2026-10-15" /* 15 days overdue → 10 */, amount_paise: 4_000_000 /* <50k → 5 */ }),
+      baseInvoice({ due_date: "2026-10-15" /* 15 days overdue → 10 */, amount_paise: paise(4_000_000) /* <50k → 5 */ }),
       baseCtx({ customerHistory: new Map([["C-001", 10 /* 6-20 → 5 */]]) }),
     );
     expect(low.score).toBe(20);
     expect(low.band).toBe("low");
 
     const medium = prioritise(
-      baseInvoice({ due_date: "2026-09-30" /* 30 days overdue → 20 */, amount_paise: 4_000_000 /* <50k → 5 */ }),
+      baseInvoice({ due_date: "2026-09-30" /* 30 days overdue → 20 */, amount_paise: paise(4_000_000) /* <50k → 5 */ }),
       baseCtx({ customerHistory: new Map([["C-001", 10 /* 6-20 → 5 */]]) }),
     );
     expect(medium.score).toBe(30);
@@ -129,11 +130,11 @@ describe("prioritise — TC-005 gates and boundaries", () => {
 
   it("outstanding bucket edges: ₹50,000 and ₹2,00,000 (±1 paise)", () => {
     const justUnder = prioritise(
-      baseInvoice({ due_date: "2026-10-29" /* 1 day overdue → 10 */, amount_paise: 4_999_999 }),
+      baseInvoice({ due_date: "2026-10-29" /* 1 day overdue → 10 */, amount_paise: paise(4_999_999) }),
       baseCtx(),
     );
     const justAt = prioritise(
-      baseInvoice({ due_date: "2026-10-29", amount_paise: 5_000_000 }),
+      baseInvoice({ due_date: "2026-10-29", amount_paise: paise(5_000_000) }),
       baseCtx(),
     );
     expect(justUnder.score).toBe(10 + 5 + 5); // <50,000 → 5; no history → 5.
@@ -142,7 +143,7 @@ describe("prioritise — TC-005 gates and boundaries", () => {
 
   it("no payment history → 5 points", () => {
     const result = prioritise(
-      baseInvoice({ due_date: "2026-10-29", amount_paise: 1_000_000 }),
+      baseInvoice({ due_date: "2026-10-29", amount_paise: paise(1_000_000) }),
       baseCtx(),
     );
     expect(result.score).toBe(10 + 5 + 5);
@@ -159,19 +160,19 @@ describe("rank — TC-006 deterministic tie-break", () => {
         invoice_id: "INV-003",
         invoice_number: "3",
         due_date: "2026-10-29", // 1 day overdue → 10
-        amount_paise: 1_000_000, // <50k → 5; +5 no history = 20 total
+        amount_paise: paise(1_000_000), // <50k → 5; +5 no history = 20 total
       }),
       baseInvoice({
         invoice_id: "INV-001",
         invoice_number: "1",
         due_date: "2026-10-29", // 1 day overdue → 10
-        amount_paise: 1_000_000, // same score, same days overdue/outstanding
+        amount_paise: paise(1_000_000), // same score, same days overdue/outstanding
       }),
       baseInvoice({
         invoice_id: "INV-002",
         invoice_number: "2",
         due_date: "2026-10-29",
-        amount_paise: 1_000_000,
+        amount_paise: paise(1_000_000),
       }),
     ];
     const items = invoices.map((inv) => ({ invoice: inv, priority: prioritise(inv, ctx) }));
@@ -232,10 +233,10 @@ describe("prioritise — email gates G4/G5/G7 (TASK-13)", () => {
       invoice_id: "INV-G",
       customer_id: "C-003",
       due_date: "2026-09-20",
-      amount_paise: 10_000_000,
+      amount_paise: paise(10_000_000),
     });
     const ctx = baseCtx({
-      payments: [{ payment_id: "P-009", invoice_id: "INV-G", paid_on: "2026-10-01", amount_paise: 3_000_000 }],
+      payments: [{ payment_id: "P-009", invoice_id: "INV-G", paid_on: "2026-10-01", amount_paise: paise(3_000_000) }],
       dataIssues: [
         {
           issue_id: "DI-1",
@@ -266,11 +267,11 @@ describe("prioritise — email gates G4/G5/G7 (TASK-13)", () => {
   });
 
   it("R12: an overpaid invoice (negative outstanding) closes at G1", () => {
-    const inv = baseInvoice({ amount_paise: 500_000 });
+    const inv = baseInvoice({ amount_paise: paise(500_000) });
     const result = prioritise(
       inv,
       baseCtx({
-        payments: [{ payment_id: "P-1", invoice_id: inv.invoice_id, paid_on: "2026-10-05", amount_paise: 600_000 }],
+        payments: [{ payment_id: "P-1", invoice_id: inv.invoice_id, paid_on: "2026-10-05", amount_paise: paise(600_000) }],
       }),
     );
     expect(result.gate).toBe("G1");
@@ -288,7 +289,7 @@ describe("prioritise — email gates G4/G5/G7 (TASK-13)", () => {
   });
 
   it("TC-031: a broken promise is scored with +10 'promise broken'", () => {
-    const inv = baseInvoice({ due_date: "2026-10-29", amount_paise: 1_000_000 });
+    const inv = baseInvoice({ due_date: "2026-10-29", amount_paise: paise(1_000_000) });
     const plain = prioritise(inv, baseCtx());
     const broken = prioritise(
       inv,

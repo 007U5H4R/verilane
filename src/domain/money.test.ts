@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { formatInr, formatInrWhole, paise, parseInr } from "./money";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { formatInr, formatInrWhole, paise, parseInr, type Paise } from "./money";
+import { outstandingOf } from "./priority";
+import { PaymentSchema, type Invoice } from "./schema";
 
 // TC-007: money parsing and formatting.
 describe("paise", () => {
@@ -62,5 +64,25 @@ describe("formatInrWhole", () => {
 
   it("rounds to the nearest rupee", () => {
     expect(formatInrWhole(paise(12_350))).toBe("₹124");
+  });
+});
+
+// R8 (TASK-33): amounts are branded `Paise` at the Zod schema boundary, so a
+// raw number can't stand in for a ledger amount and `outstandingOf` stays Paise.
+describe("Paise brand at the schema boundary", () => {
+  it("parsed invoice/payment amounts are Paise; raw numbers are not", () => {
+    const pay = PaymentSchema.parse({
+      payment_id: "P-1",
+      invoice_id: "INV-1",
+      paid_on: "2026-10-01",
+      amount_paise: 1_000,
+    });
+    expectTypeOf(pay.amount_paise).toEqualTypeOf<Paise>();
+    expectTypeOf<Invoice["amount_paise"]>().toEqualTypeOf<Paise>();
+    expectTypeOf(outstandingOf).returns.toEqualTypeOf<Paise>();
+    // @ts-expect-error a bare number is not Paise
+    const raw: Paise = 1_000;
+    expect(raw).toBe(1_000);
+    expect(() => PaymentSchema.parse({ ...pay, amount_paise: 1.5 })).toThrow();
   });
 });
