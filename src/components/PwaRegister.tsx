@@ -21,6 +21,46 @@ export async function unregisterServiceWorkers(container: RegistrationList): Pro
   return registrations.length;
 }
 
+const DEV_RELOAD_KEY = "verilane:sw-dev-reload";
+
+/**
+ * TASK-35 (T35-6): unregistering doesn't release a page the old SW already
+ * controls; it keeps serving cached production chunks until a navigation.
+ * Reloads once to drop it. A sessionStorage guard stops a loop: no second
+ * reload in this tab while it is still controlled, and none at all when the
+ * guard can't be stored. Returns whether it reloaded.
+ */
+export function reloadIfStillControlled({
+  controlled,
+  storage,
+  reload,
+}: {
+  controlled: boolean;
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
+  reload: () => void;
+}): boolean {
+  try {
+    if (!controlled) {
+      storage?.removeItem(DEV_RELOAD_KEY);
+      return false;
+    }
+    if (!storage || storage.getItem(DEV_RELOAD_KEY)) return false;
+    storage.setItem(DEV_RELOAD_KEY, "1");
+  } catch {
+    return false;
+  }
+  reload();
+  return true;
+}
+
+function sessionStorageOrNull(): Storage | null {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * TASK-24.3: registers `public/sw.js`. Production-only — `e2e` runs via
  * `next build && next start` (NODE_ENV=production), so the e2e suite still
@@ -36,7 +76,16 @@ export function PwaRegister() {
     if (process.env.NODE_ENV !== "production") {
       unregisterServiceWorkers(navigator.serviceWorker)
         .then((count) => {
+          const controlled = navigator.serviceWorker.controller !== null;
           if (count > 0) console.warn(`[sw] unregistered ${count} production service worker(s) in dev`);
+          const reloaded = reloadIfStillControlled({
+            controlled,
+            storage: sessionStorageOrNull(),
+            reload: () => window.location.reload(),
+          });
+          if (controlled && !reloaded) {
+            console.warn("[sw] this page is still controlled by a stale service worker; reload to drop it");
+          }
         })
         .catch((err) => console.error("[sw] could not unregister the production service worker", err));
       return;
