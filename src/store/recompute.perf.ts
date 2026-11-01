@@ -3,7 +3,8 @@
  * emails) takes ≤200 ms, median of 5, in node with fake-indexeddb (wired via
  * src/test/setup.ts). Lives in src/store, not src/domain (as the plan names
  * it), because it drives Dexie + the loader and src/domain must stay pure
- * (SR2).
+ * (SR2). Runs in the `perf` vitest project (`pnpm perf`), not `unit`, so
+ * parallel test workers can't skew the wall-clock budget.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

@@ -18,6 +18,17 @@ export default defineConfig({
         },
       },
       {
+        // TC-084 wall-clock budget: its own project, one file at a time, run
+        // as a separate step so parallel unit workers can't skew the timing.
+        test: {
+          name: "perf",
+          environment: "node",
+          include: ["src/**/*.perf.ts"],
+          setupFiles: ["src/test/setup.ts"],
+          fileParallelism: false,
+        },
+      },
+      {
         test: {
           name: "eval",
           environment: "node",

@@ -10,6 +10,7 @@
     "lint": "eslint --ignore-pattern src/domain/__lint__/**",
     "lint:domain-fixture": "eslint src/domain/__lint__/forbidden.fixture.ts",
     "test": "vitest run --project unit",
+    "perf": "vitest run --project perf",
     "eval": "vitest run --project eval",
     "build:e2e": "NEXT_PUBLIC_E2E=1 next build",
     "e2e": "PLAYWRIGHT_BROWSERS_PATH='/Volumes/E Drive/Dev/.scratch/pw-browsers' TMPDIR='/Volumes/E Drive/Dev/.scratch/tmp' playwright test",
@@ -18,7 +19,7 @@
     "check:e2e-hooks": "tsx scripts/check-e2e-hooks.ts",
     "seed": "tsx scripts/seed.ts",
     "eval:live": "tsx --conditions=react-server scripts/eval-live.ts",
-    "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm build:e2e && pnpm e2e"
+    "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm perf && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm build:e2e && pnpm e2e"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
