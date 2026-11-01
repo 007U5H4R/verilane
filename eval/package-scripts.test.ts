@@ -20,6 +20,10 @@ describe("package.json e2e scripts", () => {
     expect(e2e).not.toMatch(/PLAYWRIGHT_BROWSERS_PATH|TMPDIR|\/Volumes\//);
   });
 
+  it("e2e:install installs through the config's path defaults (T32-1)", () => {
+    expect(scripts["e2e:install"]).toBe("tsx scripts/e2e-install.ts");
+  });
+
   it("test:all runs e2e on one worker", () => {
     expect(scripts["test:all"]).toMatch(/pnpm e2e --workers=1$/);
   });
