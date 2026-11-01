@@ -1,10 +1,10 @@
 ---
 id: TASK-28
 title: 'README, trust-boundary disclosure, eval results'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-30 18:08'
+updated_date: '2026-11-01 07:57'
 labels:
   - P1
   - 'sp:1'
