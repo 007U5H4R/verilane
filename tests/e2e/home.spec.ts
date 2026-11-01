@@ -63,7 +63,7 @@ async function queueMatched(page: Page): Promise<number> {
 test("TC-054: each KPI tile shows the stored seed's value", async ({ page }, testInfo) => {
   await openHome(page);
   const facts = await homeFacts(page);
-  test.skip(facts.total === 0, "seed carries no invoices to assert against");
+  expect(facts.total, "seed must carry invoices (T18-N2: a missing seed fails, not skips)").toBeGreaterThan(0);
 
   await expect(page.locator('[data-state="working"]')).toBeVisible();
   await expect(page.getByTestId("kpi-outstanding-value")).toHaveText(inr(facts.outstandingPaise));
@@ -82,7 +82,7 @@ test("TC-055: every ageing fallback link opens the Queue filtered to exactly the
 }) => {
   await openHome(page);
   const facts = await homeFacts(page);
-  test.skip(facts.total === 0, "seed carries no invoices to assert against");
+  expect(facts.total, "seed must carry invoices (T18-N2: a missing seed fails, not skips)").toBeGreaterThan(0);
 
   const links = page.getByTestId("ageing-chart-fallback").getByRole("link");
   await expect(links).toHaveCount(4);
@@ -100,14 +100,14 @@ test("TC-055: every ageing fallback link opens the Queue filtered to exactly the
 test("TC-055: clicking an ageing bar opens the Queue with the bar's count", async ({ page }) => {
   await openHome(page);
   const facts = await homeFacts(page);
-  test.skip(facts.total === 0, "seed carries no invoices to assert against");
+  expect(facts.total, "seed must carry invoices (T18-N2: a missing seed fails, not skips)").toBeGreaterThan(0);
 
   // Bars render in bucket order; pick the first non-empty one (empty buckets draw no rectangle).
   const fallback = page.getByTestId("ageing-chart-fallback").getByRole("link");
   const counts: number[] = [];
   for (let i = 0; i < 4; i++) counts.push(await countIn(fallback.nth(i)));
   const nonEmpty = counts.map((c, i) => ({ c, i })).filter((x) => x.c > 0);
-  test.skip(nonEmpty.length === 0, "seed has no overdue open invoices");
+  expect(nonEmpty.length, "seed must carry overdue open invoices").toBeGreaterThan(0);
   const bars = page.getByTestId("ageing-chart").locator(".recharts-bar-rectangle");
   await expect(bars).toHaveCount(nonEmpty.length);
   await bars.first().click();
@@ -120,7 +120,7 @@ test("TC-055: priority-mix fallback link, bar and legend item each open the Queu
 }) => {
   await openHome(page);
   const facts = await homeFacts(page);
-  test.skip(facts.high === 0, "seed carries no high-priority invoices to assert against");
+  expect(facts.high, "seed must carry high-priority invoices").toBeGreaterThan(0);
 
   // Fallback link.
   const link = page.getByTestId("priority-mix-fallback").getByRole("link", { name: /^High:/ });
@@ -146,7 +146,7 @@ test("TC-055: priority-mix fallback link, bar and legend item each open the Queu
 test("TC-055: task feed links into the matching filtered Queue", async ({ page }) => {
   await openHome(page);
   const facts = await homeFacts(page);
-  test.skip(facts.high === 0, "seed carries no high-priority invoices to assert against");
+  expect(facts.high, "seed must carry high-priority invoices").toBeGreaterThan(0);
 
   await page.getByTestId("feed-high").locator("summary").click();
   const link = page.getByTestId("feed-high-link");
@@ -179,7 +179,7 @@ test("TC-056: a single failing block shows an inline error while the rest of Hom
 }, testInfo) => {
   await openHome(page, "/?__block_error=mix");
   const facts = await homeFacts(page);
-  test.skip(facts.total === 0, "seed carries no invoices to assert against");
+  expect(facts.total, "seed must carry invoices (T18-N2: a missing seed fails, not skips)").toBeGreaterThan(0);
 
   await expect(page.locator('[data-state="working"]')).toBeVisible();
   await expect(page.getByTestId("kpi-strip")).toBeVisible();
