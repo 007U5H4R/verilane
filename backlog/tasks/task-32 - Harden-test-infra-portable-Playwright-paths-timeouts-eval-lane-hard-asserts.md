@@ -3,10 +3,10 @@ id: TASK-32
 title: >-
   Harden test infra: portable Playwright paths, timeouts, eval lane, hard
   asserts
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-01 14:55'
-updated_date: '2026-11-01 14:55'
+updated_date: '2026-11-01 16:25'
 labels:
   - P2
 dependencies: []
