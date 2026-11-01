@@ -32,6 +32,8 @@ export const DISPUTE_TYPES = [
 /**
  * Language phenomena a held-out thread exercises (technical-plan 11.3, R20).
  * Tags describe the thread text only; they never change a label value.
+ * `lakh_amount` tags the word "lakh" only; an amount written with Indian
+ * digit grouping (₹1,16,000) does not count on its own.
  */
 export const PHENOMENA = [
   "near_miss_ref",

@@ -19,7 +19,9 @@ export default defineConfig({
           // (scripts/check-e2e-hooks.test.ts, ~0.5 s each idle) or cold-import
           // the Anthropic SDK (src/app/api/llm/route.test.ts, ~0.6 s for the
           // first test). Both blew the 5 s default under a parallel load. 30 s is
-          // ~50x the idle cost, still finite, and below the 60 s spawnSync cap.
+          // ~50x the idle cost and still finite. spawnSync blocks the event
+          // loop, so this timer can't interrupt a spawn; a hung spawn is still
+          // capped at 60 s by spawnSync's own timeout.
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
