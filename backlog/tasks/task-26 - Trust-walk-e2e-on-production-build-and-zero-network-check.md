@@ -1,10 +1,10 @@
 ---
 id: TASK-26
 title: Trust-walk e2e on production build and zero-network check
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-31 17:07'
+updated_date: '2026-10-31 17:20'
 labels:
   - P0
   - 'sp:2'

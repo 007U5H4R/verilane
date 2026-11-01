@@ -1,0 +1,242 @@
+[
+  {
+    "thread_id": "H2-001",
+    "message_id": "H2-001-1",
+    "from_address": "accounts@godavaripolymers.test",
+    "sent_at": "2026-10-26T10:05:00Z",
+    "subject": "RE: Payment reminder - INV-3101",
+    "body": "Hello,\n\nINV-3101 ka payment ₹2,36,000 is Friday ko release ho jayega. Director sign kar chuke hain, bas bank upload baaki hai.\n\nRegards,\nSuresh Patil\nGodavari Polymers"
+  },
+  {
+    "thread_id": "H2-002",
+    "message_id": "H2-002-1",
+    "from_address": "ap@shekhawatihandloom.test",
+    "sent_at": "2026-10-22T07:40:00Z",
+    "subject": "Fwd: Overdue: INV-3201",
+    "body": "Hi team,\n\nPlease see below. We will process INV 3201 for Rs 4,72,000/- in our payment run on 06/11.\n\nThanks,\nMeena Rathore\nShekhawati Handloom Mills\n\n---------- Forwarded message ---------\nFrom: Kavita Sharma <kavita.sharma@shekhawatihandloom.test>\nDate: Wed, 21 Oct 2026\nSubject: Overdue: INV-3201\nTo: ap@shekhawatihandloom.test\n\nMeena ji, the vendor has sent a third reminder for INV-3201 (Rs 4,72,000, due 26/09). Can you add it to the next run?"
+  },
+  {
+    "thread_id": "H2-003",
+    "message_id": "H2-003-1",
+    "from_address": "payables@bidarfasteners.test",
+    "sent_at": "2026-10-13T11:20:00Z",
+    "subject": "re: inv-3401 overdue",
+    "body": "Dear Sir,\n\nWe will clear the outstanding on inv-3401 (6,49,000) by end of this month. Pls dont escalate to our MD, the delay was on our side due to GST reco.\n\nrgds\nPrakash Kulkarni\nBidar Fastners Pvt Ltd"
+  },
+  {
+    "thread_id": "H2-004",
+    "message_id": "H2-004-1",
+    "from_address": "ap@satpurapharmapack.test",
+    "sent_at": "2026-10-19T09:30:00Z",
+    "subject": "INV-3602 - payment plan",
+    "body": "Hi,\n\nCash flow is tight this month, so we propose to pay INV-3602 in two parts: ₹1,00,000 on 3rd Nov and the balance ₹1,47,800 by 20th Nov. Hope this works for you.\n\nBest,\nAnjali Verma\nAccounts, Satpura Pharma Packaging"
+  },
+  {
+    "thread_id": "H2-005",
+    "message_id": "H2-005-1",
+    "from_address": "treasury@kutchsaltchem.test",
+    "sent_at": "2026-10-14T06:50:00Z",
+    "subject": "INV-3702",
+    "body": "Dear Team,\n\nTreasury has scheduled INV-3702 (Rs. 8.26 lakh) for payment. It should reach you in two weeks.\n\nRegards,\nHitesh Thakkar\nKutch Salt & Chemicals Ltd"
+  },
+  {
+    "thread_id": "H2-006",
+    "message_id": "H2-006-1",
+    "from_address": "accounts@hampistoneworks.test",
+    "sent_at": "2026-10-23T12:15:00Z",
+    "subject": "Re: INV-3802 reminder",
+    "body": "Hi Rohit,\n\nEarlier I had said we can't pay INV-3802 before Diwali. Finance has now reconsidered — ₹2,83,200 will be paid on 28/10, no further delay.\n\nThanks,\nLakshmi Gowda\nHampi Stoneworks"
+  },
+  {
+    "thread_id": "H2-007",
+    "message_id": "H2-007-1",
+    "from_address": "rakesh.jain@shekhawatihandloom.test",
+    "sent_at": "2026-10-20T05:45:00Z",
+    "subject": "Pending payments",
+    "body": "Namaste,\n\nHamare saare pending bills ka payment 15 Nov tak ho jayega, sab ek saath karenge. Please reminders band kar dijiye tab tak.\n\nRakesh Jain\nShekhawati Handloom Mills"
+  },
+  {
+    "thread_id": "H2-008",
+    "message_id": "H2-008-1",
+    "from_address": "rakeshjain1978@mailbox.test",
+    "sent_at": "2026-10-27T15:10:00Z",
+    "subject": "INV-3202",
+    "body": "Hi, this is Rakesh from Shekhawati Handloom, writing from my personal id as office mail is down. INV-3202 will be paid tomorrow.\n\nRakesh"
+  },
+  {
+    "thread_id": "H2-009",
+    "message_id": "H2-009-1",
+    "from_address": "finance@ratnagiricoldchain.test",
+    "sent_at": "2026-10-15T08:00:00Z",
+    "subject": "Payment advice INV-3301",
+    "body": "Dear Sir/Madam,\n\nThis is to inform that payment of ₹88,500 against INV-3301 was made yesterday through NEFT. UTR No. SBIN526288011234.\n\nRegards,\nNikhil Sawant\nRatnagiri Agro Cold Chain LLP"
+  },
+  {
+    "thread_id": "H2-010",
+    "message_id": "H2-010-1",
+    "from_address": "accounts@godavaripolymers.test",
+    "sent_at": "2026-10-21T10:40:00Z",
+    "subject": "Payment released - Invoice No. 3102",
+    "body": "Hello,\n\nWe have released ₹1,16,000 against Invoice No. 3102 on 19-10-2026 after deducting TDS of ₹2,000 u/s 194C. Form 16A will be shared after the quarter closes.\n\nThanks,\nSuresh Patil"
+  },
+  {
+    "thread_id": "H2-011",
+    "message_id": "H2-011-1",
+    "from_address": "finance@kutchsaltchem.test",
+    "sent_at": "2026-10-27T09:25:00Z",
+    "subject": "Remittance advice",
+    "body": "Dear Sir,\n\nPlease find remittance details below:\n\nINV-3701 - Rs. 11,80,000.00\nINV-3703 - Rs. 5,90,000.00\nTotal - Rs. 17,70,000.00\n\nValue date 26.10.2026, RTGS ref KKBKR52026102600771.\n\nKindly acknowledge.\n\nAccounts Payable\nKutch Salt & Chemicals Ltd"
+  },
+  {
+    "thread_id": "H2-012",
+    "message_id": "H2-012-1",
+    "from_address": "accounts@brahmaputratea.test",
+    "sent_at": "2026-10-09T13:05:00Z",
+    "subject": "inv 3502",
+    "body": "Hi,\n\npayment kar diya hai 1,06,200 ka for inv 3502, kal shaam ko. pls check n confirm receipt\n\nBikash Bora\nBrahmaputra Tea Traders"
+  },
+  {
+    "thread_id": "H2-013",
+    "message_id": "H2-013-1",
+    "from_address": "accounts@bidarfasteners.test",
+    "sent_at": "2026-10-22T07:15:00Z",
+    "subject": "Payment - INV-3402 / INV-3403",
+    "body": "Hi,\n\nWe paid ₹2,12,400 on Monday for one of INV-3402 or INV-3403. Our clerk did not note which one, and both are for the same amount. Please adjust against the correct one and let us know.\n\nRegards,\nPrakash Kulkarni"
+  },
+  {
+    "thread_id": "H2-014",
+    "message_id": "H2-014-1",
+    "from_address": "ap@satpurapharmapack.test",
+    "sent_at": "2026-10-12T10:10:00Z",
+    "subject": "INV-3601 rate",
+    "body": "Hi,\n\nThe rate on INV-3601 is ₹14.20 per carton but our PO SPP/4471 was at ₹12.80. On 5,000 cartons that is ₹7,000 extra. Please send a revised invoice; we will release payment once it is corrected.\n\nAnjali Verma"
+  },
+  {
+    "thread_id": "H2-015",
+    "message_id": "H2-015-1",
+    "from_address": "payables@bidarfasteners.test",
+    "sent_at": "2026-10-07T11:45:00Z",
+    "subject": "INV-3404 - returned",
+    "body": "Dear Team,\n\nOur ERP has rejected INV-3404 as there is no PO reference on it. Without a PO it cannot be booked, so kindly re-issue the invoice quoting our PO number.\n\nThanks,\nPrakash"
+  },
+  {
+    "thread_id": "H2-016",
+    "message_id": "H2-016-1",
+    "from_address": "accounts@hampistoneworks.test",
+    "sent_at": "2026-10-29T06:30:00Z",
+    "subject": "Fwd: GRN pending - INV-3801",
+    "body": "Hi,\n\nForwarding the note from our stores team. We will hold the payment of Rs.1,41,600 until the GRN is done.\n\nLakshmi\n\n---------- Forwarded message ---------\nFrom: Stores Hospet <stores@hampistoneworks.test>\nSubject: GRN pending - INV-3801\n\nMadam, no material against INV-3801 has reached Hospet site so far. The vehicle number on the e-way bill is not in our gate register."
+  },
+  {
+    "thread_id": "H2-017",
+    "message_id": "H2-017-1",
+    "from_address": "finance@ratnagiricoldchain.test",
+    "sent_at": "2026-10-06T09:00:00Z",
+    "subject": "INV-3302 period",
+    "body": "Hello,\n\nINV-3302 has been raised for September, but our cold storage lease with you started only from 1st October. The bill should be for October. Please correct the period and resend.\n\nNikhil Sawant"
+  },
+  {
+    "thread_id": "H2-018",
+    "message_id": "H2-018-1",
+    "from_address": "ap@shekhawatihandloom.test",
+    "sent_at": "2026-10-16T08:20:00Z",
+    "subject": "Re: Reminder: INV-3204 overdue",
+    "body": "Hi,\n\nINV-3204 was already settled on 12/10 by RTGS — ₹1,77,000, UTR HDFCR52026101200345. Please check your books before sending further reminders.\n\nMeena Rathore"
+  },
+  {
+    "thread_id": "H2-019",
+    "message_id": "H2-019-1",
+    "from_address": "accounts@godavaripolymers.test",
+    "sent_at": "2026-10-28T11:35:00Z",
+    "subject": "INV-3103",
+    "body": "Dear Sir,\n\nWe are not in agreement with INV-3103. Kindly keep it on hold for now, our purchase head Mr. Desai will call you to discuss.\n\nRegards,\nSuresh Patil"
+  },
+  {
+    "thread_id": "H2-020",
+    "message_id": "H2-020-1",
+    "from_address": "ap@shekhawatihandloom.test",
+    "sent_at": "2026-10-05T07:55:00Z",
+    "subject": "INV-3203 duplicate?",
+    "body": "Hi,\n\nINV-3203 looks the same as INV-3202 — same PO SHM-8840, same challan, same quantity, ₹3,54,000 each. Please cancel INV-3203 and send a credit note.\n\nMeena"
+  },
+  {
+    "thread_id": "H2-021",
+    "message_id": "H2-021-1",
+    "from_address": "accounts@brahmaputratea.test",
+    "sent_at": "2026-10-08T10:30:00Z",
+    "subject": "Two invoices same dispatch",
+    "body": "Hello,\n\nWe have received two invoices, INV-3501 and INV-3503, both for ₹70,800 against the same dispatch of 12 chests. Which one is correct? We will pay only one.\n\nBikash Bora"
+  },
+  {
+    "thread_id": "H2-022",
+    "message_id": "H2-022-1",
+    "from_address": "accounts@hampistoneworks.test",
+    "sent_at": "2026-10-13T12:40:00Z",
+    "subject": "INV-3804",
+    "body": "Hi,\n\nINV-3804 aur INV-3803 dono same consignment ke hain, double bill aa gaya hai. 3804 cancel kar dijiye please.\n\nLakshmi"
+  },
+  {
+    "thread_id": "H2-023",
+    "message_id": "H2-023-1",
+    "from_address": "finance@kutchsaltchem.test",
+    "sent_at": "2026-10-23T10:00:00Z",
+    "subject": "INV-3704",
+    "body": "Dear Sir,\n\nSorry, we won't be able to make the 25/10 payment for INV-3704 as committed. Our CFO is travelling and the approval is pending. Will revert with a new date.\n\nHitesh Thakkar"
+  },
+  {
+    "thread_id": "H2-024",
+    "message_id": "H2-024-1",
+    "from_address": "ap@satpurapharmapack.test",
+    "sent_at": "2026-10-26T06:10:00Z",
+    "subject": "Vendor payments on hold",
+    "body": "Hi all,\n\nDue to our ERP migration, all vendor payments are on hold for the next 2–3 weeks. We will update once the new system is live.\n\nAnjali Verma"
+  },
+  {
+    "thread_id": "H2-025",
+    "message_id": "H2-025-1",
+    "from_address": "finance@ratnagiricoldchain.test",
+    "sent_at": "2026-10-21T08:45:00Z",
+    "subject": "INV-3330",
+    "body": "Hi,\n\nFunds from our distributor are stuck, so INV-3330 (Rs 2.95 lakh) may slip. Maybe mid-Nov, but nothing is confirmed yet.\n\nNikhil"
+  },
+  {
+    "thread_id": "H2-026",
+    "message_id": "H2-026-1",
+    "from_address": "accounts@brahmaputratea.test",
+    "sent_at": "2026-10-16T09:50:00Z",
+    "subject": "Copy of INV-3504",
+    "body": "Hi,\n\nCan you share a copy of INV-3504 along with the e-way bill? Also, we got a mail saying your bank account has changed — is that genuine? Please confirm before we pay.\n\nBikash"
+  },
+  {
+    "thread_id": "H2-027",
+    "message_id": "H2-027-1",
+    "from_address": "accounts@bidarfasteners.test",
+    "sent_at": "2026-10-06T07:05:00Z",
+    "subject": "Statement of account",
+    "body": "Dear Sir,\n\nPlease send us your statement of account as on 30th Sept for our half-yearly reconciliation.\n\nThanks,\nPrakash"
+  },
+  {
+    "thread_id": "H2-028",
+    "message_id": "H2-028-1",
+    "from_address": "purchase.konark@freemail.test",
+    "sent_at": "2026-10-19T11:15:00Z",
+    "subject": "GST query INV-3999",
+    "body": "Hello,\n\nIs invoice INV-3999 raised with the correct GSTIN? Our auditors need it before we can process. Please share your GST registration certificate.\n\nRegards,\nSunil"
+  },
+  {
+    "thread_id": "H2-029",
+    "message_id": "H2-029-1",
+    "from_address": "accounts@godavaripolymers.test",
+    "sent_at": "2026-10-28T04:00:00Z",
+    "subject": "Automatic reply: Payment reminder",
+    "body": "I am on leave till 2 Nov with limited access to mail. For urgent matters, please contact Vaibhav on 98XXXXXX10.\n\nSuresh Patil"
+  },
+  {
+    "thread_id": "H2-030",
+    "message_id": "H2-030-1",
+    "from_address": "mailer-daemon@godavaripolymers.test",
+    "sent_at": "2026-10-29T05:20:00Z",
+    "subject": "Undeliverable: Payment reminder - INV-3104",
+    "body": "Delivery has failed to these recipients or groups:\n\npurchase@godavaripolymers.test\nThe email address you entered couldn't be found.\n\n----- Original message -----\nSubject: Payment reminder - INV-3104\n\nDear Customer, INV-3104 for ₹2,95,000 is due on 04/11/2026. Kindly arrange payment."
+  }
+]

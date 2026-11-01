@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   InvalidCommand,
   PermissionDenied,
+  recordRejection,
   run,
   type AuditEventInput,
   type Command,
@@ -535,5 +536,28 @@ describe("draft commands (TASK-15)", () => {
     await expect(approve(m, "analyst")).rejects.toBeInstanceOf(PermissionDenied);
     await approve(m, "manager");
     expect(m.tables.get("drafts")?.get("DR-INV-A-1")?.status).toBe("sent_simulated");
+  });
+});
+
+describe("recordRejection (TASK-22, FS11, TC-070)", () => {
+  it("writes exactly one validation_failure event against the email's review item", async () => {
+    const { tx, audits } = memTx();
+    const event = await recordRejection(
+      { message_id: "E-5-1", thread_id: "E-5", rejection_reason: "cross-check failed; amounts.0: 1 paise does not appear in the email" },
+      "analyst",
+      tx,
+    );
+    expect(audits).toEqual([event]);
+    expect(event).toMatchObject({
+      action: "validation_failure",
+      actor_role: "analyst",
+      subject: "review:RV-E-5-1-match",
+      subject_kind: "review",
+      subject_id: "RV-E-5-1-match",
+      evidence_ids: ["E-5-1:emails.json:status"],
+      at: "2026-10-30T09:00:00.000Z",
+    });
+    expect(event.summary).toContain("E-5-1");
+    expect(event.summary).toContain("cross-check failed");
   });
 });

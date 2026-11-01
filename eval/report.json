@@ -1,0 +1,2929 @@
+{
+  "asOf": "2026-10-30",
+  "attempts": {
+    "heldout": [
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2003/analyst/approve",
+        "invoice_id": "HO-2003",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2004/analyst/approve",
+        "invoice_id": "HO-2004",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2011/analyst/approve",
+        "invoice_id": "HO-2011",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-004)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2012/analyst/approve",
+        "invoice_id": "HO-2012",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-004)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2012/analyst/stale",
+        "invoice_id": "HO-2012",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-004)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2012/manager/approve",
+        "invoice_id": "HO-2012",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-004)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2012/manager/stale",
+        "invoice_id": "HO-2012",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2016/analyst/approve",
+        "invoice_id": "HO-2016",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-019)"
+        ],
+        "blocked": true,
+        "id": "HO-2018/analyst/approve",
+        "invoice_id": "HO-2018",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-019)"
+        ],
+        "blocked": true,
+        "id": "HO-2018/analyst/stale",
+        "invoice_id": "HO-2018",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2021/analyst/approve",
+        "invoice_id": "HO-2021",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2021/analyst/stale",
+        "invoice_id": "HO-2021",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2021/manager/approve",
+        "invoice_id": "HO-2021",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2021/manager/stale",
+        "invoice_id": "HO-2021",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-006)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2022/analyst/approve",
+        "invoice_id": "HO-2022",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-006)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2022/analyst/stale",
+        "invoice_id": "HO-2022",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-006)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2022/manager/approve",
+        "invoice_id": "HO-2022",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-006)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2022/manager/stale",
+        "invoice_id": "HO-2022",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-017)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2023/analyst/approve",
+        "invoice_id": "HO-2023",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-017)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2023/analyst/stale",
+        "invoice_id": "HO-2023",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-017)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2023/manager/approve",
+        "invoice_id": "HO-2023",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-017)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2023/manager/stale",
+        "invoice_id": "HO-2023",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2024/analyst/approve",
+        "invoice_id": "HO-2024",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-007)"
+        ],
+        "blocked": false,
+        "id": "HO-2031/analyst/approve",
+        "invoice_id": "HO-2031",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-007)"
+        ],
+        "blocked": false,
+        "id": "HO-2031/manager/approve",
+        "invoice_id": "HO-2031",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-008)"
+        ],
+        "blocked": false,
+        "id": "HO-2032/analyst/approve",
+        "invoice_id": "HO-2032",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-008)"
+        ],
+        "blocked": false,
+        "id": "HO-2032/manager/approve",
+        "invoice_id": "HO-2032",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-018)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2033/analyst/approve",
+        "invoice_id": "HO-2033",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-018)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2033/analyst/stale",
+        "invoice_id": "HO-2033",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-018)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2033/manager/approve",
+        "invoice_id": "HO-2033",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-018)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2033/manager/stale",
+        "invoice_id": "HO-2033",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-009)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2041/analyst/approve",
+        "invoice_id": "HO-2041",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-009)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2041/analyst/stale",
+        "invoice_id": "HO-2041",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-009)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2041/manager/approve",
+        "invoice_id": "HO-2041",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-009)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2041/manager/stale",
+        "invoice_id": "HO-2041",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2042/analyst/approve",
+        "invoice_id": "HO-2042",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2042/analyst/stale",
+        "invoice_id": "HO-2042",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2042/manager/approve",
+        "invoice_id": "HO-2042",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2042/manager/stale",
+        "invoice_id": "HO-2042",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2043/analyst/approve",
+        "invoice_id": "HO-2043",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-011)"
+        ],
+        "blocked": true,
+        "id": "HO-2051/analyst/approve",
+        "invoice_id": "HO-2051",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-011)"
+        ],
+        "blocked": true,
+        "id": "HO-2051/analyst/stale",
+        "invoice_id": "HO-2051",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-011)"
+        ],
+        "blocked": false,
+        "id": "HO-2051/manager/approve",
+        "invoice_id": "HO-2051",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-011)"
+        ],
+        "blocked": true,
+        "id": "HO-2052/analyst/approve",
+        "invoice_id": "HO-2052",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-011)"
+        ],
+        "blocked": true,
+        "id": "HO-2052/analyst/stale",
+        "invoice_id": "HO-2052",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-011)"
+        ],
+        "blocked": false,
+        "id": "HO-2052/manager/approve",
+        "invoice_id": "HO-2052",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2053/analyst/approve",
+        "invoice_id": "HO-2053",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-021)"
+        ],
+        "blocked": true,
+        "id": "HO-2054/analyst/approve",
+        "invoice_id": "HO-2054",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-021)"
+        ],
+        "blocked": true,
+        "id": "HO-2054/analyst/stale",
+        "invoice_id": "HO-2054",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-021)"
+        ],
+        "blocked": true,
+        "id": "HO-2055/analyst/approve",
+        "invoice_id": "HO-2055",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-021)"
+        ],
+        "blocked": true,
+        "id": "HO-2055/analyst/stale",
+        "invoice_id": "HO-2055",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-012)"
+        ],
+        "blocked": true,
+        "id": "HO-2061/analyst/approve",
+        "invoice_id": "HO-2061",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-012)"
+        ],
+        "blocked": true,
+        "id": "HO-2061/analyst/stale",
+        "invoice_id": "HO-2061",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-012)"
+        ],
+        "blocked": false,
+        "id": "HO-2061/manager/approve",
+        "invoice_id": "HO-2061",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-012)"
+        ],
+        "blocked": true,
+        "id": "HO-2062/analyst/approve",
+        "invoice_id": "HO-2062",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-012)"
+        ],
+        "blocked": true,
+        "id": "HO-2062/analyst/stale",
+        "invoice_id": "HO-2062",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-012)"
+        ],
+        "blocked": false,
+        "id": "HO-2062/manager/approve",
+        "invoice_id": "HO-2062",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2063/analyst/approve",
+        "invoice_id": "HO-2063",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2064/analyst/approve",
+        "invoice_id": "HO-2064",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-020)"
+        ],
+        "blocked": true,
+        "id": "HO-2065/analyst/approve",
+        "invoice_id": "HO-2065",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-020)"
+        ],
+        "blocked": true,
+        "id": "HO-2065/analyst/stale",
+        "invoice_id": "HO-2065",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2071/analyst/approve",
+        "invoice_id": "HO-2071",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2071/analyst/stale",
+        "invoice_id": "HO-2071",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2071/manager/approve",
+        "invoice_id": "HO-2071",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2071/manager/stale",
+        "invoice_id": "HO-2071",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2072/analyst/approve",
+        "invoice_id": "HO-2072",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2072/analyst/stale",
+        "invoice_id": "HO-2072",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2072/manager/approve",
+        "invoice_id": "HO-2072",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H-013)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2072/manager/stale",
+        "invoice_id": "HO-2072",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "HO-2073/analyst/approve",
+        "invoice_id": "HO-2073",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-019)"
+        ],
+        "blocked": true,
+        "id": "HO-2081/analyst/approve",
+        "invoice_id": "HO-2081",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H-019)"
+        ],
+        "blocked": true,
+        "id": "HO-2081/analyst/stale",
+        "invoice_id": "HO-2081",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      }
+    ],
+    "heldout-v2": [
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3101/analyst/approve",
+        "invoice_id": "H2-3101",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-010)"
+        ],
+        "blocked": false,
+        "id": "H2-3102/analyst/approve",
+        "invoice_id": "H2-3102",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-010)"
+        ],
+        "blocked": false,
+        "id": "H2-3102/manager/approve",
+        "invoice_id": "H2-3102",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-019)"
+        ],
+        "blocked": false,
+        "id": "H2-3103/analyst/approve",
+        "invoice_id": "H2-3103",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-019)"
+        ],
+        "blocked": false,
+        "id": "H2-3103/manager/approve",
+        "invoice_id": "H2-3103",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3104/analyst/approve",
+        "invoice_id": "H2-3104",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3201/analyst/approve",
+        "invoice_id": "H2-3201",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3202/analyst/approve",
+        "invoice_id": "H2-3202",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3202/analyst/stale",
+        "invoice_id": "H2-3202",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3202/manager/approve",
+        "invoice_id": "H2-3202",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3202/manager/stale",
+        "invoice_id": "H2-3202",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3203/analyst/approve",
+        "invoice_id": "H2-3203",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3203/analyst/stale",
+        "invoice_id": "H2-3203",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3203/manager/approve",
+        "invoice_id": "H2-3203",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-020)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3203/manager/stale",
+        "invoice_id": "H2-3203",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-018)",
+          "checks 6,7 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3204/analyst/approve",
+        "invoice_id": "H2-3204",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-018)",
+          "checks 6,7 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3204/analyst/stale",
+        "invoice_id": "H2-3204",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-018)",
+          "checks 6,7 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3204/manager/approve",
+        "invoice_id": "H2-3204",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-018)",
+          "checks 6,7 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3204/manager/stale",
+        "invoice_id": "H2-3204",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-009)"
+        ],
+        "blocked": false,
+        "id": "H2-3301/analyst/approve",
+        "invoice_id": "H2-3301",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-009)"
+        ],
+        "blocked": false,
+        "id": "H2-3301/manager/approve",
+        "invoice_id": "H2-3301",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-017)"
+        ],
+        "blocked": false,
+        "id": "H2-3302/analyst/approve",
+        "invoice_id": "H2-3302",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-017)"
+        ],
+        "blocked": false,
+        "id": "H2-3302/manager/approve",
+        "invoice_id": "H2-3302",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-025)"
+        ],
+        "blocked": true,
+        "id": "H2-3303/analyst/approve",
+        "invoice_id": "H2-3303",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-025)"
+        ],
+        "blocked": true,
+        "id": "H2-3303/analyst/stale",
+        "invoice_id": "H2-3303",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "over ₹5,00,000 as Analyst",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3401/analyst/approve",
+        "invoice_id": "H2-3401",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "over ₹5,00,000 as Analyst",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3401/analyst/stale",
+        "invoice_id": "H2-3401",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-013)"
+        ],
+        "blocked": true,
+        "id": "H2-3402/analyst/approve",
+        "invoice_id": "H2-3402",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-013)"
+        ],
+        "blocked": true,
+        "id": "H2-3402/analyst/stale",
+        "invoice_id": "H2-3402",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-013)"
+        ],
+        "blocked": true,
+        "id": "H2-3403/analyst/approve",
+        "invoice_id": "H2-3403",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-013)"
+        ],
+        "blocked": true,
+        "id": "H2-3403/analyst/stale",
+        "invoice_id": "H2-3403",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-015)",
+          "over ₹5,00,000 as Analyst",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3404/analyst/approve",
+        "invoice_id": "H2-3404",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-015)",
+          "over ₹5,00,000 as Analyst",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3404/analyst/stale",
+        "invoice_id": "H2-3404",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-015)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3404/manager/approve",
+        "invoice_id": "H2-3404",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-015)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3404/manager/stale",
+        "invoice_id": "H2-3404",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-021)"
+        ],
+        "blocked": true,
+        "id": "H2-3501/analyst/approve",
+        "invoice_id": "H2-3501",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-021)"
+        ],
+        "blocked": true,
+        "id": "H2-3501/analyst/stale",
+        "invoice_id": "H2-3501",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-021)"
+        ],
+        "blocked": false,
+        "id": "H2-3501/manager/approve",
+        "invoice_id": "H2-3501",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-012)"
+        ],
+        "blocked": false,
+        "id": "H2-3502/analyst/approve",
+        "invoice_id": "H2-3502",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H2-012)"
+        ],
+        "blocked": false,
+        "id": "H2-3502/manager/approve",
+        "invoice_id": "H2-3502",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-021)"
+        ],
+        "blocked": true,
+        "id": "H2-3503/analyst/approve",
+        "invoice_id": "H2-3503",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-021)"
+        ],
+        "blocked": true,
+        "id": "H2-3503/analyst/stale",
+        "invoice_id": "H2-3503",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-021)"
+        ],
+        "blocked": false,
+        "id": "H2-3503/manager/approve",
+        "invoice_id": "H2-3503",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3504/analyst/approve",
+        "invoice_id": "H2-3504",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3601/analyst/approve",
+        "invoice_id": "H2-3601",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3601/analyst/stale",
+        "invoice_id": "H2-3601",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3601/manager/approve",
+        "invoice_id": "H2-3601",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3601/manager/stale",
+        "invoice_id": "H2-3601",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3602/analyst/approve",
+        "invoice_id": "H2-3602",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3603/analyst/approve",
+        "invoice_id": "H2-3603",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-011)",
+          "over ₹5,00,000 as Analyst"
+        ],
+        "blocked": true,
+        "id": "H2-3701/analyst/approve",
+        "invoice_id": "H2-3701",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-011)",
+          "over ₹5,00,000 as Analyst"
+        ],
+        "blocked": true,
+        "id": "H2-3701/analyst/stale",
+        "invoice_id": "H2-3701",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "over ₹5,00,000 as Analyst"
+        ],
+        "blocked": true,
+        "id": "H2-3702/analyst/approve",
+        "invoice_id": "H2-3702",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "over ₹5,00,000 as Analyst"
+        ],
+        "blocked": true,
+        "id": "H2-3702/analyst/stale",
+        "invoice_id": "H2-3702",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-011)",
+          "over ₹5,00,000 as Analyst"
+        ],
+        "blocked": true,
+        "id": "H2-3703/analyst/approve",
+        "invoice_id": "H2-3703",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "ambiguous match needs a Manager (H2-011)",
+          "over ₹5,00,000 as Analyst"
+        ],
+        "blocked": true,
+        "id": "H2-3703/analyst/stale",
+        "invoice_id": "H2-3703",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3704/analyst/approve",
+        "invoice_id": "H2-3704",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-016)"
+        ],
+        "blocked": false,
+        "id": "H2-3801/analyst/approve",
+        "invoice_id": "H2-3801",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-016)"
+        ],
+        "blocked": false,
+        "id": "H2-3801/manager/approve",
+        "invoice_id": "H2-3801",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "H2-3802/analyst/approve",
+        "invoice_id": "H2-3802",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-022)"
+        ],
+        "blocked": true,
+        "id": "H2-3803/analyst/approve",
+        "invoice_id": "H2-3803",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-022)"
+        ],
+        "blocked": true,
+        "id": "H2-3803/analyst/stale",
+        "invoice_id": "H2-3803",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-022)"
+        ],
+        "blocked": false,
+        "id": "H2-3803/manager/approve",
+        "invoice_id": "H2-3803",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-022)"
+        ],
+        "blocked": true,
+        "id": "H2-3804/analyst/approve",
+        "invoice_id": "H2-3804",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-022)"
+        ],
+        "blocked": true,
+        "id": "H2-3804/analyst/stale",
+        "invoice_id": "H2-3804",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved duplicate (H2-022)"
+        ],
+        "blocked": false,
+        "id": "H2-3804/manager/approve",
+        "invoice_id": "H2-3804",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      }
+    ],
+    "seed": [
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-001/approve",
+        "invoice_id": "INV-A",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-002/approve",
+        "invoice_id": "INV-B",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-003/approve",
+        "invoice_id": "INV-J",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-004/approve",
+        "invoice_id": "INV-040",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-005/approve",
+        "invoice_id": "INV-041",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail",
+          "label: requires a Manager"
+        ],
+        "blocked": true,
+        "id": "D-006/approve",
+        "invoice_id": "INV-C",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail",
+          "label: requires a Manager"
+        ],
+        "blocked": true,
+        "id": "D-006/stale",
+        "invoice_id": "INV-C",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail"
+        ],
+        "blocked": true,
+        "id": "D-007/approve",
+        "invoice_id": "INV-036",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail"
+        ],
+        "blocked": true,
+        "id": "D-007/stale",
+        "invoice_id": "INV-036",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 7 must fail"
+        ],
+        "blocked": true,
+        "id": "D-008/approve",
+        "invoice_id": "INV-D",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 7 must fail"
+        ],
+        "blocked": true,
+        "id": "D-008/stale",
+        "invoice_id": "INV-D",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 7 must fail"
+        ],
+        "blocked": true,
+        "id": "D-009/approve",
+        "invoice_id": "INV-033",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 7 must fail"
+        ],
+        "blocked": true,
+        "id": "D-009/stale",
+        "invoice_id": "INV-033",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 8 must fail"
+        ],
+        "blocked": true,
+        "id": "D-010/approve",
+        "invoice_id": "INV-I",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 8 must fail"
+        ],
+        "blocked": true,
+        "id": "D-010/stale",
+        "invoice_id": "INV-I",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 8 must fail"
+        ],
+        "blocked": true,
+        "id": "D-011/approve",
+        "invoice_id": "INV-050",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 8 must fail"
+        ],
+        "blocked": true,
+        "id": "D-011/stale",
+        "invoice_id": "INV-050",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 5 must fail"
+        ],
+        "blocked": true,
+        "id": "D-012/approve",
+        "invoice_id": "INV-E",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 5 must fail"
+        ],
+        "blocked": true,
+        "id": "D-012/stale",
+        "invoice_id": "INV-E",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 5 must fail"
+        ],
+        "blocked": true,
+        "id": "D-013/approve",
+        "invoice_id": "INV-045",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 5 must fail"
+        ],
+        "blocked": true,
+        "id": "D-013/stale",
+        "invoice_id": "INV-045",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail"
+        ],
+        "blocked": true,
+        "id": "D-014/approve",
+        "invoice_id": "INV-020",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail"
+        ],
+        "blocked": true,
+        "id": "D-014/stale",
+        "invoice_id": "INV-020",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 7 must fail",
+          "label: requires a Manager"
+        ],
+        "blocked": true,
+        "id": "D-015/approve",
+        "invoice_id": "INV-042",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 7 must fail",
+          "label: requires a Manager"
+        ],
+        "blocked": true,
+        "id": "D-015/stale",
+        "invoice_id": "INV-042",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-016/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-016/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-017/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-017/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-018/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-018/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-019/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-019/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-020/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-020/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-021/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-021/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-022/approve",
+        "invoice_id": "INV-A",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-022/stale",
+        "invoice_id": "INV-A",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-023/approve",
+        "invoice_id": "INV-B",
+        "outcome": "IllegalTransition",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-023/stale",
+        "invoice_id": "INV-B",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-024/approve",
+        "invoice_id": "INV-A",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-025/approve",
+        "invoice_id": "INV-J",
+        "outcome": "sent_simulated",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [],
+        "blocked": false,
+        "id": "D-026/approve",
+        "invoice_id": "INV-A",
+        "outcome": "sent_simulated",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail"
+        ],
+        "blocked": true,
+        "id": "D-027/approve",
+        "invoice_id": "INV-C",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "label: checks 6 must fail"
+        ],
+        "blocked": true,
+        "id": "D-027/stale",
+        "invoice_id": "INV-C",
+        "outcome": "validation_failure",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-028/approve",
+        "invoice_id": "INV-B",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "label: checks 9 must fail"
+        ],
+        "blocked": true,
+        "id": "D-028/stale",
+        "invoice_id": "INV-B",
+        "outcome": "validation_failure",
+        "role": "manager"
+      }
+    ]
+  },
+  "durationMs": 4106,
+  "faults": {
+    "approvable": 0,
+    "kinds": [
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "malformed_json",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "missing_fields",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "bad_enum",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "hallucinated_amount",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "wrong_ref",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "refusal",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      }
+    ],
+    "rate": 1
+  },
+  "forcedMiss": false,
+  "gates": [
+    {
+      "comparator": ">=",
+      "detail": "17/17",
+      "failures": [],
+      "name": "Amount exact match",
+      "passed": true,
+      "set": "seed",
+      "threshold": 1,
+      "value": 1
+    },
+    {
+      "comparator": ">=",
+      "detail": "24/24",
+      "failures": [],
+      "name": "Invoice number exact match",
+      "passed": true,
+      "set": "seed",
+      "threshold": 1,
+      "value": 1
+    },
+    {
+      "comparator": "<=",
+      "detail": "0 of 28 drafts",
+      "failures": [],
+      "name": "Unsupported financial claims",
+      "passed": true,
+      "set": "seed",
+      "threshold": 0,
+      "value": 0
+    },
+    {
+      "comparator": ">=",
+      "detail": "23/23",
+      "failures": [],
+      "name": "Unambiguous matching",
+      "passed": true,
+      "set": "seed",
+      "threshold": 1,
+      "value": 1
+    },
+    {
+      "comparator": ">=",
+      "detail": "10/10",
+      "failures": [],
+      "name": "Dispute recall",
+      "passed": true,
+      "set": "seed",
+      "threshold": 0.95,
+      "value": 1
+    },
+    {
+      "comparator": ">=",
+      "detail": "40/40",
+      "failures": [],
+      "name": "Approval enforcement",
+      "passed": true,
+      "set": "seed",
+      "threshold": 1,
+      "value": 1
+    },
+    {
+      "comparator": ">=",
+      "detail": "16/16",
+      "failures": [],
+      "name": "Amount exact match",
+      "passed": true,
+      "set": "heldout",
+      "threshold": 1,
+      "value": 1
+    },
+    {
+      "comparator": ">=",
+      "detail": "25/25",
+      "failures": [],
+      "name": "Invoice number exact match",
+      "passed": true,
+      "set": "heldout",
+      "threshold": 1,
+      "value": 1
+    },
+    {
+      "comparator": "<=",
+      "detail": "0 of 30 drafts",
+      "failures": [],
+      "name": "Unsupported financial claims",
+      "passed": true,
+      "set": "heldout",
+      "threshold": 0,
+      "value": 0
+    },
+    {
+      "comparator": ">=",
+      "detail": "21/23",
+      "failures": [
+        "H-011",
+        "H-012"
+      ],
+      "name": "Unambiguous matching",
+      "passed": false,
+      "set": "heldout",
+      "threshold": 1,
+      "value": 0.913
+    },
+    {
+      "comparator": ">=",
+      "detail": "4/9",
+      "failures": [
+        "H-007",
+        "H-008",
+        "H-009",
+        "H-011",
+        "H-012"
+      ],
+      "name": "Dispute recall",
+      "passed": false,
+      "set": "heldout",
+      "threshold": 0.95,
+      "value": 0.4444
+    },
+    {
+      "comparator": ">=",
+      "detail": "54/62",
+      "failures": [
+        "HO-2031/analyst/approve",
+        "HO-2031/manager/approve",
+        "HO-2032/analyst/approve",
+        "HO-2032/manager/approve",
+        "HO-2051/manager/approve",
+        "HO-2052/manager/approve",
+        "HO-2061/manager/approve",
+        "HO-2062/manager/approve"
+      ],
+      "name": "Approval enforcement",
+      "passed": false,
+      "set": "heldout",
+      "threshold": 1,
+      "value": 0.871
+    },
+    {
+      "comparator": ">=",
+      "detail": "16/18",
+      "failures": [
+        "H2-003",
+        "H2-012"
+      ],
+      "name": "Amount exact match",
+      "passed": false,
+      "set": "heldout-v2",
+      "threshold": 1,
+      "value": 0.8889
+    },
+    {
+      "comparator": ">=",
+      "detail": "25/26",
+      "failures": [
+        "H2-010"
+      ],
+      "name": "Invoice number exact match",
+      "passed": false,
+      "set": "heldout-v2",
+      "threshold": 1,
+      "value": 0.9615
+    },
+    {
+      "comparator": "<=",
+      "detail": "0 of 30 drafts",
+      "failures": [],
+      "name": "Unsupported financial claims",
+      "passed": true,
+      "set": "heldout-v2",
+      "threshold": 0,
+      "value": 0
+    },
+    {
+      "comparator": ">=",
+      "detail": "20/23",
+      "failures": [
+        "H2-010",
+        "H2-021",
+        "H2-022"
+      ],
+      "name": "Unambiguous matching",
+      "passed": false,
+      "set": "heldout-v2",
+      "threshold": 1,
+      "value": 0.8696
+    },
+    {
+      "comparator": ">=",
+      "detail": "4/9",
+      "failures": [
+        "H2-016",
+        "H2-017",
+        "H2-019",
+        "H2-021",
+        "H2-022"
+      ],
+      "name": "Dispute recall",
+      "passed": false,
+      "set": "heldout-v2",
+      "threshold": 0.95,
+      "value": 0.4444
+    },
+    {
+      "comparator": ">=",
+      "detail": "42/58",
+      "failures": [
+        "H2-3102/analyst/approve",
+        "H2-3102/manager/approve",
+        "H2-3103/analyst/approve",
+        "H2-3103/manager/approve",
+        "H2-3301/analyst/approve",
+        "H2-3301/manager/approve",
+        "H2-3302/analyst/approve",
+        "H2-3302/manager/approve",
+        "H2-3501/manager/approve",
+        "H2-3502/analyst/approve",
+        "H2-3502/manager/approve",
+        "H2-3503/manager/approve",
+        "H2-3801/analyst/approve",
+        "H2-3801/manager/approve",
+        "H2-3803/manager/approve",
+        "H2-3804/manager/approve"
+      ],
+      "name": "Approval enforcement",
+      "passed": false,
+      "set": "heldout-v2",
+      "threshold": 1,
+      "value": 0.7241
+    }
+  ],
+  "generatedAt": "2026-11-01T05:06:33.644Z",
+  "metrics": {
+    "heldout": {
+      "ambiguous_escalation": {
+        "denominator": 7,
+        "failures": [],
+        "numerator": 7,
+        "value": 1
+      },
+      "amount_exact_match": {
+        "denominator": 16,
+        "failures": [],
+        "numerator": 16,
+        "value": 1
+      },
+      "approval_enforcement": {
+        "denominator": 62,
+        "failures": [
+          "HO-2031/analyst/approve",
+          "HO-2031/manager/approve",
+          "HO-2032/analyst/approve",
+          "HO-2032/manager/approve",
+          "HO-2051/manager/approve",
+          "HO-2052/manager/approve",
+          "HO-2061/manager/approve",
+          "HO-2062/manager/approve"
+        ],
+        "numerator": 54,
+        "value": 0.871
+      },
+      "dispute_recall": {
+        "denominator": 9,
+        "failures": [
+          "H-007",
+          "H-008",
+          "H-009",
+          "H-011",
+          "H-012"
+        ],
+        "numerator": 4,
+        "value": 0.4444
+      },
+      "false_blocks": {
+        "denominator": 10,
+        "failures": [],
+        "numerator": 0,
+        "value": 0
+      },
+      "field_exact_match": {
+        "commitment_date": {
+          "denominator": 30,
+          "failures": [
+            "H-001",
+            "H-002",
+            "H-014",
+            "H-019",
+            "H-022"
+          ],
+          "numerator": 25,
+          "value": 0.8333
+        },
+        "customer_id": {
+          "denominator": 30,
+          "failures": [],
+          "numerator": 30,
+          "value": 1
+        },
+        "dispute_type": {
+          "denominator": 30,
+          "failures": [
+            "H-005",
+            "H-007",
+            "H-008",
+            "H-009",
+            "H-011",
+            "H-012"
+          ],
+          "numerator": 24,
+          "value": 0.8
+        },
+        "email_class": {
+          "denominator": 30,
+          "failures": [
+            "H-001",
+            "H-002",
+            "H-003",
+            "H-007",
+            "H-008",
+            "H-009",
+            "H-011",
+            "H-012",
+            "H-014",
+            "H-019",
+            "H-022",
+            "H-023",
+            "H-029",
+            "H-030"
+          ],
+          "numerator": 16,
+          "value": 0.5333
+        }
+      },
+      "invoice_ref_exact_match": {
+        "denominator": 25,
+        "failures": [],
+        "numerator": 25,
+        "value": 1
+      },
+      "per_class": {
+        "commitment": {
+          "f1": 0.6667,
+          "fn": 4,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.5,
+          "tn": 22,
+          "tp": 4
+        },
+        "confirmation": {
+          "f1": 0.8,
+          "fn": 1,
+          "fp": 1,
+          "precision": 0.8,
+          "recall": 0.8,
+          "tn": 24,
+          "tp": 4
+        },
+        "delay": {
+          "f1": 0,
+          "fn": 3,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 27,
+          "tp": 0
+        },
+        "dispute": {
+          "f1": 0.6667,
+          "fn": 3,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.5,
+          "tn": 24,
+          "tp": 3
+        },
+        "duplicate": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.3333,
+          "tn": 27,
+          "tp": 1
+        },
+        "enquiry": {
+          "f1": 0.6667,
+          "fn": 1,
+          "fp": 1,
+          "precision": 0.6667,
+          "recall": 0.6667,
+          "tn": 26,
+          "tp": 2
+        },
+        "unknown": {
+          "f1": 0.25,
+          "fn": 0,
+          "fp": 12,
+          "precision": 0.1429,
+          "recall": 1,
+          "tn": 16,
+          "tp": 2
+        }
+      },
+      "per_dispute_type": {
+        "duplicate_invoice": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.3333,
+          "tn": 27,
+          "tp": 1
+        },
+        "incorrect_amount": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "incorrect_billing_period": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "missing_po": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 29,
+          "tp": 1
+        },
+        "not_received": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "payment_already_completed": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "unknown": {
+          "f1": 0.6667,
+          "fn": 0,
+          "fp": 1,
+          "precision": 0.5,
+          "recall": 1,
+          "tn": 28,
+          "tp": 1
+        }
+      },
+      "threads": 30,
+      "unambiguous_matching": {
+        "denominator": 23,
+        "failures": [
+          "H-011",
+          "H-012"
+        ],
+        "numerator": 21,
+        "value": 0.913
+      },
+      "unsupported_financial_claims": {
+        "count": 0,
+        "drafts": 30,
+        "failures": []
+      }
+    },
+    "heldout-v2": {
+      "ambiguous_escalation": {
+        "denominator": 7,
+        "failures": [],
+        "numerator": 7,
+        "value": 1
+      },
+      "amount_exact_match": {
+        "denominator": 18,
+        "failures": [
+          "H2-003",
+          "H2-012"
+        ],
+        "numerator": 16,
+        "value": 0.8889
+      },
+      "approval_enforcement": {
+        "denominator": 58,
+        "failures": [
+          "H2-3102/analyst/approve",
+          "H2-3102/manager/approve",
+          "H2-3103/analyst/approve",
+          "H2-3103/manager/approve",
+          "H2-3301/analyst/approve",
+          "H2-3301/manager/approve",
+          "H2-3302/analyst/approve",
+          "H2-3302/manager/approve",
+          "H2-3501/manager/approve",
+          "H2-3502/analyst/approve",
+          "H2-3502/manager/approve",
+          "H2-3503/manager/approve",
+          "H2-3801/analyst/approve",
+          "H2-3801/manager/approve",
+          "H2-3803/manager/approve",
+          "H2-3804/manager/approve"
+        ],
+        "numerator": 42,
+        "value": 0.7241
+      },
+      "dispute_recall": {
+        "denominator": 9,
+        "failures": [
+          "H2-016",
+          "H2-017",
+          "H2-019",
+          "H2-021",
+          "H2-022"
+        ],
+        "numerator": 4,
+        "value": 0.4444
+      },
+      "false_blocks": {
+        "denominator": 8,
+        "failures": [],
+        "numerator": 0,
+        "value": 0
+      },
+      "field_exact_match": {
+        "commitment_date": {
+          "denominator": 30,
+          "failures": [
+            "H2-001",
+            "H2-003",
+            "H2-004",
+            "H2-005",
+            "H2-007",
+            "H2-009",
+            "H2-010",
+            "H2-011",
+            "H2-012"
+          ],
+          "numerator": 21,
+          "value": 0.7
+        },
+        "customer_id": {
+          "denominator": 30,
+          "failures": [],
+          "numerator": 30,
+          "value": 1
+        },
+        "dispute_type": {
+          "denominator": 30,
+          "failures": [
+            "H2-003",
+            "H2-014",
+            "H2-016",
+            "H2-017",
+            "H2-019",
+            "H2-021",
+            "H2-022"
+          ],
+          "numerator": 23,
+          "value": 0.7667
+        },
+        "email_class": {
+          "denominator": 30,
+          "failures": [
+            "H2-001",
+            "H2-003",
+            "H2-004",
+            "H2-005",
+            "H2-007",
+            "H2-009",
+            "H2-012",
+            "H2-016",
+            "H2-017",
+            "H2-019",
+            "H2-021",
+            "H2-022",
+            "H2-023",
+            "H2-024",
+            "H2-025"
+          ],
+          "numerator": 15,
+          "value": 0.5
+        }
+      },
+      "invoice_ref_exact_match": {
+        "denominator": 26,
+        "failures": [
+          "H2-010"
+        ],
+        "numerator": 25,
+        "value": 0.9615
+      },
+      "per_class": {
+        "commitment": {
+          "f1": 0.5455,
+          "fn": 5,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.375,
+          "tn": 22,
+          "tp": 3
+        },
+        "confirmation": {
+          "f1": 0.75,
+          "fn": 2,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.6,
+          "tn": 25,
+          "tp": 3
+        },
+        "delay": {
+          "f1": 0,
+          "fn": 3,
+          "fp": 1,
+          "precision": 0,
+          "recall": 0,
+          "tn": 26,
+          "tp": 0
+        },
+        "dispute": {
+          "f1": 0.6,
+          "fn": 3,
+          "fp": 1,
+          "precision": 0.75,
+          "recall": 0.5,
+          "tn": 23,
+          "tp": 3
+        },
+        "duplicate": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.3333,
+          "tn": 27,
+          "tp": 1
+        },
+        "enquiry": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 27,
+          "tp": 3
+        },
+        "unknown": {
+          "f1": 0.2353,
+          "fn": 0,
+          "fp": 13,
+          "precision": 0.1333,
+          "recall": 1,
+          "tn": 15,
+          "tp": 2
+        }
+      },
+      "per_dispute_type": {
+        "duplicate_invoice": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "precision": 1,
+          "recall": 0.3333,
+          "tn": 27,
+          "tp": 1
+        },
+        "incorrect_amount": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "incorrect_billing_period": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "missing_po": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 29,
+          "tp": 1
+        },
+        "not_received": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 29,
+          "tp": 0
+        },
+        "payment_already_completed": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 29,
+          "tp": 1
+        },
+        "unknown": {
+          "f1": 0,
+          "fn": 1,
+          "fp": 2,
+          "precision": 0,
+          "recall": 0,
+          "tn": 27,
+          "tp": 0
+        }
+      },
+      "threads": 30,
+      "unambiguous_matching": {
+        "denominator": 23,
+        "failures": [
+          "H2-010",
+          "H2-021",
+          "H2-022"
+        ],
+        "numerator": 20,
+        "value": 0.8696
+      },
+      "unsupported_financial_claims": {
+        "count": 0,
+        "drafts": 30,
+        "failures": []
+      }
+    },
+    "seed": {
+      "ambiguous_escalation": {
+        "denominator": 2,
+        "failures": [],
+        "numerator": 2,
+        "value": 1
+      },
+      "amount_exact_match": {
+        "denominator": 17,
+        "failures": [],
+        "numerator": 17,
+        "value": 1
+      },
+      "approval_enforcement": {
+        "denominator": 40,
+        "failures": [],
+        "numerator": 40,
+        "value": 1
+      },
+      "dispute_recall": {
+        "denominator": 10,
+        "failures": [],
+        "numerator": 10,
+        "value": 1
+      },
+      "false_blocks": {
+        "denominator": 8,
+        "failures": [],
+        "numerator": 0,
+        "value": 0
+      },
+      "field_exact_match": {
+        "commitment_date": {
+          "denominator": 25,
+          "failures": [],
+          "numerator": 25,
+          "value": 1
+        },
+        "customer_id": {
+          "denominator": 25,
+          "failures": [],
+          "numerator": 25,
+          "value": 1
+        },
+        "dispute_type": {
+          "denominator": 25,
+          "failures": [],
+          "numerator": 25,
+          "value": 1
+        },
+        "email_class": {
+          "denominator": 25,
+          "failures": [],
+          "numerator": 25,
+          "value": 1
+        }
+      },
+      "invoice_ref_exact_match": {
+        "denominator": 24,
+        "failures": [],
+        "numerator": 24,
+        "value": 1
+      },
+      "per_class": {
+        "commitment": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 19,
+          "tp": 6
+        },
+        "confirmation": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 20,
+          "tp": 5
+        },
+        "delay": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        },
+        "dispute": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 20,
+          "tp": 5
+        },
+        "duplicate": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 20,
+          "tp": 5
+        },
+        "enquiry": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 23,
+          "tp": 2
+        },
+        "unknown": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        }
+      },
+      "per_dispute_type": {
+        "duplicate_invoice": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 20,
+          "tp": 5
+        },
+        "incorrect_amount": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        },
+        "incorrect_billing_period": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        },
+        "missing_po": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        },
+        "not_received": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        },
+        "payment_already_completed": {
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "precision": 1,
+          "recall": 1,
+          "tn": 24,
+          "tp": 1
+        },
+        "unknown": {
+          "f1": 0,
+          "fn": 0,
+          "fp": 0,
+          "precision": 0,
+          "recall": 0,
+          "tn": 25,
+          "tp": 0
+        }
+      },
+      "threads": 25,
+      "unambiguous_matching": {
+        "denominator": 23,
+        "failures": [],
+        "numerator": 23,
+        "value": 1
+      },
+      "unsupported_financial_claims": {
+        "count": 0,
+        "drafts": 28,
+        "failures": []
+      }
+    }
+  },
+  "networkCalls": 0,
+  "passed": false,
+  "provider": "simulated"
+}
