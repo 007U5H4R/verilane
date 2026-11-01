@@ -591,7 +591,6 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
 
 // --- Reminder drafts (TASK-15) ----------------------------------------------
 
-/** A draft in one of these states no longer blocks a new one. */
 /**
  * FS11 (TASK-22): records that a provider's output for one email was
  * rejected. The email itself goes to review as an `uncertain_match` item
@@ -621,6 +620,7 @@ export async function recordRejection(
   return event;
 }
 
+/** A draft in one of these states no longer blocks a new one. */
 const CLOSED_DRAFT = new Set(["rejected", "sent_simulated"]);
 /** Stop rule for the draft-id probe: no invoice gets this many drafts. */
 const MAX_DRAFTS_PER_INVOICE = 500;
