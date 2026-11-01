@@ -380,3 +380,12 @@
 - Review PASS-WITH-FIXES, 1 fix round (`d5dbf60`: random fence tag, strict `invoice_id`, log rejects; T36-1..4), re-reviewed MERGE-READY. Parked nits: T36-5 (cost-estimate detail), T36-6 (some tests pin coverage rather than a reproduced regression), T36-7 (`max_tokens` 8192 with no fallback — revisit if live runs truncate). README live-mode section updated (`e6a52ea`).
 - Still true: the live path has never run against a real key.
 - Merged at `388c058`. Gates on `388c058`: tsc and lint clean, unit 792/792, perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 169 passed / 1 skipped (`--workers=1`).
+
+## EXE29 · PWA service-worker close-out (TASK-35) — accepted
+- T24-5: an offline navigation serves the exact cached page, then the same path with the query string ignored, then a precached self-contained `/offline.html` (light/dark, 44px "Go to Home"). It no longer falls back to Home's HTML. Ignoring the query string is safe only because every page is static per path and reads its query client-side; a future server component that reads `searchParams` would break this (comment at the top of `public/sw.js`).
+- T24-7: outside production, `PwaRegister` unregisters every service worker on the origin and registers none; if a stale SW still controls the page it reloads once (sessionStorage-guarded). Verified at helper level only, not with a live dev-after-prod check.
+- T24-11: icon crop widened to the mark's real bounding box (430 px wide) and the icons regenerated. T24-12: `/_next/static/` is pruned by mark-and-sweep (keep what cached HTML/JS/CSS references) above 150 entries; pages are capped at 50 by write order. N1: a failed manifest fetch resets the seed bypass. N2: cache adoption switches the active cache before the copy loop, so writes during the copy land in the new cache, with rollback on error.
+- Cache-write failures (e.g. quota) still return the network response and warn with a stable code and the error name only, no URL.
+- Accepted trade-offs: a pruned static still needed offline is missing until the next online visit; a write racing the sweep can be dropped and is re-cached on the next visit.
+- Review PASS-WITH-FIXES, 1 fix round (`0f7f1fc`: T35-1..6, T35-8/9; TC-076c now forces and pins the offline-fallback branch, red on the base SW), re-reviewed MERGE-READY.
+- Merged at `957cc6d`. Gates on `957cc6d`: tsc and lint clean, unit 817/817, perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 173 passed / 1 skipped (`--workers=1`; 4 new PWA tests).
