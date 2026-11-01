@@ -192,3 +192,59 @@ describe("ingest — TC-013 invoice_number uniqueness", () => {
     expect(result.dataIssues.map((d) => d.kind)).toEqual(["missing", "missing"]);
   });
 });
+
+// R9 (TASK-33): ingest never throws on a bad row — the row is skipped and an
+// `invalid` DataIssue names it, so one malformed line can't sink the load.
+describe("ingest — R9 a bad row is an invalid DataIssue, never a throw", () => {
+  it("skips an invoice with a malformed amount and keeps the good rows", () => {
+    const run = () =>
+      ingest({
+        invoices: [
+          invoiceRow({ row_id: "1", invoice_id: "INV-BAD", invoice_number: "9001", amount_paise: "12abc.5x" }),
+          invoiceRow({ row_id: "2", invoice_id: "INV-001", invoice_number: "1001" }),
+        ],
+        customers: [customerRow()],
+        payments: [],
+        emails: [],
+      });
+    expect(run).not.toThrow();
+    const result = run();
+    expect(result.invoices.map((i) => i.invoice_id)).toEqual(["INV-001"]);
+    expect(result.dataIssues).toEqual([
+      expect.objectContaining({ record_id: "INV-BAD", field: "amount_paise", kind: "invalid" }),
+    ]);
+  });
+
+  it("skips an invoice with a blank invoice_date, and a skipped row's number is not 'taken'", () => {
+    const result = ingest({
+      invoices: [
+        invoiceRow({ row_id: "1", invoice_id: "INV-BAD", invoice_number: "1001", invoice_date: "" }),
+        invoiceRow({ row_id: "2", invoice_id: "INV-001", invoice_number: "1001" }),
+      ],
+      customers: [customerRow()],
+      payments: [],
+      emails: [],
+    });
+    expect(result.invoices.map((i) => [i.invoice_id, i.invoice_number])).toEqual([["INV-001", "1001"]]);
+    expect(result.dataIssues).toEqual([
+      expect.objectContaining({ record_id: "INV-BAD", field: "invoice_date", kind: "invalid" }),
+    ]);
+  });
+
+  it("skips a malformed payment or customer row instead of throwing", () => {
+    const result = ingest({
+      invoices: [],
+      customers: [customerRow({ customer_id: "C-BAD", payment_terms_days: "thirty" }), customerRow()],
+      payments: [paymentRow({ payment_id: "P-BAD", amount_paise: "" }), paymentRow()],
+      emails: [{ not: "an email" }],
+    });
+    expect(result.customers.map((c) => c.customer_id)).toEqual(["C-001"]);
+    expect(result.payments.map((p) => p.payment_id)).toEqual(["P-001"]);
+    expect(result.emails).toEqual([]);
+    expect(result.dataIssues.map((d) => [d.record_id, d.kind])).toEqual([
+      ["C-BAD", "invalid"],
+      ["P-BAD", "invalid"],
+      ["emails[0]", "invalid"],
+    ]);
+  });
+});

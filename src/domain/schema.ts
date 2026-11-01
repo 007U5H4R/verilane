@@ -72,7 +72,7 @@ export type EmailMessage = z.infer<typeof EmailMessageSchema>;
 
 // --- Derived entities (Data-Model.md §3) ----------------------------------
 
-export const DataIssueKindSchema = z.enum(["missing", "conflict", "unparseable"]);
+export const DataIssueKindSchema = z.enum(["missing", "conflict", "unparseable", "invalid"]); // invalid: row failed schema validation and was skipped (R9).
 export type DataIssueKind = z.infer<typeof DataIssueKindSchema>;
 
 export const DataIssueSchema = z.object({
