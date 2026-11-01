@@ -121,3 +121,42 @@ test("TC-082: Esc closes the approve dialog without approving, and restores focu
   // one-shot activeElement read races it; toBeFocused() retries.
   await expect(primary).toBeFocused();
 });
+
+test("T25-7: focus falls back to an enclosing region when the opener can't take it back", async ({ page }) => {
+  await page.goto("/invoices/INV-A");
+  await expect(page.getByTestId("priority-reason")).toHaveText(/\S/);
+  const generate = page.getByRole("button", { name: "Generate draft" });
+  if (await generate.isVisible()) {
+    await generate.click();
+    await expect(page.getByTestId("checks-summary")).toHaveText("9 of 9 passed");
+    await page.getByTestId("action-bar").getByTestId("primary-action").click();
+    await expect(page.getByTestId("next-step")).toContainText("Waiting for");
+  }
+  const manager = page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" });
+  await manager.click();
+  await expect(manager).toHaveAttribute("aria-pressed", "true");
+
+  const primary = page.getByTestId("action-bar").getByTestId("primary-action");
+  await expect(primary).not.toHaveAttribute("aria-disabled", "true");
+  await primary.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toBeVisible();
+
+  // Simulate an action that disables its own opener while the dialog is open.
+  await primary.evaluate((el) => ((el as HTMLButtonElement).disabled = true));
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+
+  // Focus must land inside <main> (the opener's enclosing region or <main>
+  // itself), never on <body>. Polled because Radix restores in a setTimeout.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const a = document.activeElement;
+        const main = document.querySelector("main");
+        return !!a && a !== document.body && !!main && (a === main || main.contains(a));
+      }),
+    )
+    .toBe(true);
+});

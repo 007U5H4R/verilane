@@ -44,6 +44,25 @@ function AlertDialogOverlay({
   );
 }
 
+// Hand focus back to the opener. If it can no longer take focus (disabled,
+// hidden or removed by the confirmed action), fall back to the nearest
+// enclosing region, then to <main>, so keyboard users never land on <body>
+// (TASK-25 · T25-7).
+const FALLBACK_REGION = 'main, [role="region"], [role="dialog"], section[aria-label], section[aria-labelledby]';
+
+function restoreFocus(target: HTMLElement) {
+  if (target.isConnected) {
+    target.focus();
+    if (document.activeElement === target) return;
+  }
+  const region = target.isConnected ? target.parentElement?.closest<HTMLElement>(FALLBACK_REGION) : null;
+  const fallback = region ?? document.querySelector<HTMLElement>("main");
+  if (!fallback) return;
+  // Programmatic focus target only; keeps it out of the Tab order.
+  if (!fallback.hasAttribute("tabindex")) fallback.setAttribute("tabindex", "-1");
+  fallback.focus();
+}
+
 // Radix restores focus only to an <AlertDialogTrigger>. Controlled dialogs
 // opened from a plain button (e.g. the action bar's primary action) would
 // otherwise drop focus to <body> on close. Remember what had focus when the
@@ -73,10 +92,9 @@ function AlertDialogContent({
           if (event.defaultPrevented) return;
           const target = returnFocusRef.current;
           returnFocusRef.current = null;
-          if (target?.isConnected) {
-            event.preventDefault();
-            target.focus();
-          }
+          if (!target) return; // nothing captured: keep Radix's default
+          event.preventDefault();
+          restoreFocus(target);
         }}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border bg-surface p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
