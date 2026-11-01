@@ -64,6 +64,19 @@ test.describe("@perf", () => {
     const resultCount = page.getByTestId("result-count");
     const sortSelect = page.getByRole("combobox", { name: "Sort by" });
 
+    // Event Timing API (what TC-085 names): browser-measured input → next
+    // paint for trusted events. Playwright's fill() goes through CDP text
+    // insertion (trusted, so recorded); selectOption() dispatches synthetic
+    // events (not recorded), so sort relies on the wall-clock bound below,
+    // which over-counts by the Playwright round trips and is the stricter one.
+    await page.evaluate(() => {
+      const w = window as unknown as { __eventTimings: { name: string; duration: number }[] };
+      w.__eventTimings = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) w.__eventTimings.push({ name: e.name, duration: e.duration });
+      }).observe({ type: "event", buffered: true, durationThreshold: 16 } as PerformanceObserverInit);
+    });
+
     async function timeInteraction(act: () => Promise<void>, settle: () => Promise<void>): Promise<number> {
       await page.evaluate(() => performance.clearMeasures());
       const t0 = await page.evaluate(() => performance.now());
@@ -100,6 +113,13 @@ test.describe("@perf", () => {
       );
     }
 
+    // Let the observer flush the last entries.
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+    const eventTimings = await page.evaluate(
+      () => (window as unknown as { __eventTimings: { name: string; duration: number }[] }).__eventTimings,
+    );
+    const eventMax = eventTimings.reduce((m, e) => Math.max(m, e.duration), 0);
+
     const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
     const filterMedian = median(filterTimings);
     const sortMedian = median(sortTimings);
@@ -109,9 +129,13 @@ test.describe("@perf", () => {
       filterMedian,
       sortTimings,
       sortMedian,
+      eventTimingEntries: eventTimings,
+      eventTimingMaxMs: eventMax,
     });
 
     expect(filterMedian).toBeLessThanOrEqual(INTERACTION_BUDGET_MS);
     expect(sortMedian).toBeLessThanOrEqual(INTERACTION_BUDGET_MS);
+    // Every recorded event (≥16ms) also met the budget; entries <16ms are not recorded at all.
+    expect(eventMax).toBeLessThanOrEqual(INTERACTION_BUDGET_MS);
   });
 });

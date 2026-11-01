@@ -13,7 +13,8 @@ import type { CommandInput } from "@/store/tx";
 import { ErrorState } from "@/components/states/ErrorState";
 import {
   DbContext,
-  useCustomers,   useHasOpenDispute,
+  useCustomers,
+  useHasOpenDispute,
   useInvoice,
   useInvoiceDraft,
   usePayments,
