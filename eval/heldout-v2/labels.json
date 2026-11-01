@@ -16,6 +16,9 @@
     ],
     "commitment_date": "2026-10-30",
     "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
     "note": "Hinglish; 'is Friday' sent Mon 2026-10-26 -> Friday of the same week"
   },
   {
@@ -35,6 +38,9 @@
     ],
     "commitment_date": "2026-11-06",
     "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
     "note": "forwarded internal thread; promise is 06/11 (DD/MM), the quoted 26/09 is the due date"
   },
   {
@@ -54,6 +60,9 @@
     ],
     "commitment_date": "2026-10-31",
     "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
     "note": "bare figure with no currency marker is still the INR amount; typos; 'end of this month'"
   },
   {
@@ -74,6 +83,7 @@
     ],
     "commitment_date": "2026-11-03",
     "ambiguous": false,
+    "phenomena": [],
     "note": "instalment plan; commitment_date = first promised payment date"
   },
   {
@@ -93,6 +103,10 @@
     ],
     "commitment_date": "2026-10-28",
     "ambiguous": false,
+    "phenomena": [
+      "lakh_amount",
+      "relative_date"
+    ],
     "note": "lakh amount; 'in two weeks' = sent_at + 14"
   },
   {
@@ -112,6 +126,10 @@
     ],
     "commitment_date": "2026-10-28",
     "ambiguous": false,
+    "phenomena": [
+      "negation",
+      "dd_mm_date"
+    ],
     "note": "earlier refusal is retracted; the live statement is a firm promise"
   },
   {
@@ -125,6 +143,7 @@
     "invoice_refs": [],
     "commitment_date": "2026-11-15",
     "ambiguous": true,
+    "phenomena": [],
     "note": "Hinglish; known contact, no ref, several open invoices (FS4)"
   },
   {
@@ -140,6 +159,9 @@
     ],
     "commitment_date": "2026-10-28",
     "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
     "note": "sender not in any customer's contacts; a name mention never establishes identity"
   },
   {
@@ -159,6 +181,9 @@
     ],
     "commitment_date": "2026-10-14",
     "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
     "note": "UTR is not an amount; 'yesterday' from 2026-10-15"
   },
   {
@@ -179,6 +204,9 @@
     ],
     "commitment_date": "2026-10-19",
     "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
     "note": "short payment net of TDS is a payment confirmation, not a dispute; 'Invoice No. 3102' -> INV-3102"
   },
   {
@@ -202,6 +230,9 @@
     ],
     "commitment_date": "2026-10-26",
     "ambiguous": true,
+    "phenomena": [
+      "dd_mm_date"
+    ],
     "note": "multi-invoice remittance: more than one invoice concerned, so not a single match; DD.MM.YYYY date"
   },
   {
@@ -221,6 +252,9 @@
     ],
     "commitment_date": "2026-10-08",
     "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
     "note": "Hinglish; 'kal' with a completed verb ('kar diya') = yesterday"
   },
   {
@@ -242,6 +276,9 @@
     ],
     "commitment_date": "2026-10-19",
     "ambiguous": true,
+    "phenomena": [
+      "relative_date"
+    ],
     "note": "two equal-amount candidates; 'on Monday' (past) from Thu 2026-10-22"
   },
   {
@@ -264,6 +301,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "indirect dispute (never says 'dispute'); unit rates count as amounts; 5,000 cartons is a quantity"
   },
   {
@@ -282,6 +320,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "ledger row has no po_number"
   },
   {
@@ -302,6 +341,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "forwarded internal note; goods not received, payment held"
   },
   {
@@ -319,7 +359,8 @@
       "INV-3302"
     ],
     "commitment_date": null,
-    "ambiguous": false
+    "ambiguous": false,
+    "phenomena": []
   },
   {
     "thread_id": "H2-018",
@@ -339,6 +380,9 @@
     ],
     "commitment_date": "2026-10-12",
     "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
     "note": "already-paid claim in reply to a reminder; claimed payment date 12/10"
   },
   {
@@ -357,6 +401,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "objection with no stated reason"
   },
   {
@@ -379,6 +424,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "invoice_id = the one asked to cancel; PO number is not an amount"
   },
   {
@@ -401,6 +447,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "no cancel target named; invoice_id = later re-issue"
   },
   {
@@ -421,6 +468,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "Hinglish; asks to cancel 3804"
   },
   {
@@ -438,6 +486,10 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [
+      "negation",
+      "dd_mm_date"
+    ],
     "note": "negated earlier promise; 25/10 is withdrawn, no new date -> null"
   },
   {
@@ -451,6 +503,9 @@
     "invoice_refs": [],
     "commitment_date": null,
     "ambiguous": true,
+    "phenomena": [
+      "hedging"
+    ],
     "note": "blanket hold, no ref, several open invoices; '2-3 weeks' is hedged -> null"
   },
   {
@@ -470,6 +525,11 @@
     ],
     "commitment_date": null,
     "ambiguous": true,
+    "phenomena": [
+      "near_miss_ref",
+      "lakh_amount",
+      "hedging"
+    ],
     "note": "FS3: INV-3330 does not exist; sender's INV-3303 is the transposition (same amount); hedged date -> null"
   },
   {
@@ -486,7 +546,8 @@
       "INV-3504"
     ],
     "commitment_date": null,
-    "ambiguous": false
+    "ambiguous": false,
+    "phenomena": []
   },
   {
     "thread_id": "H2-027",
@@ -499,6 +560,7 @@
     "invoice_refs": [],
     "commitment_date": null,
     "ambiguous": true,
+    "phenomena": [],
     "note": "no ref; 'as on 30th Sept' is a statement date, not a payment date"
   },
   {
@@ -514,6 +576,7 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [],
     "note": "unknown sender, ref does not exist"
   },
   {
@@ -527,6 +590,7 @@
     "invoice_refs": [],
     "commitment_date": null,
     "ambiguous": true,
+    "phenomena": [],
     "note": "out-of-office; the return date is not a payment commitment"
   },
   {
@@ -544,6 +608,9 @@
     ],
     "commitment_date": null,
     "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
     "note": "bounce from the customer's mail server, not a contact; quoted reminder's ref and amount still count as stated in the thread"
   }
 ]

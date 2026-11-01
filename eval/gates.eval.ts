@@ -20,6 +20,8 @@ beforeAll(async () => {
   mkdirSync(REPORT_DIR, { recursive: true });
   writeFileSync(join(REPORT_DIR, "report.json"), toJson(report));
   writeFileSync(join(REPORT_DIR, "report.md"), toMarkdown(report));
+  // Volatile, so kept out of the committed report (see VOLATILE_KEYS).
+  console.info(`eval run ${report.generatedAt} took ${report.durationMs} ms`);
 });
 
 function gateTests(set: SetName): void {

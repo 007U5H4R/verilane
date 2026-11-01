@@ -13,6 +13,7 @@ import Papa from "papaparse";
 import { describe, expect, it } from "vitest";
 import {
   DraftCaseFile,
+  PHENOMENA,
   ThreadLabelFile,
   type DraftCase,
   type ThreadLabel,
@@ -131,6 +132,19 @@ describe("eval labels — TC-019", () => {
           }
         }
       });
+    });
+  }
+
+  // R20: a later label edit must not silently drop a phenomenon the held-out
+  // sets exist to exercise (technical-plan 11.3). Every held-out item carries
+  // a `phenomena` tag list (possibly empty), and each required tag appears at
+  // least once in each set.
+  for (const c of CORPORA.filter((x) => x.name !== "seed")) {
+    it(`${c.name} set tags every item and covers every required phenomenon`, () => {
+      const labels = ThreadLabelFile.parse(readJson(c.labelsPath));
+      for (const l of labels) expect(l.phenomena, `${l.thread_id} phenomena`).toBeDefined();
+      const seen = new Set(labels.flatMap((l) => l.phenomena ?? []));
+      for (const p of PHENOMENA) expect(seen.has(p), `${c.name}: ${p}`).toBe(true);
     });
   }
 

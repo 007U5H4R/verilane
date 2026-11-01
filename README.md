@@ -111,8 +111,8 @@ pnpm route-budget      # each route's First Load JS ≤ 300 KB gzip
 ```
 
 - **Typecheck on a fresh clone** — `src/app/layout.tsx` uses Next's generated `LayoutProps` type, so `pnpm typecheck` fails with `Cannot find name 'LayoutProps'` until Next has generated its types. Run `pnpm exec next typegen` once (or `pnpm dev` / `pnpm build`) first.
-- **Timeouts on a loaded machine** — the unit tests use vitest's default 5 s test timeout, and the eval project sets no hook timeout, so its `beforeAll` gets the 10 s default. On a busy machine, a few unit tests can time out, and `pnpm eval` can fail with `Hook timed out in 10000ms` before it gets to report the gate results. The eval still writes `eval/report.*` in that case. A timeout is not a gate result: re-run on a quieter machine and read `eval/report.md`.
-- **`pnpm eval` rewrites `eval/report.json` and `eval/report.md`** (timestamp and duration) on every run. Discard with `git checkout -- eval/report.json eval/report.md` if the numbers didn't change.
+- **Timeouts** — `vitest.config.ts` gives the unit project a 30 s test and hook timeout, and the eval project a 60 s hook timeout (twice its 30 s run budget), so a loaded machine slows the run down instead of failing it. The config explains each number.
+- **`eval/report.json` and `eval/report.md` only change when a result does.** Both files leave out the run's timestamp and duration; `pnpm eval` prints them to the console instead.
 
 ### End-to-end tests (Playwright)
 E2E runs against a **production build compiled with test hooks**, so `build:e2e` must come first:
@@ -123,19 +123,20 @@ pnpm build:e2e && pnpm e2e --workers=1
 
 - **Use `--workers=1`.** Parallel workers have proven flaky on the development machine; every recorded green e2e run used a single worker.
 - **Port** — Playwright starts `pnpm start` on port 3100 and will reuse a server that's already running there. Set `E2E_PORT` to use another port, e.g. `E2E_PORT=3113 pnpm e2e --workers=1`.
-- **Machine-specific paths (known portability issue)** — the `e2e` script in `package.json` hard-codes `PLAYWRIGHT_BROWSERS_PATH` and `TMPDIR` to `/Volumes/E Drive/Dev/.scratch/...` on the original development machine. Elsewhere, those directories won't exist and `pnpm e2e` fails until the script is changed. Run Playwright directly and install the browser first:
+- **Browsers and temp files** — by default both stay inside the repo, under `node_modules/.cache/playwright` (gitignored, on the repo's own disk). `playwright.config.ts` sets this, so nothing lands in the OS browser cache or temp dir. On a fresh checkout, install Chromium there once:
 
   ```bash
-  pnpm exec playwright install chromium
-  pnpm build:e2e && pnpm exec playwright test --workers=1
+  pnpm e2e:install
   ```
+
+  Two overrides, both optional: `PLAYWRIGHT_BROWSERS_PATH` (an existing value is kept, e.g. to share one browser install across worktrees; export it in a file non-interactive shells read, such as `~/.zshenv`) and `E2E_TMPDIR` (where browser profiles and artifacts go). Set them the same way for `pnpm e2e:install` and `pnpm e2e`.
 
 ### Everything at once
 ```bash
 pnpm test:all
 ```
 
-This runs typecheck → lint → unit → perf → eval → build → check:secrets → check:e2e-hooks → route-budget → build:e2e → e2e. **It currently stops at `pnpm eval` at the latest**, because of the known held-out failures above (or earlier, on the timeouts described under [Development](#development)), so to check the later steps, run them one by one. Its `e2e` step doesn't pass `--workers=1`.
+This runs typecheck → lint → unit → perf → eval → build → check:secrets → check:e2e-hooks → route-budget → build:e2e → e2e. **It currently stops at `pnpm eval` at the latest**, because of the known held-out failures above, so to check the later steps, run them one by one. Its `e2e` step runs with `--workers=1`.
 
 ## Docs
 - [Product Requirements](./docs/Product-Requirements.md) — requirement traceability

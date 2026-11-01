@@ -13,13 +13,14 @@
     "perf": "vitest run --project perf",
     "eval": "vitest run --project eval",
     "build:e2e": "NEXT_PUBLIC_E2E=1 next build",
-    "e2e": "PLAYWRIGHT_BROWSERS_PATH='/Volumes/E Drive/Dev/.scratch/pw-browsers' TMPDIR='/Volumes/E Drive/Dev/.scratch/tmp' playwright test",
+    "e2e": "playwright test",
+    "e2e:install": "tsx scripts/e2e-install.ts",
     "check:secrets": "tsx scripts/check-bundle-secrets.ts",
     "route-budget": "tsx scripts/route-budget.ts",
     "check:e2e-hooks": "tsx scripts/check-e2e-hooks.ts",
     "seed": "tsx scripts/seed.ts",
     "eval:live": "tsx --conditions=react-server scripts/eval-live.ts",
-    "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm perf && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm build:e2e && pnpm e2e"
+    "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm perf && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm build:e2e && pnpm e2e --workers=1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

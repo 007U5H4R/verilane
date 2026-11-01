@@ -612,9 +612,19 @@ function sortKeys(v: unknown): unknown {
   return typeof v === "number" && !Number.isInteger(v) ? Number(v.toFixed(4)) : v;
 }
 
-/** `report.json`: keys sorted at every level, ratios to 4 places. */
+/** The report minus `VOLATILE_KEYS`, so the committed files only change when a result does. */
+function stableFields(report: Report): Omit<Report, (typeof VOLATILE_KEYS)[number]> {
+  const copy: Partial<Report> = { ...report };
+  for (const k of VOLATILE_KEYS) delete copy[k];
+  return copy as Omit<Report, (typeof VOLATILE_KEYS)[number]>;
+}
+
+/**
+ * `report.json`: keys sorted at every level, ratios to 4 places. The volatile
+ * keys are left out so two runs write identical bytes; `pnpm eval` prints them.
+ */
 export function toJson(report: Report): string {
-  return `${JSON.stringify(sortKeys(report), null, 2)}\n`;
+  return `${JSON.stringify(sortKeys(stableFields(report)), null, 2)}\n`;
 }
 
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
@@ -637,7 +647,7 @@ export function toMarkdown(report: Report): string {
   lines.push(
     "# Evaluation report",
     "",
-    `Generated ${report.generatedAt} · as-of ${report.asOf} · provider \`${report.provider}\` · ${report.durationMs} ms · network calls ${report.networkCalls}`,
+    `As-of ${report.asOf} · provider \`${report.provider}\` · network calls ${report.networkCalls}`,
     "",
     report.passed ? "**All gates pass.**" : "**One or more gates missed — the run fails.**",
     "",

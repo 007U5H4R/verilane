@@ -101,3 +101,13 @@ report, marked "inspected 2026-11-01, no longer blind".
 - A bounce from a customer's mail server is not a contact, so its `customer_id`
   is null. The refs and amounts in the quoted reminder still count as stated in
   the thread.
+
+## 2026-11-01: phenomenon tags on the held-out sets (TASK-32, R20)
+
+No label value changed. Each item in `heldout/labels.json` and
+`heldout-v2/labels.json` gained a `phenomena` list (possibly empty) naming the
+language phenomena its thread text exercises: `near_miss_ref`, `negation`,
+`hedging`, `lakh_amount`, `relative_date`, `dd_mm_date` (technical-plan 11.3).
+Tags were assigned by hand from the thread text and the existing notes.
+`labels.test.ts` now fails if any item lacks the list or if either set stops
+covering one of the six.
