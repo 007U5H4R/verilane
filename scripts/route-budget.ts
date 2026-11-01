@@ -3,7 +3,7 @@
 // 300 KB gzip on the production build. Next 16's build output no longer
 // prints a "First Load JS" column, so this reads the per-route chunk list
 // Next writes to `.next/diagnostics/route-bundle-stats.json` and gzips each
-// chunk itself. Run after `pnpm build`: `pnpm exec tsx scripts/route-budget.ts`.
+// chunk itself. Run after `pnpm build`: `pnpm route-budget` (wired into `test:all`).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
