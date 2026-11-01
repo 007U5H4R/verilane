@@ -1,12 +1,18 @@
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 
-/** One step of the top-bar trail; the last one is the current page (no href). */
-export type Crumb = { label: string; href?: string };
+/** A detail crumb whose label the top bar resolves from the store (T34-1). */
+export type CrumbResolve = { kind: "invoice" | "dispute"; id: string };
+
+/**
+ * One step of the top-bar trail; the last one is the current page (no href).
+ * `label` is what shows until (or unless) `resolve` finds a better one.
+ */
+export type Crumb = { label: string; href?: string; resolve?: CrumbResolve };
 
 /** Detail routes and the nav section they sit under (Design.md mockup: "Queue › INV-…"). */
-const PARENTS: Record<string, { label: string; href: string }> = {
-  invoices: { label: "Queue", href: "/queue" },
-  disputes: { label: "Disputes", href: "/disputes" },
+const PARENTS: Record<string, { label: string; href: string; kind: CrumbResolve["kind"] }> = {
+  invoices: { label: "Queue", href: "/queue", kind: "invoice" },
+  disputes: { label: "Disputes", href: "/disputes", kind: "dispute" },
 };
 
 const SUB_PAGES: Record<string, Crumb[]> = {
@@ -29,7 +35,12 @@ export function crumbsFor(pathname: string): Crumb[] {
     } catch {
       // A malformed escape: show the raw segment rather than throw in the shell.
     }
-    return [parent, { label }];
+    return [
+      { label: parent.label, href: parent.href },
+      { label, resolve: { kind: parent.kind, id: label } },
+    ];
   }
-  return [{ label: "Home" }];
+  // An unknown route has no place in the trail; claiming "Home" would announce
+  // the wrong current page (T34-5).
+  return [];
 }
