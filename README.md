@@ -123,13 +123,13 @@ pnpm build:e2e && pnpm e2e --workers=1
 
 - **Use `--workers=1`.** Parallel workers have proven flaky on the development machine; every recorded green e2e run used a single worker.
 - **Port** — Playwright starts `pnpm start` on port 3100 and will reuse a server that's already running there. Set `E2E_PORT` to use another port, e.g. `E2E_PORT=3113 pnpm e2e --workers=1`.
-- **Browsers and temp files** — `pnpm e2e` is plain `playwright test`, so Playwright's defaults apply unless you set `PLAYWRIGHT_BROWSERS_PATH` (where browsers are installed and looked up) or `TMPDIR`. On a fresh machine, install the browser once:
+- **Browsers and temp files** — by default both stay inside the repo, under `node_modules/.cache/playwright` (gitignored, on the repo's own disk). `playwright.config.ts` sets this, so nothing lands in the OS browser cache or temp dir. On a fresh checkout, install Chromium there once:
 
   ```bash
-  pnpm exec playwright install chromium
+  pnpm e2e:install
   ```
 
-  To keep browsers and temp files on another disk, export both before installing and running, e.g. `export PLAYWRIGHT_BROWSERS_PATH="/path/to/playwright-browsers" TMPDIR="/path/to/tmp"`.
+  Two overrides, both optional: `PLAYWRIGHT_BROWSERS_PATH` (an existing value is kept, e.g. to share one browser install across worktrees; export it in a file non-interactive shells read, such as `~/.zshenv`) and `E2E_TMPDIR` (where browser profiles and artifacts go). Set them the same way for `pnpm e2e:install` and `pnpm e2e`.
 
 ### Everything at once
 ```bash
