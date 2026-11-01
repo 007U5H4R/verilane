@@ -7,7 +7,10 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import type { Report } from "./run";
+import type { Report, VOLATILE_KEYS } from "./run";
+
+/** report.json as written: the run minus its timestamp and duration (TASK-32). */
+type WrittenReport = Omit<Report, (typeof VOLATILE_KEYS)[number]>;
 
 const ROOT = process.cwd();
 
@@ -23,13 +26,16 @@ test("VERILANE_EVAL_FORCE_MISS=1 exits non-zero and marks the gate failed", () =
       {
         cwd: ROOT,
         encoding: "utf8",
-        timeout: 60_000,
+        // More than the child's 60 s eval hookTimeout, so a slow child fails
+        // on its own terms instead of being killed before it writes the report.
+        timeout: 90_000,
         env: { ...process.env, VERILANE_EVAL_FORCE_MISS: "1", VERILANE_EVAL_REPORT_DIR: dir },
       },
     );
-    expect(child.status, child.stderr).not.toBe(0);
+    // Exactly 1 (a gate missed), not null from a kill or a spawn error.
+    expect(child.status, `signal=${child.signal} error=${child.error} ${child.stderr}`).toBe(1);
 
-    const report = JSON.parse(readFileSync(join(dir, "report.json"), "utf8")) as Report;
+    const report = JSON.parse(readFileSync(join(dir, "report.json"), "utf8")) as WrittenReport;
     expect(report.forcedMiss).toBe(true);
     expect(report.passed).toBe(false);
     const amount = report.gates.find((g) => g.set === "seed" && g.name === "Amount exact match");
@@ -38,4 +44,4 @@ test("VERILANE_EVAL_FORCE_MISS=1 exits non-zero and marks the gate failed", () =
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-}, 60_000);
+}, 120_000);
