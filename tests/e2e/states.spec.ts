@@ -71,6 +71,14 @@ const ROUTES: RouteStates[] = [
     prepare: submitCleanDraft,
   },
   {
+    // /disputes/[id] at a fixed seed dispute (D-E-011..020 exist in every seed).
+    href: "/disputes/D-E-011-1",
+    // A single dispute has no "empty" — its absent case is "Dispute not found" (disputes.spec).
+    empty: null,
+    error: /Couldn’t load this dispute\./,
+    working: (p) => p.getByTestId("dispute-claim-text"),
+  },
+  {
     href: "/invoices/INV-042",
     // A single invoice has no "empty" — its absent case is "Invoice not found" (checked below).
     empty: null,
