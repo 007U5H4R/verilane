@@ -35,6 +35,11 @@ IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK n
 | TASK-31 | done, merged | 39a5d42 (head 5674130, base 4926f71) | `eval/heldout-v2` 30 threads; barrier verified from transcript (classifier never opened); labels committed before run; pre-fix baseline dispute 3/9, approval 38/56, matching 20/23, class 14/30; EXE22; Done; debatable labels H2-003/012/011 left unedited |
 | TASK-25 | done, merged | d345663 (head 655b84f) + 597aa4b perf isolation | a11y/perf/states/controls sweep; EXE25; unit 729/729 + perf 1/1, route budget 12/12, e2e 169/1-skip (`--workers=1`); Done; T25-5 parked to close-out |
 | TASK-26 | done, merged | f1bc396 (head 09b9625, base 437b834) | trust-walk e2e; TC-086/087 PASS both themes; Done |
+| TASK-32 | In Progress, dispatched | base 3902427, port 3115 | close-out: test infra (portable PW paths, `test:all --workers=1`, vitest timeouts, deterministic eval report, R20, T18-N2, T25-5) |
+| TASK-33 | In Progress, dispatched | base 3902427, port 3117 | close-out: R7–R11, T16-4/T16-R1 (product call: failed-check drafts excluded from count, shown "Blocked — checks failed"), live NavItems counts |
+| TASK-34 | In Progress, dispatched | base 3902427, port 3119 | close-out: R18, R21, breadcrumb on /invoices/<id> |
+| TASK-35 | In Progress, dispatched | base 3902427, port 3121 | close-out: T24-5/7/11/12, N1, N2 |
+| TASK-36 | In Progress, dispatched | base 3902427, port 3123 | close-out: T23-6/7/10/11, T23-R1–R4, recordRejection wiring check, offline gate check |
 | TASK-28 | done, merged | 29d2bea (base a2622a0, ff-only) | README + trust boundary + eval results; EXE26; TC-090 fresh-clone verbatim run passed except `test:all`/`eval` hit vitest default timeouts under load (not the expected 8-gate stop) — new defect beyond TC-084/EXE25; tsc/lint clean on merged branch; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).
