@@ -55,10 +55,17 @@ pnpm build && pnpm start
 
   `pnpm check:secrets` scans the built client bundle and fails if any `ANTHROPIC` string leaks into it.
 
+  What the live routes enforce:
+  - **Request size.** Bodies over 256 KiB get `413 payload_too_large`, whether the declared `Content-Length` is too big or the stream runs past the cap.
+  - **Field limits.** Extract takes ids up to 200 characters, `from_address` up to 320, `subject` up to 1,000 and `body` up to 20,000. Draft takes `context` of 1–20,000 characters and an `invoice_id` in the seed shape (`INV-` plus 1–9 digits or one capital letter). Anything else gets `400 invalid_request`.
+  - **Prompt fencing.** Email text and draft context go to Claude inside a fence whose tag is random for each request. A closing tag smuggled into the text is stripped first, including spaced-out or zero-width-split variants.
+  - **Call settings.** Structured JSON output, `max_tokens` 8192, effort `low` for extract and `medium` for draft. No thinking, no sampling overrides and no model fallback.
+  - **Rejections.** Output Claude declines or that fails validation comes back with `"status": "rejected"` and a reason code (draft: `reason`; extract: `rejection_reason`): `refusal`, `truncated` (hit `max_tokens` or the context window), `unexpected_stop_reason` or `invalid_output`. Upstream and SDK failures log only `code=upstream_error` / `code=sdk_error` and the HTTP status, never the request or response text.
+
 **Limits of live mode, stated plainly:**
 - **The live path has not been exercised with a real API key yet.** It is covered by unit tests with the SDK stubbed, and nothing more.
 - **No UI triggers it yet.** The live provider isn't wired into any screen, so enabling it changes only the status badge and the API routes.
-- **`pnpm eval:live --yes` is the only live entry point.** It runs the held-out emails through Claude, writes `eval/report.live.json` and prints a rough cost estimate. It spends real money, refuses to run without `--yes`, and is reported but never gated.
+- **`pnpm eval:live --yes` is the only live entry point.** It runs the held-out emails through Claude, writes `eval/report.live.json` and prints a rough cost estimate from a per-model price table (a model not in the table prints "cost unknown"). It spends real money, refuses to run without `--yes`, and is reported but never gated.
 
 ## Trust boundary: read this before relying on it
 Verilane is a no-login portfolio demo, and **the browser is the trust boundary** (decision S14, [Solution PRD §8](./Solution-PRD.md#8-known-tradeoffs-honest)).
