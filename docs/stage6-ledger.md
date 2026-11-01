@@ -31,8 +31,8 @@ IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK n
 | TASK-24 | done, merged | be197ae (head fb23656) | 3aa052a (base 041ff7a), port 3111 | PWA; EXE17; vitest 585/585, e2e 113/1-skip (`--workers=1`); Done; SW off globally in playwright.config (on only in pwa.spec); seed manifest network-first; at TASK-23 merge: disable live-LLM trigger offline via `useOnline()` |
 | TASK-21 | merged, In Progress | 4926f71 (head 30aa211, base d217d0c) | harness + /settings/eval; EXE21; TC-065/067/068/069 PASS, TC-066 FAIL (honest) → TASK-30/31; stays In Progress until TC-066 passes |
 | TASK-22 | in progress | worktree, base 4926f71, port 3113 | fault injection FS11 |
-| TASK-30 | in progress | worktree, base 4926f71, port 3114 | classifier broadening (info barrier: no held-out access, no `pnpm eval`) |
-| TASK-31 | in progress | worktree, base 4926f71, port 3115 | fresh held-out set `eval/heldout-v2` (barrier: no classifier code); measure once, then freeze |
+| TASK-30 | reviewed, awaiting merge | e310c1e (base 4926f71) | phrases.ts/classify.ts + 68 general cases; unit 695/695; barrier verified (only file read outside src: own report); 0/96 phrase literals verbatim in heldout v1; EXE-T30-1..7 to log; merge after TASK-31 gates finish |
+| TASK-31 | merged, In Progress | 39a5d42 (head 5674130, base 4926f71) | `eval/heldout-v2` 30 threads; barrier verified from transcript (classifier never opened); labels committed before run; pre-fix baseline dispute 3/9, approval 38/56, matching 20/23, class 14/30; stays In Progress until the post-TASK-30 measurement; debatable labels H2-003/012/011 left unedited |
 | TASK-25 | in progress | worktree, base d217d0c, port 3109 | quality sweep; R21 folded in |
 | TASK-26 | done, merged | f1bc396 (head 09b9625, base 437b834) | trust-walk e2e; TC-086/087 PASS both themes; Done |
 
