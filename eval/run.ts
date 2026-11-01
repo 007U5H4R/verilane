@@ -41,7 +41,7 @@ const EVAL_DIR = join(ROOT, "eval");
 /** Event timestamps inside the in-memory transaction: the frozen as-of day. */
 const FROZEN_NOW = `${AS_OF_DATE}T09:00:00.000Z`;
 
-export const SETS = ["seed", "heldout"] as const;
+export const SETS = ["seed", "heldout", "heldout-v2"] as const;
 export type SetName = (typeof SETS)[number];
 
 interface Corpus {
@@ -66,6 +66,12 @@ const CORPORA: Record<SetName, Corpus> = {
     emails: join(EVAL_DIR, "heldout", "emails.json"),
     invoices: join(EVAL_DIR, "heldout", "invoices.csv"),
     customers: join(EVAL_DIR, "heldout", "customers.csv"),
+  },
+  "heldout-v2": {
+    labels: join(EVAL_DIR, "heldout-v2", "labels.json"),
+    emails: join(EVAL_DIR, "heldout-v2", "emails.json"),
+    invoices: join(EVAL_DIR, "heldout-v2", "invoices.csv"),
+    customers: join(EVAL_DIR, "heldout-v2", "customers.csv"),
   },
 };
 
@@ -523,6 +529,7 @@ export function toMarkdown(report: Report): string {
   const lines: string[] = [];
   const seed = report.gates.filter((g) => g.set === "seed");
   const held = report.gates.filter((g) => g.set === "heldout");
+  const held2 = report.gates.filter((g) => g.set === "heldout-v2");
   lines.push(
     "# Evaluation report",
     "",
@@ -532,13 +539,14 @@ export function toMarkdown(report: Report): string {
     "",
     "## Gates",
     "",
-    "| Gate | Threshold | Seed (25 threads) | Held-out (30 threads) |",
-    "| --- | --- | --- | --- |",
+    "| Gate | Threshold | Seed (25 threads) | Held-out (30 threads; inspected 2026-11-01, no longer blind) | Held-out v2 (30 threads) |",
+    "| --- | --- | --- | --- | --- |",
   );
   seed.forEach((g, i) => {
     const h = held[i];
+    const h2 = held2[i];
     const mark = (x: Gate | undefined) => (x ? `${x.passed ? "PASS" : "FAIL"} ${fmtGate(x)}` : "—");
-    lines.push(`| ${g.name} | ${fmtThreshold(g)} | ${mark(g)} | ${mark(h)} |`);
+    lines.push(`| ${g.name} | ${fmtThreshold(g)} | ${mark(g)} | ${mark(h)} | ${mark(h2)} |`);
   });
   const missed = report.gates.filter((g) => !g.passed);
   if (missed.length > 0) {
@@ -546,11 +554,12 @@ export function toMarkdown(report: Report): string {
     for (const g of missed) lines.push(`- ${g.name} (${g.set}): ${g.failures.join(", ") || "—"}`);
   }
 
-  lines.push("", "## Reported, not gated", "", "| Metric | Seed | Held-out |", "| --- | --- | --- |");
+  lines.push("", "## Reported, not gated", "", "| Metric | Seed | Held-out (no longer blind) | Held-out v2 |", "| --- | --- | --- | --- |");
   const ratioRow = (label: string, pick: (m: Metrics) => { value: number; numerator: number; denominator: number }) => {
     const s = pick(report.metrics.seed);
     const h = pick(report.metrics.heldout);
-    lines.push(`| ${label} | ${pct(s.value)} (${s.numerator}/${s.denominator}) | ${pct(h.value)} (${h.numerator}/${h.denominator}) |`);
+    const h2 = pick(report.metrics["heldout-v2"]);
+    lines.push(`| ${label} | ${pct(s.value)} (${s.numerator}/${s.denominator}) | ${pct(h.value)} (${h.numerator}/${h.denominator}) | ${pct(h2.value)} (${h2.numerator}/${h2.denominator}) |`);
   };
   ratioRow("Ambiguous threads escalated", (m) => m.ambiguous_escalation);
   ratioRow("Allowed approvals blocked (false blocks)", (m) => m.false_blocks);

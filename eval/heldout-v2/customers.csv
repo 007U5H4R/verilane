@@ -1,0 +1,9 @@
+customer_id,name,contact_emails,payment_terms_days,segment
+H2C-01,Godavari Polymers Pvt Ltd,accounts@godavaripolymers.test,30,SMB
+H2C-02,Shekhawati Handloom Mills Ltd,ap@shekhawatihandloom.test;rakesh.jain@shekhawatihandloom.test,45,Mid-Market
+H2C-03,Ratnagiri Agro Cold Chain LLP,finance@ratnagiricoldchain.test,30,SMB
+H2C-04,Bidar Fasteners Pvt Ltd,payables@bidarfasteners.test;accounts@bidarfasteners.test,60,Enterprise
+H2C-05,Brahmaputra Tea Traders,accounts@brahmaputratea.test,30,SMB
+H2C-06,Satpura Pharma Packaging Ltd,ap@satpurapharmapack.test,45,Mid-Market
+H2C-07,Kutch Salt & Chemicals Ltd,finance@kutchsaltchem.test;treasury@kutchsaltchem.test,60,Enterprise
+H2C-08,Hampi Stoneworks Pvt Ltd,accounts@hampistoneworks.test,30,SMB

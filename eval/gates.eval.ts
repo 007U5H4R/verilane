@@ -37,6 +37,7 @@ function gateTests(set: SetName): void {
 
 describe("seed gates (TC-065)", () => gateTests("seed"));
 describe("held-out gates (TC-066)", () => gateTests("heldout"));
+describe("held-out v2 gates (TASK-31)", () => gateTests("heldout-v2"));
 
 describe("run budget (TC-069)", () => {
   test("finishes within 30 s", () => {
