@@ -8,6 +8,7 @@ import { IconRail } from "@/components/shell/IconRail";
 import { LogoCard } from "@/components/shell/LogoCard";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
+import { crumbsFor } from "@/components/shell/breadcrumb";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 import { SeedUpdatePrompt } from "@/components/SeedUpdatePrompt";
 import { useOnline } from "@/lib/useOnline";
@@ -18,7 +19,6 @@ import { useOnline } from "@/lib/useOnline";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const active = NAV_ITEMS.find((item) => item.href === pathname);
-  const crumb = active?.label ?? "Home";
   const activeHref = active?.href ?? "/";
   const online = useOnline();
 
@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             DEMO DATA
           </span>
         </div>
-        <TopBar crumb={crumb} />
+        <TopBar crumbs={crumbsFor(pathname)} />
         <BannerHost offline={!online} />
         <SeedUpdatePrompt />
         <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>

@@ -107,3 +107,24 @@ test("R18: a deep link to the cited evidence lands on it", async ({ page }, test
   await expect(page.locator(`[id="${id}"]`)).toBeInViewport();
   await page.screenshot({ path: `${REPORTS_DIR}/TASK-34-390-communication-${testInfo.project.name}.png` });
 });
+
+test("breadcrumb: detail pages show their trail, not Home", async ({ page }, testInfo) => {
+  await openInvoice(page, "INV-042");
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumbs).toHaveText(/^Queue\s*›\s*INV-042$/);
+  await expect(crumbs.locator('[aria-current="page"]')).toHaveText("INV-042");
+  if (testInfo.project.name === "chromium-light")
+    await page.screenshot({ path: `${REPORTS_DIR}/TASK-34-breadcrumb-invoice.png` });
+
+  await page.goto("/payments");
+  await expect(crumbs).toHaveText("Payments");
+
+  await page.goto("/disputes");
+  const href = await page.locator('main a[href^="/disputes/"]').first().getAttribute("href");
+  expect(href, "seed has at least one dispute").toBeTruthy();
+  await page.goto(href!);
+  await expect(crumbs).toHaveText(new RegExp(`^Disputes\\s*›\\s*${href!.split("/").pop()}$`));
+
+  await crumbs.getByRole("link", { name: "Disputes" }).click();
+  await expect(page).toHaveURL(/\/disputes$/);
+});
