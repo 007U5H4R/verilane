@@ -13,11 +13,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import Papa from "papaparse";
+import { FAULT_KINDS, faulty, type FaultKind } from "@/ai/faulty";
 import type { Provider } from "@/ai/provider";
 import { simulatedProvider } from "@/ai/simulated";
 import { rejectedExtraction } from "@/ai/validateExtraction";
 import { AS_OF_DATE } from "@/domain/clock";
-import { run, type Command, type Row, type TableName, type Tx } from "@/domain/commands";
+import { recordRejection, run, type AuditEventInput, type Command, type Row, type TableName, type Tx } from "@/domain/commands";
 import { locateFootnotes } from "@/domain/draft";
 import { ingest, type IngestResult, type Row as CsvRow } from "@/domain/ingest";
 import { match } from "@/domain/match";
@@ -103,6 +104,8 @@ export interface Report {
   gates: Gate[];
   metrics: Record<SetName, Metrics>;
   attempts: Record<SetName, ApprovalAttempt[]>;
+  /** Fault-injection rate over the seed emails (TASK-22, TC-071). */
+  faults: FaultReport;
 }
 
 export const GATE_DEFS: { name: string; key: keyof Metrics; threshold: number; comparator: Comparator }[] = [
@@ -410,6 +413,105 @@ async function runHeldOutApprovals(sources: DraftSources, labels: ThreadLabel[])
   return { drafts, attempts };
 }
 
+// --- Fault injection (TASK-22, FS11) -----------------------------------------
+
+export interface FaultKindResult {
+  kind: FaultKind;
+  emails: number;
+  /** Corrupted outputs the validator rejected. */
+  rejected: number;
+  rate: number;
+  /** Rejected emails with an open review item (needs_review). */
+  needs_review: number;
+  /** Rejections recorded as one `validation_failure` audit event. */
+  audited: number;
+  approvals_attempted: number;
+  /** Approvals that reached `sent_simulated`; must be 0. */
+  approvable: number;
+  failures: string[];
+}
+
+export interface FaultReport {
+  rate: number;
+  approvable: number;
+  kinds: FaultKindResult[];
+}
+
+/** The simulated provider, with only `messageId` corrupted by `kind`. */
+function faultOne(kind: FaultKind, messageId: string): Provider {
+  const bad = faulty(simulatedProvider, kind);
+  return {
+    name: "faulty",
+    extract: (m) => (m.message_id === messageId ? bad.extract(m) : simulatedProvider.extract(m)),
+  };
+}
+
+/**
+ * Each seed email, once per fault kind, with only that email corrupted. The
+ * invoices it could concern (what the clean run matched, plus what the
+ * faulted run names or lists as candidates) each get a reminder that a
+ * Manager then tries to approve, normally and with a forged validated row.
+ */
+export async function runFaults(): Promise<FaultReport> {
+  const { ledger } = loadCorpus(CORPORA.seed);
+  const clean = await runThreads(ledger, simulatedProvider);
+  const kinds: FaultKindResult[] = [];
+  for (const kind of FAULT_KINDS) {
+    const r: FaultKindResult = {
+      kind,
+      emails: 0,
+      rejected: 0,
+      rate: 0,
+      needs_review: 0,
+      audited: 0,
+      approvals_attempted: 0,
+      approvable: 0,
+      failures: [],
+    };
+    for (const email of [...ledger.emails].sort((a, b) => a.message_id.localeCompare(b.message_id))) {
+      const id = email.message_id;
+      r.emails++;
+      const { sources } = await runThreads(ledger, faultOne(kind, id));
+      const x = sources.extractions.find((e) => e.message_id === id);
+      if (x?.status !== "rejected") {
+        r.failures.push(`${id}: not rejected`);
+        continue;
+      }
+      r.rejected++;
+      if (sources.reviewItems.some((i) => i.message_id === id && i.status === "open")) r.needs_review++;
+      else r.failures.push(`${id}: no open review item`);
+
+      const events: AuditEventInput[] = [];
+      await recordRejection(x, "analyst", { ...memTx(sources), audit: async (e) => void events.push(e) });
+      if (events.length === 1 && events[0]?.action === "validation_failure") r.audited++;
+      else r.failures.push(`${id}: no validation_failure audit`);
+
+      const m = sources.matches.find((e) => e.message_id === id);
+      const before = clean.sources.matches.find((e) => e.message_id === id);
+      const targets = new Set([m?.invoice_id, ...(m?.candidates ?? []), before?.invoice_id]);
+      for (const invoiceId of [...targets].filter((t): t is string => t !== undefined).sort()) {
+        const tx = memTx(sources);
+        await run(cmd("generate_draft", "invoice", invoiceId, "manager"), tx);
+        const draftId = `DR-${invoiceId}-1`;
+        const attempts = await approvalAttempts(tx, draftId, invoiceId, "manager", [`rejected ${id}`], `${kind}/${id}/${invoiceId}`);
+        r.approvals_attempted += attempts.length;
+        for (const a of attempts.filter((a) => !a.blocked)) {
+          r.approvable++;
+          r.failures.push(`${a.id}: approvable (${a.outcome})`);
+        }
+      }
+    }
+    r.rate = r.emails === 0 ? 0 : r.rejected / r.emails;
+    kinds.push(r);
+  }
+  const emails = kinds.reduce((n, k) => n + k.emails, 0);
+  return {
+    rate: emails === 0 ? 0 : kinds.reduce((n, k) => n + k.rejected, 0) / emails,
+    approvable: kinds.reduce((n, k) => n + k.approvable, 0),
+    kinds,
+  };
+}
+
 // --- Gates and the report ----------------------------------------------------
 
 function gateValue(m: Metrics, key: keyof Metrics): { value: number; detail: string; failures: string[] } {
@@ -476,6 +578,7 @@ export async function runEval(opts: RunOptions = {}): Promise<Report> {
     }
 
     const gates = SETS.flatMap((s) => gatesFor(s, metrics[s]));
+    const faults = await runFaults();
     return {
       generatedAt: clock().toISOString(),
       asOf: AS_OF_DATE,
@@ -487,6 +590,7 @@ export async function runEval(opts: RunOptions = {}): Promise<Report> {
       gates,
       metrics,
       attempts,
+      faults,
     };
   } finally {
     globalThis.fetch = realFetch;
@@ -584,12 +688,28 @@ export function toMarkdown(report: Report): string {
 
   lines.push(
     "",
+    "## Fault injection (TASK-22)",
+    "",
+    `Each seed email, corrupted one way at a time, must be rejected, sent to review and leave no approvable reminder. Rejection rate ${pct(report.faults.rate)}; approvable drafts ${report.faults.approvable}.`,
+    "",
+    "| Fault | Rejected | Needs review | Audited | Approvals tried | Approvable |",
+    "| --- | --- | --- | --- | --- | --- |",
+  );
+  for (const k of report.faults.kinds) {
+    lines.push(
+      `| ${k.kind} | ${pct(k.rate)} (${k.rejected}/${k.emails}) | ${k.needs_review}/${k.emails} | ${k.audited}/${k.emails} | ${k.approvals_attempted} | ${k.approvable} |`,
+    );
+  }
+
+  lines.push(
+    "",
     "## Method",
     "",
     "- Simulated provider, frozen clock, `fetch` stubbed to throw: the run is offline and deterministic.",
     "- Amount and invoice-number match use set equality in paise over threads whose label states one.",
     "- Approval enforcement drives `approve_draft` through the real command code. A blocked approval is retried with a forged `validated` row, so the block must come from re-validation and the role check.",
-    "- Fault-injection rate (TASK-22) and live-provider quality (`eval/report.live.json`) are reported separately.",
+    "- Fault injection wraps the simulated provider; each corrupted output goes through the same validator and cross-check as a live one.",
+    "- Live-provider quality (`eval/report.live.json`) is reported separately.",
     "",
   );
   return lines.join("\n");

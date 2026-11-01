@@ -1884,7 +1884,79 @@
       }
     ]
   },
-  "durationMs": 203,
+  "durationMs": 4106,
+  "faults": {
+    "approvable": 0,
+    "kinds": [
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "malformed_json",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "missing_fields",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "bad_enum",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "hallucinated_amount",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "wrong_ref",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      },
+      {
+        "approvable": 0,
+        "approvals_attempted": 218,
+        "audited": 25,
+        "emails": 25,
+        "failures": [],
+        "kind": "refusal",
+        "needs_review": 25,
+        "rate": 1,
+        "rejected": 25
+      }
+    ],
+    "rate": 1
+  },
   "forcedMiss": false,
   "gates": [
     {
@@ -2118,7 +2190,7 @@
       "value": 0.7241
     }
   ],
-  "generatedAt": "2026-11-01T04:31:11.130Z",
+  "generatedAt": "2026-11-01T05:06:33.644Z",
   "metrics": {
     "heldout": {
       "ambiguous_escalation": {

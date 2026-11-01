@@ -76,9 +76,23 @@ export function draftContextFor(invoiceId: string, src: DraftSources): DraftCont
   }
 
   const byMessage = new Map(src.extractions.map((x) => [x.message_id, x]));
+  const underReview = new Set(
+    src.reviewItems.filter((r) => r.status === "open").map((r) => r.message_id),
+  );
   let ambiguousMatch = false;
   for (const m of src.matches) {
     if (m.outcome === "ambiguous" && m.candidates.includes(invoiceId)) ambiguousMatch = true;
+    // FS11 (TASK-22): an email the provider could not read may be a dispute
+    // or a payment claim about any invoice it could concern, so those
+    // invoices stay blocked until a person deals with its review item.
+    const rejected = byMessage.get(m.message_id)?.status === "rejected";
+    if (
+      rejected &&
+      underReview.has(m.message_id) &&
+      (m.invoice_id === invoiceId || m.candidates.includes(invoiceId))
+    ) {
+      disputed ??= `Unreadable email ${m.message_id} (extraction rejected) may dispute this invoice; review it first`;
+    }
     if (m.outcome !== "matched") continue;
     const x = byMessage.get(m.message_id);
     if (!x || x.status !== "valid") continue;

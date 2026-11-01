@@ -206,4 +206,51 @@ describe("draftContextFor", () => {
     expect(ctx.conflictingPayment).toBe(true);
     expect(ctx.outstanding).toBe(34_000_000);
   });
+
+  describe("FS11: a rejected extraction under review blocks drafts (TASK-22, TC-071)", () => {
+    const rejected = extraction("E-5", "unknown", {
+      status: "rejected",
+      rejection_reason: "cross-check failed; invoice_refs.0: INV-9999 does not appear in the email",
+      invoice_refs: [],
+    });
+    const customerOnly = {
+      message_id: "E-5",
+      outcome: "customer_only",
+      customer_id: "C-001",
+      candidates: ["INV-A"],
+      reason: "",
+    } as Match;
+    const review = (status: ReviewItem["status"]): ReviewItem => ({
+      review_id: "RV-E-5-match",
+      kind: "uncertain_match",
+      message_id: "E-5",
+      linked_review_ids: [],
+      recommendation: "",
+      evidence_ids: [],
+      validation_status: "missing",
+      escalation_reason: "",
+      requires_role: "analyst",
+      status,
+    });
+
+    it("fails check 6 while the review item is open", () => {
+      const src = sources({ extractions: [rejected], matches: [customerOnly], reviewItems: [review("open")] });
+      expect(draftContextFor("INV-A", src).disputed).toContain("E-5");
+      expect(failedIds(src)).toContain(6);
+    });
+
+    it("does not block an invoice the email cannot be about", () => {
+      const src = sources({
+        extractions: [rejected],
+        matches: [{ ...customerOnly, candidates: ["INV-B"] }],
+        reviewItems: [review("open")],
+      });
+      expect(draftContextFor("INV-A", src).disputed).toBeNull();
+    });
+
+    it("clears once a person has dealt with the review item", () => {
+      const src = sources({ extractions: [rejected], matches: [customerOnly], reviewItems: [review("dismissed")] });
+      expect(draftContextFor("INV-A", src).disputed).toBeNull();
+    });
+  });
 });
