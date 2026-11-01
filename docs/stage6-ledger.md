@@ -39,7 +39,7 @@ IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK n
 | TASK-33 | In Progress, dispatched | base 3902427, port 3117 | close-out: R7–R11, T16-4/T16-R1 (product call: failed-check drafts excluded from count, shown "Blocked — checks failed"), live NavItems counts |
 | TASK-34 | In Progress, dispatched | base 3902427, port 3119 | close-out: R18, R21, breadcrumb on /invoices/<id> |
 | TASK-35 | In Progress, dispatched | base 3902427, port 3121 | close-out: T24-5/7/11/12, N1, N2 |
-| TASK-36 | In Progress, dispatched | base 3902427, port 3123 | close-out: T23-6/7/10/11, T23-R1–R4, recordRejection wiring check, offline gate check |
+| TASK-36 | done, merged | 388c058 (head d5dbf60, base 3902427), port 3123 | close-out: T23-6/7/10/11, T23-R1–R4, recordRejection wiring check, offline gate check; review PASS-WITH-FIXES, 1 fix round; EXE28; README e6a52ea; T36-5/6/7 parked; tsc/lint clean, unit 792/792, perf 1/1, build + secrets + e2e-hooks clean, route budget 12/12, e2e 169/1-skip (`--workers=1`); Done |
 | TASK-28 | done, merged | 29d2bea (base a2622a0, ff-only) | README + trust boundary + eval results; EXE26; TC-090 fresh-clone verbatim run passed except `test:all`/`eval` hit vitest default timeouts under load (not the expected 8-gate stop) — new defect beyond TC-084/EXE25; tsc/lint clean on merged branch; Done |
 
 Merge order planned: 7.9 → 8 → 10 → 14 (re-run test:all subset after each).

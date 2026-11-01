@@ -1,10 +1,10 @@
 ---
 id: TASK-36
 title: 'Harden live Claude provider: size limits, system prompt, error mapping'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-01 14:55'
-updated_date: '2026-11-01 14:55'
+updated_date: '2026-11-01 16:34'
 labels:
   - P2
 dependencies: []
