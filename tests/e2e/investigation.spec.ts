@@ -60,3 +60,50 @@ test("TC-026: an invoice no email cites shows 'No prior communication' and claim
   );
   expect(errors).toEqual([]);
 });
+
+// TASK-34 · R18: a G4/G5 reason cites `<message_id>:emails.json:email_class`;
+// that id must exist on screen as an anchor with its provenance visible.
+const REPORTS_DIR = "/Volumes/E Drive/Dev/.scratch/verilane/reports";
+
+test("R18: every email citation in a queue reason is a visible anchor with provenance", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = trackConsoleErrors(page);
+  await page.goto("/queue");
+  const rows = page.locator('main a[href^="/invoices/"]');
+  await expect(rows.first()).toBeVisible();
+  // Every queue row whose cause is an email class (G4/G7), plus INV-042 (G5,
+  // held off the main list).
+  const hrefs = await rows.filter({ hasText: ":emails.json:email_class" }).evaluateAll((els) =>
+    els.map((e) => e.getAttribute("href")!),
+  );
+  expect(hrefs.length, "the seed has queue rows citing an email class").toBeGreaterThan(0);
+
+  for (const href of new Set([...hrefs, "/invoices/INV-042"])) {
+    await openInvoice(page, href.split("/").pop()!);
+    const reason = (await page.getByTestId("priority-reason").textContent()) ?? "";
+    const cites = [...reason.matchAll(/\[([^\]]+:emails\.json:email_class)\]/g)].map((m) => m[1]!);
+    expect(cites, `${href} reason cites an email: ${reason}`).not.toEqual([]);
+
+    for (const cite of cites) {
+      const anchor = page.locator(`[id="ev-${cite}"]`);
+      await expect(anchor, `${href} anchor for ${cite}`).toBeVisible();
+      await expect(anchor).toHaveAttribute("data-testid", "email-class");
+      const message = page.getByTestId("communication-message").filter({ has: anchor });
+      const thread = await message.getAttribute("data-thread");
+      await expect(message.getByTestId("provenance").first()).toHaveText(`emails.json · ${thread} · email_class`);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test("R18: a deep link to the cited evidence lands on it", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openInvoice(page, "INV-042");
+  // Leave the page so the deep link is a fresh load, not a same-document
+  // fragment change: the message rows arrive after the browser's own jump.
+  await page.goto("/queue");
+  const id = "ev-E-007-1:emails.json:email_class";
+  await page.goto(`/invoices/INV-042#${id}`);
+  await expect(page.locator(`[id="${id}"]`)).toBeInViewport();
+  await page.screenshot({ path: `${REPORTS_DIR}/TASK-34-390-communication-${testInfo.project.name}.png` });
+});
