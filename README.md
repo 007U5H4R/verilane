@@ -110,6 +110,10 @@ pnpm check:e2e-hooks   # test hooks are compiled out of the plain build
 pnpm route-budget      # each route's First Load JS ≤ 300 KB gzip
 ```
 
+- **Typecheck on a fresh clone** — `src/app/layout.tsx` uses Next's generated `LayoutProps` type, so `pnpm typecheck` fails with `Cannot find name 'LayoutProps'` until Next has generated its types. Run `pnpm exec next typegen` once (or `pnpm dev` / `pnpm build`) first.
+- **Timeouts on a loaded machine** — the unit tests use vitest's default 5 s test timeout, and the eval project sets no hook timeout, so its `beforeAll` gets the 10 s default. On a busy machine, a few unit tests can time out, and `pnpm eval` can fail with `Hook timed out in 10000ms` before it gets to report the gate results. The eval still writes `eval/report.*` in that case. A timeout is not a gate result: re-run on a quieter machine and read `eval/report.md`.
+- **`pnpm eval` rewrites `eval/report.json` and `eval/report.md`** (timestamp and duration) on every run. Discard with `git checkout -- eval/report.json eval/report.md` if the numbers didn't change.
+
 ### End-to-end tests (Playwright)
 E2E runs against a **production build compiled with test hooks**, so `build:e2e` must come first:
 
@@ -131,7 +135,7 @@ pnpm build:e2e && pnpm e2e --workers=1
 pnpm test:all
 ```
 
-This runs typecheck → lint → unit → perf → eval → build → check:secrets → check:e2e-hooks → route-budget → build:e2e → e2e. **It currently stops at `pnpm eval`** because of the known held-out failures above, so to check the later steps, run them one by one. Its `e2e` step doesn't pass `--workers=1`.
+This runs typecheck → lint → unit → perf → eval → build → check:secrets → check:e2e-hooks → route-budget → build:e2e → e2e. **It currently stops at `pnpm eval` at the latest**, because of the known held-out failures above (or earlier, on the timeouts described under [Development](#development)), so to check the later steps, run them one by one. Its `e2e` step doesn't pass `--workers=1`.
 
 ## Docs
 - [Product Requirements](./docs/Product-Requirements.md) — requirement traceability
