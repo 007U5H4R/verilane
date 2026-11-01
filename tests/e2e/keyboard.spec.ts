@@ -116,6 +116,7 @@ test("TC-082: Esc closes the approve dialog without approving, and restores focu
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(page.getByText(/approved and sent/)).toHaveCount(0);
-  const restored = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
-  expect(restored).toBe("primary-action");
+  // Radix FocusScope restores focus in a setTimeout after unmount, so a
+  // one-shot activeElement read races it; toBeFocused() retries.
+  await expect(primary).toBeFocused();
 });
