@@ -186,7 +186,7 @@
 - Sort is a select, not sortable column headers.
 - A page number past the filtered results clamps to the last page.
 - Error-state Retry reloads the page.
-- The `?__state=` hook works only when `NEXT_PUBLIC_E2E` is set and is checked at runtime.
+- The `?__state=` hook works only when `NEXT_PUBLIC_E2E` is set and is checked at runtime. *(Superseded by EXE25: the hook is now compiled out of plain builds.)*
 - The sidebar Queue count is live via `QueueCount`. The Disputes and Drafts counts stay hard-coded until their tickets.
 - `loadDemoData` was added to the store for the empty-state action, and `BAND_LABELS` is exported.
 **Rejected.** Waiting for the URL between clicks in tests (hides a real user bug).
@@ -343,3 +343,15 @@
 - **Deviation:** there is no runtime ingest from a provider yet (extractions are seeded; `liveProvider` is unused per EXE19), so `recordRejection` is only called from eval. Wiring it into a real ingest path is parked for the close-out wave.
 - Review PASS on both stages. One quality fix round: `1d44703` moved an orphaned comment back to `CLOSED_DRAFT`. Merged at `45dd9f8`; the conflict in `eval/report.*` was resolved by regenerating.
 - Gates: lint and tsc pass, unit 723/723, eval 34 passed / 8 known held-out failures (v1: 3, v2: 5), build + check:secrets clean, e2e 129 passed / 1 skipped under `--workers=1`.
+
+## EXE25 · a11y, perf, screen-state and dead-control sweep (TASK-25) — accepted
+- New e2e specs: `a11y` (TC-080), `controls` (TC-081), `keyboard` (TC-082), `perf` (TC-085) and `states` (TC-079, including `/disputes/[id]`). R21 (axe and 390px on `/payments` and the Communication panel) is folded in. `ComingSoon.tsx` was removed.
+- TC-083 route budget: `scripts/route-budget.ts` checks every route's gzip First Load JS against 300 KB and is a `test:all` step after `build`. `/queue` was 300.8 KB, so `ResetDialog` now loads lazily (295.9 KB). All 12 routes pass.
+- `?__state=` and `__verilane` test hooks are compiled out of plain builds through `next.config` `env`, and `check:e2e-hooks` scans `.next/static` to prove it. The `/e2e-harness` route remains an accepted exception.
+- `alert-dialog.tsx` returns focus to the opener on close. If the opener is gone, focus falls back to the nearest region, then to `<main>` (TC-082 Esc race).
+- TC-081 clicks every button-like control on every route and fails on any click with no observable effect (DOM change, navigation, download, popup or dialog). Only the "Analyst" button on `/` is allow-listed. Already-checked radios are skipped, SVG animation changes are ignored, and "Hide filters" passes on an attribute change only.
+- TC-085 times the committed result: the URL matches and the visible rows or count have changed, not just the click.
+- TC-084 (`recompute()` ≤ 200 ms median of 5) runs in its own vitest project via `pnpm perf`, a separate `test:all` step. In the parallel unit pool it failed under machine load (median 264.6 ms; 19–27 ms alone), which made the unit gate flaky (`597aa4b`).
+- Cross-lane touch: `/settings/eval` got a focusable region for axe.
+- Review: 2 fix rounds. Proof that the new tests catch faults: an injected 1 s filter delay, a dead Export button and a removed focus fallback each failed the matching test. T25-5 (the keyboard walk uses programmatic focus/goto) is parked for the close-out wave.
+- Merged at `d345663` (head `655b84f`). Gates: tsc and lint pass, unit 729/729 (also under induced build load), perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 169 passed / 1 skipped under `--workers=1` (e2e on `d345663`; `597aa4b` changes test config only).

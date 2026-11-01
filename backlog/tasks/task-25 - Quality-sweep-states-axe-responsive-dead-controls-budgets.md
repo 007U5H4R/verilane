@@ -1,10 +1,10 @@
 ---
 id: TASK-25
 title: 'Quality sweep: states, axe, responsive, dead controls, budgets'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-31 17:07'
+updated_date: '2026-11-01 07:57'
 labels:
   - P0
   - 'sp:5'
