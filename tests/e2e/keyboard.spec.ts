@@ -15,26 +15,21 @@ async function tabTo(page: Page, locator: ReturnType<Page["getByRole"]>, maxStep
 }
 
 test("TC-082: Queue → Investigation → draft → submit → approve → confirm, keyboard only", async ({ page }) => {
-  await page.goto("/queue");
+  // Deterministic queue (TASK-32 · T25-5): the URL search narrows the queue to
+  // INV-A (invoice number INV-1012), so the walk never depends on sort order.
+  await page.goto("/queue?q=INV-1012");
   await expect(page.getByRole("status", { name: "Loading workspace" })).toHaveCount(0);
 
-  // Queue → row: focus the first invoice link and activate it with Enter.
-  const firstRow = page.locator('main a[href^="/invoices/"]').first();
-  await expect(firstRow).toBeVisible();
-  const invoiceHref = await firstRow.getAttribute("href");
-  await firstRow.focus();
+  // Queue → row: reach the INV-A row with real Tab presses (no programmatic
+  // focus) and activate it with Enter.
+  const rows = page.locator('main a[href^="/invoices/"]');
+  await expect(rows).toHaveCount(1);
+  const invRow = rows.first();
+  await expect(invRow).toHaveAttribute("href", "/invoices/INV-A");
+  await tabTo(page, invRow, 120);
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(new RegExp(`${invoiceHref}$`));
+  await expect(page).toHaveURL(/\/invoices\/INV-A$/);
   await expect(page.getByTestId("priority-reason")).toHaveText(/\S/);
-
-  // Investigation: go straight to INV-A via keyboard-free goto (test setup,
-  // not part of the walk) only if the queue's first row wasn't INV-A —
-  // otherwise continue on whatever row we landed on, since the walk's goal
-  // is the flow, not a specific invoice. The clean-draft path needs INV-A.
-  if (!invoiceHref?.endsWith("INV-A")) {
-    await page.goto("/invoices/INV-A");
-    await expect(page.getByTestId("priority-reason")).toHaveText(/\S/);
-  }
 
   // Draft: Tab to "Generate draft" and activate with Enter.
   const generate = page.getByRole("button", { name: "Generate draft" });
