@@ -258,17 +258,28 @@ test("TC-076c: offline in-app navigation to an unvisited route never shows Home 
   await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
   await swControlled(page);
 
+  const target = "/settings/eval";
+  const documentLoads: string[] = [];
+  page.on("request", (req) => {
+    if (!req.isNavigationRequest() || req.frame() !== page.mainFrame()) return;
+    const url = new URL(req.url());
+    documentLoads.push(url.pathname + url.search);
+  });
+
   await context.setOffline(true);
   try {
-    // Client (soft) navigation with partialPrefetching: either the prefetched
-    // real page renders, or the router falls back to a document load that the
-    // SW answers with the offline page. Home's HTML is never an answer.
-    await page.locator('nav[aria-label="Main"] a[href="/disputes"]:visible').first().click();
-    await expect(page).toHaveURL(/\/disputes$/);
-    const disputes = page.getByRole("heading", { level: 1, name: "Disputes" });
-    const offline = page.getByRole("heading", { level: 1, name: OFFLINE_PAGE_TITLE });
-    await expect(disputes.or(offline)).toBeVisible();
+    // A client (soft) navigation to a route nothing on /queue links to, so it
+    // was never prefetched (T35-4; nav routes are, and render offline): the
+    // router's RSC fetch fails offline, so it falls back to a document load,
+    // which the SW must answer with the offline page, never Home's HTML.
+    await page.evaluate((url) => {
+      (window as unknown as { next: { router: { push(href: string): void } } }).next.router.push(url);
+    }, target);
+    await expect(page).toHaveURL(/\/settings\/eval$/);
+    await expect(page.getByRole("heading", { level: 1, name: OFFLINE_PAGE_TITLE })).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toHaveCount(0);
+    // The fallback branch ran: the router gave up and loaded the document.
+    expect(documentLoads).toContain(target);
   } finally {
     await context.setOffline(false);
   }
