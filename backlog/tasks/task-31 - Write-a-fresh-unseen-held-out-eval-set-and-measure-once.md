@@ -1,10 +1,10 @@
 ---
 id: TASK-31
 title: Write a fresh unseen held-out eval set and measure once
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-01 04:12'
-updated_date: '2026-11-01 04:13'
+updated_date: '2026-11-01 05:05'
 labels:
   - P1
 dependencies: []

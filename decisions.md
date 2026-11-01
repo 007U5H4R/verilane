@@ -313,3 +313,25 @@
   - TASK-21 stays In Progress until TC-066 passes on the fresh set.
 - Gate convention from now on: unit gate is `vitest run --project unit`; `pnpm eval` is reported separately with its known failures listed.
 - Merged into `build/verilane-v1` at `4926f71` (head `30aa211`, base `d217d0c`, 0 fix rounds, review PASS both stages), no conflicts. Gates on the merged branch: lint, tsc, unit 627/627, eval 13 passed / 3 known held-out failures, build + check:secrets clean over 32 files, build:e2e, e2e 129 passed / 1 skipped under `--workers=1`.
+
+## EXE22 · Fresh blind held-out set `eval/heldout-v2/` (TASK-31) — accepted
+- 30 new threads (H2-001…H2-030) with their own customers, invoices and labels. `eval/labels.test.ts` checks the labels and that no id collides with seed or held-out v1. `pnpm eval` reports v2 as a third column, and v1 is now labelled "inspected 2026-11-01, no longer blind".
+- Barrier verified from the author's transcript: the classifier sources were never opened. The labels were committed before the first run.
+- Debatable labels (H2-003, H2-011, H2-012) are left exactly as the author wrote them. Editing labels after seeing results would defeat the point of a blind set.
+- Pre-TASK-30 baseline on v2: dispute recall 3/9, approval enforcement 38/56, unambiguous matching 20/23, email class 14/30. Amount (16/18) and invoice-number (25/26) exact match also miss on v2.
+- Merged at `39a5d42` (head `5674130`, base `4926f71`, 0 fix rounds, review PASS both stages). Gates: lint, tsc, unit 631/631, build + check:secrets clean, e2e 129 passed / 1 skipped under `--workers=1`.
+
+## EXE23 · General dispute/payment wording in the classifier (TASK-30) — accepted; TC-066 a known limitation
+- `src/domain/phrases.ts` adds general word lists (goods, agreed, defect, negation, price terms, dispute patterns) plus a `PAYMENT_REF` regex (UTR/NEFT/RTGS/IMPS). In `classify.ts`, a payment reference now counts as evidence of an amount or reference, and a specific dispute type is preferred over `unknown`. `classify.general.test.ts` adds 68 cases written from general language, not from held-out data.
+- Implementer decisions (EXE-T30-1..7):
+  - damaged goods → `not_received`;
+  - never ordered / PO mismatch → `missing_po`;
+  - credit note, withholding and escalation → `unknown`;
+  - TDS deduction is not a dispute;
+  - "please escalate" alone is not a dispute;
+  - a bare "Amount transferred" counts as a transfer verb.
+  - Known misfires: other harmless uses of "escalate", and "Paid?" next to an amount.
+- Barrier verified: the implementer read no held-out data and never ran `pnpm eval`. 0 of the 96 phrase literals appear verbatim in held-out v1.
+- **Single honest measurement on v2** (`58e1b34`): dispute recall 3/9 → 4/9, approval enforcement 38/56 → 42/58, matching 20/23 unchanged, email class 14/30 → 15/30. On v1: dispute 2/9 → 4/9, approval 38/54 → 54/62. No tuning against v2 followed.
+- **User decision (2026-11-01): TC-066 is a known limitation.** Phrase lists do not generalise far enough to reach the gates. The gates keep failing honestly, with thresholds and labels unchanged. TASK-30 and TASK-31 are Done, since their own checks pass. TASK-21 stays In Progress, and TC-066 will be listed as a known FAIL in the Stage 8 QA report and the README. The real fix is the live Claude provider, which needs a real key that only the user can supply.
+- Merged with no conflicts (impl `e310c1e`, 0 fix rounds, review PASS both stages). Gates: lint, tsc, unit 699/699, eval 14 passed / 8 known held-out failures (v1: 3, v2: 5), build + check:secrets clean, e2e 129 passed / 1 skipped under `--workers=1`.
