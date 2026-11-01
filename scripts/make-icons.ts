@@ -19,7 +19,9 @@ const LOGO_PATH = join(process.cwd(), "public", "brand", "verilane-logo.png");
 // The mark's tight pixel bounding box within the 2172×724 logo canvas,
 // found by scanning for non-transparent pixels (column/row runs): the
 // standalone "V" ribbon glyph, left of the wordmark's first letter.
-const MARK_CROP = { left: 213, top: 204, width: 429, height: 317 };
+// Columns 213–642 inclusive: 430 wide, so the last anti-aliased column
+// (alpha up to 24) is kept (TASK-35 / T24-11). Pinned by make-icons.test.ts.
+export const MARK_CROP = { left: 213, top: 204, width: 430, height: 317 };
 
 const RAIL = { r: 0x0f, g: 0x3d, b: 0x29, alpha: 1 };
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
