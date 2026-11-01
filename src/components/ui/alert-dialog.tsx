@@ -44,15 +44,40 @@ function AlertDialogOverlay({
   );
 }
 
+// Radix restores focus only to an <AlertDialogTrigger>. Controlled dialogs
+// opened from a plain button (e.g. the action bar's primary action) would
+// otherwise drop focus to <body> on close. Remember what had focus when the
+// dialog opened and hand it back on close if it is still on the page
+// (TASK-25 · TC-082).
 function AlertDialogContent({
   className,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  const returnFocusRef = React.useRef<HTMLElement | null>(null);
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
+        onOpenAutoFocus={(event) => {
+          // Fires before focus moves into the dialog, so this is the opener.
+          const active = document.activeElement;
+          returnFocusRef.current =
+            active instanceof HTMLElement && active !== document.body ? active : null;
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+          const target = returnFocusRef.current;
+          returnFocusRef.current = null;
+          if (target?.isConnected) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border bg-surface p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,

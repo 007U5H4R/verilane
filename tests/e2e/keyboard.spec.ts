@@ -100,9 +100,14 @@ test("TC-082: Esc closes the approve dialog without approving, and restores focu
     await page.getByTestId("action-bar").getByTestId("primary-action").click();
     await expect(page.getByTestId("next-step")).toContainText("Waiting for");
   }
-  await page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" }).click();
+  const manager = page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" });
+  await manager.click();
+  // The role switch re-renders the action bar; wait for it before pressing
+  // Enter, otherwise the primary action is still aria-disabled for Author.
+  await expect(manager).toHaveAttribute("aria-pressed", "true");
 
   const primary = page.getByTestId("action-bar").getByTestId("primary-action");
+  await expect(primary).not.toHaveAttribute("aria-disabled", "true");
   await primary.focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("alertdialog");
