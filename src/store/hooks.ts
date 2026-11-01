@@ -10,7 +10,7 @@ import { AS_OF_DATE } from "@/domain/clock";
 import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
+import type { Customer, DataIssue, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
 import { DraftSchema, type Draft } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
@@ -86,6 +86,8 @@ export function usePayments(): Payment[] | undefined {
 export interface InvoiceWithPriority {
   invoice: Invoice;
   priority: Priority;
+  /** This invoice's ingest DataIssues — a duplicate number reads Conflict (R10). */
+  dataIssues: DataIssue[];
 }
 
 /**
@@ -103,7 +105,8 @@ export function useInvoice(invoiceId: string): InvoiceWithPriority | undefined |
     if (!invoice) return null;
     const priority = await db.priorities.get(invoiceId);
     if (!priority) return null;
-    return { invoice, priority };
+    const dataIssues = await db.dataIssues.where("record_id").equals(invoiceId).toArray();
+    return { invoice, priority, dataIssues };
   }, [db, invoiceId]);
 }
 

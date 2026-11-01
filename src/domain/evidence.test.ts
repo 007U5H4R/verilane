@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildEmailEvidence, buildInvoiceEvidence, emailFactLabel, provenanceOf } from "./evidence";
-import { EvidenceSchema, type Extraction, type Invoice } from "./schema";
+import { EvidenceSchema, type DataIssue, type Extraction, type Invoice } from "./schema";
 import { paise } from "./money";
 
 function baseInvoice(overrides: Partial<Invoice> = {}): Invoice {
@@ -56,6 +56,35 @@ describe("buildInvoiceEvidence", () => {
     expect(byField.get("invoice_number")?.original_value).toBeNull();
     expect(byField.get("due_date")?.validation_status).toBe("missing");
     expect(byField.get("amount_paise")?.validation_status).toBe("verified");
+  });
+
+  // R10 (TASK-33): ingest nulls a duplicate invoice_number and records a
+  // conflict DataIssue; the fact must read Conflict, not Missing.
+  it("marks a duplicate-number invoice's number as conflict, not missing (R10)", () => {
+    const issues: DataIssue[] = [
+      {
+        issue_id: "INV-A:invoice_number:0",
+        record_id: "INV-A",
+        field: "invoice_number",
+        kind: "conflict",
+        message: "invoice_number '1001' is already used by invoice INV-001.",
+        suggested_action: "Confirm the correct invoice number.",
+      },
+      {
+        issue_id: "INV-OTHER:due_date:1",
+        record_id: "INV-OTHER",
+        field: "due_date",
+        kind: "conflict",
+        message: "not this invoice",
+        suggested_action: "-",
+      },
+    ];
+    const evidence = buildInvoiceEvidence(baseInvoice({ invoice_number: null, due_date: null }), 4, issues);
+    const byField = new Map(evidence.map((e) => [e.source_field, e]));
+    expect(byField.get("invoice_number")?.validation_status).toBe("conflict");
+    expect(byField.get("invoice_number")?.claim_text).toContain("already used by invoice INV-001");
+    expect(byField.get("due_date")?.validation_status).toBe("missing");
+    for (const e of evidence) expect(EvidenceSchema.safeParse(e).success).toBe(true);
   });
 
   it("gives every item a unique, stable evidence_id", () => {
