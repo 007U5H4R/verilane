@@ -8,8 +8,14 @@
  * so a seed bump can never serve stale seed files (TC-077).
  *
  * - /seed/manifest.json: network-first (it is the version pointer).
- * - Navigations: network-first, falling back to the cached page, then "/".
+ * - Navigations: network-first, falling back to the cached page (query string
+ *   ignored: pages are static per path), then /offline.html, never another
+ *   page's HTML (T24-5).
  * - App shell statics, seed files, icons: cache-first within the current cache.
+ *   /_next/static/ is pruned to what cached pages reference once it passes
+ *   STATIC_CAP entries, so it stays bounded within a seed version (T24-12).
+ * - Every write resolves the current cache when it lands, not when it started,
+ *   so a write racing a seed adoption can't land in a cache being deleted (N2).
  * - /api/**: never touched (TASK-23's live-LLM routes must stay live).
  *
  * Failures are logged as "[sw] …" and forwarded to open pages (PwaRegister
@@ -17,13 +23,17 @@
  */
 const CACHE_PREFIX = "verilane-";
 const SEED_MANIFEST_URL = "/seed/manifest.json";
+const OFFLINE_URL = "/offline.html";
 const SHELL_URLS = [
   "/",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
+  OFFLINE_URL,
 ];
+/** /_next/static/ entries allowed before pruning (one build has ~35). */
+const STATIC_CAP = 150;
 
 /** In-memory copy of the current cache name; lost when the SW is stopped. */
 let activeCacheName = null;
@@ -58,6 +68,7 @@ async function adoptManifest(manifestResponse, { withShell = false } = {}) {
   const name = CACHE_PREFIX + manifest.seedVersion;
   const existed = await caches.has(name);
   const cache = await caches.open(name);
+  const previous = activeCacheName;
   try {
     if (name !== activeCacheName || withShell) {
       const missing = [];
@@ -66,6 +77,10 @@ async function adoptManifest(manifestResponse, { withShell = false } = {}) {
       }
       await cache.addAll(missing);
     }
+    // Switch before copying, so writes that land from here on go to the new
+    // cache instead of one about to be deleted (N2). Copies below skip keys
+    // the new cache already has, so those newer writes win.
+    activeCacheName = name;
     const others = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX) && key !== name);
     // Everything but seed data is version-independent: keep it.
     for (const key of others) {
@@ -79,12 +94,12 @@ async function adoptManifest(manifestResponse, { withShell = false } = {}) {
     }
     // Last, so a cache holding the manifest is always complete.
     await cache.put(SEED_MANIFEST_URL, manifestResponse.clone());
-    activeCacheName = name;
     seedBypass = false;
     await Promise.all(others.map((key) => caches.delete(key)));
     return name;
   } catch (err) {
-    if (!existed && name !== activeCacheName) await caches.delete(name);
+    activeCacheName = previous;
+    if (!existed && name !== previous) await caches.delete(name);
     throw err;
   }
 }
@@ -140,7 +155,12 @@ async function manifestNetworkFirst(request) {
     console.warn("[sw] seed manifest unreachable, serving the cached copy", err);
     const cache = await caches.open(await currentCacheName());
     const cached = await cache.match(SEED_MANIFEST_URL);
-    if (cached) return cached;
+    if (cached) {
+      // The cached manifest pairs with the cached seed files: serve them
+      // again, even if an earlier online adoption failed (N1).
+      seedBypass = false;
+      return cached;
+    }
     throw new Error("offline and no cached seed manifest");
   }
   if (!response.ok) {
@@ -159,29 +179,96 @@ async function manifestNetworkFirst(request) {
   return response;
 }
 
+/** Stores into whichever cache is current when the write lands (N2). */
+async function putCurrent(request, response) {
+  const cache = await caches.open(await currentCacheName());
+  await cache.put(request, response);
+}
+
 async function cacheFirst(request) {
   const cache = await caches.open(await currentCacheName());
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok) await cache.put(request, response.clone());
+  if (response.ok) await putCurrent(request, response.clone());
   return response;
 }
 
 async function navigationNetworkFirst(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(await currentCacheName());
-      await cache.put(request, response.clone());
-    }
+    if (response.ok) await putCurrent(request, response.clone());
     return response;
   } catch {
     const cache = await caches.open(await currentCacheName());
-    const cached = (await cache.match(request)) ?? (await cache.match("/"));
+    const cached =
+      (await cache.match(request)) ??
+      (await cache.match(request, { ignoreSearch: true })) ??
+      (await cache.match(OFFLINE_URL));
     if (cached) return cached;
     throw new Error("offline and page not cached");
   }
+}
+
+const STATIC_REF = /(?:\/_next\/)?static\/(?:chunks|media|[A-Za-z0-9_-]{10,})\/[A-Za-z0-9._~/-]+/g;
+
+function staticRefs(text) {
+  return (text.match(STATIC_REF) ?? []).map((ref) => (ref.startsWith("/_next/") ? ref : `/_next/${ref}`));
+}
+
+/**
+ * T24-12: once /_next/static/ passes STATIC_CAP entries, keep only what the
+ * cached pages reference (directly, or through cached JS/CSS) and delete the
+ * rest. Pruning by build id doesn't work: chunk paths aren't build-scoped and
+ * sw.js doesn't change per deploy, so no activate fires to clean up.
+ * A pruned static that is still needed is refetched when online.
+ */
+async function pruneStatics() {
+  const cache = await caches.open(await currentCacheName());
+  const statics = new Map();
+  const others = [];
+  for (const request of await cache.keys()) {
+    const { pathname } = new URL(request.url);
+    if (pathname.startsWith("/_next/static/")) statics.set(pathname, request);
+    else others.push(request);
+  }
+  if (statics.size <= STATIC_CAP) return;
+
+  const live = new Set();
+  const queue = [];
+  const mark = (text) => {
+    for (const ref of staticRefs(text)) {
+      if (statics.has(ref) && !live.has(ref)) {
+        live.add(ref);
+        queue.push(ref);
+      }
+    }
+  };
+  for (const request of others) {
+    const response = await cache.match(request);
+    if (response && (response.headers.get("content-type") ?? "").includes("text/html")) {
+      mark(await response.text());
+    }
+  }
+  while (queue.length > 0) {
+    const pathname = queue.pop();
+    if (!/\.(js|css)$/.test(pathname)) continue;
+    const response = await cache.match(statics.get(pathname));
+    if (response) mark(await response.text());
+  }
+  for (const [pathname, request] of statics) {
+    if (!live.has(pathname)) await cache.delete(request);
+  }
+}
+
+/** Prunes once `after` settles, keeping the SW alive until it is done. */
+function pruneAfter(event, after) {
+  event.waitUntil(
+    after
+      .catch(() => {})
+      .then(pruneStatics)
+      .catch((err) => reportError("could not prune cached statics", err)),
+  );
 }
 
 self.addEventListener("fetch", (event) => {
@@ -197,7 +284,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (request.mode === "navigate") {
-    event.respondWith(navigationNetworkFirst(request));
+    const responded = navigationNetworkFirst(request);
+    event.respondWith(responded);
+    pruneAfter(event, responded);
     return;
   }
   if (seedBypass && url.pathname.startsWith("/seed/")) return;
@@ -231,19 +320,20 @@ self.addEventListener("message", (event) => {
   if (typeof data.page === "string" && data.page.startsWith("/") && !data.page.startsWith("//")) {
     urls.push(data.page);
   }
-  event.waitUntil(
-    (async () => {
-      const cache = await caches.open(await currentCacheName());
-      await Promise.all(
-        urls.map(async (u) => {
-          if (await cache.match(u)) return;
-          try {
-            await cache.add(u);
-          } catch (err) {
-            await reportError(`could not cache ${u}`, err);
-          }
-        }),
-      );
-    })(),
-  );
+  const cached = (async () => {
+    const cache = await caches.open(await currentCacheName());
+    await Promise.all(
+      urls.map(async (u) => {
+        if (await cache.match(u)) return;
+        try {
+          const response = await fetch(u);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          await putCurrent(u, response);
+        } catch (err) {
+          await reportError(`could not cache ${u}`, err);
+        }
+      }),
+    );
+  })();
+  pruneAfter(event, cached);
 });
