@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Component, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCommand } from "@/components/useCommand";
 import { MarkDisputedDialog } from "@/components/disputes/MarkDisputedDialog";
 import { buildInvoiceEvidence, INVOICE_FACT_LABELS } from "@/domain/evidence";
@@ -10,7 +10,15 @@ import { formatInr, paise } from "@/domain/money";
 import { outstandingOf } from "@/domain/priority";
 import type { Evidence } from "@/domain/schema";
 import type { CommandInput } from "@/store/tx";
-import { useCustomers, useHasOpenDispute, useInvoice, useInvoiceDraft, usePayments, useRole } from "@/store/hooks";
+import { ErrorState } from "@/components/states/ErrorState";
+import {
+  DbContext,
+  useCustomers,   useHasOpenDispute,
+  useInvoice,
+  useInvoiceDraft,
+  usePayments,
+  useRole,
+} from "@/store/hooks";
 import { ActionBar } from "./ActionBar";
 import { ActivityLog } from "./ActivityLog";
 import { ApproveDialog } from "./ApproveDialog";
@@ -50,7 +58,7 @@ function BackToQueue() {
 /** Loading state: skeleton document card + evidence table (Design.md §17). */
 export function InvestigationSkeleton() {
   return (
-    <div className="p-4 md:p-7" aria-busy="true" aria-label="Loading invoice">
+    <div className="p-4 md:p-7" data-state="loading" aria-busy="true" role="status" aria-label="Loading invoice">
       <div className="rounded-lg border border-border bg-surface p-6">
         <div className="h-5 w-24 animate-pulse rounded-full bg-surface-sunken" />
         <div className="mt-3 h-8 w-64 max-w-full animate-pulse rounded bg-surface-sunken" />
@@ -75,6 +83,55 @@ export function InvestigationSkeleton() {
 export function InvestigationView() {
   const { id } = useParams<{ id: string }>();
   const invoiceId = decodeURIComponent(id);
+  const db = useContext(DbContext);
+  const params = useSearchParams();
+  // E2E-only state override (TP7): a normal build inlines `false` here.
+  const forced = process.env.NEXT_PUBLIC_E2E === "1" ? params.get("__state") : null;
+  const [attempt, setAttempt] = useState(0);
+
+  if (forced === "loading") return <InvestigationSkeleton />;
+  // No DB (it failed to open) or a forced error: never a blank screen (TC-079).
+  if (forced === "error" || !db) return <InvestigationError invoiceId={invoiceId} onRetry={() => window.location.reload()} />;
+  return (
+    <InvestigationBoundary key={attempt} invoiceId={invoiceId} onRetry={() => setAttempt((n) => n + 1)}>
+      <InvestigationBody invoiceId={invoiceId} />
+    </InvestigationBoundary>
+  );
+}
+
+/** Design.md §18 error state: "Couldn't load INV-… + back to queue", plus Retry. */
+function InvestigationError({ invoiceId, onRetry }: { invoiceId: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col gap-4 p-4 md:p-7">
+      <ErrorState message={`Couldn’t load ${invoiceId}.`} onRetry={onRetry} />
+      <p>
+        <BackToQueue />
+      </p>
+    </div>
+  );
+}
+
+class InvestigationBoundary extends Component<
+  { children: ReactNode; invoiceId: string; onRetry: () => void },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error("[verilane] investigation failed to load", error);
+  }
+  render() {
+    return this.state.failed ? (
+      <InvestigationError invoiceId={this.props.invoiceId} onRetry={this.props.onRetry} />
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+function InvestigationBody({ invoiceId }: { invoiceId: string }) {
   const found = useInvoice(invoiceId);
   const customers = useCustomers();
   const payments = usePayments();

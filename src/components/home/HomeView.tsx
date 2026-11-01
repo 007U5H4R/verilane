@@ -1,17 +1,29 @@
 "use client";
 
 import { Component, useContext, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 
 import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { ageingBuckets, kpis, priorityMix, type HomeAggregateInput } from "@/domain/aggregates";
 import { DbContext, useDisputeCount, useQueue, usePayments } from "@/store/hooks";
-import { AgeingChart } from "./AgeingChart";
 import { HomeSkeleton } from "./HomeSkeleton";
 import { KpiStrip } from "./KpiStrip";
-import { PriorityMixChart } from "./PriorityMixChart";
 import { TaskFeed } from "./TaskFeed";
+
+// Charts load in their own chunk: recharts alone pushed Home's First Load JS
+// past the 300 KB gzip budget (TASK-25 · TC-083). The fallback reserves the
+// chart's height so nothing shifts when it arrives.
+function ChartFallback({ height }: { height: string }) {
+  return <div className={`${height} w-full animate-pulse rounded-md bg-surface-sunken`} aria-hidden="true" />;
+}
+const AgeingChart = dynamic(() => import("./AgeingChart").then((m) => m.AgeingChart), {
+  loading: () => <ChartFallback height="h-64" />,
+});
+const PriorityMixChart = dynamic(() => import("./PriorityMixChart").then((m) => m.PriorityMixChart), {
+  loading: () => <ChartFallback height="h-32" />,
+});
 
 type BlockId = "kpi" | "feed" | "ageing" | "mix";
 
