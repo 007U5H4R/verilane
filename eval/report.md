@@ -1,6 +1,6 @@
 # Evaluation report
 
-Generated 2026-10-31T17:29:41.717Z · as-of 2026-10-30 · provider `simulated` · 436 ms · network calls 0
+Generated 2026-11-01T04:25:25.226Z · as-of 2026-10-30 · provider `simulated` · 1982 ms · network calls 0
 
 **One or more gates missed — the run fails.**
 
@@ -69,9 +69,23 @@ Generated 2026-10-31T17:29:41.717Z · as-of 2026-10-30 · provider `simulated` �
 | payment_already_completed | heldout | 0 | 0 | 1 | 29 | 0.0% | 0.0% | 0.0% |
 | unknown | heldout | 0 | 0 | 1 | 29 | 0.0% | 0.0% | 0.0% |
 
+## Fault injection (TASK-22)
+
+Each seed email, corrupted one way at a time, must be rejected, sent to review and leave no approvable reminder. Rejection rate 100.0%; approvable drafts 0.
+
+| Fault | Rejected | Needs review | Audited | Approvals tried | Approvable |
+| --- | --- | --- | --- | --- | --- |
+| malformed_json | 100.0% (25/25) | 25/25 | 25/25 | 218 | 0 |
+| missing_fields | 100.0% (25/25) | 25/25 | 25/25 | 218 | 0 |
+| bad_enum | 100.0% (25/25) | 25/25 | 25/25 | 218 | 0 |
+| hallucinated_amount | 100.0% (25/25) | 25/25 | 25/25 | 218 | 0 |
+| wrong_ref | 100.0% (25/25) | 25/25 | 25/25 | 218 | 0 |
+| refusal | 100.0% (25/25) | 25/25 | 25/25 | 218 | 0 |
+
 ## Method
 
 - Simulated provider, frozen clock, `fetch` stubbed to throw: the run is offline and deterministic.
 - Amount and invoice-number match use set equality in paise over threads whose label states one.
 - Approval enforcement drives `approve_draft` through the real command code. A blocked approval is retried with a forged `validated` row, so the block must come from re-validation and the role check.
-- Fault-injection rate (TASK-22) and live-provider quality (`eval/report.live.json`) are reported separately.
+- Fault injection wraps the simulated provider; each corrupted output goes through the same validator and cross-check as a live one.
+- Live-provider quality (`eval/report.live.json`) is reported separately.
