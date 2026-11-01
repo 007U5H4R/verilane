@@ -190,3 +190,37 @@ test("TC-049: /drafts renders loading, empty and error states", async ({ page },
   await expect(page.getByRole("button", { name: /Retry/ })).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/TASK-16-tc049-error-${info.project.name}.png`, fullPage: true });
 });
+
+// T16-4 (TASK-33): a validated draft whose last validation left failed checks
+// (approve_draft's live re-check writes exactly this) is not awaiting approval:
+// it leaves the badge and the awaiting list, and shows as "Blocked — checks failed".
+test("T16-4: a draft with failed checks is blocked, not awaiting approval", async ({ page }, info) => {
+  const errors = trackConsoleErrors(page);
+  await page.goto("/queue");
+  await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
+  const badge = page.getByTestId("draft-count");
+  const before = Number(await badge.textContent());
+
+  await submitCleanDraft(page);
+  await expect(badge).toHaveText(String(before + 1));
+
+  // Same row shape approve_draft leaves after a failed re-check (status stays validated).
+  await page.evaluate(async () => {
+    const db = window.__verilane!.db;
+    const draft = await db.drafts.where("invoice_id").equals("INV-A").first();
+    await db.drafts.put({ ...draft!, failed_checks: [3] });
+  });
+  await expect(badge).toHaveText(String(before));
+
+  await page.goto("/drafts");
+  const blocked = page.getByTestId("blocked-drafts");
+  await expect(blocked.getByRole("heading", { name: "Blocked — checks failed" })).toBeVisible();
+  const row = blocked.getByTestId("blocked-draft-row").filter({ has: page.locator('a[href="/invoices/INV-A"]') });
+  await expect(row).toHaveCount(1);
+  await expect(row.getByRole("list", { name: "Failed checks" })).toHaveText("Amount matches outstanding");
+  await expect(page.getByTestId("draft-row").filter({ has: page.locator('a[href="/invoices/INV-A"]') })).toHaveCount(0);
+  await expect(page.getByTestId("draft-row")).toHaveCount(before);
+  expect(await draftStatus(page, "INV-A")).toBe("validated");
+  await page.screenshot({ path: `${SHOTS}/TASK-33-t16-4-blocked-${info.project.name}.png`, fullPage: true });
+  expect(errors).toEqual([]);
+});

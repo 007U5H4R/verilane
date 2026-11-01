@@ -7,9 +7,16 @@ import { useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { RowSkeleton } from "@/components/states/RowSkeleton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatInr, paise } from "@/domain/money";
-import { DbContext, useDraftsAwaitingApproval, type DraftAwaitingApproval } from "@/store/hooks";
+import { CHECK_NAMES } from "@/domain/validate";
+import {
+  DbContext,
+  useBlockedDrafts,
+  useDraftsAwaitingApproval,
+  type DraftAwaitingApproval,
+} from "@/store/hooks";
 
 /**
  * Drafts (TASK-16.5, Design.md §18 "Review & Approvals"): every draft
@@ -50,21 +57,50 @@ export function DraftsView() {
 
 function DraftsBody() {
   const drafts = useDraftsAwaitingApproval();
-  if (!drafts) return <RowSkeleton label="Loading drafts" />;
-  if (drafts.length === 0) return <NoDrafts />;
+  const blocked = useBlockedDrafts();
+  if (!drafts || !blocked) return <RowSkeleton label="Loading drafts" />;
+  if (drafts.length === 0 && blocked.length === 0) return <NoDrafts />;
 
   return (
-    <ul className="flex flex-col" data-state="working" data-testid="draft-list">
-      {drafts.map((d) => (
-        <DraftRow key={d.draft.draft_id} {...d} />
-      ))}
-    </ul>
+    <>
+      {drafts.length === 0 ? (
+        <NoDrafts />
+      ) : (
+        <ul className="flex flex-col" data-state="working" data-testid="draft-list">
+          {drafts.map((d) => (
+            <DraftRow key={d.draft.draft_id} {...d} />
+          ))}
+        </ul>
+      )}
+      {blocked.length > 0 && <BlockedDrafts drafts={blocked} />}
+    </>
   );
 }
 
-function DraftRow({ draft, customer, invoice }: DraftAwaitingApproval) {
+/**
+ * T16-4: a validated draft whose last validation left failed checks (e.g.
+ * approve_draft's live re-check) is not awaiting approval — it is shown
+ * apart, with the checks that failed, so it is never mistaken for one.
+ */
+function BlockedDrafts({ drafts }: { drafts: DraftAwaitingApproval[] }) {
   return (
-    <li className="border-b border-border py-3" data-testid="draft-row">
+    <section className="flex flex-col gap-2" aria-labelledby="blocked-drafts-title" data-testid="blocked-drafts">
+      <h2 id="blocked-drafts-title" className="font-display text-lg font-semibold text-text">
+        Blocked — checks failed
+      </h2>
+      <p className="text-sm text-text-muted">These drafts can’t be approved until the failed checks pass. Open one to fix it.</p>
+      <ul className="flex flex-col">
+        {drafts.map((d) => (
+          <DraftRow key={d.draft.draft_id} {...d} blocked />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DraftRow({ draft, customer, invoice, blocked = false }: DraftAwaitingApproval & { blocked?: boolean }) {
+  return (
+    <li className="border-b border-border py-3" data-testid={blocked ? "blocked-draft-row" : "draft-row"}>
       <Link
         href={`/invoices/${encodeURIComponent(draft.invoice_id)}`}
         className="flex flex-col gap-1 rounded-md px-2 py-1 hover:bg-surface-sunken"
@@ -76,6 +112,15 @@ function DraftRow({ draft, customer, invoice }: DraftAwaitingApproval) {
           )}
           <span className="text-xs tabular-nums text-text-muted">{formatInr(paise(draft.amount_paise))}</span>
         </div>
+        {blocked && (
+          <ul className="flex flex-wrap gap-1" aria-label="Failed checks">
+            {(draft.failed_checks ?? []).map((id) => (
+              <li key={id}>
+                <Badge variant="high">{CHECK_NAMES[id] ?? `Check ${id}`}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
       </Link>
     </li>
   );

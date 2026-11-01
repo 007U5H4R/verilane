@@ -147,3 +147,18 @@ export function locateFootnotes(body: string, facts: VerifiedFact[]): Footnote[]
   }
   return out.sort((a, b) => a.span[0] - b.span[0]);
 }
+
+/**
+ * Where a draft sits in the approval flow (T16-4): a `validated` draft is
+ * `awaiting` approval only while its last validation passed; if that left
+ * `failed_checks` (approve_draft's re-check keeps the draft `validated`),
+ * it is `blocked`. Any other status is neither (`null`). Takes a raw row
+ * shape so the store can classify before schema-parsing.
+ */
+export function approvalState(draft: {
+  status?: unknown;
+  failed_checks?: readonly number[] | undefined;
+}): "awaiting" | "blocked" | null {
+  if (draft.status !== "validated") return null;
+  return (draft.failed_checks?.length ?? 0) > 0 ? "blocked" : "awaiting";
+}
