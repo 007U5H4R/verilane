@@ -67,3 +67,37 @@ Written before any extractor exists.
 - **Draft check numbers** follow Architecture.md §7, where 1 is "invoice exists"
   and 9 is "every factual token is footnoted". An edit that replaces a fact's span
   removes that span's footnote.
+
+## 2026-11-01: heldout-v2 (TASK-31)
+
+`heldout/` was inspected while diagnosing classifier misses, so it is no longer a
+blind test. `heldout-v2/` replaces it as the blind set; `heldout/` stays in the
+report, marked "inspected 2026-11-01, no longer blind".
+
+- `heldout-v2/` holds 30 new fictional threads (H2-001 to H2-030), 8 new customers
+  (H2C-01 to H2C-08) and 30 invoices (INV-3101 to INV-3804). None of them collide
+  with the seed or `heldout/`. Every name and domain is invented and uses `.test`
+  domains.
+- The class and outcome mix matches `heldout/`: commitment 8, dispute 6,
+  confirmation 5, delay 3, duplicate 3, enquiry 3, unknown 2; matched 20,
+  customer_only 4, ambiguous 3, unresolved 3. There is one dispute of each type.
+- The threads include indirect disputes, a partial payment net of TDS, an
+  instalment plan, a multi-invoice remittance, Hinglish, forwarded threads,
+  typos, a retracted refusal, a negated promise, and a mailer-daemon bounce.
+- Labels were written by hand from the thread text. They were not derived from,
+  or tuned against, Verilane's extractor or classifier rules. They were frozen
+  after the first `pnpm eval` run. Any later labelling mistake is reported, not
+  silently fixed.
+
+### Conventions added
+
+- "this <weekday>" and "is <weekday>" (Hinglish "is Friday ko") mean that weekday
+  in the same Monday-start week as `sent_at`.
+- Hindi "kal" is resolved by tense: with a completed verb ("kar diya") it is
+  yesterday; otherwise it is tomorrow.
+- A remittance that pays several invoices in one message is `ambiguous`, and every
+  paid invoice is a candidate, because no single invoice is the match.
+- For an instalment plan, `commitment_date` is the first promised payment date.
+- A bounce from a customer's mail server is not a contact, so its `customer_id`
+  is null. The refs and amounts in the quoted reminder still count as stated in
+  the thread.

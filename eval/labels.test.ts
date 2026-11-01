@@ -22,6 +22,7 @@ const ROOT = process.cwd();
 const EVAL_DIR = join(ROOT, "eval");
 const SEED_DIR = join(ROOT, "public", "seed");
 const HELDOUT_DIR = join(EVAL_DIR, "heldout");
+const HELDOUT_V2_DIR = join(EVAL_DIR, "heldout-v2");
 
 interface EmailRow {
   thread_id: string;
@@ -64,6 +65,14 @@ const CORPORA: Corpus[] = [
     emailsPath: join(HELDOUT_DIR, "emails.json"),
     invoicesPath: join(HELDOUT_DIR, "invoices.csv"),
     customersPath: join(HELDOUT_DIR, "customers.csv"),
+    expectedCount: 30,
+  },
+  {
+    name: "held-out v2",
+    labelsPath: join(HELDOUT_V2_DIR, "labels.json"),
+    emailsPath: join(HELDOUT_V2_DIR, "emails.json"),
+    invoicesPath: join(HELDOUT_V2_DIR, "invoices.csv"),
+    customersPath: join(HELDOUT_V2_DIR, "customers.csv"),
     expectedCount: 30,
   },
 ];
@@ -142,6 +151,29 @@ describe("eval labels — TC-019", () => {
     );
     for (const e of readJson(join(HELDOUT_DIR, "emails.json")) as EmailRow[]) {
       expect(seedThreads.has(e.thread_id), e.thread_id).toBe(false);
+    }
+  });
+
+  it("held-out v2 does not collide with the seed or the first held-out set", () => {
+    const earlier = [SEED_DIR, HELDOUT_DIR];
+    const inv = new Set(earlier.flatMap((d) => readCsv(join(d, "invoices.csv")).map((r) => r.invoice_number)));
+    const invIds = new Set(earlier.flatMap((d) => readCsv(join(d, "invoices.csv")).map((r) => r.invoice_id)));
+    const cust = earlier.flatMap((d) => readCsv(join(d, "customers.csv")));
+    const names = new Set(cust.map((r) => r.name));
+    const custIds = new Set(cust.map((r) => r.customer_id));
+    const threads = new Set(
+      earlier.flatMap((d) => (readJson(join(d, "emails.json")) as EmailRow[]).map((e) => e.thread_id)),
+    );
+    for (const r of readCsv(join(HELDOUT_V2_DIR, "invoices.csv"))) {
+      expect(inv.has(r.invoice_number), r.invoice_number).toBe(false);
+      expect(invIds.has(r.invoice_id), r.invoice_id).toBe(false);
+    }
+    for (const r of readCsv(join(HELDOUT_V2_DIR, "customers.csv"))) {
+      expect(names.has(r.name), r.name).toBe(false);
+      expect(custIds.has(r.customer_id), r.customer_id).toBe(false);
+    }
+    for (const e of readJson(join(HELDOUT_V2_DIR, "emails.json")) as EmailRow[]) {
+      expect(threads.has(e.thread_id), e.thread_id).toBe(false);
     }
   });
 
