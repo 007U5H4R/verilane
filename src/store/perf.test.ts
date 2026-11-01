@@ -33,30 +33,35 @@ function median(xs: number[]): number {
 describe("recompute performance — TC-084", () => {
   it(`recomputes 50 invoices + 25 emails in ≤${BUDGET_MS} ms (median of ${RUNS})`, async () => {
     const db = new VerilaneDb(`verilane-perf-${Math.random()}`);
-    await ensureSeeded(db, realFetcher());
-    expect(await db.invoices.count()).toBe(50);
-    expect(await db.emails.count()).toBe(25);
-
-    await recompute(db); // warm-up: JIT + fake-indexeddb first-touch costs
-    const timings: number[] = [];
-    for (let i = 0; i < RUNS; i++) {
-      const t0 = performance.now();
-      await recompute(db);
-      timings.push(performance.now() - t0);
-    }
-    const med = median(timings);
-
+    // finally: a failed assertion must not leave the Dexie handle open for
+    // later tests in the same worker.
     try {
-      mkdirSync(QA_DIR, { recursive: true });
-      writeFileSync(
-        join(QA_DIR, "TC-084-recompute.json"),
-        JSON.stringify({ budgetMs: BUDGET_MS, runs: timings, medianMs: med }, null, 2),
-      );
-    } catch {
-      // Evidence file is best-effort (the QA dir only exists on the dev machine).
-    }
+      await ensureSeeded(db, realFetcher());
+      expect(await db.invoices.count()).toBe(50);
+      expect(await db.emails.count()).toBe(25);
 
-    expect(med).toBeLessThanOrEqual(BUDGET_MS);
-    db.close();
+      await recompute(db); // warm-up: JIT + fake-indexeddb first-touch costs
+      const timings: number[] = [];
+      for (let i = 0; i < RUNS; i++) {
+        const t0 = performance.now();
+        await recompute(db);
+        timings.push(performance.now() - t0);
+      }
+      const med = median(timings);
+
+      try {
+        mkdirSync(QA_DIR, { recursive: true });
+        writeFileSync(
+          join(QA_DIR, "TC-084-recompute.json"),
+          JSON.stringify({ budgetMs: BUDGET_MS, runs: timings, medianMs: med }, null, 2),
+        );
+      } catch {
+        // Evidence file is best-effort (the QA dir only exists on the dev machine).
+      }
+
+      expect(med).toBeLessThanOrEqual(BUDGET_MS);
+    } finally {
+      db.close();
+    }
   });
 });
