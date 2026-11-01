@@ -34,6 +34,13 @@ const SHELL_URLS = [
 ];
 /** /_next/static/ entries allowed before pruning (one build has ~35). */
 const STATIC_CAP = 150;
+/**
+ * After a prune, the next one waits for this many more statics, so a live set
+ * that is itself over the cap isn't re-walked on every navigation (T35-2).
+ */
+const STATIC_MARGIN = 50;
+/** Cached pages kept, oldest written evicted first; shell URLs don't count (T35-2). */
+const PAGE_CAP = 50;
 
 /** In-memory copy of the current cache name; lost when the SW is stopped. */
 let activeCacheName = null;
@@ -43,6 +50,10 @@ let activeCacheName = null;
  * the network so the cache can never pair the new manifest with old seed files.
  */
 let seedBypass = false;
+/** Static count the cache must pass before the next prune walks it (T35-2). */
+let pruneFloor = STATIC_CAP;
+/** Adoptions in flight. Pruning skips while any is copying caches (T35-3). */
+let adoptions = 0;
 
 async function reportError(message, err) {
   console.error(`[sw] ${message}`, err);
@@ -69,13 +80,26 @@ async function adoptManifest(manifestResponse, { withShell = false } = {}) {
   const existed = await caches.has(name);
   const cache = await caches.open(name);
   const previous = activeCacheName;
+  adoptions++;
   try {
     if (name !== activeCacheName || withShell) {
+      // The shell is always re-fetched past the HTTP cache, so an edited
+      // offline page or icon reaches clients on the next SW install (T35-5).
+      const shell = withShell
+        ? await Promise.all(
+            SHELL_URLS.map(async (url) => {
+              const response = await fetch(url, { cache: "reload" });
+              if (!response.ok) throw new Error(`shell fetch failed: ${url} (HTTP ${response.status})`);
+              return [url, response];
+            }),
+          )
+        : [];
       const missing = [];
-      for (const url of [...(withShell ? SHELL_URLS : []), ...seedUrls(manifest)]) {
+      for (const url of seedUrls(manifest)) {
         if (!(await cache.match(url))) missing.push(url);
       }
       await cache.addAll(missing);
+      for (const [url, response] of shell) await cache.put(url, response);
     }
     // Switch before copying, so writes that land from here on go to the new
     // cache instead of one about to be deleted (N2). Copies below skip keys
@@ -101,6 +125,8 @@ async function adoptManifest(manifestResponse, { withShell = false } = {}) {
     activeCacheName = previous;
     if (!existed && name !== previous) await caches.delete(name);
     throw err;
+  } finally {
+    adoptions--;
   }
 }
 
@@ -179,10 +205,33 @@ async function manifestNetworkFirst(request) {
   return response;
 }
 
-/** Stores into whichever cache is current when the write lands (N2). */
+/**
+ * Stores into whichever cache is current when the write lands (N2).
+ *
+ * Residual window (T35-8): the name is read before `caches.open` settles. A
+ * write that read the old name just before an adoption switched it can land
+ * in the old cache after the copy loop has passed that key, and is then lost
+ * with the old cache. The cost is one entry, re-fetched on the next online
+ * visit; closing it fully would need a lock around every write.
+ */
 async function putCurrent(request, response) {
   const cache = await caches.open(await currentCacheName());
   await cache.put(request, response);
+}
+
+/**
+ * Caches a response the network already delivered. A failed write (quota,
+ * evicted storage) must not cost the page that response, so it is only
+ * reported: a stable code and the error name, no URL, since query strings
+ * can carry filter data (T35-1).
+ */
+async function cacheQuietly(kind, request, response) {
+  try {
+    await putCurrent(request, response);
+  } catch (err) {
+    const name = err && typeof err.name === "string" ? err.name : "Error";
+    console.warn(`[sw] cache-write-failed (${kind}): ${name}`);
+  }
 }
 
 async function cacheFirst(request) {
@@ -190,15 +239,14 @@ async function cacheFirst(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok) await putCurrent(request, response.clone());
+  if (response.ok) await cacheQuietly("static", request, response.clone());
   return response;
 }
 
 async function navigationNetworkFirst(request) {
+  let response;
   try {
-    const response = await fetch(request);
-    if (response.ok) await putCurrent(request, response.clone());
-    return response;
+    response = await fetch(request);
   } catch {
     const cache = await caches.open(await currentCacheName());
     const cached =
@@ -208,6 +256,8 @@ async function navigationNetworkFirst(request) {
     if (cached) return cached;
     throw new Error("offline and page not cached");
   }
+  if (response.ok) await cacheQuietly("page", request, response.clone());
+  return response;
 }
 
 const STATIC_REF = /(?:\/_next\/)?static\/(?:chunks|media|[A-Za-z0-9_-]{10,})\/[A-Za-z0-9._~/-]+/g;
@@ -222,17 +272,31 @@ function staticRefs(text) {
  * rest. Pruning by build id doesn't work: chunk paths aren't build-scoped and
  * sw.js doesn't change per deploy, so no activate fires to clean up.
  * A pruned static that is still needed is refetched when online.
+ *
+ * Cached pages are capped first (PAGE_CAP, oldest written first), so the set
+ * of pages keeping statics live stays bounded across deploys, and the walk
+ * runs again only once the statics pass the last live count plus
+ * STATIC_MARGIN (T35-2). Skipped while an adoption is copying caches: the
+ * new cache may already hold statics whose pages aren't copied yet (T35-3).
  */
 async function pruneStatics() {
+  if (adoptions > 0) return;
   const cache = await caches.open(await currentCacheName());
   const statics = new Map();
   const others = [];
+  const pages = [];
   for (const request of await cache.keys()) {
     const { pathname } = new URL(request.url);
     if (pathname.startsWith("/_next/static/")) statics.set(pathname, request);
-    else others.push(request);
+    else {
+      others.push(request);
+      if (isPage(pathname)) pages.push(request);
+    }
   }
-  if (statics.size <= STATIC_CAP) return;
+  // keys() is in write order, and every online visit rewrites its page.
+  const evicted = new Set(pages.slice(0, Math.max(0, pages.length - PAGE_CAP)));
+  for (const request of evicted) await cache.delete(request);
+  if (statics.size <= pruneFloor) return;
 
   const live = new Set();
   const queue = [];
@@ -245,6 +309,7 @@ async function pruneStatics() {
     }
   };
   for (const request of others) {
+    if (evicted.has(request)) continue;
     const response = await cache.match(request);
     if (response && (response.headers.get("content-type") ?? "").includes("text/html")) {
       mark(await response.text());
@@ -259,12 +324,27 @@ async function pruneStatics() {
   for (const [pathname, request] of statics) {
     if (!live.has(pathname)) await cache.delete(request);
   }
+  pruneFloor = Math.max(STATIC_CAP, live.size + STATIC_MARGIN);
+}
+
+/** A cached page: anything but the shell, seed data, and static assets. */
+function isPage(pathname) {
+  return (
+    !SHELL_URLS.includes(pathname) &&
+    !pathname.startsWith("/seed/") &&
+    !pathname.startsWith("/icons/") &&
+    !pathname.startsWith("/brand/")
+  );
 }
 
 /** Prunes once `after` settles, keeping the SW alive until it is done. */
 function pruneAfter(event, after) {
   event.waitUntil(
     after
+      // Safe to swallow (T35-9): `after` is the response already handed to
+      // respondWith, whose failure reaches the page as a failed load, or the
+      // cache-urls work, which reports each failure itself. This catch only
+      // stops a failed `after` from skipping the prune.
       .catch(() => {})
       .then(pruneStatics)
       .catch((err) => reportError("could not prune cached statics", err)),

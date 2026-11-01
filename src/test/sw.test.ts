@@ -1,7 +1,10 @@
 /**
  * TASK-35: unit tests for `public/sw.js`, run in a `node:vm` sandbox with an
  * in-memory Cache Storage and a fake network. Each test pins a TASK-24 review
- * finding (T24-5, T24-12, N1, N2).
+ * finding (T24-5, T24-12, N1, N2) or a TASK-35 review finding (T35-n).
+ *
+ * Harness limits: FakeCache.match ignores `Vary` and request headers (keys are
+ * URLs only), and FakeNet ignores fetch options beyond recording them.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,8 +23,11 @@ const keyOf = (input: string | Req) => abs(input).href;
 class FakeCache {
   readonly entries = new Map<string, Response>();
   onKeys: (() => void) | null = null;
+  onPut: (() => void) | null = null;
+  matches = 0;
   constructor(private readonly net: FakeNet) {}
   async match(input: string | Req, opts?: { ignoreSearch?: boolean }) {
+    this.matches++;
     const hit = this.entries.get(keyOf(input));
     if (hit) return hit.clone();
     if (opts?.ignoreSearch) {
@@ -34,7 +40,10 @@ class FakeCache {
     return undefined;
   }
   async put(input: string | Req, res: Response) {
+    // Like the Cache API, a put replaces the entry and moves it to the end of keys().
+    this.entries.delete(keyOf(input));
     this.entries.set(keyOf(input), res.clone());
+    this.onPut?.();
   }
   async add(input: string | Req) {
     const res = await this.net.fetch(input);
@@ -61,12 +70,14 @@ class FakeCache {
 
 class FakeCaches {
   readonly stores = new Map<string, FakeCache>();
+  onCreate: ((name: string, cache: FakeCache) => void) | null = null;
   constructor(private readonly net: FakeNet) {}
   async open(name: string) {
     let c = this.stores.get(name);
     if (!c) {
       c = new FakeCache(this.net);
       this.stores.set(name, c);
+      this.onCreate?.(name, c);
     }
     return c;
   }
@@ -84,7 +95,9 @@ class FakeCaches {
 class FakeNet {
   online = true;
   readonly routes = new Map<string, Handler>();
-  fetch = async (input: string | Req) => {
+  readonly calls: { path: string; init?: RequestInit }[] = [];
+  fetch = async (input: string | Req, init?: RequestInit) => {
+    this.calls.push({ path: abs(input).pathname + abs(input).search, init });
     await Promise.resolve();
     if (!this.online) throw new TypeError("Failed to fetch");
     const u = abs(input);
@@ -121,10 +134,13 @@ function setup() {
 
   const caches = new FakeCaches(net);
   const listeners = new Map<string, (event: unknown) => void>();
+  const logs = { error: [] as string[], warn: [] as string[] };
+  const record = (into: string[]) => (...args: unknown[]) =>
+    into.push(args.map((a) => (a instanceof Error ? `${a.name}: ${a.message}` : String(a))).join(" "));
   const ctx: Record<string, unknown> = {
     caches,
     fetch: net.fetch,
-    console: { error: () => {}, warn: () => {}, log: () => {} },
+    console: { error: record(logs.error), warn: record(logs.warn), log: () => {} },
     URL,
     Response,
     Promise,
@@ -171,7 +187,7 @@ function setup() {
     await lifecycle("activate");
   }
 
-  return { net, caches, boot, fetchEvent, message };
+  return { net, caches, logs, boot, lifecycle, fetchEvent, message };
 }
 
 describe("public/sw.js", () => {
@@ -306,5 +322,126 @@ describe("public/sw.js", () => {
     const sw = setup();
     await sw.boot();
     expect(sw.caches.stores.get("verilane-v1")!.paths()).toContain("/offline.html");
+  });
+
+  describe("T35-1: a failed cache write keeps the network response", () => {
+    function failWrites(sw: ReturnType<typeof setup>) {
+      sw.caches.stores.get("verilane-v1")!.put = async () => {
+        throw new DOMException("quota exceeded", "QuotaExceededError");
+      };
+    }
+
+    it("serves the fetched page, not the offline page, when the write fails", async () => {
+      const sw = setup();
+      await sw.boot();
+      failWrites(sw);
+      const res = await sw.fetchEvent("/queue?band=high", "navigate");
+      expect(await res!.text()).toContain("QUEUE");
+      expect(sw.logs.warn.some((w) => w.includes("cache-write-failed") && w.includes("QuotaExceededError"))).toBe(true);
+      // No URL (and so no query data) in the warning.
+      expect(sw.logs.warn.join("\n")).not.toMatch(/queue|band=/);
+    });
+
+    it("serves the fetched static when the write fails", async () => {
+      const sw = setup();
+      await sw.boot();
+      sw.net.serve("/_next/static/chunks/app.js", "app", "text/javascript");
+      failWrites(sw);
+      const res = await sw.fetchEvent("/_next/static/chunks/app.js");
+      expect(await res!.text()).toBe("app");
+      expect(sw.logs.warn.some((w) => w.includes("cache-write-failed"))).toBe(true);
+    });
+  });
+
+  describe("T35-3: no prune while an adoption is copying caches", () => {
+    it("keeps live statics whose page hasn't been copied yet", async () => {
+      const sw = setup();
+      await sw.boot();
+      const live = ["/_next/static/chunks/app.js", "/_next/static/chunks/app.css"];
+      sw.net.serve("/disputes", html("DISPUTES"));
+      // v1 holds, in write order: live statics, 160 old ones, then the page that references the live ones.
+      const v1 = sw.caches.stores.get("verilane-v1")!;
+      const js = (body: string) => new Response(body, { headers: { "content-type": "text/javascript" } });
+      for (const s of live) await v1.put(s, js("live"));
+      for (let i = 0; i < 160; i++) await v1.put(`/_next/static/chunks/old-${i}.js`, js("old"));
+      await v1.put("/queue", new Response(html("QUEUE", live), { headers: { "content-type": "text/html" } }));
+
+      // Mid-copy, once v2 holds more than STATIC_CAP statics but not /queue, a navigation lands.
+      let racing: Promise<unknown> | undefined;
+      sw.caches.onCreate = (name, cache) => {
+        if (name !== "verilane-v2") return;
+        cache.onPut = () => {
+          const statics = cache.paths().filter((p) => p.startsWith("/_next/static/")).length;
+          if (!racing && statics > 150 && !cache.paths().includes("/queue")) {
+            racing = sw.fetchEvent("/disputes", "navigate");
+          }
+        };
+      };
+      sw.net.serve("/seed/manifest.json", JSON.stringify({ ...MANIFEST, seedVersion: "v2" }), "application/json");
+      await sw.fetchEvent("/seed/manifest.json");
+      expect(racing).toBeDefined();
+      await racing;
+
+      const paths = sw.caches.stores.get("verilane-v2")!.paths();
+      expect(paths).toEqual(expect.arrayContaining([...live, "/queue", "/disputes"]));
+    });
+  });
+
+  describe("T35-2: pruning stays cheap and bounded", () => {
+    it("doesn't re-walk the cache on every navigation when the live set is over the cap", async () => {
+      const sw = setup();
+      await sw.boot();
+      const live = Array.from({ length: 160 }, (_, i) => `/_next/static/chunks/live-${i}.js`);
+      for (const s of live) sw.net.serve(s, "live", "text/javascript");
+      sw.net.serve("/queue", html("QUEUE", live));
+      for (const s of live) await sw.fetchEvent(s);
+      await sw.fetchEvent("/queue", "navigate"); // walks once, keeps all 160
+
+      const cache = sw.caches.stores.get("verilane-v1")!;
+      expect(cache.paths().filter((p) => p.startsWith("/_next/static/"))).toHaveLength(160);
+      cache.matches = 0;
+      await sw.fetchEvent("/queue", "navigate");
+      // No cached response was read back, so no page or chunk text was scanned.
+      expect(cache.matches).toBe(0);
+    });
+
+    it("caps cached pages, evicting the oldest and keeping the shell", async () => {
+      const sw = setup();
+      await sw.boot();
+      for (let i = 0; i < 60; i++) {
+        sw.net.serve(`/p-${i}`, html(`P${i}`));
+        await sw.fetchEvent(`/p-${i}`, "navigate");
+      }
+      const paths = sw.caches.stores.get("verilane-v1")!.paths();
+      const pages = paths.filter((p) => p.startsWith("/p-"));
+      expect(pages).toHaveLength(50);
+      expect(pages).not.toContain("/p-0");
+      expect(pages).toContain("/p-59");
+      expect(paths).toEqual(expect.arrayContaining(["/", "/offline.html", "/seed/manifest.json"]));
+    });
+  });
+
+  describe("T35-5: the shell refreshes on SW install", () => {
+    it("re-fetches an edited offline page past the HTTP cache", async () => {
+      const sw = setup();
+      await sw.boot();
+      sw.net.serve("/offline.html", html("OFFLINE PAGE V2"));
+      sw.net.calls.length = 0;
+      await sw.lifecycle("install");
+      const cached = await sw.caches.stores.get("verilane-v1")!.match("/offline.html");
+      expect(await cached!.text()).toContain("OFFLINE PAGE V2");
+      expect(sw.net.calls.find((c) => c.path === "/offline.html")?.init?.cache).toBe("reload");
+    });
+  });
+
+  describe("T35-9: failures are reported", () => {
+    it("logs a failed seed adoption as an error", async () => {
+      const sw = setup();
+      await sw.boot();
+      sw.net.serve("/seed/manifest.json", JSON.stringify({ ...MANIFEST, seedVersion: "v2" }), "application/json");
+      sw.net.routes.set("/seed/payments.csv", () => new Response("missing", { status: 404 }));
+      await sw.fetchEvent("/seed/manifest.json");
+      expect(sw.logs.error.some((e) => e.startsWith("[sw] new seed version not cached"))).toBe(true);
+    });
   });
 });
