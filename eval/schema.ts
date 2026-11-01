@@ -29,7 +29,21 @@ export const DISPUTE_TYPES = [
   "unknown",
 ] as const;
 
+/**
+ * Language phenomena a held-out thread exercises (technical-plan 11.3, R20).
+ * Tags describe the thread text only; they never change a label value.
+ */
+export const PHENOMENA = [
+  "near_miss_ref",
+  "negation",
+  "hedging",
+  "lakh_amount",
+  "relative_date",
+  "dd_mm_date",
+] as const;
+
 export const MatchOutcome = z.enum(MATCH_OUTCOMES);
+export const Phenomenon = z.enum(PHENOMENA);
 export const EmailClass = z.enum(EMAIL_CLASSES);
 export const DisputeType = z.enum(DISPUTE_TYPES);
 
@@ -57,6 +71,8 @@ export const ThreadLabel = z
     commitment_date: IsoDate.nullable().optional(),
     /** True when more than one ledger invoice is a plausible target. */
     ambiguous: z.boolean(),
+    /** Held-out sets only: the phenomena the thread exercises (may be empty). */
+    phenomena: z.array(Phenomenon).optional(),
     /** How the label was derived, for reviewers. */
     note: z.string().optional(),
   })
