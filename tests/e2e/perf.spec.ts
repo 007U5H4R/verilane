@@ -88,27 +88,68 @@ test.describe("@perf", () => {
       return t1 - t0;
     }
 
+    // Settle = the committed result is on screen, checked every animation
+    // frame in the page (no Playwright polling gap): the URL carries the new
+    // state AND the list itself changed (T25-1). The search box and sort select
+    // update the URL via router.replace/push and the list only re-renders after
+    // that transition commits, so waiting on the input alone would measure
+    // nothing.
+    const ROWS = 'main a[href^="/invoices/"]';
+    const rowOrder = () => page.$$eval(ROWS, (as) => as.map((a) => a.getAttribute("href")).join("|"));
+    const fullCount = (await resultCount.textContent()) ?? "";
+
+    // Queries that narrow the list: real customer names from the facet pills.
+    const names = (await page.getByRole("group", { name: "Customer" }).getByRole("button").allInnerTexts())
+      .map((n) => n.trim())
+      .filter(Boolean);
+    expect(names.length).toBeGreaterThan(0);
+
     const filterTimings: number[] = [];
     for (let i = 0; i < 5; i++) {
-      await searchbox.fill("");
-      await resultCount.waitFor();
-      const q = i % 2 === 0 ? "INV" : "a";
+      const q = names[i % names.length]!;
       filterTimings.push(
         await timeInteraction(
           () => searchbox.fill(q),
-          () => resultCount.waitFor(),
+          () =>
+            page
+              .waitForFunction(
+                ({ q, full }) =>
+                  new URLSearchParams(location.search).get("q") === q &&
+                  document.querySelector('[data-testid="result-count"]')?.textContent !== full,
+                { q, full: fullCount },
+                { polling: "raf", timeout: 10_000 },
+              )
+              .then(() => undefined),
         ),
       );
+      // Reset outside the timed window and wait for the full list to return.
+      await searchbox.fill("");
+      await expect(resultCount).toHaveText(fullCount);
+      await expect(page).not.toHaveURL(/[?&]q=/);
     }
-    await searchbox.fill("");
 
+    // Each step changes the visible order; "priority" is the default, so it
+    // drops `sort` from the URL rather than adding it (TC-006).
     const sortTimings: number[] = [];
-    const columns = ["outstanding", "priority", "days_overdue", "priority"] as const;
+    const columns = ["outstanding", "priority", "days_overdue", "priority", "outstanding"] as const;
     for (const column of columns) {
+      const before = await rowOrder();
       sortTimings.push(
         await timeInteraction(
           () => sortSelect.selectOption(column).then(() => undefined),
-          () => page.waitForURL(column === "priority" ? /queue(\?.*)?$/ : new RegExp(`sort=${column}`)),
+          () =>
+            page
+              .waitForFunction(
+                ({ column, before, rows }) => {
+                  const sort = new URLSearchParams(location.search).get("sort");
+                  const urlOk = column === "priority" ? sort === null : (sort ?? "").startsWith(column);
+                  const order = [...document.querySelectorAll(rows)].map((a) => a.getAttribute("href")).join("|");
+                  return urlOk && order !== before;
+                },
+                { column, before, rows: ROWS },
+                { polling: "raf", timeout: 10_000 },
+              )
+              .then(() => undefined),
         ),
       );
     }
