@@ -34,7 +34,7 @@ function verdictClass(inlines: Inline[]): string {
   return "";
 }
 
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, label }: { block: Block; label: string }) {
   switch (block.kind) {
     case "heading": {
       if (block.level === 1) return null; // the page header carries the title
@@ -63,7 +63,14 @@ function BlockView({ block }: { block: Block }) {
       );
     case "table":
       return (
-        <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+        // TASK-25 (TC-080): a scrollable region must be keyboard-reachable
+        // (axe scrollable-region-focusable), so it is a named, focusable region.
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label={label}
+          className="overflow-x-auto rounded-lg border border-border bg-surface"
+        >
           <table className="w-full border-collapse text-left text-[13px]">
             <thead className="bg-surface-sunken">
               <tr>
@@ -91,6 +98,15 @@ function BlockView({ block }: { block: Block }) {
   }
 }
 
+/** Name a table after the nearest heading above it, e.g. "Gates table". */
+function tableLabel(blocks: Block[], index: number): string {
+  for (let i = index - 1; i >= 0; i--) {
+    const b = blocks[i];
+    if (b?.kind === "heading") return `${b.inlines.map((p) => p.text).join("")} table`;
+  }
+  return "Evaluation table";
+}
+
 export default function EvalPage() {
   const md = readReport();
   const blocks = md === null ? [] : parseMarkdown(md);
@@ -113,7 +129,7 @@ export default function EvalPage() {
           No evaluation report yet. Run <code className="font-mono">pnpm eval</code>, then rebuild.
         </p>
       ) : (
-        blocks.map((block, i) => <BlockView key={i} block={block} />)
+        blocks.map((block, i) => <BlockView key={i} block={block} label={tableLabel(blocks, i)} />)
       )}
     </div>
   );

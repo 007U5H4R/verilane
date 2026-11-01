@@ -1,5 +1,10 @@
-import { AuditView } from "@/components/audit/AuditView";
+import { Suspense } from "react";
+import { AuditSkeleton, AuditView } from "@/components/audit/AuditView";
 
 export default function AuditPage() {
-  return <AuditView />;
+  return (
+    <Suspense fallback={<AuditSkeleton />}>
+      <AuditView />
+    </Suspense>
+  );
 }

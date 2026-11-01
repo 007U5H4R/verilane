@@ -1,9 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
 
-// TASK-20 · Responsive shell (Design.md §13) — TC-062/063/064, plus the
-// milestone review's R2 axe sweep (every route, both themes via the two
-// Playwright projects).
+// TASK-20 · Responsive shell (Design.md §13) — TC-062/063/064.
 
 const REPORTS_DIR = "/Volumes/E Drive/Dev/.scratch/verilane/reports";
 
@@ -192,19 +189,8 @@ for (const width of [1440, 390] as const) {
   });
 }
 
-test("R2: every route has no serious or critical axe violations", async ({ page }) => {
-  await open(page, "/queue");
-  const found: string[] = [];
-  for (const href of ALL_ROUTES) {
-    await open(page, href);
-    const { violations } = await new AxeBuilder({ page }).analyze();
-    for (const v of violations) {
-      if (v.impact !== "serious" && v.impact !== "critical") continue;
-      for (const n of v.nodes) found.push(`${href} ${v.id} (${v.impact}) ${n.target.join(" ")}: ${n.any[0]?.message ?? ""}`);
-    }
-  }
-  expect(found).toEqual([]);
-});
+// R2's axe sweep moved to tests/e2e/a11y.spec.ts (TASK-25.2, TC-080) — it
+// covers every route at both widths and both themes, so it isn't duplicated here.
 
 test("TASK-20 screenshots at 1440, 1280, 768, 390", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-light", "screenshots once, light theme");

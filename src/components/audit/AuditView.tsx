@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, useContext, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { DbContext, useAudit } from "@/store/hooks";
@@ -9,11 +10,26 @@ import { AuditRow, actionLabel } from "./AuditRow";
 /**
  * The Audit log (TASK-14.6): every recorded action, newest first. Read-only
  * by design — there are no edit or delete controls. Four states: loading,
- * empty (no data / filtered), error, working.
+ * empty (no data / filtered), error, working. Must render inside <Suspense>
+ * (it reads search params for the E2E-only `__state` override).
  */
 export function AuditView() {
   const db = useContext(DbContext);
+  const params = useSearchParams();
+  // E2E-only state override (TP7): a normal build inlines `false` here.
+  const forced = process.env.NEXT_PUBLIC_E2E === "1" ? params.get("__state") : null;
   const [attempt, setAttempt] = useState(0);
+
+  let body;
+  if (forced === "loading") body = <AuditSkeleton />;
+  else if (forced === "empty") body = <NoAudit />;
+  else if (forced === "error" || !db) body = <AuditError onRetry={() => window.location.reload()} />;
+  else
+    body = (
+      <AuditBoundary key={attempt} onRetry={() => setAttempt((n) => n + 1)}>
+        <AuditList />
+      </AuditBoundary>
+    );
   return (
     <section className="flex flex-col gap-4 p-4 md:p-7" aria-labelledby="audit-title">
       <header className="flex flex-col gap-1">
@@ -22,13 +38,7 @@ export function AuditView() {
         </h1>
         <p className="text-text-muted">Every action taken in this workspace, newest first. Entries can’t be edited or deleted.</p>
       </header>
-      {db ? (
-        <AuditBoundary key={attempt} onRetry={() => setAttempt((n) => n + 1)}>
-          <AuditList />
-        </AuditBoundary>
-      ) : (
-        <AuditError onRetry={() => window.location.reload()} />
-      )}
+      {body}
     </section>
   );
 }
@@ -51,14 +61,7 @@ function AuditList() {
 
   if (!events) return <AuditSkeleton />;
 
-  if (events.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-surface p-6" data-state="empty">
-        <p className="font-semibold text-text">No activity yet</p>
-        <p className="text-[13px] text-text-muted">Notes, approvals and role switches will appear here as they happen.</p>
-      </div>
-    );
-  }
+  if (events.length === 0) return <NoAudit />;
 
   const filtering = action !== "" || subject !== "";
   return (
@@ -113,7 +116,16 @@ function AuditList() {
   );
 }
 
-function AuditSkeleton() {
+function NoAudit() {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-6" data-state="empty">
+      <p className="font-semibold text-text">No activity yet</p>
+      <p className="text-[13px] text-text-muted">Notes, approvals and role switches will appear here as they happen.</p>
+    </div>
+  );
+}
+
+export function AuditSkeleton() {
   return (
     <div className="rounded-lg border border-border bg-surface px-4" data-state="loading" aria-busy="true" aria-label="Loading audit log">
       {[0, 1, 2, 3].map((i) => (

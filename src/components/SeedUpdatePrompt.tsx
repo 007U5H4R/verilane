@@ -2,13 +2,25 @@
  * TASK-8.5: shown when the stored seed is older than the served manifest.
  * The loader never auto-wipes (TC-014); Reset is the only way to the new
  * data. TASK-19: Reset uses the same confirmed, audited `reset_demo` path as
- * Settings (TC-060).
+ * Settings (TC-060). TASK-25 · TC-083: the dialog (Radix AlertDialog) loads in
+ * its own chunk only when the prompt shows — this prompt sits in every
+ * route's shell, and the dialog alone pushed /queue past the 300 KB budget.
  */
 "use client";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 
-import { ResetDialog } from "@/components/settings/ResetDialog";
+import { Button } from "@/components/ui/button";
 import { useSeedUpdateAvailable } from "@/store/hooks";
+
+const ResetDialog = dynamic(() => import("@/components/settings/ResetDialog").then((m) => m.ResetDialog), {
+  // Same size and label while the chunk arrives, so nothing shifts.
+  loading: () => (
+    <Button size="sm" variant="outline" disabled>
+      Reset
+    </Button>
+  ),
+});
 
 export function SeedUpdatePrompt() {
   const updateAvailable = useSeedUpdateAvailable();
