@@ -11,7 +11,7 @@ import { RowSkeleton } from "@/components/states/RowSkeleton";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusSchema, PriorityBandSchema } from "@/domain/schema";
 import type { VerilaneDb } from "@/store/db";
-import { formatDate } from "@/components/investigation/DocumentCard";
+import { formatDate } from "@/domain/clock";
 import { resetDemo } from "@/store/dataCommands";
 import { DbContext, useAsOf, useCustomers, usePayments, useQueue } from "@/store/hooks";
 import { applyUpdate, initIntent, onUrl } from "./filterIntent";

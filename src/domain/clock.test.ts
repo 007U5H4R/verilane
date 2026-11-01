@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AS_OF_DATE, asOf, daysBetween, toDay } from "./clock";
+import { AS_OF_DATE, asOf, daysBetween, formatDate, formatDateTime, toDay } from "./clock";
 
 describe("AS_OF_DATE", () => {
   it("is the demo's frozen date", () => {
@@ -38,5 +38,31 @@ describe("asOf", () => {
 
   it("honors an injected override (for tests/E2E)", () => {
     expect(asOf({ asOf: "2026-11-15" })).toBe("2026-11-15");
+  });
+});
+
+// R7: dates render in one fixed locale (en-IN) and zone (Asia/Kolkata),
+// whatever the viewer's machine is set to.
+describe("formatDate", () => {
+  it("renders an ISO day as day, short month, year", () => {
+    expect(formatDate("2026-10-30")).toBe("30 Oct 2026");
+  });
+
+  it("keeps the calendar day of a date-only ISO string", () => {
+    expect(formatDate("2026-01-01")).toBe("1 Jan 2026");
+  });
+
+  it("returns an em dash for an invalid date", () => {
+    expect(formatDate("")).toBe("—");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("renders an instant in Asia/Kolkata", () => {
+    expect(formatDateTime("2026-10-30T10:05:00Z")).toBe("30 Oct 2026, 03:35 pm");
+  });
+
+  it("returns an em dash for an invalid instant", () => {
+    expect(formatDateTime("not a date")).toBe("—");
   });
 });

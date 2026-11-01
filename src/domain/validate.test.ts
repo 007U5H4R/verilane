@@ -11,7 +11,7 @@ const invoice: Invoice = {
   customer_id: "C-001",
   invoice_date: "2026-08-14",
   due_date: "2026-09-13",
-  amount_paise: 34_000_000,
+  amount_paise: paise(34_000_000),
   currency: "INR",
   status_raw: "Open",
   status: "open",
@@ -98,7 +98,7 @@ describe("validate (TC-041)", () => {
   it("3 fails when the stated amount differs from outstanding", () => {
     const src = sources();
     const d = draftFor(src);
-    const ctx = draftContextFor("INV-A", sources({ payments: [{ payment_id: "P", invoice_id: "INV-A", paid_on: "2026-10-01", amount_paise: 100 }] }));
+    const ctx = draftContextFor("INV-A", sources({ payments: [{ payment_id: "P", invoice_id: "INV-A", paid_on: "2026-10-01", amount_paise: paise(100) }] }));
     expect(validate(d, ctx).find((c) => c.id === 3)?.passed).toBe(false);
   });
 

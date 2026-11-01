@@ -17,6 +17,7 @@ import {
   useTable,
   type Row,
 } from "@tanstack/react-table";
+import type { Paise } from "@/domain/money";
 import { outstandingOf } from "@/domain/priority";
 import type { RankItem } from "@/domain/priority";
 import type { Customer, Invoice, InvoiceStatus, Payment, Priority } from "@/domain/schema";
@@ -29,7 +30,7 @@ export interface QueueRow {
   priority: Priority;
   customer: Customer | undefined;
   customerName: string;
-  outstanding: number;
+  outstanding: Paise;
   /** 0-based position in rank order. */
   rank: number;
 }

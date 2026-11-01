@@ -177,3 +177,31 @@ describe("execute() — TC-038 atomic rollback", () => {
     expect(await db.audit.count()).toBe(0);
   });
 });
+
+// R11 (TASK-33): a command's transaction must cover the derived tables too,
+// or a command (or hook) that touches priorities/dataIssues throws
+// "Table not part of transaction" mid-command.
+describe("execute() — priorities and dataIssues are in scope (R11)", () => {
+  it("a command can read and write priorities and dataIssues inside execute()", async () => {
+    await execute(
+      db,
+      { type: "add_note", subject: { kind: "invoice", id: "INV-1" }, payload: { text: "x" } },
+      {
+        beforeCommit: async () => {
+          await db.priorities.put({ invoice_id: "INV-1" } as never);
+          await db.dataIssues.add({
+            issue_id: "INV-1:due_date:0",
+            record_id: "INV-1",
+            field: "due_date",
+            kind: "missing",
+            message: "m",
+            suggested_action: "s",
+          });
+        },
+      },
+    );
+    expect(await db.priorities.get("INV-1")).toBeDefined();
+    expect(await db.dataIssues.where("record_id").equals("INV-1").count()).toBe(1);
+    expect(await db.audit.count()).toBe(1);
+  });
+});

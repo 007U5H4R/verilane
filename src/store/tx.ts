@@ -135,7 +135,8 @@ export async function execute(
   const scope = WHOLE_DB.has(input.type)
     ? db.tables
     : [
-        ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.meta, db.audit],
+        // priorities + dataIssues: derived tables a command may touch (R11).
+        ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
         ...(DRAFT_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
       ];
   return db.transaction(

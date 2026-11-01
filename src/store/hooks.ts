@@ -9,8 +9,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { AS_OF_DATE } from "@/domain/clock";
 import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
+import { approvalState } from "@/domain/draft";
 import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
+import type { Customer, DataIssue, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
 import { DraftSchema, type Draft } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
@@ -86,6 +87,8 @@ export function usePayments(): Payment[] | undefined {
 export interface InvoiceWithPriority {
   invoice: Invoice;
   priority: Priority;
+  /** This invoice's ingest DataIssues — a duplicate number reads Conflict (R10). */
+  dataIssues: DataIssue[];
 }
 
 /**
@@ -103,7 +106,8 @@ export function useInvoice(invoiceId: string): InvoiceWithPriority | undefined |
     if (!invoice) return null;
     const priority = await db.priorities.get(invoiceId);
     if (!priority) return null;
-    return { invoice, priority };
+    const dataIssues = await db.dataIssues.where("record_id").equals(invoiceId).toArray();
+    return { invoice, priority, dataIssues };
   }, [db, invoiceId]);
 }
 
@@ -319,13 +323,22 @@ export function useDispute(disputeId: string): DisputeWithContext | undefined | 
 }
 
 /**
- * How many drafts are awaiting approval (status `validated`), live — for the
- * sidebar badge (TASK-16.5). Tolerates a missing db like `useQueueCount()`.
+ * How many drafts are awaiting approval, live — for the sidebar badge
+ * (TASK-16.5). A `validated` draft with failed checks is blocked, not
+ * awaiting (T16-4), so it is not counted. Tolerates a missing db like
+ * `useQueueCount()`; `undefined` while loading.
  */
 export function useDraftCount(): number | undefined {
   const db = useContext(DbContext);
   return useLiveQuery(
-    async () => (db ? db.drafts.where("status").equals("validated").count() : undefined),
+    async () =>
+      db
+        ? db.drafts
+            .where("status")
+            .equals("validated")
+            .filter((d) => approvalState(d) === "awaiting")
+            .count()
+        : undefined,
     [db],
   );
 }
@@ -336,30 +349,43 @@ export interface DraftAwaitingApproval {
   invoice?: Invoice;
 }
 
-/** Every draft awaiting approval (status `validated`), with its invoice/customer context, for `/drafts` (TASK-16.5). */
+/** `validated` drafts in one approval state, with invoice/customer context, sorted by id. */
+async function validatedDrafts(db: VerilaneDb, state: "awaiting" | "blocked"): Promise<DraftAwaitingApproval[]> {
+  const [rows, customers, invoices] = await Promise.all([
+    db.drafts
+      .where("status")
+      .equals("validated")
+      .filter((d) => approvalState(d) === state)
+      .toArray(),
+    db.customers.toArray(),
+    db.invoices.toArray(),
+  ]);
+  const customerById = new Map(customers.map((c) => [c.customer_id, c]));
+  const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
+  const drafts: Draft[] = [];
+  for (const row of rows) {
+    const parsed = DraftSchema.safeParse(row);
+    if (parsed.success) drafts.push(parsed.data);
+  }
+  return drafts
+    .map((draft) => ({
+      draft,
+      customer: customerById.get(draft.customer_id),
+      invoice: invoiceById.get(draft.invoice_id),
+    }))
+    .sort((a, b) => a.draft.draft_id.localeCompare(b.draft.draft_id));
+}
+
+/** Every draft awaiting approval (validated, no failed checks), for `/drafts` (TASK-16.5, T16-4). */
 export function useDraftsAwaitingApproval(): DraftAwaitingApproval[] | undefined {
   const db = useDb();
-  return useLiveQuery(async () => {
-    const [rows, customers, invoices] = await Promise.all([
-      db.drafts.where("status").equals("validated").toArray(),
-      db.customers.toArray(),
-      db.invoices.toArray(),
-    ]);
-    const customerById = new Map(customers.map((c) => [c.customer_id, c]));
-    const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
-    const drafts: Draft[] = [];
-    for (const row of rows) {
-      const parsed = DraftSchema.safeParse(row);
-      if (parsed.success) drafts.push(parsed.data);
-    }
-    return drafts
-      .map((draft) => ({
-        draft,
-        customer: customerById.get(draft.customer_id),
-        invoice: invoiceById.get(draft.invoice_id),
-      }))
-      .sort((a, b) => a.draft.draft_id.localeCompare(b.draft.draft_id));
-  }, [db]);
+  return useLiveQuery(() => validatedDrafts(db, "awaiting"), [db]);
+}
+
+/** Validated drafts whose last validation left failed checks — "Blocked — checks failed" on `/drafts` (T16-4). */
+export function useBlockedDrafts(): DraftAwaitingApproval[] | undefined {
+  const db = useDb();
+  return useLiveQuery(() => validatedDrafts(db, "blocked"), [db]);
 }
 
 /**

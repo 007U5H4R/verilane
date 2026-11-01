@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildDraft, DRAFT_TEMPLATE, factsFor, formatLongDate, locateFootnotes } from "./draft";
+import { approvalState, buildDraft, DRAFT_TEMPLATE, factsFor, formatLongDate, locateFootnotes } from "./draft";
 import { paise } from "./money";
 import type { Customer, Invoice, VerifiedFact } from "./schema";
 
@@ -12,7 +12,7 @@ const invoice: Invoice = {
   customer_id: "C-001",
   invoice_date: "2026-08-14",
   due_date: "2026-09-13",
-  amount_paise: 34_000_000,
+  amount_paise: paise(34_000_000),
   currency: "INR",
   status_raw: "Open",
   status: "open",
@@ -110,5 +110,23 @@ describe("locateFootnotes", () => {
 describe("formatLongDate", () => {
   it("formats an ISO day", () => {
     expect(formatLongDate("2026-09-03")).toBe("3 September 2026");
+  });
+});
+
+// T16-4 (TASK-33): a validated draft whose last validation left failed
+// checks (e.g. approve_draft's re-check) is blocked, not awaiting approval.
+describe("approvalState (T16-4)", () => {
+  it("a validated draft with no failed checks is awaiting approval", () => {
+    expect(approvalState({ status: "validated", failed_checks: [] })).toBe("awaiting");
+  });
+  it("a validated draft with failed checks is blocked", () => {
+    expect(approvalState({ status: "validated", failed_checks: [3] })).toBe("blocked");
+  });
+  it("a draft in any other status is neither", () => {
+    expect(approvalState({ status: "generated", failed_checks: [] })).toBeNull();
+    expect(approvalState({ status: "sent_simulated", failed_checks: [3] })).toBeNull();
+  });
+  it("tolerates a row with no failed_checks field", () => {
+    expect(approvalState({ status: "validated" })).toBe("awaiting");
   });
 });

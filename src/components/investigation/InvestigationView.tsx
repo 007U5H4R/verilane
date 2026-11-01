@@ -175,7 +175,7 @@ function InvestigationBody({ invoiceId }: { invoiceId: string }) {
   }
 
   const { invoice, priority } = found;
-  const facts = buildInvoiceEvidence(invoice, invoice.row_id);
+  const facts = buildInvoiceEvidence(invoice, invoice.row_id, found.dataIssues);
 
   return (
     <div className="p-4 md:p-7">

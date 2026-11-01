@@ -5,6 +5,7 @@
  * imports — `src/components/home/*` calls these from `useQueue()`/
  * `usePayments()` data, never the other way round.
  */
+import { addPaise, ZERO_PAISE, type Paise } from "./money";
 import { outstandingOf, type RankItem } from "./priority";
 import type { Payment, Priority } from "./schema";
 
@@ -15,7 +16,7 @@ export interface HomeAggregateInput {
 
 export interface HomeKpis {
   /** Σ outstanding across every non-closed invoice (paise). */
-  outstandingPaise: number;
+  outstandingPaise: Paise;
   /** Count of invoices currently in the `high` priority band. */
   highCount: number;
   /** Mean days overdue across overdue, non-closed invoices; `null` when none are overdue. */
@@ -35,8 +36,8 @@ export function kpis(input: HomeAggregateInput): HomeKpis {
   const open = input.items.filter(isOpen);
 
   const outstandingPaise = open.reduce(
-    (sum, item) => sum + outstandingOf(item.invoice, { payments: input.payments }),
-    0,
+    (sum, item) => addPaise(sum, outstandingOf(item.invoice, { payments: input.payments })),
+    ZERO_PAISE,
   );
   const highCount = open.filter((item) => item.priority.band === "high").length;
 
@@ -72,21 +73,24 @@ export function ageingBucketOfPriority(priority: Pick<Priority, "band" | "days_o
 export interface AgeingBucketCount {
   bucket: AgeingBucket;
   count: number;
-  outstandingPaise: number;
+  outstandingPaise: Paise;
 }
 
 /** "Outstanding by ageing bucket" chart data (Design.md §15). Buckets sum to
  * the total overdue outstanding (TC-054). */
 export function ageingBuckets(input: HomeAggregateInput): AgeingBucketCount[] {
   const totals = new Map<AgeingBucket, AgeingBucketCount>(
-    AGEING_BUCKETS.map((bucket) => [bucket, { bucket, count: 0, outstandingPaise: 0 }]),
+    AGEING_BUCKETS.map((bucket) => [bucket, { bucket, count: 0, outstandingPaise: ZERO_PAISE }]),
   );
   for (const item of input.items) {
     const bucket = ageingBucketOfPriority(item.priority);
     if (bucket === null) continue;
     const row = totals.get(bucket)!;
     row.count += 1;
-    row.outstandingPaise += outstandingOf(item.invoice, { payments: input.payments });
+    row.outstandingPaise = addPaise(
+      row.outstandingPaise,
+      outstandingOf(item.invoice, { payments: input.payments }),
+    );
   }
   return AGEING_BUCKETS.map((bucket) => totals.get(bucket)!);
 }

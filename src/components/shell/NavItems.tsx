@@ -13,12 +13,13 @@ export type NavItem = {
   label: string;
   href: string;
   icon: LucideIcon;
-  count?: number;
-  /** Count comes from live data instead of `count` (TASK-9.5: Queue). */
+  // No static `count`: every nav count comes from live data via the same
+  // hooks the pages use, and shows nothing while loading (TASK-33).
+  /** Live Queue count (TASK-9.5). */
   liveCount?: boolean;
-  /** Count comes from live open-dispute data instead of `count` (TASK-17.3). */
+  /** Live open-dispute count (TASK-17.3). */
   disputeCount?: boolean;
-  /** Count comes from live awaiting-approval draft data instead of `count` (TASK-16.5). */
+  /** Live awaiting-approval draft count (TASK-16.5, T16-4). */
   draftCount?: boolean;
 };
 

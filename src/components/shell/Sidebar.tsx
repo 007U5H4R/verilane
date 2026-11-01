@@ -49,11 +49,6 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
               {item.liveCount && <QueueCount />}
               {item.disputeCount && <DisputeCount />}
               {item.draftCount && <DraftCount />}
-              {item.count !== undefined && (
-                <span className="ml-auto text-xs text-rail-muted">
-                  {item.count}
-                </span>
-              )}
             </Link>
           );
         })}

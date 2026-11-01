@@ -4,7 +4,7 @@
  * came from, so the analyst can check the number against the source.
  */
 import { formatInr, paise } from "./money";
-import type { Evidence, EvidenceSourceType, Extraction, Invoice } from "./schema";
+import type { DataIssue, Evidence, EvidenceSourceType, Extraction, Invoice } from "./schema";
 
 // Display order, and each field's claim label. Field names are the
 // invoices.csv column names, so the provenance line matches the file.
@@ -20,20 +20,36 @@ const INVOICE_FACTS = [
 /** `source_field → label` for the Invoice facts table's row headers. */
 export const INVOICE_FACT_LABELS: Readonly<Record<string, string>> = Object.fromEntries(INVOICE_FACTS);
 
-/** One `Evidence` per invoice fact; a null value is `missing` (FS1, FS2). */
-export function buildInvoiceEvidence(inv: Invoice, rowNo: number): Evidence[] {
+/**
+ * One `Evidence` per invoice fact; a null value is `missing` (FS1, FS2). A
+ * field with a `conflict` DataIssue for this invoice is `conflict` instead —
+ * e.g. a duplicate invoice_number, which ingest nulls so the unique index
+ * holds, is a clash with another row, not absent data (R10).
+ */
+export function buildInvoiceEvidence(
+  inv: Invoice,
+  rowNo: number,
+  dataIssues: readonly DataIssue[] = [],
+): Evidence[] {
   return INVOICE_FACTS.map(([field, label]) => {
     const value = inv[field];
+    const conflict = dataIssues.find(
+      (d) => d.record_id === inv.invoice_id && d.field === field && d.kind === "conflict",
+    );
     return {
       evidence_id: `${inv.invoice_id}:invoices.csv:${field}`,
       claim_id: `${inv.invoice_id}:${field}`,
-      claim_text: value === null ? `${label} is missing` : `${label} is ${String(value)}`,
+      claim_text: conflict
+        ? `${label} conflicts: ${conflict.message}`
+        : value === null
+          ? `${label} is missing`
+          : `${label} is ${String(value)}`,
       source_type: "invoice",
       source_record_id: inv.invoice_id,
       source_row_or_email_id: String(rowNo),
       source_field: field,
       original_value: value,
-      validation_status: value === null ? "missing" : "verified",
+      validation_status: conflict ? "conflict" : value === null ? "missing" : "verified",
     };
   });
 }

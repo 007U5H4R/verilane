@@ -5,6 +5,10 @@
  */
 import { z } from "zod";
 
+// Integer paise, branded at the parse boundary so a parsed amount is `Paise`
+// (money.ts) without a cast. `.brand()` is type-only: no runtime transform.
+const paiseAmount = z.number().int().brand<"Paise">();
+
 // ISO `YYYY-MM-DD` business date, compared as a UTC day number (clock.ts).
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
 // ISO-8601 UTC timestamp (email send times, audit events).
@@ -39,7 +43,7 @@ export const InvoiceSchema = z.object({
   customer_id: z.string(),
   invoice_date: isoDate,
   due_date: isoDate.nullable(), // FS2 when null.
-  amount_paise: z.number().int(),
+  amount_paise: paiseAmount,
   currency: z.string().nullable(), // null → check 4 fails.
   status_raw: z.string(),
   status: InvoiceStatusSchema, // FS10 (unrecognized status_raw) → "unknown".
@@ -52,7 +56,7 @@ export const PaymentSchema = z.object({
   payment_id: z.string(),
   invoice_id: z.string(),
   paid_on: isoDate,
-  amount_paise: z.number().int(), // partial payments allowed (FS8).
+  amount_paise: paiseAmount, // partial payments allowed (FS8).
 });
 export type Payment = z.infer<typeof PaymentSchema>;
 
@@ -68,7 +72,7 @@ export type EmailMessage = z.infer<typeof EmailMessageSchema>;
 
 // --- Derived entities (Data-Model.md §3) ----------------------------------
 
-export const DataIssueKindSchema = z.enum(["missing", "conflict", "unparseable"]);
+export const DataIssueKindSchema = z.enum(["missing", "conflict", "unparseable", "invalid"]); // invalid: row failed schema validation and was skipped (R9).
 export type DataIssueKind = z.infer<typeof DataIssueKindSchema>;
 
 export const DataIssueSchema = z.object({
@@ -264,8 +268,8 @@ export const ReviewItemSchema = z.object({
   requires_role: z.enum(["analyst", "manager"]),
   status: z.enum(["open", "actioned", "dismissed"]),
   /** Reconciliation only: the email's claim and the ledger's outstanding, side by side. */
-  email_amount_paise: z.number().int().nonnegative().optional(),
-  ledger_outstanding_paise: z.number().int().optional(),
+  email_amount_paise: z.number().int().nonnegative().brand<"Paise">().optional(),
+  ledger_outstanding_paise: paiseAmount.optional(),
 });
 export type ReviewItem = z.infer<typeof ReviewItemSchema>;
 
