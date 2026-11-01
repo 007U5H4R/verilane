@@ -86,8 +86,9 @@ test("TC-082: Queue → Investigation → draft → submit → approve → confi
   await expect(page.getByText(/approved and sent/)).toBeVisible();
 
   // Focus restored to the trigger (the primary action), not lost to <body>.
-  const restored = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
-  expect(restored).toBe("primary-action");
+  // Retrying assertion: Radix FocusScope restores focus in a setTimeout
+  // after unmount, so a one-shot activeElement read races it.
+  await expect(primary).toBeFocused();
 });
 
 test("TC-082: Esc closes the approve dialog without approving, and restores focus", async ({ page }) => {
