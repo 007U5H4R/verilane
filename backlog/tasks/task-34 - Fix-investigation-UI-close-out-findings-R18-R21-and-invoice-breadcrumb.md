@@ -1,10 +1,10 @@
 ---
 id: TASK-34
 title: 'Fix investigation UI close-out findings R18, R21 and invoice breadcrumb'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-01 14:55'
-updated_date: '2026-11-01 14:55'
+updated_date: '2026-11-01 16:54'
 labels:
   - P3
 dependencies: []

@@ -389,3 +389,30 @@
 - Accepted trade-offs: a pruned static still needed offline is missing until the next online visit; a write racing the sweep can be dropped and is re-cached on the next visit.
 - Review PASS-WITH-FIXES, 1 fix round (`0f7f1fc`: T35-1..6, T35-8/9; TC-076c now forces and pins the offline-fallback branch, red on the base SW), re-reviewed MERGE-READY.
 - Merged at `957cc6d`. Gates on `957cc6d`: tsc and lint clean, unit 817/817, perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 173 passed / 1 skipped (`--workers=1`; 4 new PWA tests).
+
+## EXE30 · Domain formatter/ingest/evidence fixes and live nav counts (TASK-33) — accepted
+- R7: date and whole-rupee display now routes through `clock.ts`/`money.ts` (`formatDate`, `formatDateTime`, `formatInrWhole`) instead of ad hoc formatting; `AuditRow`'s `formatAt` uses the same helpers.
+- R8: `Draft.amount_paise` is branded as Paise at the schema boundary (`money.ts`).
+- R9: a bad ingest row becomes an invalid `DataIssue` instead of throwing (`ingest.ts`).
+- R10: a duplicate invoice number shows as Conflict, not Missing (`evidence.ts`).
+- R11: `execute()`'s transaction scope now includes `priorities` and `dataIssues` (`store/tx.ts`) — a prior scope gap could leave those tables stale after a write.
+- T16-4/T16-R1 (product call, carried from TASK-16 parking): a draft whose recheck fails is excluded from the ready-to-approve count and shown "Blocked — checks failed", instead of still counting as ready with no fix path.
+- Sidebar/nav counts (`NavItems.tsx`) are now live (`QueueCount`/`DisputeCount`/`DraftCount` hooks) instead of the hard-coded placeholder noted in the ledger's "Open threads".
+- Reviewer follow-ups (`TASK-33-review.md`), not folded into this lane — tracked here, not re-opened as new tickets:
+  - T33-1 (Medium): a blocked draft can stay blocked after its cause clears; "Open one to fix it" has no direct fix path. Route to the investigation/drafts owner.
+  - T33-2 (Low): three date displays (disputes/payments/investigation) still bypass the shared formatter R7 added; add `formatDay(instant)` to `clock.ts` and point their imports at it.
+  - T33-3 (Low): `useDraftCount` counts raw rows while `validatedDrafts()` filters through `DraftSchema`, so a schema-invalid "awaiting" row can inflate the badge past what `/drafts` lists. Recommended to skip — pre-existing, narrow.
+  - T33-4 (Nit): `NavItems.test.ts` pins that `count` is gone from the type but doesn't test the loading-state render. Recommended to skip.
+- Review verdict PASS-WITH-FIXES with every finding routed as a follow-up or recommended-skip, not rework; merged as-is.
+- Merged at `43f5744` (head `ef53eb0`, base `3902427`). Gates on the combined TASK-33+34+T34-6 result: tsc and lint clean, unit 847/847, perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 185 passed / 1 skipped (`--workers=1`).
+
+## EXE31 · Detail-page breadcrumbs, evidence-anchor fix, and sidebar highlight (TASK-34 + T34-6) — accepted
+- R18: the email-class badge in `CommunicationTable.tsx` gets `id="ev-<message_id>:emails.json:email_class"` plus a `ProvenanceLine`, and a one-shot effect scrolls to an `#ev-…` fragment once Dexie's messages load (the browser's own fragment-jump runs before that data exists, so without this a deep link never lands). The same effect fixes `UnmatchedList`'s `#ev-communication` link (an open item carried from EXE10).
+- Detail pages (`/invoices/<id>`, `/disputes/<id>`, `/settings/eval`) now show a breadcrumb trail (`breadcrumb.ts`'s pure `crumbsFor`) instead of always announcing "Home" (ledger Wave-1 follow-up). T34-1: the invoice crumb shows the invoice number the page and Queue row use, resolved from the store, not the raw `invoice_id`. T34-5: an unknown route returns no crumbs rather than falsely claiming Home as current.
+- T34-6 (orchestrator fix wave, this lane's follow-up): the sidebar/rail/bottom-tab active highlight used an exact `pathname === NAV_ITEMS[].href` match, so a detail page like `/invoices/INV-042` left Home highlighted instead of Queue. Added `navHrefFor(pathname)` to `breadcrumb.ts`, reusing the same `PARENTS`/`SUB_PAGES` maps `crumbsFor` uses, and switched `AppShell.tsx` to it. Unit tests in `breadcrumb.test.ts`; an e2e assertion in `investigation.spec.ts` pins that `/invoices/INV-042` marks `/queue`'s nav link current and not `/`'s.
+- Reviewer follow-ups (`TASK-34-review.md`), parked as noted (T34-1 and T34-5 above were fixed in this lane, not parked):
+  - T34-2 (Low): the deep-link scroll target lands flush against the viewport top with no context or highlight. Cosmetic; Stage 7 candidate.
+  - T34-3 (Low): the scroll-landed `ref` isn't reset when the invoice changes without a remount. Narrow; low traffic path (full navigations dominate).
+  - T34-4 (Low): the deep-link e2e test writes a screenshot to an absolute dev-machine path for every project run, not just the one project that needs it. Test-only nit.
+- Re-reviewed MERGE-READY after fix round 1 (head `218a015`); merged as-is, with T34-6 added afterward in this close-out session.
+- Merged at `c8c7fa9` (head `218a015`, base `3902427`); T34-6 committed on top of the merged branch. Gates on the combined TASK-33+34+T34-6 result: tsc and lint clean, unit 847/847, perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 185 passed / 1 skipped (`--workers=1`).

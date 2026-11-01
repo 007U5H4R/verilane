@@ -1,10 +1,10 @@
 ---
 id: TASK-33
 title: 'Fix domain/store close-out findings R7-R11, T16-4 and live sidebar counts'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-01 14:55'
-updated_date: '2026-11-01 14:55'
+updated_date: '2026-11-01 16:54'
 labels:
   - P2
 dependencies: []

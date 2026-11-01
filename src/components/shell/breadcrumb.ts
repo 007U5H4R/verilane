@@ -44,3 +44,16 @@ export function crumbsFor(pathname: string): Crumb[] {
   // the wrong current page (T34-5).
   return [];
 }
+
+/**
+ * The nav item to highlight for a route: the route itself, or the section its
+ * trail sits under, so a detail page lights up its parent (T34-6). Unknown
+ * routes have none.
+ */
+export function navHrefFor(pathname: string): string | undefined {
+  const [first, ...rest] = crumbsFor(pathname);
+  if (!first) return undefined;
+  if (rest.length > 0) return first.href;
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return NAV_ITEMS.find((item) => item.href === path)?.href;
+}

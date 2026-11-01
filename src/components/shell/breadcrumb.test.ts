@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crumbsFor } from "./breadcrumb";
+import { crumbsFor, navHrefFor } from "./breadcrumb";
 
 // TASK-34 (ledger follow-up): detail routes showed "Home" in the top bar.
 describe("crumbsFor", () => {
@@ -44,5 +44,24 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/nope/deeper/still")).toEqual([]);
     expect(crumbsFor("/e2e-harness")).toEqual([]);
     expect(crumbsFor("/invoices/x/y")).toEqual([]);
+  });
+});
+
+// T34-6: the sidebar highlighted Home on detail pages; it must follow the trail.
+describe("navHrefFor", () => {
+  it("highlights a nav route itself", () => {
+    expect(navHrefFor("/")).toBe("/");
+    expect(navHrefFor("/drafts/")).toBe("/drafts");
+  });
+
+  it("highlights the parent section of a detail or sub page", () => {
+    expect(navHrefFor("/invoices/INV-042")).toBe("/queue");
+    expect(navHrefFor("/disputes/D-003")).toBe("/disputes");
+    expect(navHrefFor("/settings/eval")).toBe("/settings");
+  });
+
+  it("highlights nothing for an unknown route", () => {
+    expect(navHrefFor("/nope")).toBeUndefined();
+    expect(navHrefFor("/invoices/x/y")).toBeUndefined();
   });
 });

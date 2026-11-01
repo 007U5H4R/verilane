@@ -8,8 +8,7 @@ import { IconRail } from "@/components/shell/IconRail";
 import { LogoCard } from "@/components/shell/LogoCard";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
-import { crumbsFor } from "@/components/shell/breadcrumb";
-import { NAV_ITEMS } from "@/components/shell/NavItems";
+import { crumbsFor, navHrefFor } from "@/components/shell/breadcrumb";
 import { SeedUpdatePrompt } from "@/components/SeedUpdatePrompt";
 import { useOnline } from "@/lib/useOnline";
 
@@ -18,8 +17,7 @@ import { useOnline } from "@/lib/useOnline";
 // order (20.4): nav column, top bar, banners, main, then the bottom tabs.
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const active = NAV_ITEMS.find((item) => item.href === pathname);
-  const activeHref = active?.href ?? "/";
+  const activeHref = navHrefFor(pathname) ?? "/";
   const online = useOnline();
 
   return (
