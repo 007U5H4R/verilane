@@ -227,6 +227,53 @@ test("TC-077b: a bump whose seed files fail is not adopted and never serves stal
   expect(status).toBe(404);
 });
 
+const OFFLINE_PAGE_TITLE = "You're offline — this page wasn't saved for offline use";
+
+test("TC-076b: an unvisited route offline shows the offline page, never Home (T24-5)", async ({ page, context }, info) => {
+  await page.goto("/queue");
+  await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
+  await swControlled(page);
+
+  await context.setOffline(true);
+  try {
+    // Hard navigation to a route this browser never opened.
+    await page.goto("/audit");
+    await expect(page.getByRole("heading", { level: 1, name: OFFLINE_PAGE_TITLE })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Go to Home" })).toHaveAttribute("href", "/");
+    await page.screenshot({ path: `${SHOTS}/TASK-35-offline-page-${info.project.name}.png`, fullPage: true });
+
+    // A query string still matches the cached page it filters.
+    await page.goto("/queue?band=high");
+    await expect(page.getByRole("status").filter({ hasText: OFFLINE_BANNER })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: OFFLINE_PAGE_TITLE })).toHaveCount(0);
+    await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
+test("TC-076c: offline in-app navigation to an unvisited route never shows Home (T24-5)", async ({ page, context }) => {
+  await page.goto("/queue");
+  await expect(page.locator('a[href^="/invoices/"]').first()).toBeVisible();
+  await swControlled(page);
+
+  await context.setOffline(true);
+  try {
+    // Client (soft) navigation with partialPrefetching: either the prefetched
+    // real page renders, or the router falls back to a document load that the
+    // SW answers with the offline page. Home's HTML is never an answer.
+    await page.locator('nav[aria-label="Main"] a[href="/disputes"]:visible').first().click();
+    await expect(page).toHaveURL(/\/disputes$/);
+    const disputes = page.getByRole("heading", { level: 1, name: "Disputes" });
+    const offline = page.getByRole("heading", { level: 1, name: OFFLINE_PAGE_TITLE });
+    await expect(disputes.or(offline)).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toHaveCount(0);
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
 test("TC-075b: API responses are never cached by the service worker (T24-9)", async ({ page }) => {
   await page.goto("/queue");
   await swControlled(page);
