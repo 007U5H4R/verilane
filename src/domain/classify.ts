@@ -15,7 +15,7 @@
  */
 import { extractTokens, type DateToken, type Tokens } from "./extract";
 import type { Paise } from "./money";
-import { clauseAt, detectSignals, type SignalHit } from "./phrases";
+import { clauseAt, detectSignals, PAYMENT_REF, type SignalHit } from "./phrases";
 import type { DisputeType, EmailClass, PaymentClaim, SignalFamily } from "./schema";
 
 export interface Classification {
@@ -99,7 +99,8 @@ export function classify(tokens: Tokens, text: string): Classification {
   const future = tokens.allDates.filter((d) => d.iso >= tokens.sent);
   const past = tokens.allDates.filter((d) => d.iso <= tokens.sent);
   const hasObject = tokens.amounts.length > 0 || tokens.refs.length > 0 || DISPUTE_OBJECT.test(text) || MAY_MONTH.test(text);
-  const hasAmountOrRef = tokens.amounts.length > 0 || tokens.refs.length > 0;
+  // A bank transfer id (UTR / NEFT / RTGS / IMPS ref) also supports a confirmation (TASK-30).
+  const hasAmountOrRef = tokens.amounts.length > 0 || tokens.refs.length > 0 || PAYMENT_REF.test(text);
 
   let promised: string | null = null;
   const supported: SignalHit[] = [];
@@ -133,7 +134,9 @@ export function classify(tokens: Tokens, text: string): Classification {
   let dispute_type: DisputeType | undefined;
   if (email_class === "duplicate") dispute_type = "duplicate_invoice";
   if (email_class === "dispute") {
-    dispute_type = supported.find((h) => h.family === "dispute")?.dispute_type ?? "unknown";
+    // A specific type ("the rate is wrong") beats a generic dispute word (TASK-30).
+    const disputes = supported.filter((h) => h.family === "dispute");
+    dispute_type = disputes.find((h) => h.dispute_type && h.dispute_type !== "unknown")?.dispute_type ?? "unknown";
   }
 
   const claimedPaid = (family: SignalFamily) => {
