@@ -28,22 +28,46 @@
       },
       {
         "block_reasons": [
-          "payment claim (H-004)"
+          "payment claim (H-004)",
+          "checks 7 failed"
         ],
-        "blocked": false,
+        "blocked": true,
         "id": "HO-2012/analyst/approve",
         "invoice_id": "HO-2012",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
         "role": "analyst"
       },
       {
         "block_reasons": [
-          "payment claim (H-004)"
+          "payment claim (H-004)",
+          "checks 7 failed"
         ],
-        "blocked": false,
+        "blocked": true,
+        "id": "HO-2012/analyst/stale",
+        "invoice_id": "HO-2012",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-004)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
         "id": "HO-2012/manager/approve",
         "invoice_id": "HO-2012",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-004)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2012/manager/stale",
+        "invoice_id": "HO-2012",
+        "outcome": "validation_failure",
         "role": "manager"
       },
       {
@@ -76,22 +100,46 @@
       },
       {
         "block_reasons": [
-          "unresolved dispute (H-005)"
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
         ],
-        "blocked": false,
+        "blocked": true,
         "id": "HO-2021/analyst/approve",
         "invoice_id": "HO-2021",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
         "role": "analyst"
       },
       {
         "block_reasons": [
-          "unresolved dispute (H-005)"
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
         ],
-        "blocked": false,
+        "blocked": true,
+        "id": "HO-2021/analyst/stale",
+        "invoice_id": "HO-2021",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
         "id": "HO-2021/manager/approve",
         "invoice_id": "HO-2021",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-005)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2021/manager/stale",
+        "invoice_id": "HO-2021",
+        "outcome": "validation_failure",
         "role": "manager"
       },
       {
@@ -140,22 +188,46 @@
       },
       {
         "block_reasons": [
-          "payment claim (H-017)"
+          "payment claim (H-017)",
+          "checks 7 failed"
         ],
-        "blocked": false,
+        "blocked": true,
         "id": "HO-2023/analyst/approve",
         "invoice_id": "HO-2023",
-        "outcome": "sent_simulated",
+        "outcome": "PermissionDenied",
         "role": "analyst"
       },
       {
         "block_reasons": [
-          "payment claim (H-017)"
+          "payment claim (H-017)",
+          "checks 7 failed"
         ],
-        "blocked": false,
+        "blocked": true,
+        "id": "HO-2023/analyst/stale",
+        "invoice_id": "HO-2023",
+        "outcome": "PermissionDenied",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-017)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
         "id": "HO-2023/manager/approve",
         "invoice_id": "HO-2023",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "payment claim (H-017)",
+          "checks 7 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2023/manager/stale",
+        "invoice_id": "HO-2023",
+        "outcome": "validation_failure",
         "role": "manager"
       },
       {
@@ -296,22 +368,46 @@
       },
       {
         "block_reasons": [
-          "unresolved dispute (H-010)"
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
         ],
-        "blocked": false,
+        "blocked": true,
         "id": "HO-2042/analyst/approve",
         "invoice_id": "HO-2042",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
         "role": "analyst"
       },
       {
         "block_reasons": [
-          "unresolved dispute (H-010)"
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
         ],
-        "blocked": false,
+        "blocked": true,
+        "id": "HO-2042/analyst/stale",
+        "invoice_id": "HO-2042",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
         "id": "HO-2042/manager/approve",
         "invoice_id": "HO-2042",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H-010)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "HO-2042/manager/stale",
+        "invoice_id": "HO-2042",
+        "outcome": "validation_failure",
         "role": "manager"
       },
       {
@@ -902,7 +998,8 @@
       },
       {
         "block_reasons": [
-          "over ₹5,00,000 as Analyst"
+          "over ₹5,00,000 as Analyst",
+          "checks 6 failed"
         ],
         "blocked": true,
         "id": "H2-3401/analyst/approve",
@@ -912,7 +1009,8 @@
       },
       {
         "block_reasons": [
-          "over ₹5,00,000 as Analyst"
+          "over ₹5,00,000 as Analyst",
+          "checks 6 failed"
         ],
         "blocked": true,
         "id": "H2-3401/analyst/stale",
@@ -1096,22 +1194,46 @@
       },
       {
         "block_reasons": [
-          "unresolved dispute (H2-014)"
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
         ],
-        "blocked": false,
+        "blocked": true,
         "id": "H2-3601/analyst/approve",
         "invoice_id": "H2-3601",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
         "role": "analyst"
       },
       {
         "block_reasons": [
-          "unresolved dispute (H2-014)"
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
         ],
-        "blocked": false,
+        "blocked": true,
+        "id": "H2-3601/analyst/stale",
+        "invoice_id": "H2-3601",
+        "outcome": "validation_failure",
+        "role": "analyst"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
         "id": "H2-3601/manager/approve",
         "invoice_id": "H2-3601",
-        "outcome": "sent_simulated",
+        "outcome": "IllegalTransition",
+        "role": "manager"
+      },
+      {
+        "block_reasons": [
+          "unresolved dispute (H2-014)",
+          "checks 6 failed"
+        ],
+        "blocked": true,
+        "id": "H2-3601/manager/stale",
+        "invoice_id": "H2-3601",
+        "outcome": "validation_failure",
         "role": "manager"
       },
       {
@@ -1762,7 +1884,7 @@
       }
     ]
   },
-  "durationMs": 148,
+  "durationMs": 203,
   "forcedMiss": false,
   "gates": [
     {
@@ -1870,13 +1992,11 @@
     },
     {
       "comparator": ">=",
-      "detail": "2/9",
+      "detail": "4/9",
       "failures": [
-        "H-005",
         "H-007",
         "H-008",
         "H-009",
-        "H-010",
         "H-011",
         "H-012"
       ],
@@ -1884,24 +2004,16 @@
       "passed": false,
       "set": "heldout",
       "threshold": 0.95,
-      "value": 0.2222
+      "value": 0.4444
     },
     {
       "comparator": ">=",
-      "detail": "38/54",
+      "detail": "54/62",
       "failures": [
-        "HO-2012/analyst/approve",
-        "HO-2012/manager/approve",
-        "HO-2021/analyst/approve",
-        "HO-2021/manager/approve",
-        "HO-2023/analyst/approve",
-        "HO-2023/manager/approve",
         "HO-2031/analyst/approve",
         "HO-2031/manager/approve",
         "HO-2032/analyst/approve",
         "HO-2032/manager/approve",
-        "HO-2042/analyst/approve",
-        "HO-2042/manager/approve",
         "HO-2051/manager/approve",
         "HO-2052/manager/approve",
         "HO-2061/manager/approve",
@@ -1911,7 +2023,7 @@
       "passed": false,
       "set": "heldout",
       "threshold": 1,
-      "value": 0.7037
+      "value": 0.871
     },
     {
       "comparator": ">=",
@@ -1964,9 +2076,8 @@
     },
     {
       "comparator": ">=",
-      "detail": "3/9",
+      "detail": "4/9",
       "failures": [
-        "H2-014",
         "H2-016",
         "H2-017",
         "H2-019",
@@ -1977,11 +2088,11 @@
       "passed": false,
       "set": "heldout-v2",
       "threshold": 0.95,
-      "value": 0.3333
+      "value": 0.4444
     },
     {
       "comparator": ">=",
-      "detail": "38/56",
+      "detail": "42/58",
       "failures": [
         "H2-3102/analyst/approve",
         "H2-3102/manager/approve",
@@ -1995,8 +2106,6 @@
         "H2-3502/analyst/approve",
         "H2-3502/manager/approve",
         "H2-3503/manager/approve",
-        "H2-3601/analyst/approve",
-        "H2-3601/manager/approve",
         "H2-3801/analyst/approve",
         "H2-3801/manager/approve",
         "H2-3803/manager/approve",
@@ -2006,10 +2115,10 @@
       "passed": false,
       "set": "heldout-v2",
       "threshold": 1,
-      "value": 0.6786
+      "value": 0.7241
     }
   ],
-  "generatedAt": "2026-11-01T04:22:04.076Z",
+  "generatedAt": "2026-11-01T04:31:11.130Z",
   "metrics": {
     "heldout": {
       "ambiguous_escalation": {
@@ -2025,41 +2134,31 @@
         "value": 1
       },
       "approval_enforcement": {
-        "denominator": 54,
+        "denominator": 62,
         "failures": [
-          "HO-2012/analyst/approve",
-          "HO-2012/manager/approve",
-          "HO-2021/analyst/approve",
-          "HO-2021/manager/approve",
-          "HO-2023/analyst/approve",
-          "HO-2023/manager/approve",
           "HO-2031/analyst/approve",
           "HO-2031/manager/approve",
           "HO-2032/analyst/approve",
           "HO-2032/manager/approve",
-          "HO-2042/analyst/approve",
-          "HO-2042/manager/approve",
           "HO-2051/manager/approve",
           "HO-2052/manager/approve",
           "HO-2061/manager/approve",
           "HO-2062/manager/approve"
         ],
-        "numerator": 38,
-        "value": 0.7037
+        "numerator": 54,
+        "value": 0.871
       },
       "dispute_recall": {
         "denominator": 9,
         "failures": [
-          "H-005",
           "H-007",
           "H-008",
           "H-009",
-          "H-010",
           "H-011",
           "H-012"
         ],
-        "numerator": 2,
-        "value": 0.2222
+        "numerator": 4,
+        "value": 0.4444
       },
       "false_blocks": {
         "denominator": 10,
@@ -2073,14 +2172,12 @@
           "failures": [
             "H-001",
             "H-002",
-            "H-004",
             "H-014",
-            "H-017",
             "H-019",
             "H-022"
           ],
-          "numerator": 23,
-          "value": 0.7667
+          "numerator": 25,
+          "value": 0.8333
         },
         "customer_id": {
           "denominator": 30,
@@ -2095,12 +2192,11 @@
             "H-007",
             "H-008",
             "H-009",
-            "H-010",
             "H-011",
             "H-012"
           ],
-          "numerator": 23,
-          "value": 0.7667
+          "numerator": 24,
+          "value": 0.8
         },
         "email_class": {
           "denominator": 30,
@@ -2108,24 +2204,20 @@
             "H-001",
             "H-002",
             "H-003",
-            "H-004",
-            "H-005",
             "H-007",
             "H-008",
             "H-009",
-            "H-010",
             "H-011",
             "H-012",
             "H-014",
-            "H-017",
             "H-019",
             "H-022",
             "H-023",
             "H-029",
             "H-030"
           ],
-          "numerator": 12,
-          "value": 0.4
+          "numerator": 16,
+          "value": 0.5333
         }
       },
       "invoice_ref_exact_match": {
@@ -2145,13 +2237,13 @@
           "tp": 4
         },
         "confirmation": {
-          "f1": 0.5,
-          "fn": 3,
+          "f1": 0.8,
+          "fn": 1,
           "fp": 1,
-          "precision": 0.6667,
-          "recall": 0.4,
+          "precision": 0.8,
+          "recall": 0.8,
           "tn": 24,
-          "tp": 2
+          "tp": 4
         },
         "delay": {
           "f1": 0,
@@ -2163,13 +2255,13 @@
           "tp": 0
         },
         "dispute": {
-          "f1": 0.2857,
-          "fn": 5,
+          "f1": 0.6667,
+          "fn": 3,
           "fp": 0,
           "precision": 1,
-          "recall": 0.1667,
+          "recall": 0.5,
           "tn": 24,
-          "tp": 1
+          "tp": 3
         },
         "duplicate": {
           "f1": 0.5,
@@ -2181,21 +2273,21 @@
           "tp": 1
         },
         "enquiry": {
-          "f1": 0.5714,
+          "f1": 0.6667,
           "fn": 1,
-          "fp": 2,
-          "precision": 0.5,
+          "fp": 1,
+          "precision": 0.6667,
           "recall": 0.6667,
-          "tn": 25,
+          "tn": 26,
           "tp": 2
         },
         "unknown": {
-          "f1": 0.2105,
+          "f1": 0.25,
           "fn": 0,
-          "fp": 15,
-          "precision": 0.1176,
+          "fp": 12,
+          "precision": 0.1429,
           "recall": 1,
-          "tn": 13,
+          "tn": 16,
           "tp": 2
         }
       },
@@ -2255,13 +2347,13 @@
           "tp": 0
         },
         "unknown": {
-          "f1": 0,
-          "fn": 1,
-          "fp": 0,
-          "precision": 0,
-          "recall": 0,
-          "tn": 29,
-          "tp": 0
+          "f1": 0.6667,
+          "fn": 0,
+          "fp": 1,
+          "precision": 0.5,
+          "recall": 1,
+          "tn": 28,
+          "tp": 1
         }
       },
       "threads": 30,
@@ -2297,7 +2389,7 @@
         "value": 0.8889
       },
       "approval_enforcement": {
-        "denominator": 56,
+        "denominator": 58,
         "failures": [
           "H2-3102/analyst/approve",
           "H2-3102/manager/approve",
@@ -2311,28 +2403,25 @@
           "H2-3502/analyst/approve",
           "H2-3502/manager/approve",
           "H2-3503/manager/approve",
-          "H2-3601/analyst/approve",
-          "H2-3601/manager/approve",
           "H2-3801/analyst/approve",
           "H2-3801/manager/approve",
           "H2-3803/manager/approve",
           "H2-3804/manager/approve"
         ],
-        "numerator": 38,
-        "value": 0.6786
+        "numerator": 42,
+        "value": 0.7241
       },
       "dispute_recall": {
         "denominator": 9,
         "failures": [
-          "H2-014",
           "H2-016",
           "H2-017",
           "H2-019",
           "H2-021",
           "H2-022"
         ],
-        "numerator": 3,
-        "value": 0.3333
+        "numerator": 4,
+        "value": 0.4444
       },
       "false_blocks": {
         "denominator": 8,
@@ -2345,6 +2434,7 @@
           "denominator": 30,
           "failures": [
             "H2-001",
+            "H2-003",
             "H2-004",
             "H2-005",
             "H2-007",
@@ -2353,8 +2443,8 @@
             "H2-011",
             "H2-012"
           ],
-          "numerator": 22,
-          "value": 0.7333
+          "numerator": 21,
+          "value": 0.7
         },
         "customer_id": {
           "denominator": 30,
@@ -2365,6 +2455,7 @@
         "dispute_type": {
           "denominator": 30,
           "failures": [
+            "H2-003",
             "H2-014",
             "H2-016",
             "H2-017",
@@ -2372,20 +2463,19 @@
             "H2-021",
             "H2-022"
           ],
-          "numerator": 24,
-          "value": 0.8
+          "numerator": 23,
+          "value": 0.7667
         },
         "email_class": {
           "denominator": 30,
           "failures": [
             "H2-001",
+            "H2-003",
             "H2-004",
             "H2-005",
             "H2-007",
             "H2-009",
-            "H2-011",
             "H2-012",
-            "H2-014",
             "H2-016",
             "H2-017",
             "H2-019",
@@ -2395,8 +2485,8 @@
             "H2-024",
             "H2-025"
           ],
-          "numerator": 14,
-          "value": 0.4667
+          "numerator": 15,
+          "value": 0.5
         }
       },
       "invoice_ref_exact_match": {
@@ -2409,22 +2499,22 @@
       },
       "per_class": {
         "commitment": {
-          "f1": 0.6667,
-          "fn": 4,
+          "f1": 0.5455,
+          "fn": 5,
           "fp": 0,
           "precision": 1,
-          "recall": 0.5,
+          "recall": 0.375,
           "tn": 22,
-          "tp": 4
+          "tp": 3
         },
         "confirmation": {
-          "f1": 0.5714,
-          "fn": 3,
+          "f1": 0.75,
+          "fn": 2,
           "fp": 0,
           "precision": 1,
-          "recall": 0.4,
+          "recall": 0.6,
           "tn": 25,
-          "tp": 2
+          "tp": 3
         },
         "delay": {
           "f1": 0,
@@ -2436,13 +2526,13 @@
           "tp": 0
         },
         "dispute": {
-          "f1": 0.5,
-          "fn": 4,
-          "fp": 0,
-          "precision": 1,
-          "recall": 0.3333,
-          "tn": 24,
-          "tp": 2
+          "f1": 0.6,
+          "fn": 3,
+          "fp": 1,
+          "precision": 0.75,
+          "recall": 0.5,
+          "tn": 23,
+          "tp": 3
         },
         "duplicate": {
           "f1": 0.5,
@@ -2454,21 +2544,21 @@
           "tp": 1
         },
         "enquiry": {
-          "f1": 0.8571,
+          "f1": 1,
           "fn": 0,
-          "fp": 1,
-          "precision": 0.75,
+          "fp": 0,
+          "precision": 1,
           "recall": 1,
-          "tn": 26,
+          "tn": 27,
           "tp": 3
         },
         "unknown": {
-          "f1": 0.2222,
+          "f1": 0.2353,
           "fn": 0,
-          "fp": 14,
-          "precision": 0.125,
+          "fp": 13,
+          "precision": 0.1333,
           "recall": 1,
-          "tn": 14,
+          "tn": 15,
           "tp": 2
         }
       },
@@ -2530,10 +2620,10 @@
         "unknown": {
           "f1": 0,
           "fn": 1,
-          "fp": 0,
+          "fp": 2,
           "precision": 0,
           "recall": 0,
-          "tn": 29,
+          "tn": 27,
           "tp": 0
         }
       },
