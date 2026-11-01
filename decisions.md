@@ -296,3 +296,20 @@
 - No fixes needed; implementer's own gate run and the re-run on the merged branch both passed on the first attempt (0 fix-loop rounds).
 - Flagged, not fixed (close-out wave): breadcrumb/sidebar highlights "Home" instead of "Queue" on the invoice page.
 - Merged into `build/verilane-v1` at `f1bc396` (base `437b834`, head `09b9625`, 0 fix rounds, review PASS both stages); gates green on the merged branch (lint, tsc, vitest 623/623, build + check:secrets clean over 32 files, build:e2e, full e2e suite 123 passed/1 skipped under `--workers=1`).
+
+## EXE21 · `pnpm eval` harness, gates, report + /settings/eval (TASK-21) — accepted, TC-066 open
+- `eval/run.ts` runs the six gated metrics over the seed and held-out sets in pure Node. The clock is frozen, and `globalThis.fetch` is stubbed to throw and count calls (the budget test asserts 0 network calls, ≤30 s). Approval enforcement uses the real `approve_draft` against an in-memory Tx. `VERILANE_EVAL_FORCE_MISS=1` forces a miss (TC-069); `VERILANE_EVAL_REPORT_DIR` redirects report output.
+- Report: sorted keys, numbers rounded to 4 decimals, camelCase keys (`report.live.json` from TASK-23 stays snake_case). `generatedAt` and `durationMs` are volatile, so every eval run dirties the committed report (close-out item).
+- `/settings/eval` statically renders `eval/report.md` through a small markdown→React parser, with no raw HTML.
+- **Held-out gates fail honestly (TC-066):**
+  - unambiguous matching 21/23;
+  - dispute recall 2/9 (gate ≥0.95);
+  - approval enforcement 38/54.
+  Root cause: the `classify.ts`/`phrases.ts` phrase classifier is overfit to seed wording (12/30 held-out emails classified correctly vs 25/25 seed). Thresholds and labels are unchanged.
+- **User decision (2026-11-01):** merge now with the gates failing, then:
+  - TASK-30 (P1) broadens dispute and confirmation recognition with general language. Its implementer is barred from reading held-out data and from running `pnpm eval`.
+  - TASK-31 (P1) adds a fresh blind set, `eval/heldout-v2/`. Its author is barred from reading the classifier.
+  - The original `eval/heldout/` stays in the report as "inspected, no longer blind" (the set grows, never shrinks).
+  - TASK-21 stays In Progress until TC-066 passes on the fresh set.
+- Gate convention from now on: unit gate is `vitest run --project unit`; `pnpm eval` is reported separately with its known failures listed.
+- Merged into `build/verilane-v1` at `4926f71` (head `30aa211`, base `d217d0c`, 0 fix rounds, review PASS both stages), no conflicts. Gates on the merged branch: lint, tsc, unit 627/627, eval 13 passed / 3 known held-out failures, build + check:secrets clean over 32 files, build:e2e, e2e 129 passed / 1 skipped under `--workers=1`.

@@ -29,7 +29,10 @@ IDs in this ledger are Campfire IDs: run `backlog task edit <N>` with the TASK n
 | TASK-18 | done, merged | cfe0f4c (head 4d396a5) | Home KPIs/feed/charts; EXE16; vitest 575/575, e2e 99/1-skip (`--workers=1`); Done |
 | TASK-23 | done, merged | 2f52f80 (head 8bfd60a, base 041ff7a) | live Claude provider; EXE19 (deviation: `liveProvider` unused); vitest 623/623, e2e 123/1-skip, check:secrets clean; Done |
 | TASK-24 | done, merged | be197ae (head fb23656) | 3aa052a (base 041ff7a), port 3111 | PWA; EXE17; vitest 585/585, e2e 113/1-skip (`--workers=1`); Done; SW off globally in playwright.config (on only in pwa.spec); seed manifest network-first; at TASK-23 merge: disable live-LLM trigger offline via `useOnline()` |
-| TASK-21 | in progress | worktree, base d217d0c, port 3108 | eval harness + /settings/eval |
+| TASK-21 | merged, In Progress | 4926f71 (head 30aa211, base d217d0c) | harness + /settings/eval; EXE21; TC-065/067/068/069 PASS, TC-066 FAIL (honest) → TASK-30/31; stays In Progress until TC-066 passes |
+| TASK-22 | in progress | worktree, base 4926f71, port 3113 | fault injection FS11 |
+| TASK-30 | in progress | worktree, base 4926f71, port 3114 | classifier broadening (info barrier: no held-out access, no `pnpm eval`) |
+| TASK-31 | in progress | worktree, base 4926f71, port 3115 | fresh held-out set `eval/heldout-v2` (barrier: no classifier code); measure once, then freeze |
 | TASK-25 | in progress | worktree, base d217d0c, port 3109 | quality sweep; R21 folded in |
 | TASK-26 | done, merged | f1bc396 (head 09b9625, base 437b834) | trust-walk e2e; TC-086/087 PASS both themes; Done |
 
