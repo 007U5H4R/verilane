@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { buildEmailEvidence, emailFactLabel } from "@/domain/evidence";
 import { formatInr, paise } from "@/domain/money";
+import { cn } from "@/lib/cn";
 import type { EmailClass, Evidence, Extraction } from "@/domain/schema";
 import { useInvoiceCommunication, type InvoiceMessage } from "@/store/hooks";
 import { formatDate } from "./DocumentCard";
@@ -60,7 +61,11 @@ function factValue(ev: Evidence, x: Extraction): ReactNode {
 }
 
 function Message({ email, extraction }: InvoiceMessage) {
-  const facts = buildEmailEvidence(extraction).filter((ev) => ev.source_field !== "email_class");
+  const evidence = buildEmailEvidence(extraction);
+  // R18: G4/G5 reasons cite `<message_id>:emails.json:email_class`, so the
+  // class badge is that evidence's anchor and carries its provenance line.
+  const classEvidence = evidence.find((ev) => ev.source_field === "email_class");
+  const facts = evidence.filter((ev) => ev.source_field !== "email_class");
   return (
     <article
       data-testid="communication-message"
@@ -68,11 +73,25 @@ function Message({ email, extraction }: InvoiceMessage) {
       className="border-b border-border py-3"
     >
       <header className="flex flex-wrap items-center gap-2">
-        <Badge data-testid="email-class" variant={CLASS_VARIANT[extraction.email_class]}>
+        <Badge
+          id={classEvidence && `ev-${classEvidence.evidence_id}`}
+          data-testid="email-class"
+          variant={CLASS_VARIANT[extraction.email_class]}
+          // T34-2: a deep link lands with room above it and rings the cited
+          // badge in the focus colour. `:target` alone misses a badge rendered
+          // after the fragment navigation, so the landing effect also marks it
+          // `data-landed`.
+          className={cn(
+            "scroll-mt-4",
+            "target:ring-2 target:ring-brand target:ring-offset-2 target:ring-offset-canvas",
+            "data-landed:ring-2 data-landed:ring-brand data-landed:ring-offset-2 data-landed:ring-offset-canvas",
+          )}
+        >
           {CLASS_LABEL[extraction.email_class]}
         </Badge>
         <span className="min-w-0 truncate text-[13px] font-medium text-text">{email.subject}</span>
       </header>
+      {classEvidence && <ProvenanceLine evidence={classEvidence} />}
       <p className="mt-1 break-words text-xs text-text-muted">
         {email.from_address} · {formatDate(email.sent_at.slice(0, 10))} ·{" "}
         <span className="font-mono">{email.thread_id}</span>
@@ -109,6 +128,25 @@ function Message({ email, extraction }: InvoiceMessage) {
  */
 export function CommunicationTable({ invoiceId }: { invoiceId: string }) {
   const messages = useInvoiceCommunication(invoiceId);
+  // The messages arrive after the browser has tried the URL's `#ev-…`
+  // fragment, so once they render, land on it (once — live updates mustn't
+  // yank the scroll position back). Once per invoice (T34-3): if the table is
+  // reused for another invoice, that invoice's deep link must land too.
+  const landed = useRef<string | null>(null);
+  useEffect(() => {
+    if (landed.current === invoiceId || messages === undefined) return;
+    landed.current = invoiceId;
+    let id: string;
+    try {
+      id = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      return;
+    }
+    const target = id.startsWith("ev-") ? document.getElementById(id) : null;
+    if (!target) return;
+    target.setAttribute("data-landed", "");
+    target.scrollIntoView({ block: "start" });
+  }, [messages, invoiceId]);
   return (
     <section className="mt-5" aria-labelledby="ev-communication" aria-busy={messages === undefined}>
       <h2 id="ev-communication" className="mb-2 flex items-baseline gap-2 text-sm font-semibold text-text">

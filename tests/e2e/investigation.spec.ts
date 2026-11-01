@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { join } from "node:path";
+import { test, expect, type Page, type TestInfo } from "@playwright/test";
 
 // TASK-12.6 · Communication evidence on the Investigation page.
 // E-007 cites INV-1042 (invoice_id INV-042): "paid ₹3,00,000 on 27/10/2026".
@@ -59,4 +60,125 @@ test("TC-026: an invoice no email cites shows 'No prior communication' and claim
     /contact|replied|reply|emailed|spoke|promised|responded/i,
   );
   expect(errors).toEqual([]);
+});
+
+// TASK-34 · R18: a G4/G5 reason cites `<message_id>:emails.json:email_class`;
+// that id must exist on screen as an anchor with its provenance visible.
+
+/**
+ * Where a QA screenshot goes: the run's own output dir, or the directory in
+ * VERILANE_QA_SHOTS when a reviewer wants them collected (T34-4).
+ */
+function shotPath(testInfo: TestInfo, name: string): string {
+  const dir = process.env.VERILANE_QA_SHOTS;
+  return dir ? join(dir, name) : testInfo.outputPath(name);
+}
+
+/** The queue rows whose priority reason cites an email class (G4/G7). */
+async function emailCitingInvoices(page: Page): Promise<string[]> {
+  await page.goto("/queue");
+  const rows = page.locator('main a[href^="/invoices/"]');
+  await expect(rows.first()).toBeVisible();
+  const hrefs = await rows.filter({ hasText: ":emails.json:email_class" }).evaluateAll((els) =>
+    els.map((e) => e.getAttribute("href")!),
+  );
+  return hrefs.map((h) => h.split("/").pop()!);
+}
+
+async function emailCites(page: Page): Promise<string[]> {
+  const reason = (await page.getByTestId("priority-reason").textContent()) ?? "";
+  return [...reason.matchAll(/\[([^\]]+:emails\.json:email_class)\]/g)].map((m) => m[1]!);
+}
+
+test("R18: every email citation in a queue reason is a visible anchor with provenance", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = trackConsoleErrors(page);
+  // Every queue row whose cause is an email class, plus INV-042 (G5, held off
+  // the main list).
+  const ids = await emailCitingInvoices(page);
+  expect(ids.length, "the seed has queue rows citing an email class").toBeGreaterThan(0);
+
+  for (const id of new Set([...ids, "INV-042"])) {
+    await openInvoice(page, id);
+    const cites = await emailCites(page);
+    expect(cites, `${id} reason cites an email`).not.toEqual([]);
+
+    for (const cite of cites) {
+      const anchor = page.locator(`[id="ev-${cite}"]`);
+      await expect(anchor, `${id} anchor for ${cite}`).toBeVisible();
+      await expect(anchor).toHaveAttribute("data-testid", "email-class");
+      const message = page.getByTestId("communication-message").filter({ has: anchor });
+      const thread = await message.getAttribute("data-thread");
+      await expect(message.getByTestId("provenance").first()).toHaveText(`emails.json · ${thread} · email_class`);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test("R18: a deep link to the cited evidence lands on it, with room above and a ring", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openInvoice(page, "INV-042");
+  // Leave the page so the deep link is a fresh load, not a same-document
+  // fragment change: the message rows arrive after the browser's own jump.
+  await page.goto("/queue");
+  const id = "ev-E-007-1:emails.json:email_class";
+  await page.goto(`/invoices/INV-042#${id}`);
+  const anchor = page.locator(`[id="${id}"]`);
+  await expect(anchor).toBeInViewport();
+  // T34-2: not flush against the viewport top, and marked as the target.
+  await expect.poll(async () => (await anchor.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(12);
+  await expect(anchor).not.toHaveCSS("box-shadow", "none");
+  await page.screenshot({ path: shotPath(testInfo, `TASK-34-390-communication-${testInfo.project.name}.png`) });
+});
+
+// T34-3: the table can be reused across a client-side invoice change, so the
+// second invoice's deep link must still land.
+test("R18: a deep link lands after a client-side move to another invoice", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const [other] = (await emailCitingInvoices(page)).filter((i) => i !== "INV-042");
+  expect(other, "a second invoice cites an email").toBeTruthy();
+  await openInvoice(page, other!);
+  const [cite] = await emailCites(page);
+
+  await page.goto("/invoices/INV-042");
+  await expect(page.getByTestId("communication-message").first()).toBeVisible();
+  await page.evaluate(
+    (url) => (window as unknown as { next: { router: { push(u: string): void } } }).next.router.push(url),
+    `/invoices/${other}#ev-${cite}`,
+  );
+  await expect(page).toHaveURL(new RegExp(`/invoices/${other}#`));
+  await expect(page.locator(`[id="ev-${cite}"]`)).toBeInViewport();
+});
+
+test("breadcrumb: detail pages show their trail, named as the page names them", async ({ page }, testInfo) => {
+  await openInvoice(page, "INV-042");
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+  // T34-1: the invoice number the Queue row and header show, not invoice_id.
+  await expect(crumbs).toHaveText(/^Queue\s*›\s*INV-1042$/);
+  await expect(crumbs.locator('[aria-current="page"]')).toHaveText("INV-1042");
+  if (testInfo.project.name === "chromium-light")
+    await page.screenshot({ path: shotPath(testInfo, "TASK-34-breadcrumb-invoice.png") });
+
+  await page.goto("/payments");
+  await expect(crumbs).toHaveText("Payments");
+
+  await page.goto("/disputes");
+  const href = await page.locator('main a[href^="/disputes/"]').first().getAttribute("href");
+  expect(href, "seed has at least one dispute").toBeTruthy();
+  await page.goto(href!);
+  // A dispute is headed by its customer; the crumb says the same.
+  const heading = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
+  await expect(crumbs).toHaveText(new RegExp(`^Disputes\\s*›\\s*${heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+
+  await crumbs.getByRole("link", { name: "Disputes" }).click();
+  await expect(page).toHaveURL(/\/disputes$/);
+});
+
+// T34-5: an unknown route claims no current page.
+test("breadcrumb: an unknown route marks no crumb as the current page", async ({ page }) => {
+  await page.goto("/e2e-harness");
+  await expect(page.locator("header").first()).toBeVisible();
+  await expect(page.locator('header [aria-current="page"]')).toHaveCount(0);
 });
