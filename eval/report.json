@@ -1884,7 +1884,6 @@
       }
     ]
   },
-  "durationMs": 4106,
   "faults": {
     "approvable": 0,
     "kinds": [
@@ -2190,7 +2189,6 @@
       "value": 0.7241
     }
   ],
-  "generatedAt": "2026-11-01T05:06:33.644Z",
   "metrics": {
     "heldout": {
       "ambiguous_escalation": {

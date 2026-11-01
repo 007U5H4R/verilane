@@ -1,6 +1,6 @@
 # Evaluation report
 
-Generated 2026-11-01T05:06:33.644Z · as-of 2026-10-30 · provider `simulated` · 4106 ms · network calls 0
+As-of 2026-10-30 · provider `simulated` · network calls 0
 
 **One or more gates missed — the run fails.**
 
