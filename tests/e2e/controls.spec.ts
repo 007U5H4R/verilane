@@ -7,8 +7,8 @@ import { test, expect, type Page } from "@playwright/test";
 //
 // A manual read-only sweep of src/components/** and src/app/** (TASK-25,
 // EXE log) traced every onClick/href/callback and found zero dead controls.
-// `/settings/eval`'s ComingSoon placeholder is TASK-21's documented stub —
-// it navigates and renders real content, so it is not a dead control either.
+// TASK-21 replaced the last ComingSoon stub (/settings/eval) and the
+// component was deleted in TASK-25; the sweep below asserts none comes back.
 // This spec turns that sweep into a standing structural check so a future
 // regression (a stray `href="#"`, a disabled-looking control with no reason)
 // fails CI instead of waiting for the next manual audit.
@@ -44,6 +44,9 @@ test("TC-081: no dead href, every control is named, and aria-disabled always has
       return bad;
     });
     problems.push(...found.map((f) => `${href}: ${f}`));
+    if ((await page.getByRole("heading", { name: "Coming soon" }).count()) > 0) {
+      problems.push(`${href}: ComingSoon placeholder still rendered`);
+    }
   }
   expect(problems).toEqual([]);
 });
