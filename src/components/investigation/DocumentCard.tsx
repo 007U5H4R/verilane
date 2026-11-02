@@ -31,7 +31,7 @@ export function DocumentCard({
   const contact = customer?.contact_emails[0];
 
   return (
-    <article className="rounded-lg border border-border glass shadow-card p-6">
+    <article className="rounded-lg border border-border bg-surface shadow-card p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <span className="inline-flex items-center gap-2">

@@ -19,7 +19,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="flex scroll-mt-6 flex-col gap-3 rounded-lg border border-border glass shadow-card p-5"
+      className="flex scroll-mt-6 flex-col gap-3 rounded-lg border border-border bg-surface shadow-card p-5"
     >
       <h2 id={`${id}-title`} className="font-semibold text-text">
         {title}

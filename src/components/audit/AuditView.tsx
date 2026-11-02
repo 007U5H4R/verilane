@@ -102,11 +102,11 @@ function AuditList() {
         </span>
       </div>
       {filtered.length === 0 ? (
-        <div className="rounded-lg border border-border glass shadow-card p-6" data-state="empty-filtered">
+        <div className="rounded-lg border border-border bg-surface shadow-card p-6" data-state="empty-filtered">
           <p className="font-semibold text-text">No events match these filters</p>
         </div>
       ) : (
-        <ol className="rounded-lg border border-border glass shadow-card px-4" aria-label="Audit events">
+        <ol className="rounded-lg border border-border bg-surface shadow-card px-4" aria-label="Audit events">
           {filtered.map((e) => (
             <AuditRow key={e.event_id} event={e} />
           ))}
@@ -118,7 +118,7 @@ function AuditList() {
 
 function NoAudit() {
   return (
-    <div className="rounded-lg border border-border glass shadow-card p-6" data-state="empty">
+    <div className="rounded-lg border border-border bg-surface shadow-card p-6" data-state="empty">
       <p className="font-semibold text-text">No activity yet</p>
       <p className="text-[13px] text-text-muted">Notes, approvals and role switches will appear here as they happen.</p>
     </div>
@@ -127,7 +127,7 @@ function NoAudit() {
 
 export function AuditSkeleton() {
   return (
-    <div className="rounded-lg border border-border glass shadow-card px-4" data-state="loading" aria-busy="true" aria-label="Loading audit log">
+    <div className="rounded-lg border border-border bg-surface shadow-card px-4" data-state="loading" aria-busy="true" aria-label="Loading audit log">
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className="flex flex-col gap-1.5 border-b border-border py-3 last:border-b-0">
           <span className="h-3.5 w-2/3 animate-pulse rounded bg-surface-sunken" />
@@ -140,7 +140,7 @@ export function AuditSkeleton() {
 
 function AuditError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-border glass shadow-card p-4" data-state="error">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface shadow-card p-4" data-state="error">
       <p className="text-text">Couldn’t load the audit log.</p>
       <Button variant="outline" size="sm" onClick={onRetry}>
         Retry

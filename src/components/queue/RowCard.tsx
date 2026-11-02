@@ -40,7 +40,7 @@ export function RowCard({
         href={`/invoices/${invoice.invoice_id}`}
         data-excluded={excluded || undefined}
         className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-4 py-3 shadow-card hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none lg:h-16 lg:flex-nowrap lg:gap-4 lg:py-0 ${
-          excluded ? "bg-[color-mix(in_srgb,var(--disp-bg)_45%,var(--surface))] text-text-muted" : "glass"
+          excluded ? "bg-[color-mix(in_srgb,var(--disp-bg)_45%,var(--surface))] text-text-muted" : "bg-surface"
         }`}
       >
         <span className="order-6 lg:order-none">

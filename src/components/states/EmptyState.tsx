@@ -14,7 +14,7 @@ export function EmptyState({
   state?: string;
 }) {
   return (
-    <div data-state={state} className="flex flex-col items-start gap-2 rounded-lg border border-border glass shadow-card p-6">
+    <div data-state={state} className="flex flex-col items-start gap-2 rounded-lg border border-border bg-surface shadow-card p-6">
       <h2 className="font-semibold text-text">{title}</h2>
       {children && <p className="text-[13px] text-text-muted">{children}</p>}
       {action}

@@ -55,40 +55,53 @@ const globalsDarkAttr = parseTokens(
   extractBlock(globalsCss, ':root[data-theme="dark"] {'),
 );
 
-// Design.md Revision R1 (TASK-37) added these after the mockup froze. They
-// are checked for presence in every theme block; the rest stay mockup-locked.
-const R1_TOKENS = ["card-shadow", "canvas-art-opacity", "glass"];
+// Design.md Revision R2 (TASK-38) re-coloured the product to the emerald
+// FinTech palette, so token *values* now follow the R2 brief rather than the
+// frozen mockup. The mockup still fixes the token *vocabulary*: every name it
+// defines must exist in each theme block, so no component loses a colour.
+const R2_BRAND: Record<string, string> = {
+  canvas: "#f7f9f7",
+  surface: "#fff",
+  border: "#e4eae5",
+  text: "#17231e",
+  brand: "#176b50",
+  "brand-strong": "#104b38",
+  accent: "#2d9a70",
+  interactive: "#21845f",
+  mint: "#ddf2e7",
+  "mint-pale": "#f0f8f3",
+  rail: "#082f25",
+};
+const R2_TOKENS = ["accent", "interactive", "mint", "mint-pale", "rail-border", "info", "info-bg", "card-shadow"];
+const RETIRED = ["glass", "canvas-art-opacity"];
 
-function withoutR1(tokens: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(tokens).filter(([k]) => !R1_TOKENS.includes(k)));
-}
-
-describe("design tokens match the approved mockup", () => {
-  it("light theme (:root)", () => {
-    expect(withoutR1(globalsLight)).toEqual(mockupLight);
-  });
-
-  it("dark theme (prefers-color-scheme media query)", () => {
-    expect(withoutR1(globalsDarkMedia)).toEqual(mockupDarkMedia);
-  });
-
-  it("dark theme ([data-theme=dark] override)", () => {
-    expect(withoutR1(globalsDarkAttr)).toEqual(mockupDarkAttr);
-  });
-
-  it("Revision R1 tokens are defined in every theme block", () => {
-    for (const block of [globalsLight, globalsDarkMedia, globalsDarkAttr]) {
-      for (const name of R1_TOKENS) expect(block[name], name).toBeTruthy();
+describe("design tokens (Design.md R2)", () => {
+  it("every mockup token is still defined in every theme block", () => {
+    for (const [mockup, globals] of [
+      [mockupLight, globalsLight],
+      [mockupDarkMedia, globalsDarkMedia],
+      [mockupDarkAttr, globalsDarkAttr],
+    ] as const) {
+      for (const name of Object.keys(mockup)) expect(globals[name], name).toBeTruthy();
     }
-    // Dark mode must set its own values, not inherit the light ones.
-    expect(globalsDarkMedia).toMatchObject(withR1Only(globalsDarkAttr));
-    expect(globalsDarkAttr.glass).not.toBe(globalsLight.glass);
+  });
+
+  it("the two dark blocks are identical", () => {
+    expect(globalsDarkMedia).toEqual(globalsDarkAttr);
+  });
+
+  it("light theme uses the R2 brand palette", () => {
+    expect(globalsLight).toMatchObject(R2_BRAND);
+  });
+
+  it("R2 tokens exist in every block and the glass tokens are retired", () => {
+    for (const block of [globalsLight, globalsDarkMedia, globalsDarkAttr]) {
+      for (const name of R2_TOKENS) expect(block[name], name).toBeTruthy();
+      for (const name of RETIRED) expect(block[name], name).toBeUndefined();
+    }
+    expect(globalsCss).not.toMatch(/@utility glass|body::before/);
   });
 });
-
-function withR1Only(tokens: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(tokens).filter(([k]) => R1_TOKENS.includes(k)));
-}
 
 // --- WCAG contrast -----------------------------------------------------
 
@@ -126,8 +139,17 @@ const TEXT_PAIRS: Array<[fg: string, bg: string]> = [
   ["text", "canvas"],
   ["text", "surface"],
   ["text-muted", "surface"],
+  ["text-muted", "canvas"],
+  ["text-muted", "surface-sunken"],
   ["brand-strong", "surface"],
+  ["brand", "surface"],
+  ["brand-strong", "mint"],
+  ["on-brand", "brand"],
+  ["high", "high-bg"],
+  ["med", "med-bg"],
+  ["low", "low-bg"],
   ["rail-text", "rail"],
+  ["rail-text", "rail-active"],
 ];
 
 // Tokens not redefined in the dark override still inherit from :root.

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 
 import { AppShell } from "@/components/shell/AppShell";
 import { DataProviderLoader } from "@/components/DataProviderLoader";
@@ -6,6 +7,10 @@ import { PwaRegister } from "@/components/PwaRegister";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
+
+// Design.md R2 (TASK-38): Inter, self-hosted by next/font; exposed as
+// --font-inter so globals.css builds the UI and display stacks from it.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 // TASK-27.3: the deployed URL only exists from Stage 10 on, so
 // NEXT_PUBLIC_SITE_URL is unset in dev/CI and this placeholder stands in —
@@ -60,7 +65,7 @@ const THEME_SCRIPT = `
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

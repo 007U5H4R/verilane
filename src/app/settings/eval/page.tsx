@@ -69,7 +69,7 @@ function BlockView({ block, label }: { block: Block; label: string }) {
           tabIndex={0}
           role="region"
           aria-label={label}
-          className="overflow-x-auto rounded-lg border border-border glass shadow-card"
+          className="overflow-x-auto rounded-lg border border-border bg-surface shadow-card"
         >
           <table className="w-full border-collapse text-left text-[13px]">
             <thead className="bg-surface-sunken">
@@ -125,7 +125,7 @@ export default function EvalPage() {
         </p>
       </header>
       {blocks.length === 0 ? (
-        <p className="rounded-lg border border-border glass shadow-card p-5 text-[13px] text-text-muted">
+        <p className="rounded-lg border border-border bg-surface shadow-card p-5 text-[13px] text-text-muted">
           No evaluation report yet. Run <code className="font-mono">pnpm eval</code>, then rebuild.
         </p>
       ) : (

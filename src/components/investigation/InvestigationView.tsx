@@ -60,7 +60,7 @@ function BackToQueue() {
 export function InvestigationSkeleton() {
   return (
     <div className="p-4 md:p-7" data-state="loading" aria-busy="true" role="status" aria-label="Loading invoice">
-      <div className="rounded-lg border border-border glass shadow-card p-6">
+      <div className="rounded-lg border border-border bg-surface shadow-card p-6">
         <div className="h-5 w-24 animate-pulse rounded-full bg-surface-sunken" />
         <div className="mt-3 h-8 w-64 max-w-full animate-pulse rounded bg-surface-sunken" />
         <div className="mt-2 h-4 w-80 max-w-full animate-pulse rounded bg-surface-sunken" />

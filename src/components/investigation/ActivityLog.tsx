@@ -35,7 +35,7 @@ export function ActivityLog({ invoiceId }: { invoiceId: string }) {
   }
 
   return (
-    <section className="rounded-lg border border-border glass shadow-card p-4" aria-labelledby={`${fieldId}-title`}>
+    <section className="rounded-lg border border-border bg-surface shadow-card p-4" aria-labelledby={`${fieldId}-title`}>
       <h2 id={`${fieldId}-title`} className="mb-2 text-sm font-semibold text-text">
         Activity
       </h2>

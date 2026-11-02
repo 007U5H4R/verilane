@@ -1,103 +1,120 @@
 @import "tailwindcss";
 
+/* Design.md Revision R2 (TASK-38): emerald FinTech palette. Brand hexes come
+   from the R2 brief; dark values are tuned for WCAG AA on the dark surfaces. */
 :root {
-  --canvas: #f8f7f3;
+  --canvas: #f7f9f7;
   --surface: #fff;
-  --surface-sunken: #f1efe8;
-  --border: #e4e1d8;
-  --border-strong: #cdc8bb;
-  --text: #17221c;
-  --text-muted: #53605a;
-  --brand: #1f7a4d;
-  --brand-strong: #145c38;
-  --brand-tint: #e6f3ec;
-  --rail: #0f3d29;
-  --rail-active: #1c5a3e;
+  --surface-sunken: #f0f8f3;
+  --border: #e4eae5;
+  --border-strong: #cbd6cf;
+  --text: #17231e;
+  --text-muted: #5f6c65;
+  --brand: #176b50;
+  --brand-strong: #104b38;
+  --brand-tint: #ddf2e7;
+  --accent: #2d9a70;
+  --interactive: #21845f;
+  --mint: #ddf2e7;
+  --mint-pale: #f0f8f3;
+  --rail: #082f25;
+  --rail-active: #176b50;
+  --rail-border: #1d4a3b;
   --rail-text: #f3f8f5;
   --rail-muted: #b9d4c5;
-  --high: #b3261e;
-  --high-bg: #fbe9e7;
+  --high: #b42318;
+  --high-bg: #fdecea;
   --med: #8a5a00;
   --med-bg: #fdf1dc;
-  --low: #3a6b52;
-  --low-bg: #e8f2ec;
-  --disp: #5b5f7a;
-  --disp-bg: #ececf2;
-  --disabled-bg: #ebe8e0;
-  --disabled-text: #6b736e;
+  --low: #176b50;
+  --low-bg: #ddf2e7;
+  --disp: #6b4fa0;
+  --disp-bg: #f0ebf8;
+  --info: #1d5fa8;
+  --info-bg: #e7f0fa;
+  --disabled-bg: #eaeeeb;
+  --disabled-text: #66726b;
   --on-brand: #fff;
-  --card-shadow: 0 1px 2px rgb(23 34 28 / 0.04), 0 4px 14px rgb(23 34 28 / 0.06);
-  --canvas-art-opacity: 0.85;
-  --glass: rgb(255 255 255 / 0.62);
+  --card-shadow: 0 1px 2px rgb(8 47 37 / 0.04), 0 4px 16px rgb(8 47 37 / 0.06);
   --r-lg: 14px;
   --r-md: 10px;
-  --font-ui: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Iowan Old Style", "Charter", "Source Serif 4", Georgia, serif;
+  --font-ui: var(--font-inter), ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #0f1613;
-    --surface: #17201c;
-    --surface-sunken: #121a16;
-    --border: #283531;
-    --border-strong: #3a4944;
-    --text: #e7f0ea;
-    --text-muted: #a9b8b0;
-    --brand: #3fae79;
-    --brand-strong: #6fcc9a;
-    --brand-tint: #173326;
-    --rail: #0a2419;
-    --rail-active: #17402d;
+    --canvas: #0d1511;
+    --surface: #141f19;
+    --surface-sunken: #1b2921;
+    --border: #293a30;
+    --border-strong: #35493f;
+    --text: #edf4ef;
+    --text-muted: #a0b0a5;
+    --brand: #55b78b;
+    --brand-strong: #74d3a5;
+    --brand-tint: #143628;
+    --accent: #4cc08f;
+    --interactive: #5cc89a;
+    --mint: #143628;
+    --mint-pale: #10261d;
+    --rail: #061f18;
+    --rail-active: #176b50;
+    --rail-border: #173d30;
     --rail-muted: #9fc2af;
     --high: #ff8a80;
     --high-bg: #3a1f1d;
     --med: #e8b35c;
     --med-bg: #3a2e18;
-    --low: #7fcba0;
-    --low-bg: #16302a;
-    --disp: #a9acc9;
-    --disp-bg: #23263a;
-    --disabled-bg: #222c28;
+    --low: #74d3a5;
+    --low-bg: #143628;
+    --disp: #c3a8ef;
+    --disp-bg: #2a2140;
+    --info: #8cbcf0;
+    --info-bg: #182a3d;
+    --disabled-bg: #1f2c27;
     --disabled-text: #93a29a;
-    --on-brand: #06140d;
+    --on-brand: #06231a;
     --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
-    --canvas-art-opacity: 0.18;
-    --glass: rgb(23 32 28 / 0.58);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --canvas: #0f1613;
-  --surface: #17201c;
-  --surface-sunken: #121a16;
-  --border: #283531;
-  --border-strong: #3a4944;
-  --text: #e7f0ea;
-  --text-muted: #a9b8b0;
-  --brand: #3fae79;
-  --brand-strong: #6fcc9a;
-  --brand-tint: #173326;
-  --rail: #0a2419;
-  --rail-active: #17402d;
+  --canvas: #0d1511;
+  --surface: #141f19;
+  --surface-sunken: #1b2921;
+  --border: #293a30;
+  --border-strong: #35493f;
+  --text: #edf4ef;
+  --text-muted: #a0b0a5;
+  --brand: #55b78b;
+  --brand-strong: #74d3a5;
+  --brand-tint: #143628;
+  --accent: #4cc08f;
+  --interactive: #5cc89a;
+  --mint: #143628;
+  --mint-pale: #10261d;
+  --rail: #061f18;
+  --rail-active: #176b50;
+  --rail-border: #173d30;
   --rail-muted: #9fc2af;
   --high: #ff8a80;
   --high-bg: #3a1f1d;
   --med: #e8b35c;
   --med-bg: #3a2e18;
-  --low: #7fcba0;
-  --low-bg: #16302a;
-  --disp: #a9acc9;
-  --disp-bg: #23263a;
-  --disabled-bg: #222c28;
+  --low: #74d3a5;
+  --low-bg: #143628;
+  --disp: #c3a8ef;
+  --disp-bg: #2a2140;
+  --info: #8cbcf0;
+  --info-bg: #182a3d;
+  --disabled-bg: #1f2c27;
   --disabled-text: #93a29a;
-  --on-brand: #06140d;
+  --on-brand: #06231a;
   --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
-  --canvas-art-opacity: 0.18;
-  --glass: rgb(23 32 28 / 0.58);
   color-scheme: dark;
 }
 
@@ -112,6 +129,13 @@
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
   --color-brand-tint: var(--brand-tint);
+  --color-accent: var(--accent);
+  --color-interactive: var(--interactive);
+  --color-mint: var(--mint);
+  --color-mint-pale: var(--mint-pale);
+  --color-rail-border: var(--rail-border);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
   --color-rail: var(--rail);
   --color-rail-active: var(--rail-active);
   --color-rail-text: var(--rail-text);
@@ -151,27 +175,13 @@ body {
   color: var(--text);
   font: 14px/1.5 var(--font-ui);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
 }
 
-/* TASK-37: blurred canvas photo (public/bg/canvas-blur.webp, 6 KB, blur baked
-   in so there is no runtime filter cost), fixed behind everything. z-index -1
-   keeps it under all content; offline it is simply absent (plain canvas). */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: var(--canvas-art-opacity);
-  background: url("/bg/canvas-blur.webp") center / cover no-repeat;
-}
-
-/* TASK-37 (Design.md R1): frosted-glass card surface. Translucent fill plus
-   a backdrop blur, so the canvas art reads softly through every card. */
-@utility glass {
-  background-color: var(--glass);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
+/* Money, counts and dates line up in columns (R2). */
+.tabular-nums,
+table {
+  font-variant-numeric: tabular-nums;
 }
 
 /* In @layer base so text-* utilities win: unlayered, these beat every
