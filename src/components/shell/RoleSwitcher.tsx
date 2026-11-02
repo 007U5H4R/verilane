@@ -49,7 +49,7 @@ function RoleButtons({
 }) {
   return (
     <div
-      className={`inline-flex rounded-full border border-border bg-surface p-0.5 ${disabled ? "opacity-60" : ""}`}
+      className={`inline-flex h-11 shrink-0 items-center rounded-full border border-topbar-control-border bg-surface p-1 shadow-[0_1px_2px_rgb(8_47_37/0.05)] ${disabled ? "opacity-60" : ""}`}
       role="group"
       aria-label="Role"
     >
@@ -62,8 +62,10 @@ function RoleButtons({
             disabled={disabled}
             aria-pressed={pressed}
             onClick={() => onChoose?.(r)}
-            className={`min-h-8 rounded-full px-3 text-[13px] disabled:cursor-not-allowed ${
-              pressed ? "bg-brand font-semibold text-on-brand" : "text-text-muted hover:text-text"
+            className={`h-9 rounded-full px-2.5 text-[14px] transition-colors duration-200 disabled:cursor-not-allowed md:px-4 md:text-[15px] ${
+              pressed
+                ? "bg-brand font-semibold text-on-brand shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(8_47_37/0.18)]"
+                : "font-medium text-text-muted hover:text-text"
             }`}
           >
             {ROLE_LABEL[r]}
