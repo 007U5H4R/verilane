@@ -62,7 +62,7 @@ function SortHeader({ k, label, sort, onSort, align }: { k: SortKey; label: stri
  */
 export function InvoicesTable({ rows, sort, onSort }: { rows: InvoiceRow[]; sort: RegisterSort; onSort: (s: RegisterSort) => void }) {
   return (
-    <div className="rounded-lg border border-border bg-surface shadow-card xl:overflow-x-auto max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none">
+    <div className="relative rounded-lg border border-border bg-surface shadow-card xl:overflow-x-auto max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none">
       <table className="w-full border-collapse text-[13px] max-xl:block" aria-label="Invoices" data-sort={`${sort.key}.${sort.desc ? "desc" : "asc"}`}>
         <thead className="border-b border-border bg-surface-sunken max-xl:sr-only">
           <tr>
