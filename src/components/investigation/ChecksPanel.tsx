@@ -11,7 +11,7 @@ import { checkFix, checksSummary, orderChecks } from "./draftActions";
 export function ChecksPanel({ checks, onEdit }: { checks: Check[] | null | undefined; onEdit: () => void }) {
   return (
     <section
-      className="mb-6 rounded-lg border border-border bg-surface p-4"
+      className="mb-6 rounded-lg border border-border glass shadow-card p-4"
       aria-labelledby="checks-title"
       data-testid="checks-panel"
     >

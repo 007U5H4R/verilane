@@ -26,6 +26,9 @@
   --disabled-bg: #ebe8e0;
   --disabled-text: #6b736e;
   --on-brand: #fff;
+  --card-shadow: 0 1px 2px rgb(23 34 28 / 0.04), 0 4px 14px rgb(23 34 28 / 0.06);
+  --canvas-art-opacity: 0.85;
+  --glass: rgb(255 255 255 / 0.62);
   --r-lg: 14px;
   --r-md: 10px;
   --font-ui: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -60,6 +63,9 @@
     --disabled-bg: #222c28;
     --disabled-text: #93a29a;
     --on-brand: #06140d;
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
+    --canvas-art-opacity: 0.18;
+    --glass: rgb(23 32 28 / 0.58);
     color-scheme: dark;
   }
 }
@@ -89,6 +95,9 @@
   --disabled-bg: #222c28;
   --disabled-text: #93a29a;
   --on-brand: #06140d;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
+  --canvas-art-opacity: 0.18;
+  --glass: rgb(23 32 28 / 0.58);
   color-scheme: dark;
 }
 
@@ -120,6 +129,7 @@
   --color-on-brand: var(--on-brand);
   --radius-lg: var(--r-lg);
   --radius-md: var(--r-md);
+  --shadow-card: var(--card-shadow);
   --font-ui: var(--font-ui);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
@@ -141,6 +151,27 @@ body {
   color: var(--text);
   font: 14px/1.5 var(--font-ui);
   -webkit-font-smoothing: antialiased;
+}
+
+/* TASK-37: blurred canvas photo (public/bg/canvas-blur.webp, 6 KB, blur baked
+   in so there is no runtime filter cost), fixed behind everything. z-index -1
+   keeps it under all content; offline it is simply absent (plain canvas). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--canvas-art-opacity);
+  background: url("/bg/canvas-blur.webp") center / cover no-repeat;
+}
+
+/* TASK-37 (Design.md R1): frosted-glass card surface. Translucent fill plus
+   a backdrop blur, so the canvas art reads softly through every card. */
+@utility glass {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
 }
 
 /* In @layer base so text-* utilities win: unlayered, these beat every

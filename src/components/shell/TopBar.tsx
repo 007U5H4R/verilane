@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/shell/ThemeToggle";
 // linked; an unknown route shows no trail rather than a false current page.
 export function TopBar({ crumbs }: { crumbs: Crumb[] }) {
   return (
-    <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-canvas px-4 py-3 md:px-7">
+    <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-canvas/75 px-4 py-3 backdrop-blur-sm md:px-7">
       {crumbs.length > 0 ? (
         <nav aria-label="Breadcrumb" className="mr-auto min-w-0 text-[13px] text-text-muted">
           <ol className="flex flex-wrap items-baseline gap-x-1.5">

@@ -167,7 +167,8 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
         />
       ) : (
         <>
-          <div className="flex flex-col rounded-lg border border-border bg-surface" aria-label="Invoices">
+          {/* TASK-37: separated row-cards, each with its own surface and shadow. */}
+          <div className="flex flex-col gap-2" aria-label="Invoices">
             {table.rows.map((r) => (
               <RowCard
                 key={r.invoice.invoice_id}

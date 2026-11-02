@@ -61,7 +61,7 @@ function FeedGroups({ groups }: { groups: FeedGroup[] }) {
   return (
     <div data-testid="task-feed" className="flex flex-col gap-2">
       {groups.map((group) => (
-        <details key={group.key} className="rounded-lg border border-border bg-surface p-3" data-testid={`feed-${group.key}`}>
+        <details key={group.key} className="rounded-lg border border-border glass shadow-card p-3" data-testid={`feed-${group.key}`}>
           <summary className="cursor-pointer text-sm font-medium text-text">
             {group.items.length === 1
               ? `1 ${group.noun} ${group.verb.one}`

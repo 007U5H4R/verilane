@@ -442,3 +442,13 @@ No real-time 3D, spatial visualization, product configuration/inspection, WebGL/
 ## §27 Product Experience — N/A
 
 Verilane has no authenticated product journey distinct from a public acquisition layer (§2) — there is no signup, onboarding or activation funnel to specify.
+
+## Revision R1 — 2026-11-02 (TASK-37, user override)
+
+The user chose to restyle the whole app closer to the Expensify web reference and to review the running app instead of a mockup. This overrides three frozen rules:
+- **Shadows:** cards get a soft `shadow-card` (token `--card-shadow`, light and dark values). This replaces "no shadows except overlays/menus".
+- **Decorative asset:** a blurred, downscaled Unsplash photo (Bhautik Patel, green glass ribbon; Unsplash license) at `public/bg/canvas-blur.webp` sits fixed behind all content. Opacity is 0.85 in light and 0.18 in dark, set by `--canvas-art-opacity`. It is not precached for offline use.
+- **Frosted glass:** cards use the `glass` utility instead of solid `bg-surface`. It is a translucent `--glass` fill (white at 62% in light, `#17201c` at 58% in dark) with a 16px backdrop blur. Inputs, menus and dialogs keep solid surfaces. KPI tiles, home charts and chart tooltips are glass too; chart bars use a glossy 3D glass gradient (`GlassGradient.tsx`).
+- **Queue rows:** these are now separated row-cards with an 8px gap, replacing the single fused list.
+
+Also: the sidebar and icon rail are now sticky at full viewport height, and the top bar is translucent (`bg-canvas/75` + blur).

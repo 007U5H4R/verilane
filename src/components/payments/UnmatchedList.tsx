@@ -35,10 +35,10 @@ export function UnmatchedList({
   emptyText: string;
 }) {
   if (items.length === 0) {
-    return <p className="rounded-lg border border-border bg-surface p-4 text-[13px] text-text-muted">{emptyText}</p>;
+    return <p className="rounded-lg border border-border glass shadow-card p-4 text-[13px] text-text-muted">{emptyText}</p>;
   }
   return (
-    <ul className="flex flex-col rounded-lg border border-border bg-surface px-4" aria-label={label}>
+    <ul className="flex flex-col rounded-lg border border-border glass shadow-card px-4" aria-label={label}>
       {items.map((item) => (
         <Item key={item.review_id} item={item} email={emails.get(item.message_id)} match={matches.get(item.message_id)} invoices={invoices} />
       ))}
