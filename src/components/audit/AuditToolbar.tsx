@@ -18,12 +18,17 @@ const DATE_LABEL: Record<DatePreset, string> = {
 
 const FIELD = "min-h-9 rounded-md border border-border bg-surface px-2 text-[13px] text-text";
 
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+/**
+ * A sibling <label htmlFor>, not a wrapping one: a wrapping label folds the
+ * <option> text into the label, so "Sort" would also read as User, Module
+ * and Action.
+ */
+function Field({ label, id, children, className }: { label: string; id: string; children: ReactNode; className?: string }) {
   return (
-    <label className={cn("flex min-w-0 flex-col gap-1 text-xs text-text-muted", className)}>
-      {label}
+    <div className={cn("flex min-w-0 flex-col gap-1 text-xs text-text-muted", className)}>
+      <label htmlFor={id}>{label}</label>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -54,10 +59,11 @@ export function AuditToolbar(p: ToolbarProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-card md:p-4" role="search" aria-label="Filter audit log">
       <div className="flex items-end gap-2">
-        <Field label="Search audit log" className="flex-1">
+        <Field label="Search audit log" id="audit-q" className="flex-1">
           <span className="relative flex items-center">
             <Search className="pointer-events-none absolute left-2.5 size-4 text-text-muted" aria-hidden="true" />
             <input
+              id="audit-q"
               type="search"
               value={f.q}
               onChange={(e) => set({ q: e.target.value })}
@@ -79,8 +85,9 @@ export function AuditToolbar(p: ToolbarProps) {
       </div>
 
       <div id="audit-filter-panel" className={cn("grid-cols-2 gap-3 md:grid md:grid-cols-3 lg:grid-cols-6", open ? "grid" : "hidden")}>
-        <Field label="Date">
+        <Field label="Date" id="audit-date">
           <select
+            id="audit-date"
             value={f.date.preset}
             onChange={(e) => {
               const preset = e.target.value as DatePreset;
@@ -97,8 +104,9 @@ export function AuditToolbar(p: ToolbarProps) {
         </Field>
         {f.date.preset === "custom" && (
           <>
-            <Field label="From">
+            <Field label="From" id="audit-from">
               <input
+                id="audit-from"
                 type="date"
                 value={f.date.from ?? ""}
                 max={f.date.to || undefined}
@@ -106,8 +114,9 @@ export function AuditToolbar(p: ToolbarProps) {
                 className={FIELD}
               />
             </Field>
-            <Field label="To">
+            <Field label="To" id="audit-to">
               <input
+                id="audit-to"
                 type="date"
                 value={f.date.to ?? ""}
                 min={f.date.from || undefined}
@@ -117,8 +126,8 @@ export function AuditToolbar(p: ToolbarProps) {
             </Field>
           </>
         )}
-        <Field label="User">
-          <select value={f.actor} onChange={(e) => set({ actor: e.target.value })} className={FIELD}>
+        <Field label="User" id="audit-user">
+          <select id="audit-user" value={f.actor} onChange={(e) => set({ actor: e.target.value })} className={FIELD}>
             <option value="">All users</option>
             {p.actors.map((o) => (
               <option key={o.value} value={o.value}>
@@ -127,8 +136,8 @@ export function AuditToolbar(p: ToolbarProps) {
             ))}
           </select>
         </Field>
-        <Field label="Module">
-          <select value={f.module} onChange={(e) => set({ module: e.target.value as AuditFilters["module"] })} className={FIELD}>
+        <Field label="Module" id="audit-module">
+          <select id="audit-module" value={f.module} onChange={(e) => set({ module: e.target.value as AuditFilters["module"] })} className={FIELD}>
             <option value="">All modules</option>
             {p.modules.map((o) => (
               <option key={o.value} value={o.value}>
@@ -137,8 +146,8 @@ export function AuditToolbar(p: ToolbarProps) {
             ))}
           </select>
         </Field>
-        <Field label="Action">
-          <select value={f.action} onChange={(e) => set({ action: e.target.value })} className={FIELD}>
+        <Field label="Action" id="audit-action">
+          <select id="audit-action" value={f.action} onChange={(e) => set({ action: e.target.value })} className={FIELD}>
             <option value="">All types</option>
             {p.actions.map((o) => (
               <option key={o.value} value={o.value}>
@@ -147,8 +156,8 @@ export function AuditToolbar(p: ToolbarProps) {
             ))}
           </select>
         </Field>
-        <Field label="Sort">
-          <select value={p.sort} onChange={(e) => p.onSort(e.target.value as AuditSort)} className={FIELD}>
+        <Field label="Sort" id="audit-sort">
+          <select id="audit-sort" value={p.sort} onChange={(e) => p.onSort(e.target.value as AuditSort)} className={FIELD}>
             {(Object.keys(SORT_LABEL) as AuditSort[]).map((s) => (
               <option key={s} value={s}>
                 {SORT_LABEL[s]}
