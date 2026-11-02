@@ -109,7 +109,7 @@ export function SidePanel({
             onClick={onClose}
             aria-label="Close"
             data-autofocus
-            className="grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-sunken hover:text-text"
+            className="-m-1 grid size-11 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-sunken hover:text-text"
           >
             <X aria-hidden className="size-4" />
           </button>
