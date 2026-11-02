@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 
-import { AppShell } from "@/components/shell/AppShell";
-import { DataProviderLoader } from "@/components/DataProviderLoader";
+import { GateSkeleton, ShellGate } from "@/components/onboarding/ShellGate";
 import { PwaRegister } from "@/components/PwaRegister";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -70,9 +70,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full">
-        <DataProviderLoader>
-          <AppShell>{children}</AppShell>
-        </DataProviderLoader>
+        {/* TASK-39: ShellGate renders auth routes bare and gates the rest on
+            the guest session. Suspense: it reads the pathname, which suspends
+            while prerendering /invoices/[id]. */}
+        <Suspense fallback={<GateSkeleton />}>
+          <ShellGate>{children}</ShellGate>
+        </Suspense>
         <Toaster />
         <PwaRegister />
       </body>

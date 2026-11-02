@@ -5,6 +5,7 @@ import { InstallChip } from "@/components/shell/InstallChip";
 import { LlmStatusBadge } from "@/components/shell/LlmStatusBadge";
 import { RoleSwitcher } from "@/components/shell/RoleSwitcher";
 import { Breadcrumb } from "@/components/shell/topbar/Breadcrumb";
+import { GuestSlot } from "@/components/shell/topbar/GuestSlot";
 import { SidebarToggle } from "@/components/shell/topbar/SidebarToggle";
 import type { SidebarState } from "@/components/shell/topbar/useSidebarState";
 
@@ -20,7 +21,7 @@ function Divider() {
 }
 
 // TASK-38: sticky premium top bar. DOM order is visual order (TC-064):
-// toggle · breadcrumb · search · LLM · role · theme · bell · avatar.
+// toggle · breadcrumb · search · guest (TASK-39) · LLM · role · theme · bell · avatar.
 // ≥1280 one 76px row with an inline search field; 768–1279 the search is an
 // icon that opens a full-width row under the bar; <768 two rows — menu,
 // current page, demo pill and search, then the controls.
@@ -48,6 +49,7 @@ export function TopBar({
       <Divider />
       <div className="flex basis-full items-center justify-between gap-2 md:ml-auto md:basis-auto md:justify-end md:gap-3 xl:ml-0">
         <div className="flex items-center gap-1.5 md:gap-3">
+          <GuestSlot />
           <LlmStatusBadge />
           <InstallChip />
           <RoleSwitcher />

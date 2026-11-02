@@ -328,3 +328,64 @@ table {
   pointer-events: none;
   background: linear-gradient(90deg, transparent, var(--topbar-wave-edge) 35%, var(--topbar-wave-edge) 80%, transparent);
 }
+
+/* TASK-39: onboarding motion. CSS only (no motion library is installed).
+   Each animation starts from a hidden state and ends at the element's own
+   styles, so the reduced-motion rule above (animation: none) simply shows
+   the final state. One-shot entrances only — nothing loops except the
+   spinner, which reduced motion stops. */
+@keyframes ob-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes ob-depth {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@keyframes ob-slide {
+  from {
+    opacity: 0;
+    transform: translateX(var(--ob-slide-from, 16px));
+  }
+}
+
+@keyframes ob-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ob-rise {
+  animation: ob-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--ob-i, 0) * 70ms);
+}
+
+.ob-depth {
+  animation: ob-depth 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(120ms + var(--ob-i, 0) * 90ms);
+}
+
+.ob-slide {
+  animation: ob-slide 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ob-spinner {
+  animation: ob-spin 800ms linear infinite;
+}
+
+/* TASK-39: soft emerald wash behind the onboarding illustrations. */
+.ob-art-panel {
+  background:
+    radial-gradient(120% 80% at 85% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--mint-pale), var(--surface-sunken));
+}
+
+.ob-paper {
+  filter: drop-shadow(0 -6px 10px rgb(8 47 37 / 0.08));
+}
