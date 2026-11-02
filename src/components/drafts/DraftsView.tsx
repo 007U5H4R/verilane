@@ -9,10 +9,12 @@ import { ErrorState } from "@/components/states/ErrorState";
 import { RowSkeleton } from "@/components/states/RowSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { autopilotEligibility, type AutopilotPolicy } from "@/domain/autopilot";
 import { formatInr, paise } from "@/domain/money";
 import { CHECK_NAMES } from "@/domain/validate";
 import {
   DbContext,
+  useAutopilotPolicy,
   useBlockedDrafts,
   useDraftsAwaitingApproval,
   type DraftAwaitingApproval,
@@ -58,6 +60,7 @@ export function DraftsView() {
 function DraftsBody() {
   const drafts = useDraftsAwaitingApproval();
   const blocked = useBlockedDrafts();
+  const policy = useAutopilotPolicy();
   if (!drafts || !blocked) return <RowSkeleton label="Loading drafts" />;
   if (drafts.length === 0 && blocked.length === 0) return <NoDrafts />;
 
@@ -68,7 +71,7 @@ function DraftsBody() {
       ) : (
         <ul className="flex flex-col" data-state="working" data-testid="draft-list">
           {drafts.map((d) => (
-            <DraftRow key={d.draft.draft_id} {...d} />
+            <DraftRow key={d.draft.draft_id} {...d} policy={policy?.enabled ? policy : undefined} />
           ))}
         </ul>
       )}
@@ -98,7 +101,15 @@ function BlockedDrafts({ drafts }: { drafts: DraftAwaitingApproval[] }) {
   );
 }
 
-function DraftRow({ draft, customer, invoice, blocked = false }: DraftAwaitingApproval & { blocked?: boolean }) {
+function DraftRow({
+  draft,
+  customer,
+  invoice,
+  blocked = false,
+  policy,
+}: DraftAwaitingApproval & { blocked?: boolean; policy?: AutopilotPolicy }) {
+  // TASK-41: with autopilot on, say up front which drafts Copilot will send.
+  const auto = policy ? autopilotEligibility(draft, policy) : null;
   return (
     <li className="border-b border-border py-3" data-testid={blocked ? "blocked-draft-row" : "draft-row"}>
       <Link
@@ -111,6 +122,16 @@ function DraftRow({ draft, customer, invoice, blocked = false }: DraftAwaitingAp
             <span className="font-mono text-xs text-text-muted">{invoice.invoice_number}</span>
           )}
           <span className="text-xs tabular-nums text-text-muted">{formatInr(paise(draft.amount_paise))}</span>
+          {auto &&
+            (auto.eligible ? (
+              <Badge variant="default" data-testid="autopilot-badge">
+                Copilot will send
+              </Badge>
+            ) : (
+              <Badge variant="outline" data-testid="autopilot-badge">
+                Needs you: {auto.reason}
+              </Badge>
+            ))}
         </div>
         {blocked && (
           <ul className="flex flex-wrap gap-1" aria-label="Failed checks">

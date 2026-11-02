@@ -11,6 +11,14 @@
  */
 import { AS_OF_DATE } from "./clock";
 import {
+  AUTOPILOT_KEY,
+  autopilotEligibility,
+  COPILOT_LABEL,
+  isValidCap,
+  MAX_AUTOPILOT_CAP,
+  parsePolicy,
+} from "./autopilot";
+import {
   AS_OF_KEY,
   IMPORT_KINDS,
   InvalidCommand,
@@ -66,7 +74,7 @@ export type TableName = "invoices" | "drafts" | "disputes" | "reviewItems" | "me
  * rejected import is logged as `import_rejected` and a reset as
  * `demo_reset` (TKT-14, TC-057 / TC-060).
  */
-export type AuditAction = Action | "import_rejected" | "demo_reset" | "validation_failure";
+export type AuditAction = Action | "import_rejected" | "demo_reset" | "validation_failure" | "autopilot_held";
 
 
 export interface Command {
@@ -155,11 +163,15 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
   reset_demo: "system",
   switch_role: "system",
   set_as_of: "system",
+  set_autopilot: "system",
+  autopilot_send: "draft",
 };
 
 type Effect = {
   /** Overrides the audited action (defaults to the command's own). */
   action?: AuditAction;
+  /** Overrides the audited actor label (TASK-41: Copilot, never a person). */
+  actor_label?: string;
   summary: string;
   before?: Row;
   after?: Row;
@@ -399,6 +411,70 @@ const HANDLERS: Record<Action, Handler> = {
       summary: `Approved reminder ${ctx.cmd.subject.id}${amountNote(ctx.row)} (simulated send)`,
       before: { status: from },
       after: { status: to },
+    };
+  },
+
+  /**
+   * TASK-41: Copilot sends one low-risk reminder on its own (simulated).
+   * Re-runs the nine checks against the live ledger and the Manager's policy
+   * at Analyst authority. A draft that no longer qualifies is held, with the
+   * re-check stored so it is never retried, and waits for a person.
+   */
+  autopilot_send: async (ctx) => {
+    const policy = parsePolicy((await ctx.tx.get("meta", AUTOPILOT_KEY))?.value);
+    if (!policy.enabled) throw new InvalidCommand("Copilot autopilot is off.");
+    transition("draft", status(ctx.row), "approve");
+    const rechecked = await recheckDraft(ctx, str(ctx.row?.body));
+    if (!rechecked) throw new InvalidCommand("Copilot can only send against the ledger.");
+    const verdict = autopilotEligibility({ ...ctx.row, ...rechecked }, policy);
+    const trace = {
+      authority: "analyst",
+      cap_paise: policy.max_amount_paise,
+      checks: passedNote(rechecked),
+      passed: verdict.passed,
+    };
+    if (!verdict.eligible) {
+      await ctx.tx.put("drafts", { ...ctx.row, ...rechecked, autopilot_hold: verdict.reason });
+      return {
+        action: "autopilot_held",
+        actor_label: COPILOT_LABEL,
+        summary: `Copilot held reminder ${ctx.cmd.subject.id} for a person: ${verdict.reason}`,
+        before: { status: status(ctx.row) },
+        after: { status: status(ctx.row), autopilot: { ...trace, held: verdict.reason } },
+      };
+    }
+    const { from, to } = await step(ctx, "draft", "drafts", ["approve", "send"], {
+      ...rechecked,
+      sent_by: "copilot",
+    });
+    return {
+      actor_label: COPILOT_LABEL,
+      summary: `Copilot auto-sent reminder ${ctx.cmd.subject.id}${amountNote(ctx.row)} (simulated send)`,
+      before: { status: from },
+      after: { status: to, autopilot: trace },
+    };
+  },
+
+  set_autopilot: async ({ tx, payload }) => {
+    if (typeof payload.enabled !== "boolean") {
+      throw new InvalidCommand("Say whether autopilot is on or off.");
+    }
+    if (!isValidCap(payload.max_amount_paise)) {
+      throw new InvalidCommand(
+        `The autopilot cap must be more than ₹0 and at most ${formatInr(MAX_AUTOPILOT_CAP)}.`,
+      );
+    }
+    const prev = parsePolicy((await tx.get("meta", AUTOPILOT_KEY))?.value);
+    const next = { enabled: payload.enabled, max_amount_paise: payload.max_amount_paise };
+    if (prev.enabled === next.enabled && prev.max_amount_paise === next.max_amount_paise) {
+      throw new InvalidCommand("Autopilot is already set that way.");
+    }
+    await tx.put("meta", { key: AUTOPILOT_KEY, value: next });
+    const state = next.enabled ? `on, up to ${formatInr(next.max_amount_paise)}` : "off";
+    return {
+      summary: `Turned Copilot autopilot ${state}`,
+      before: { ...prev },
+      after: { ...next },
     };
   },
 
@@ -669,7 +745,7 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
   const event: AuditEventInput = {
     at: tx.now(),
     actor_role: cmd.actor,
-    actor_label: ROLE_LABEL[cmd.actor],
+    actor_label: effect.actor_label ?? ROLE_LABEL[cmd.actor],
     action: effect.action ?? cmd.type,
     subject: `${cmd.subject.kind}:${cmd.subject.id}`,
     subject_kind: cmd.subject.kind,

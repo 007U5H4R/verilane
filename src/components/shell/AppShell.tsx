@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 
 import { BannerHost } from "@/components/shell/Banner";
@@ -11,6 +12,14 @@ import { crumbsFor, navHrefFor } from "@/components/shell/breadcrumb";
 import { useSidebarState } from "@/components/shell/topbar/useSidebarState";
 import { SeedUpdatePrompt } from "@/components/SeedUpdatePrompt";
 import { useOnline } from "@/lib/useOnline";
+import { useAutopilotPolicy } from "@/store/hooks";
+
+// TASK-41: the runner (and the command path it pulls in) loads only once a
+// Manager switches autopilot on, so it adds nothing to first-load JS.
+const AutopilotRunner = dynamic(() => import("@/components/drafts/AutopilotRunner").then((m) => m.AutopilotRunner));
+function AutopilotGate() {
+  return useAutopilotPolicy()?.enabled ? <AutopilotRunner /> : null;
+}
 
 // TASK-20 (Design.md §13): ≥1024 216px sidebar · 768–1023 72px icon rail ·
 // <768 fixed bottom tabs. DOM order is visual order (20.4): nav column, top
@@ -44,6 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
         <BannerHost offline={!online} />
         <SeedUpdatePrompt />
+        <AutopilotGate />
         <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>
       </div>
       <BottomTabs activeHref={activeHref} />

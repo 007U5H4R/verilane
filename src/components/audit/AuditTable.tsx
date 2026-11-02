@@ -28,7 +28,7 @@ export function Avatar({ entry }: { entry: AuditEntry }) {
       aria-hidden="true"
       className={cn(
         "grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-medium",
-        t === "human" ? "bg-brand-tint text-brand-strong" : t === "system" ? "bg-info-bg text-info" : "bg-surface-sunken text-text-muted",
+        t === "human" ? "bg-brand-tint text-brand-strong" : t === "system" || t === "copilot" ? "bg-info-bg text-info" : "bg-surface-sunken text-text-muted",
       )}
     >
       {initials(entry.actor.name)}
@@ -121,7 +121,7 @@ function Row({ entry: e, onOpen }: { entry: AuditEntry; onOpen: (entry: AuditEnt
           <Avatar entry={e} />
           <span className="flex min-w-0 flex-col">
             <span className="font-semibold text-text">{e.actor.name}</span>
-            {e.actor.type !== "unknown" && <span className="text-[11px] text-text-muted">{e.actor.type === "human" ? "User" : ACTOR_TYPE_LABEL.system}</span>}
+            {e.actor.type !== "unknown" && <span className="text-[11px] text-text-muted">{ACTOR_TYPE_LABEL[e.actor.type]}</span>}
           </span>
         </span>
       </td>

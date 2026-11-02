@@ -28,6 +28,8 @@ export const ACTIONS = [
   "reset_demo",
   "switch_role",
   "set_as_of",
+  "set_autopilot",
+  "autopilot_send",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -119,6 +121,10 @@ const ANALYST_RULES: Record<Action, Rule> = {
   reset_demo: () => ALLOW,
   switch_role: () => ALLOW,
   set_as_of: () => ALLOW,
+  set_autopilot: () => deny("Only a Manager can change Copilot autopilot."),
+  // TASK-41: whichever role has the app open, the handler caps Copilot at
+  // Analyst authority (autopilotEligibility), so the role grants nothing here.
+  autopilot_send: () => ALLOW,
 };
 
 export function can(role: Role, action: Action, subject: Subject): Permission {

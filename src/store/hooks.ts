@@ -6,6 +6,7 @@
 "use client";
 import { createContext, useCallback, useContext } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { AUTOPILOT_KEY, parsePolicy, type AutopilotPolicy } from "@/domain/autopilot";
 import { AS_OF_DATE } from "@/domain/clock";
 import { AS_OF_KEY } from "@/domain/commandConstants";
 import type { AuditEventInput } from "@/domain/commands";
@@ -123,6 +124,16 @@ export function useAsOf(): string {
     [db],
   );
   return typeof stored === "string" ? stored : AS_OF_DATE;
+}
+
+/** The Copilot autopilot policy (`meta.autopilot`, TASK-41), live; `undefined` while loading. */
+export function useAutopilotPolicy(): AutopilotPolicy | undefined {
+  const db = useContext(DbContext);
+  const stored = useLiveQuery(
+    async () => (db ? { value: (await db.meta.get(AUTOPILOT_KEY))?.value } : undefined),
+    [db],
+  );
+  return stored ? parsePolicy(stored.value) : undefined;
 }
 
 /** The persisted demo role (`meta.role`), live; Analyst until it loads. */
