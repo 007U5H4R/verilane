@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, Plus, Rows3, Table2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/states/EmptyState";
@@ -13,53 +15,77 @@ import { InvoiceStatusSchema, PriorityBandSchema } from "@/domain/schema";
 import type { VerilaneDb } from "@/store/db";
 import { formatDate } from "@/domain/clock";
 import { DbContext, useAsOf, useCustomers, usePayments, useQueue } from "@/store/hooks";
+import { cn } from "@/lib/cn";
 import { applyUpdate, initIntent, onUrl } from "./filterIntent";
 import { FiltersPanel, type ApplyFilters } from "./FiltersPanel";
+import { pageWindow, queueKpis, showingRange } from "./queueActions";
+import { QueueKpis } from "./QueueKpis";
 import { DEFAULT_FILTERS, DEFAULT_SORT_DESC, SORT_COLUMNS, parse, type QueueFilters, type SortColumn } from "./queueParams";
-import { RowCard } from "./RowCard";
-import { buildQueueRows, useQueueTable } from "./useQueueTable";
+import { QueueTable, type Density } from "./QueueTable";
+import { PAGE_SIZE, buildQueueRows, useQueueTable, type QueueRow } from "./useQueueTable";
 
+/** Brief order first (TASK-38); invoice no. and status stay reachable (URLs and specs use them). */
 const SORT_LABELS: Record<SortColumn, string> = {
   priority: "Priority",
-  invoice_number: "Invoice no.",
-  customer: "Customer",
-  outstanding: "Outstanding",
   days_overdue: "Days overdue",
+  outstanding: "Outstanding",
+  due_date: "Due date (oldest)",
+  customer: "Customer A–Z",
+  invoice_number: "Invoice no.",
   status: "Status",
 };
+const SORT_ORDER = (Object.keys(SORT_LABELS) as SortColumn[]).filter((c) => SORT_COLUMNS.includes(c));
+
+// Dialogs (and the alert-dialog primitive) load on demand: keeps /queue under its
+// 300 KB first-load budget. They mount only while open.
+const ReminderDialog = dynamic(() => import("./DraftDialogs").then((m) => m.ReminderDialog), { ssr: false });
+const CreateDraftDialog = dynamic(() => import("./DraftDialogs").then((m) => m.CreateDraftDialog), { ssr: false });
 
 /**
- * The Queue (TASK-9): rank-ordered rows with search, facets, sort and
- * 25-row pages, all held in the URL (TC-017), plus the four screen states
+ * The Collections Queue (TASK-9, redesigned TASK-38): KPI cards, search and
+ * facets, a ranked table with selection, sort and numbered pages — filters,
+ * sort and page all held in the URL (TC-017) — plus the four screen states
  * (TC-016). Must render inside <Suspense> (it reads search params).
  */
 export function QueueView() {
   const db = useContext(DbContext);
   const params = useSearchParams();
-  const asOf = useAsOf();
   // E2E-only state override (TP7): a normal build inlines `false` here.
   const forced = process.env.NEXT_PUBLIC_E2E === "1" ? params.get("__state") : null;
 
-  let body;
-  if (forced === "loading") body = <RowSkeleton label="Loading queue" />;
-  else if (forced === "empty") body = <NoData db={db} />;
-  else if (forced === "error" || !db) body = <QueueError />;
-  else body = <QueueBody db={db} params={params.toString()} />;
+  if (forced === "loading") return <Frame><RowSkeleton label="Loading queue" /></Frame>;
+  if (forced === "empty") return <Frame><NoData db={db} /></Frame>;
+  if (forced === "error" || !db) return <Frame><QueueError /></Frame>;
+  return <QueueBody db={db} params={params.toString()} />;
+}
 
+/** Page frame + header. The shell owns the breadcrumb; the header starts at the H1. */
+function Frame({ action, children }: { action?: ReactNode; children: ReactNode }) {
+  const asOf = useAsOf();
   return (
-    <section className="flex flex-col gap-4 p-4 md:p-7" aria-labelledby="queue-title">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 id="queue-title" className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
-            Collections queue
+    <section className="flex min-w-0 flex-col gap-5 p-4 md:p-7" aria-labelledby="queue-title">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1
+            id="queue-title"
+            className="font-display text-[28px] font-semibold leading-tight tracking-tight text-text md:text-[32px]"
+          >
+            Collections Queue
           </h1>
-          <p className="text-text-muted">Ranked by priority.v1 · as of {formatDate(asOf)}</p>
+          {/* Kept verbatim: names the ranking model and the as-of date (settings.spec reads it). */}
+          <p className="text-sm text-text-muted">Ranked by priority.v1 · as of {formatDate(asOf)}</p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/settings#import">Import data</Link>
-        </Button>
+        <div className="flex flex-wrap items-start gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings#import">
+              <Upload aria-hidden className="size-4" />
+              Import data
+            </Link>
+          </Button>
+          {action}
+        </div>
       </header>
-      {body}
+      {children}
     </section>
   );
 }
@@ -143,66 +169,244 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
     };
   }, [allRows, customers, filters.band, filters.status]);
 
-  if (!allRows) return <RowSkeleton label="Loading queue" />;
-  if (allRows.length === 0) return <NoData db={db} />;
+  const kpis = useMemo(() => queueKpis(allRows ?? []), [allRows]);
+
+  // Selection is view state (not in the URL): invoice ids, kept across pages
+  // and filters; ids no longer in the queue simply drop out of `selectedRows`.
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const selectedRows = useMemo(
+    () => (allRows ?? []).filter((r) => selectedIds.has(r.invoice.invoice_id)),
+    [allRows, selectedIds],
+  );
+  const [density, setDensity] = useState<Density>("table");
+  const [reminderRow, setReminderRow] = useState<QueueRow | null>(null);
+  const [batchOpen, setBatchOpen] = useState(false);
+
+  const toggle = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const toggleAll = useCallback((ids: string[], select: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (select) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const count = selectedRows.length;
+  const createDraft = (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        type="button"
+        size="sm"
+        disabled={count === 0}
+        aria-describedby="create-draft-hint"
+        onClick={() => setBatchOpen(true)}
+      >
+        <Plus aria-hidden className="size-4" />
+        Create draft
+      </Button>
+      <p id="create-draft-hint" className="text-xs text-text-muted">
+        {count === 0 ? "Select invoices to draft reminders" : `${count} selected · nothing is sent`}
+      </p>
+    </div>
+  );
+
+  if (!allRows) return <Frame action={createDraft}><RowSkeleton label="Loading queue" /></Frame>;
+  if (allRows.length === 0) return <Frame action={createDraft}><NoData db={db} /></Frame>;
+
+  const range = showingRange(table.page, PAGE_SIZE, table.matched);
 
   return (
-    <div className="flex flex-col gap-4" data-state="working">
-      <FiltersPanel
-        filters={filters}
-        apply={apply}
-        matched={table.matched}
-        total={allRows.length}
-        {...facets}
-      />
-      <SortControl filters={filters} apply={apply} />
-      {table.matched === 0 ? (
-        <EmptyState
-          title="No invoices match these filters"
-          state="empty-filtered"
-          action={
-            <Button variant="outline" size="sm" onClick={() => apply((prev) => ({ ...DEFAULT_FILTERS, sort: prev.sort }), "push")}>
-              Clear filters
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          {/* TASK-37: separated row-cards, each with its own surface and shadow. */}
-          <div className="flex flex-col gap-2" aria-label="Invoices">
-            {table.rows.map((r) => (
-              <RowCard
-                key={r.invoice.invoice_id}
-                invoice={r.invoice}
-                priority={r.priority}
-                customer={r.customer}
-                payments={payments ?? []}
-              />
-            ))}
+    <Frame action={createDraft}>
+      <div className="flex min-w-0 flex-col gap-4" data-state="working">
+        <QueueKpis kpis={kpis} band={filters.band} apply={apply} />
+        <FiltersPanel filters={filters} apply={apply} matched={table.matched} total={allRows.length} {...facets} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <p className="font-medium tabular-nums text-text">
+              {table.matched} {table.matched === 1 ? "invoice" : "invoices"}
+            </p>
+            {selectedIds.size > 0 && (
+              <>
+                <span className="tabular-nums text-text-muted">{count} selected</span>
+                <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+                  Clear selection
+                </Button>
+              </>
+            )}
           </div>
-          <nav aria-label="Pages" className="flex items-center justify-end gap-2 text-[13px] text-text-muted">
-            <span data-testid="page-indicator">
-              Page {table.page} of {table.pageCount}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={table.page <= 1}
-              onClick={() => apply((prev) => ({ ...prev, page: table.page - 1 }), "push")}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={table.page >= table.pageCount}
-              onClick={() => apply((prev) => ({ ...prev, page: table.page + 1 }), "push")}
-            >
-              Next
-            </Button>
-          </nav>
-        </>
+          <div className="flex flex-wrap items-center gap-3">
+            <SortControl filters={filters} apply={apply} />
+            <DensityToggle value={density} onChange={setDensity} />
+          </div>
+        </div>
+        {table.matched === 0 ? (
+          <EmptyState
+            title="No invoices match these filters"
+            state="empty-filtered"
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => apply((prev) => ({ ...DEFAULT_FILTERS, sort: prev.sort }), "push")}
+              >
+                Clear filters
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            <QueueTable
+              rows={table.rows}
+              density={density}
+              selected={selectedIds}
+              onToggle={toggle}
+              onToggleAll={toggleAll}
+              onReminder={setReminderRow}
+            />
+            <Pagination
+              page={table.page}
+              pageCount={table.pageCount}
+              from={range.from}
+              to={range.to}
+              matched={table.matched}
+              go={(p) => apply((prev) => ({ ...prev, page: p }), "push")}
+            />
+          </>
+        )}
+      </div>
+      {reminderRow && <ReminderDialog db={db} row={reminderRow} onClose={() => setReminderRow(null)} />}
+      {batchOpen && (
+        <CreateDraftDialog
+          db={db}
+          rows={selectedRows}
+          open={batchOpen}
+          onOpenChange={setBatchOpen}
+          onDone={clearSelection}
+        />
       )}
+    </Frame>
+  );
+}
+
+function Pagination({
+  page,
+  pageCount,
+  from,
+  to,
+  matched,
+  go,
+}: {
+  page: number;
+  pageCount: number;
+  from: number;
+  to: number;
+  matched: number;
+  go: (page: number) => void;
+}) {
+  return (
+    <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-text-muted">
+      <p className="tabular-nums">
+        Showing {from}–{to} of {matched} <span aria-hidden="true">·</span>{" "}
+        <span data-testid="page-indicator">
+          Page {page} of {pageCount}
+        </span>
+      </p>
+      <div className="flex flex-wrap items-center gap-1">
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => go(page - 1)}>
+          <ChevronLeft aria-hidden className="size-4" />
+          Previous
+        </Button>
+        {pageWindow(page, pageCount).map((p, i) =>
+          p === "gap" ? (
+            <span key={`gap-${i}`} aria-hidden="true" className="px-1">
+              …
+            </span>
+          ) : (
+            <Button
+              key={p}
+              variant="outline"
+              size="sm"
+              aria-label={`Page ${p}`}
+              aria-current={p === page ? "page" : undefined}
+              disabled={p === page}
+              onClick={() => go(p)}
+              className={cn(
+                "min-w-9 tabular-nums",
+                p === page && "border-brand bg-brand text-on-brand disabled:opacity-100",
+              )}
+            >
+              {p}
+            </Button>
+          ),
+        )}
+        <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => go(page + 1)}>
+          Next
+          <ChevronRight aria-hidden className="size-4" />
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
+const DENSITIES: { value: Density; label: string; icon: typeof Table2 }[] = [
+  { value: "table", label: "Table", icon: Table2 },
+  { value: "compact", label: "Compact", icon: Rows3 },
+];
+
+/** Table / Compact row density: a radio group (arrow keys switch, roving tabindex). */
+function DensityToggle({ value, onChange }: { value: Density; onChange: (d: Density) => void }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  function onKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    const i = DENSITIES.findIndex((o) => o.value === value);
+    const n = (i + 1) % DENSITIES.length;
+    onChange(DENSITIES[n]!.value);
+    refs.current[n]?.focus();
+  }
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Row density"
+      onKeyDown={onKey}
+      className="flex rounded-md border border-border bg-surface p-0.5"
+    >
+      {DENSITIES.map((o, i) => {
+        const checked = o.value === value;
+        const Icon = o.icon;
+        return (
+          <button
+            key={o.value}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            tabIndex={checked ? 0 : -1}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "flex min-h-8 items-center gap-1.5 rounded px-2.5 text-[13px] font-medium",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive",
+              checked ? "bg-brand text-on-brand" : "text-text-muted hover:bg-surface-sunken hover:text-text",
+            )}
+          >
+            <Icon aria-hidden className="size-4" />
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -223,7 +427,7 @@ function SortControl({ filters, apply }: { filters: QueueFilters; apply: ApplyFi
           }}
           className="min-h-9 rounded-md border border-border bg-surface px-2 text-text"
         >
-          {SORT_COLUMNS.map((c) => (
+          {SORT_ORDER.map((c) => (
             <option key={c} value={c}>
               {SORT_LABELS[c]}
             </option>

@@ -22,6 +22,7 @@ export const SORT_COLUMNS = [
   "outstanding",
   "days_overdue",
   "status",
+  "due_date",
 ] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 
@@ -33,6 +34,8 @@ export const DEFAULT_SORT_DESC: Record<SortColumn, boolean> = {
   outstanding: true,
   days_overdue: true,
   status: false,
+  // Oldest due date first: the longest-standing invoices lead.
+  due_date: false,
 };
 
 export interface QueueSort {
