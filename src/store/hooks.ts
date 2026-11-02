@@ -7,7 +7,8 @@
 import { createContext, useCallback, useContext } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AS_OF_DATE } from "@/domain/clock";
-import { AS_OF_KEY, type AuditEventInput } from "@/domain/commands";
+import { AS_OF_KEY } from "@/domain/commandConstants";
+import type { AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { approvalState } from "@/domain/draft";
 import { rank, type RankItem } from "@/domain/priority";

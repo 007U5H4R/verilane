@@ -3,15 +3,8 @@
  * Runs the pure command core inside ONE Dexie read-write transaction, so the
  * state write and its audit event commit together or not at all.
  */
-import {
-  InvalidCommand,
-  run,
-  type Command,
-  type DataOps,
-  type Row,
-  type TableName,
-  type Tx,
-} from "@/domain/commands";
+import { InvalidCommand } from "@/domain/commandConstants";
+import type { Command, DataOps, Row, TableName, Tx } from "@/domain/commands";
 import type { IngestResult } from "@/domain/ingest";
 import { isRole, type Role } from "@/domain/permissions";
 import type { Customer, DataIssue, Invoice, Match, Payment, ReviewItem } from "@/domain/schema";
@@ -139,6 +132,10 @@ export async function execute(
         ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
         ...(DRAFT_COMMANDS.has(input.type) || LEDGER_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
       ];
+  // TASK-40: the command core loads on first use, not in every route's first
+  // load. Imported before the transaction opens: a non-Dexie await inside it
+  // would let Dexie auto-commit early.
+  const { run } = await import("@/domain/commands");
   return db.transaction(
     "rw",
     scope,

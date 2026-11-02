@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { IMPORT_KINDS, type ImportKind } from "@/domain/commands";
+import { IMPORT_KINDS, type ImportKind } from "@/domain/commandConstants";
 import {
   checkFile,
   countDataRows,

@@ -3,7 +3,7 @@
 import { useContext, useState } from "react";
 
 import { useCommand } from "@/components/useCommand";
-import { ROLE_LABEL } from "@/domain/commands";
+import { ROLE_LABEL } from "@/domain/commandConstants";
 import { ROLES, type Role } from "@/domain/permissions";
 import { DbContext, useRole } from "@/store/hooks";
 

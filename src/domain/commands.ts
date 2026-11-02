@@ -10,6 +10,15 @@
  * rolls back the writes and the audit event together.
  */
 import { AS_OF_DATE } from "./clock";
+import {
+  AS_OF_KEY,
+  IMPORT_KINDS,
+  InvalidCommand,
+  NOTE_MAX_LENGTH,
+  PermissionDenied,
+  ROLE_LABEL,
+  type ImportKind,
+} from "./commandConstants";
 import { formatInr, paise } from "./money";
 import {
   can,
@@ -37,12 +46,20 @@ import { buildDraft, factsFor, locateFootnotes } from "./draft";
 import { VerifiedFactSchema, type Extraction, type VerifiedFact } from "./schema";
 import { draftContextFor, validate, type DraftSources } from "./validate";
 
+export {
+  AS_OF_KEY,
+  CommandNotImplemented,
+  IMPORT_KINDS,
+  InvalidCommand,
+  NOTE_MAX_LENGTH,
+  PermissionDenied,
+  ROLE_LABEL,
+  type ImportKind,
+} from "./commandConstants";
+
 export type Row = Record<string, unknown>;
 export type TableName = "invoices" | "drafts" | "disputes" | "reviewItems" | "meta";
 
-/** The source tables a CSV import may replace (TASK-19). */
-export const IMPORT_KINDS = ["invoices", "customers", "payments"] as const;
-export type ImportKind = (typeof IMPORT_KINDS)[number];
 
 /**
  * What the audit log records: normally the command's own action, but a
@@ -51,8 +68,6 @@ export type ImportKind = (typeof IMPORT_KINDS)[number];
  */
 export type AuditAction = Action | "import_rejected" | "demo_reset" | "validation_failure";
 
-/** `meta` key of the per-browser as-of override (clock.ts `asOf()`). */
-export const AS_OF_KEY = "asOf";
 
 export interface Command {
   type: Action;
@@ -111,39 +126,6 @@ export interface DataOps {
   recompute(): Promise<void>;
 }
 
-export class PermissionDenied extends Error {
-  constructor(
-    readonly action: Action,
-    readonly reason: string,
-  ) {
-    super(reason);
-    this.name = "PermissionDenied";
-  }
-}
-
-export class InvalidCommand extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidCommand";
-  }
-}
-
-export class CommandNotImplemented extends Error {
-  constructor(
-    readonly action: Action,
-    owner: string,
-  ) {
-    super(`${action} is not available yet (arrives with ${owner}).`);
-    this.name = "CommandNotImplemented";
-  }
-}
-
-export const ROLE_LABEL: Record<Role, string> = {
-  analyst: "Analyst",
-  manager: "Manager",
-};
-
-export const NOTE_MAX_LENGTH = 2000;
 
 const TABLE_FOR: Record<SubjectKind, TableName | null> = {
   invoice: "invoices",

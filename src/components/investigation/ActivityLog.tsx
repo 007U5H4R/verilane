@@ -6,7 +6,7 @@ import { actionLabel, formatAt } from "@/components/audit/AuditRow";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCommand } from "@/components/useCommand";
-import { NOTE_MAX_LENGTH } from "@/domain/commands";
+import { NOTE_MAX_LENGTH } from "@/domain/commandConstants";
 import { useInvoiceActivity } from "@/store/hooks";
 
 /**
