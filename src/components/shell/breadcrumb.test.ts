@@ -5,7 +5,7 @@ import { crumbsFor, navHrefFor } from "./breadcrumb";
 describe("crumbsFor", () => {
   it("names a nav route by its label", () => {
     expect(crumbsFor("/")).toEqual([{ label: "Home" }]);
-    expect(crumbsFor("/queue")).toEqual([{ label: "Queue" }]);
+    expect(crumbsFor("/queue")).toEqual([{ label: "Collection Queue" }]);
     expect(crumbsFor("/payments")).toEqual([{ label: "Payments" }]);
   });
 
@@ -13,7 +13,7 @@ describe("crumbsFor", () => {
   // what the page shows (invoice number / customer); crumbsFor stays pure.
   it("puts an invoice under the Queue, resolved by invoice id", () => {
     expect(crumbsFor("/invoices/INV-042")).toEqual([
-      { label: "Queue", href: "/queue" },
+      { label: "Collection Queue", href: "/queue" },
       { label: "INV-042", resolve: { kind: "invoice", id: "INV-042" } },
     ]);
   });
@@ -34,7 +34,7 @@ describe("crumbsFor", () => {
 
   it("ignores a trailing slash and decodes the id", () => {
     expect(crumbsFor("/invoices/INV%20042/")).toEqual([
-      { label: "Queue", href: "/queue" },
+      { label: "Collection Queue", href: "/queue" },
       { label: "INV 042", resolve: { kind: "invoice", id: "INV 042" } },
     ]);
   });

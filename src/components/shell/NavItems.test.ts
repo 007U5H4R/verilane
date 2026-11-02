@@ -15,3 +15,26 @@ describe("NAV_ITEMS counts", () => {
     expect(byHref["/drafts"]?.draftCount).toBe(true);
   });
 });
+
+// TASK-38 (Design.md R2): nav order, with Audit Log and Settings below the divider.
+describe("NAV_ITEMS order", () => {
+  it("lists the R2 sections in order", () => {
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual([
+      "Home",
+      "Collection Queue",
+      "Disputes",
+      "Email Conversations",
+      "Invoices",
+      "Drafts",
+      "Payments",
+      "Audit Log",
+      "Settings",
+    ]);
+  });
+
+  it("marks only Audit Log and Settings as secondary, and they come last", () => {
+    expect(NAV_ITEMS.filter((i) => i.secondary).map((i) => i.href)).toEqual(["/audit", "/settings"]);
+    const firstSecondary = NAV_ITEMS.findIndex((i) => i.secondary);
+    expect(NAV_ITEMS.slice(firstSecondary).every((i) => i.secondary)).toBe(true);
+  });
+});

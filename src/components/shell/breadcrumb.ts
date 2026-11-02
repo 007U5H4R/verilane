@@ -11,7 +11,7 @@ export type Crumb = { label: string; href?: string; resolve?: CrumbResolve };
 
 /** Detail routes and the nav section they sit under (Design.md mockup: "Queue › INV-…"). */
 const PARENTS: Record<string, { label: string; href: string; kind: CrumbResolve["kind"] }> = {
-  invoices: { label: "Queue", href: "/queue", kind: "invoice" },
+  invoices: { label: "Collection Queue", href: "/queue", kind: "invoice" },
   disputes: { label: "Disputes", href: "/disputes", kind: "dispute" },
 };
 
