@@ -7,7 +7,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { PASSWORD_RULES, validateSignIn, validateSignUp, type FieldErrors } from "@/lib/auth-validation";
 
-import { HeroArt } from "./art";
+import { AuthArt } from "./art";
 import { AuthHeader, Field, GuestButton, OrDivider, PasswordField, SplitLayout, primaryBtn, textLink } from "./primitives";
 
 /**
@@ -18,7 +18,7 @@ import { AuthHeader, Field, GuestButton, OrDivider, PasswordField, SplitLayout, 
 
 function AuthFrame({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <SplitLayout art={<HeroArt compact />} artLabel="Product preview">
+    <SplitLayout art={<AuthArt />} artLabel="Illustration">
       <AuthHeader />
       <div className="flex flex-1 flex-col justify-center py-10">
         <div className="ob-rise w-full max-w-[420px]">

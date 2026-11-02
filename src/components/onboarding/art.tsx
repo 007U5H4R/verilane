@@ -1,31 +1,36 @@
 /**
- * TASK-39: onboarding illustrations, built as real HTML/CSS/SVG.
+ * TASK-39: onboarding illustrations.
  *
- * Higgsfield image generation was unavailable for this task (insufficient
- * credits), so every illustration is a CSS/SVG composition: a layered
- * "paper-cut" backdrop plus product cards. All names and amounts come from
- * the synthetic seed (src/domain seed) — fictional companies, INR.
+ * Each panel is a generated paper-cut illustration (kie.ai, Nano Banana 2;
+ * WebP files in public/onboarding/, originals kept outside the repo) behind
+ * real HTML product cards. The image is decorative; the cards and the
+ * composition's text label carry the meaning. All names and amounts come
+ * from the synthetic seed (src/domain seed) — fictional companies, INR.
  *
  * Each composition is one `role="img"` with a text label; its children are
  * decorative (aria-hidden) so screen readers hear one sentence, not a table.
  */
 import type { CSSProperties, ReactNode } from "react";
+import Image from "next/image";
 import { Check, FileText, Mail, Paperclip, ShieldCheck, Sparkles, TriangleAlert, UserCheck } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 
 const i = (n: number) => ({ "--ob-i": n }) as CSSProperties;
 
-/** Layered paper-cut hills; colours follow the theme tokens. */
-function PaperBackdrop() {
+/** The generated illustration, filling the art panel; dimmed in dark mode. */
+function Backdrop({ src, position = "center", priority = false }: { src: string; position?: string; priority?: boolean }) {
   return (
-    <svg className="absolute inset-0 size-full" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" aria-hidden>
-      <circle cx="470" cy="120" r="70" fill="var(--brand-tint)" />
-      <path d="M0 330C90 280 170 300 250 340s170 50 350-20V600H0Z" fill="var(--mint)" className="ob-paper" />
-      <path d="M0 410c120-60 220-40 300 0s180 40 300-30V600H0Z" fill="var(--accent)" opacity=".28" className="ob-paper" />
-      <path d="M0 480c110-40 210-20 310 20s190 20 290-30V600H0Z" fill="var(--brand)" opacity=".38" className="ob-paper" />
-      <path d="M0 545c140-30 260-10 340 15s170 10 260-20V600H0Z" fill="var(--brand-strong)" opacity=".5" className="ob-paper" />
-    </svg>
+    <Image
+      src={src}
+      alt=""
+      aria-hidden
+      fill
+      priority={priority}
+      sizes="(min-width: 1024px) 50vw, 100vw"
+      className="object-cover dark:brightness-[0.45] dark:saturate-[0.8]"
+      style={{ objectPosition: position }}
+    />
   );
 }
 
@@ -133,19 +138,31 @@ function ChartCard({ n = 0, className }: { n?: number; className?: string }) {
 }
 
 /** Welcome / auth hero: queue + copilot + chart over paper-cut hills. */
-export function HeroArt({ compact = false }: { compact?: boolean }) {
+export function HeroArt() {
   return (
     <>
-      <PaperBackdrop />
+      <Backdrop src="/onboarding/welcome-hero.webp" position="right center" priority />
       <Frame
         label="Illustration: a prioritised collection queue led by Coromandel Foods, an AI Copilot note citing its sources, and a weekly collections chart."
-        className="py-6"
+        className="py-6 sm:mr-auto sm:max-w-[360px] lg:max-w-[380px]"
       >
-        <div className="relative mx-auto w-[92%] sm:w-[84%]">
-          {!compact && <ChartCard n={0} className="absolute -top-6 -left-4 hidden w-44 sm:block" />}
-          <QueueCard n={1} rows={compact ? 3 : 4} className={compact ? "" : "sm:mt-16"} />
+        <div className="relative mx-auto w-[92%] sm:w-full">
+          <ChartCard n={0} className="absolute -top-6 -left-4 hidden w-44 sm:block" />
+          <QueueCard n={1} rows={4} className="sm:mt-16" />
           <CopilotCard n={2} className="relative mt-3 w-[92%] sm:absolute sm:-right-8 sm:-bottom-10 sm:mt-0 sm:w-72" />
         </div>
+      </Frame>
+    </>
+  );
+}
+
+/** Sign-in / sign-up: the secure-arch illustration on its own. */
+export function AuthArt() {
+  return (
+    <>
+      <Backdrop src="/onboarding/auth.webp" priority />
+      <Frame label="Illustration: a layered paper arch around a shield with a keyhole, for secure sign-in." className="min-h-[300px]">
+        {null}
       </Frame>
     </>
   );
@@ -155,7 +172,7 @@ export function HeroArt({ compact = false }: { compact?: boolean }) {
 export function QueueArt() {
   return (
     <>
-      <PaperBackdrop />
+      <Backdrop src="/onboarding/step-prioritise.webp" />
       <Frame label="Illustration: the collection queue ranks overdue invoices by risk, highest first." className="py-4">
         <div className="relative mx-auto w-[92%] sm:w-[82%]">
           <QueueCard n={0} rows={4} />
@@ -184,7 +201,7 @@ const SOURCES = [
 export function DisputeArt() {
   return (
     <>
-      <PaperBackdrop />
+      <Backdrop src="/onboarding/step-context.webp" />
       <Frame label="Illustration: invoice INV-1015 for Coromandel Foods flagged as disputed, with three source records and a human-review marker." className="py-4">
         <div className="relative mx-auto w-[92%] sm:w-[82%]">
           <Card n={0} className="p-4 sm:p-5">
@@ -229,7 +246,7 @@ export function DisputeArt() {
 export function DraftArt() {
   return (
     <>
-      <PaperBackdrop />
+      <Backdrop src="/onboarding/step-prepare.webp" />
       <Frame label="Illustration: an AI-drafted reminder to Aravalli Textiles with cited sources, waiting for a person to edit or approve it. Nothing is sent without approval." className="py-4">
         <div className="relative mx-auto w-[92%] sm:w-[82%]">
           <Card n={0} className="p-4 sm:p-5">
