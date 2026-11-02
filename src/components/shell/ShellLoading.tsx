@@ -3,12 +3,12 @@
 import { Suspense } from "react";
 
 import { AppShell } from "@/components/shell/AppShell";
-import { RowSkeleton } from "@/components/states/RowSkeleton";
+import { ContentSkeleton, ShellSkeleton } from "@/components/states/ShellSkeleton";
 
 function Skeleton() {
   return (
-    <div className="p-4 md:p-7">
-      <RowSkeleton label="Loading workspace" />
+    <div role="status" aria-busy="true" aria-label="Loading workspace" data-state="loading">
+      <ContentSkeleton />
     </div>
   );
 }
@@ -18,11 +18,11 @@ function Skeleton() {
  * paint is the shell plus a skeleton rather than a blank page. The shell's
  * own data hooks already tolerate a missing db. AppShell reads the pathname,
  * which suspends while prerendering a dynamic route (/invoices/[id]); there
- * the bare skeleton paints until the client renders the shell.
+ * the frame skeleton paints until the client renders the shell.
  */
 export function ShellLoading() {
   return (
-    <Suspense fallback={<Skeleton />}>
+    <Suspense fallback={<ShellSkeleton />}>
       <AppShell>
         <Skeleton />
       </AppShell>

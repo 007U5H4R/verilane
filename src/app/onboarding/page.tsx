@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { GateSkeleton } from "@/components/onboarding/ShellGate";
+import { QuietSkeleton } from "@/components/onboarding/ShellGate";
 import { OnboardingView } from "@/components/onboarding/OnboardingView";
 
 export const metadata: Metadata = { title: "Product tour — Verilane" };
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Product tour — Verilane" };
 // under this boundary — same pattern as page.tsx / queue/page.tsx.
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={<GateSkeleton />}>
+    <Suspense fallback={<QuietSkeleton />}>
       <OnboardingView />
     </Suspense>
   );
