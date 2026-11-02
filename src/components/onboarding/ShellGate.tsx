@@ -5,7 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { DataProviderLoader } from "@/components/DataProviderLoader";
 import { AppShell } from "@/components/shell/AppShell";
-import { isAuthRoute, useSession } from "@/lib/session";
+import { requestTour } from "@/components/tour/tourStore";
+import { readTourLink } from "@/components/tour/tourLink";
+import { isAuthRoute, startGuestSession, useSession } from "@/lib/session";
 
 /**
  * TASK-39: decides what wraps a route.
@@ -27,6 +29,17 @@ function GatedApp({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    if (session === undefined) return; // not read yet
+    // TASK-44: the shareable demo link (?tour=1) goes straight into the tour —
+    // a cold visitor becomes a guest instead of seeing /welcome.
+    const link = readTourLink(window.location.search);
+    if (link.tour) {
+      if (session === null) startGuestSession();
+      requestTour();
+      const { pathname, hash } = window.location;
+      window.history.replaceState(window.history.state, "", `${pathname}${link.rest}${hash}`);
+      return;
+    }
     if (session === null) router.replace("/welcome");
   }, [session, router]);
 
