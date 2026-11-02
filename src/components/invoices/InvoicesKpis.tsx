@@ -46,7 +46,7 @@ const CARDS: Card[] = [
 /** Four static figures from the rows in view. No trends: there is no history to compare against. */
 export function InvoicesKpis({ kpis }: { kpis: RegisterKpis }) {
   return (
-    <ul aria-label="Invoice totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <ul aria-label="Invoice totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {CARDS.map((c) => {
         const Icon = c.icon;
         return (

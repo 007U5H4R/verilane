@@ -35,9 +35,9 @@ export function StatusBadge({ status }: { status: InvoiceStatus }) {
 }
 
 const TH = "px-3 py-2.5 text-left text-xs font-medium text-text-muted whitespace-nowrap";
-const TD = "px-3 py-3 align-top max-md:px-0 max-md:py-0.5";
+const TD = "px-3 py-3 align-top max-xl:px-0 max-xl:py-0.5";
 /** Mobile card label (desktop gets it from the column header). */
-const LBL = "md:hidden text-[11px] text-text-muted mr-1.5";
+const LBL = "xl:hidden text-[11px] text-text-muted mr-1.5";
 
 function SortHeader({ k, label, sort, onSort, align }: { k: SortKey; label: string; sort: RegisterSort; onSort: (s: RegisterSort) => void; align?: "right" }) {
   const active = sort.key === k;
@@ -57,14 +57,14 @@ function SortHeader({ k, label, sort, onSort, align }: { k: SortKey; label: stri
 }
 
 /**
- * The register table. One DOM at every width: below md each row restyles as
+ * The register table. One DOM at every width: below xl each row restyles as
  * a stacked card (headers visually hidden, cells labelled inline).
  */
 export function InvoicesTable({ rows, sort, onSort }: { rows: InvoiceRow[]; sort: RegisterSort; onSort: (s: RegisterSort) => void }) {
   return (
-    <div className="rounded-lg border border-border bg-surface shadow-card md:overflow-x-auto max-md:border-0 max-md:bg-transparent max-md:shadow-none">
-      <table className="w-full border-collapse text-[13px] max-md:block" aria-label="Invoices" data-sort={`${sort.key}.${sort.desc ? "desc" : "asc"}`}>
-        <thead className="border-b border-border bg-surface-sunken max-md:sr-only">
+    <div className="rounded-lg border border-border bg-surface shadow-card xl:overflow-x-auto max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none">
+      <table className="w-full border-collapse text-[13px] max-xl:block" aria-label="Invoices" data-sort={`${sort.key}.${sort.desc ? "desc" : "asc"}`}>
+        <thead className="border-b border-border bg-surface-sunken max-xl:sr-only">
           <tr>
             <SortHeader k="number" label="Invoice" sort={sort} onSort={onSort} />
             <th scope="col" className={TH}>Customer</th>
@@ -80,7 +80,7 @@ export function InvoicesTable({ rows, sort, onSort }: { rows: InvoiceRow[]; sort
             </th>
           </tr>
         </thead>
-        <tbody className="max-md:flex max-md:flex-col max-md:gap-3">
+        <tbody className="max-xl:flex max-xl:flex-col max-xl:gap-3">
           {rows.map((r) => (
             <Row key={r.id} row={r} />
           ))}
@@ -98,19 +98,19 @@ function Row({ row: r }: { row: InvoiceRow }) {
     <tr
       data-testid="invoice-row"
       data-invoice-id={r.id}
-      className="border-b border-border last:border-b-0 hover:bg-surface-sunken/60 max-md:grid max-md:grid-cols-2 max-md:gap-x-3 max-md:gap-y-1 max-md:rounded-lg max-md:border max-md:bg-surface max-md:p-3 max-md:shadow-card max-md:last:border-b"
+      className="border-b border-border last:border-b-0 hover:bg-surface-sunken/60 max-xl:grid max-xl:grid-cols-2 md:max-xl:grid-cols-4 md:max-xl:p-4 max-xl:gap-x-3 max-xl:gap-y-1 max-xl:rounded-lg max-xl:border max-xl:bg-surface max-xl:p-3 max-xl:shadow-card max-xl:last:border-b"
     >
-      <td className={cn(TD, "whitespace-nowrap max-md:col-span-1")}>
+      <td className={cn(TD, "whitespace-nowrap max-xl:col-span-1")}>
         <Link href={href} className="font-semibold text-interactive hover:underline">
           {r.number ?? <span className="font-normal italic">Number {NA}</span>}
         </Link>
         {!r.number && <span className="block font-mono text-[11px] text-text-muted">{r.id}</span>}
       </td>
       {/* Mobile cards show the status beside the number; desktop has its own column. */}
-      <td className={cn(TD, "md:hidden max-md:col-start-2 max-md:row-start-1 max-md:text-right")}>
+      <td className={cn(TD, "xl:hidden max-xl:col-start-2 md:max-xl:col-start-4 max-xl:row-start-1 max-xl:text-right")}>
         <StatusBadge status={r.status} />
       </td>
-      <td className={cn(TD, "min-w-0 max-md:col-span-2 md:max-w-[16rem]")}>
+      <td className={cn(TD, "min-w-0 max-xl:col-span-2 xl:max-w-[16rem]")}>
         {r.customerName ? (
           <span className="block text-text">{r.customerName}</span>
         ) : (
@@ -128,15 +128,15 @@ function Row({ row: r }: { row: InvoiceRow }) {
         <span className={LBL}>Due</span>
         {r.dueDate ? formatDate(r.dueDate) : <span className="text-text-muted">{NA}</span>}
       </td>
-      <td className={cn(TD, "whitespace-nowrap text-right tabular-nums text-text max-md:text-left")}>
+      <td className={cn(TD, "whitespace-nowrap text-right tabular-nums text-text max-xl:text-left")}>
         <span className={LBL}>Amount</span>
         {formatInr(r.amount)}
       </td>
-      <td className={cn(TD, "whitespace-nowrap text-right tabular-nums max-md:text-left")}>
+      <td className={cn(TD, "whitespace-nowrap text-right tabular-nums max-xl:text-left")}>
         <span className={LBL}>Balance</span>
         <Balance state={bal} />
       </td>
-      <td className={cn(TD, "max-md:hidden")}>
+      <td className={cn(TD, "max-xl:hidden")}>
         <StatusBadge status={r.status} />
       </td>
       <td className={cn(TD, "whitespace-nowrap tabular-nums")} data-testid="invoice-overdue">
@@ -162,16 +162,16 @@ function Row({ row: r }: { row: InvoiceRow }) {
             {r.disputeIds.length === 1 ? "Disputed" : `${r.disputeIds.length} disputes`}
           </Link>
         ) : (
-          <span className="text-text-muted max-md:hidden">
+          <span className="text-text-muted max-xl:hidden">
             <span aria-hidden="true">—</span>
             <span className="sr-only">No open dispute</span>
           </span>
         )}
       </td>
-      <td className={cn(TD, "text-right max-md:col-span-2 max-md:pt-2 max-md:text-left")}>
+      <td className={cn(TD, "text-right max-xl:col-span-2 max-xl:pt-2 max-xl:text-left")}>
         <Link
           href={href}
-          className="inline-flex min-h-11 items-center gap-1 rounded-md text-xs font-medium whitespace-nowrap text-interactive hover:underline md:min-h-0"
+          className="inline-flex min-h-11 items-center gap-1 rounded-md text-xs font-medium whitespace-nowrap text-interactive hover:underline xl:min-h-0"
           aria-label={`Investigate invoice ${r.number ?? r.id}`}
         >
           Investigate
