@@ -11,6 +11,7 @@ import { QueueCount } from "@/components/shell/QueueCount";
 import { WorkspaceCard } from "@/components/shell/WorkspaceCard";
 import { DemoDataCard } from "@/components/shell/sidebar/DemoDataCard";
 import { SidebarWaves } from "@/components/shell/sidebar/SidebarWaves";
+import { navTourId } from "@/components/tour/navTarget";
 
 // TASK-38 V2 (premium sidebar): 272px dark-emerald rail — brand link, workspace
 // card, primary nav, a divider, secondary nav, then the Demo Data card over
@@ -63,6 +64,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
               )}
               <Link
                 href={item.href}
+                data-tour={navTourId(item.href)}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex h-[42px] w-full flex-none items-center gap-4 rounded-[18px] border px-4 text-[15px] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rail-mint motion-reduce:transition-none [@media(min-height:1160px)]:h-[54px] [@media(min-height:1160px)]:rounded-[20px] [@media(min-height:1160px)]:text-[16px] [@media(min-height:880px)_and_(max-height:1159px)]:h-[44px] ${
                   isActive

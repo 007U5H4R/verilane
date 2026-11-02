@@ -34,6 +34,7 @@ export function BottomTabs({ activeHref }: { activeHref: string }) {
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.href === "/queue" ? "tab-queue" : undefined}
               aria-current={isActive ? "page" : undefined}
               className={`${TAB_CLASS} ${isActive ? ACTIVE_CLASS : ""}`}
             >
@@ -46,6 +47,7 @@ export function BottomTabs({ activeHref }: { activeHref: string }) {
           type="button"
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
+          data-tour="nav-more"
           onClick={() => setMoreOpen(true)}
           className={`${TAB_CLASS} ${moreActive ? ACTIVE_CLASS : ""}`}
         >

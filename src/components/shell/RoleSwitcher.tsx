@@ -52,6 +52,7 @@ function RoleButtons({
       className={`inline-flex h-11 shrink-0 items-center rounded-full border border-topbar-control-border bg-surface p-1 shadow-[0_1px_2px_rgb(8_47_37/0.05)] ${disabled ? "opacity-60" : ""}`}
       role="group"
       aria-label="Role"
+      data-tour="role-switcher"
     >
       {ROLES.map((r) => {
         const pressed = r === role;

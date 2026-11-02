@@ -80,7 +80,7 @@ export function AuditTable({
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-card max-md:border-0 max-md:bg-transparent max-md:shadow-none">
-      <table className="w-full border-collapse text-[13px] max-md:block" data-sort={sort} data-page-size={pageSize} aria-label="Audit events">
+      <table className="w-full border-collapse text-[13px] max-md:block" data-sort={sort} data-page-size={pageSize} aria-label="Audit events" data-tour="audit-table">
         <thead className="border-b border-border bg-surface-sunken max-md:sr-only">
           <tr>
             <th scope="col" className={TH}>

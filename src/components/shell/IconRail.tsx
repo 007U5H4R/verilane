@@ -9,6 +9,7 @@ import { NAV_ITEMS } from "@/components/shell/NavItems";
 import { QueueCount } from "@/components/shell/QueueCount";
 import { RailDemoData } from "@/components/shell/sidebar/RailDemoData";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { navTourId } from "@/components/tour/navTarget";
 
 // TASK-20.1 / TASK-38: the 72px compact rail — 768–1023px, and on desktop
 // when AppShell's toggle collapses the sidebar. Labels live in a tooltip and
@@ -41,6 +42,7 @@ export function IconRail({ activeHref }: { activeHref: string }) {
                 <TooltipTrigger asChild>
                   <Link
                     href={item.href}
+                    data-tour={navTourId(item.href)}
                     aria-label={item.label}
                     aria-describedby={hasCount ? countId : undefined}
                     aria-current={isActive ? "page" : undefined}

@@ -35,7 +35,7 @@ export function RowCard({
   const disputeId = excluded ? /\[dispute (D-[^\]]+)\]/.exec(priority.reason)?.[1] : undefined;
 
   return (
-    <div className="relative">
+    <div className="relative" data-tour={`queue-row-${invoice.invoice_id}`}>
       <a
         href={`/invoices/${invoice.invoice_id}`}
         data-excluded={excluded || undefined}

@@ -4,6 +4,7 @@ import type { Crumb } from "@/components/shell/breadcrumb";
 import { InstallChip } from "@/components/shell/InstallChip";
 import { LlmStatusBadge } from "@/components/shell/LlmStatusBadge";
 import { RoleSwitcher } from "@/components/shell/RoleSwitcher";
+import { DemoButton } from "@/components/tour/DemoButton";
 import { Breadcrumb } from "@/components/shell/topbar/Breadcrumb";
 import { GuestSlot } from "@/components/shell/topbar/GuestSlot";
 import { SidebarToggle } from "@/components/shell/topbar/SidebarToggle";
@@ -52,6 +53,7 @@ export function TopBar({
           <GuestSlot />
           <LlmStatusBadge />
           <InstallChip />
+          <DemoButton />
           <RoleSwitcher />
         </div>
         <Divider />
