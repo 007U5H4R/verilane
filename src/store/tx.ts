@@ -137,7 +137,7 @@ export async function execute(
     : [
         // priorities + dataIssues: derived tables a command may touch (R11).
         ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
-        ...(DRAFT_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
+        ...(DRAFT_COMMANDS.has(input.type) || RECONCILE_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
       ];
   return db.transaction(
     "rw",
@@ -153,6 +153,8 @@ export async function execute(
 
 /** Draft commands re-run the nine checks, so they also read the ledger (TASK-15). */
 const DRAFT_COMMANDS: ReadonlySet<string> = new Set(["generate_draft", "edit_draft", "submit_draft", "approve_draft"]);
+/** TASK-38: verify / propose-link read the ledger and matches (never write them). */
+const RECONCILE_COMMANDS: ReadonlySet<string> = new Set(["reconcile_flag", "reconcile_decide"]);
 const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractions, db.matches];
 
 /** Everything the nine draft checks read, as of the persisted "today". */
