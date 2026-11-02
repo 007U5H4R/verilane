@@ -43,6 +43,8 @@
   --rail-reset-hover: #e9f8ef;
   --rail-reset-pressed: #cde8d8;
   --rail-reset-text: #083a2b;
+  /* lucide rotate-cw, used as a mask on the sidebar's Reset Demo button. */
+  --rail-reset-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/svg%3E");
   --high: #b42318;
   --high-bg: #fdecea;
   --med: #8a5a00;

@@ -31,7 +31,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
         className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(ellipse_at_50%_0%,rgb(33_132_95/0.18),transparent_70%)]"
       />
       <SidebarWaves />
-      <div className="relative flex flex-none flex-col px-4 pt-3.5 [@media(min-height:1160px)]:pt-8 [@media(min-height:880px)_and_(max-height:1159px)]:pt-5">
+      <div className="relative flex flex-none flex-col px-4 pt-3.5 [@media(min-height:1160px)]:pt-8 [@media(min-height:880px)_and_(max-height:1159px)]:pt-4">
         <Link
           href="/"
           aria-label="Verilane home"
@@ -39,18 +39,18 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
         >
           <LogoCard />
         </Link>
-        <p className="mt-2 flex items-center gap-3 text-[13px] font-medium tracking-[0.2px] text-rail-secondary [@media(min-height:1160px)]:mt-5 [@media(min-height:1160px)]:text-[15px] [@media(min-height:880px)_and_(max-height:1159px)]:mt-3 [@media(min-height:880px)_and_(max-height:1159px)]:text-[14px]">
+        <p className="mt-2 flex items-center gap-3 text-[13px] font-medium tracking-[0.2px] text-rail-secondary [@media(min-height:1160px)]:mt-5 [@media(min-height:1160px)]:text-[15px] [@media(min-height:880px)_and_(max-height:1159px)]:mt-2.5 [@media(min-height:880px)_and_(max-height:1159px)]:text-[14px]">
           <span aria-hidden="true" className="h-px flex-1 bg-rail-mint/35" />
           AR Collections Copilot
           <span aria-hidden="true" className="h-px flex-1 bg-rail-mint/35" />
         </p>
-        <div className="mt-2.5 [@media(min-height:1160px)]:mt-7 [@media(min-height:880px)_and_(max-height:1159px)]:mt-4">
+        <div className="mt-2.5 [@media(min-height:1160px)]:mt-7 [@media(min-height:880px)_and_(max-height:1159px)]:mt-3">
           <WorkspaceCard />
         </div>
       </div>
       <nav
         aria-label="Main"
-        className="relative mt-2.5 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1 [scrollbar-width:thin] [@media(min-height:1160px)]:mt-6 [@media(min-height:1160px)]:gap-1.5 [@media(min-height:880px)_and_(max-height:1159px)]:mt-3.5"
+        className="relative mt-2.5 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1 [scrollbar-width:thin] [@media(min-height:1160px)]:mt-6 [@media(min-height:1160px)]:gap-1.5 [@media(min-height:880px)_and_(max-height:1159px)]:mt-3"
       >
         {NAV_ITEMS.map((item, i) => {
           const isActive = item.href === activeHref;
@@ -84,7 +84,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
           );
         })}
       </nav>
-      <div className="relative flex-none px-4 pb-3 pt-2.5 [@media(min-height:1160px)]:pb-14 [@media(min-height:1160px)]:pt-5 [@media(min-height:880px)_and_(max-height:1159px)]:pb-4 [@media(min-height:880px)_and_(max-height:1159px)]:pt-3">
+      <div className="relative flex-none px-4 pb-3 pt-2.5 [@media(min-height:1160px)]:pb-12 [@media(min-height:1160px)]:pt-4 [@media(min-height:880px)_and_(max-height:1159px)]:pb-4 [@media(min-height:880px)_and_(max-height:1159px)]:pt-2.5">
         <DemoDataCard />
       </div>
     </aside>

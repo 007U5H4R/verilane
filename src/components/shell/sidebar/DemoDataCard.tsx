@@ -5,7 +5,26 @@ import { CalendarDays, Database } from "lucide-react";
 import { AsOfLabel } from "@/components/shell/AsOfLabel";
 import { ResetDialog } from "@/components/settings/ResetDialog";
 
-import styles from "./DemoDataCard.module.css";
+/*
+ * Restyles the shared ResetDialog trigger (Settings owns it) as the pale-mint
+ * "Reset Demo" button without forking the reset path. Descendant variants
+ * (`.x button`, specificity 0,1,1) outrank the Button's own single-class
+ * utilities. Not a CSS module: next.config's `*.css` Turbopack rule emits
+ * `.module.css` files as global CSS, so module class names come back undefined.
+ */
+const RESET_BUTTON = [
+  "[&_button]:h-11 [&_button]:w-full [&_button]:gap-2.5 [&_button]:rounded-[17px] [&_button]:border-transparent",
+  "[&_button]:bg-rail-reset [&_button]:text-[15px] [&_button]:font-[650] [&_button]:text-rail-reset-text",
+  "[&_button]:transition-[background-color,box-shadow] [&_button]:duration-180 motion-reduce:[&_button]:transition-none",
+  "[&_button:hover:not(:disabled)]:bg-rail-reset-hover [&_button:hover:not(:disabled)]:shadow-[0_0_0_3px_rgb(142_215_176/0.18)]",
+  "[&_button:active:not(:disabled)]:bg-rail-reset-pressed",
+  "[&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-rail-mint",
+  "[&_button]:before:size-[18px] [&_button]:before:flex-none [&_button]:before:bg-current [&_button]:before:content-['']",
+  "[&_button]:before:[mask:var(--rail-reset-icon)_center/contain_no-repeat]",
+  "[@media(min-height:880px)_and_(max-height:1159px)]:[&_button]:h-12",
+  "[@media(min-height:1160px)]:[&_button]:h-[54px] [@media(min-height:1160px)]:[&_button]:text-[16px]",
+  "[&_[role=status]]:text-[12px] [&_[role=status]]:text-rail-secondary",
+].join(" ");
 
 /**
  * TASK-38: the sidebar's Demo Data card. The as-of date is the live
@@ -38,7 +57,7 @@ export function DemoDataCard() {
         <CalendarDays className="size-4 flex-none" aria-hidden="true" />
         <AsOfLabel className="text-[13px] font-medium tabular-nums [@media(min-height:1160px)]:text-[14px]" />
       </div>
-      <div className={`mt-0.5 ${styles.reset}`}>
+      <div className={`mt-0.5 ${RESET_BUTTON}`}>
         <ResetDialog label="Reset Demo" size="sm" />
       </div>
     </section>
