@@ -1,15 +1,18 @@
 "use client";
 
+import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
+
+import { cn } from "@/lib/cn";
 
 const STORAGE_KEY = "verilane-theme";
 // Picking "Match system" may leave data-theme unchanged, so announce it.
 const CHANGE_EVENT = "verilane-theme-change";
 type Choice = "light" | "dark" | "system";
-const CHOICES: { value: Choice; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "Match system" },
+const CHOICES: { value: Choice; label: string; icon: LucideIcon }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "Match system", icon: Monitor },
 ];
 
 function systemTheme(): "light" | "dark" {
@@ -62,19 +65,31 @@ export function ThemeControl() {
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="sr-only">Theme</legend>
-      <div className="flex flex-wrap gap-4">
-        {CHOICES.map((c) => (
-          <label key={c.value} className="flex min-h-9 items-center gap-2 text-[13px] text-text">
-            <input
-              type="radio"
-              name="theme"
-              value={c.value}
-              checked={choice === c.value}
-              onChange={() => pick(c.value)}
-            />
-            {c.label}
-          </label>
-        ))}
+      <div className="grid grid-cols-3 gap-2">
+        {CHOICES.map((c) => {
+          const on = choice === c.value;
+          const Icon = c.icon;
+          return (
+            <label
+              key={c.value}
+              className={cn(
+                "flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-center text-[13px] text-text transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand",
+                on ? "border-brand bg-brand-tint font-medium" : "border-border bg-surface hover:bg-surface-sunken",
+              )}
+            >
+              <input
+                type="radio"
+                name="theme"
+                value={c.value}
+                checked={on}
+                onChange={() => pick(c.value)}
+                className="sr-only"
+              />
+              <Icon aria-hidden className={cn("size-4", on ? "text-brand" : "text-text-muted")} />
+              {c.label}
+            </label>
+          );
+        })}
       </div>
     </fieldset>
   );

@@ -184,7 +184,7 @@ test("TC-077: a seed version bump evicts the old cache and serves the new seed",
   // Reset after the bump re-seeds from the new cache's data.
   const prompt = page.getByRole("status").filter({ hasText: "New demo data available" });
   await prompt.getByRole("button", { name: "Reset" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "Reset demo data?" });
+  const dialog = page.getByRole("alertdialog", { name: "Reset workspace demo data?" });
   await dialog.getByRole("button", { name: "Reset", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText("New demo data available")).toHaveCount(0);

@@ -22,11 +22,15 @@ async function openSettings(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
 }
 
-async function importFile(page: Page, table: string, file: string) {
+// TASK-38: picking a file previews it (an invalid file is rejected and
+// audited on pick); a valid file imports only after "Confirm import".
+async function importFile(page: Page, table: string, file: string, { valid = true } = {}) {
   const section = page.locator("#import");
   await section.getByLabel("Table").selectOption({ label: table });
   await section.getByLabel("CSV file").setInputFiles(path.join(FIXTURES, file));
+  if (!valid) return;
   await section.getByRole("button", { name: "Import" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Confirm import" }).click();
 }
 
 /** Queue page-1 invoice ids, in rendered order. */
@@ -39,7 +43,7 @@ test("TC-057: a bad invoices file is rejected whole, with a row/field/reason lis
   await openSettings(page);
   const before = await page.evaluate(() => window.__verilane!.db.invoices.count());
 
-  await importFile(page, "Invoices", "bad-invoices.csv");
+  await importFile(page, "Invoices", "bad-invoices.csv", { valid: false });
 
   const errors = page.getByTestId("import-errors");
   await expect(errors).toBeVisible();
@@ -100,7 +104,7 @@ test("TC-060: Reset behind a confirmation restores the fresh seed", async ({ pag
   const section = page.locator("#reset");
   // Cancel changes nothing.
   await section.getByRole("button", { name: "Reset demo data" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "Reset demo data?" });
+  const dialog = page.getByRole("alertdialog", { name: "Reset workspace demo data?" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toHaveCount(0);
@@ -143,7 +147,7 @@ test("TC-060: the seed-update prompt's Reset uses the same confirmed path", asyn
 
   const prompt = page.getByRole("status").filter({ hasText: "New demo data available" });
   await prompt.getByRole("button", { name: "Reset" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "Reset demo data?" });
+  const dialog = page.getByRole("alertdialog", { name: "Reset workspace demo data?" });
   await dialog.getByRole("button", { name: "Reset", exact: true }).click();
   // The open dialog hides the page from the a11y tree, so wait for it to
   // close before checking the prompt has gone.

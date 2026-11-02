@@ -60,7 +60,7 @@ describe("toCsv — what the export writes", () => {
         po_number: null,
       },
     ]);
-    const [, line] = csv.split("\r\n");
+    const [, line = ""] = csv.split("\r\n");
     expect(line.split(",")[6]).toBe("12500050");
   });
 
@@ -75,7 +75,7 @@ describe("toCsv — what the export writes", () => {
     "escapes the formula-like cell %j",
     (value) => {
       const csv = toCsv("audit", [{ summary: value }]);
-      const cell = Papa.parse<string[]>(csv).data[1][0];
+      const cell = Papa.parse<string[]>(csv).data[1]?.[0] ?? "";
       expect(cell.startsWith("'")).toBe(true);
       expect(cell.slice(1)).toBe(value);
     },

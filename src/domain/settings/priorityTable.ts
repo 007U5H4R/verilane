@@ -109,17 +109,26 @@ export const PRIORITY_FACTOR_SPECS: readonly FactorSpec[] = [
 ];
 
 /** The score bands, as the engine applies them after no gate fires. */
-export const PRIORITY_BANDS: readonly { band: Extract<PriorityBand, "high" | "medium" | "low">; label: string; min: number; max: number | null }[] = [
-  { band: "high", label: "High", min: 55, max: null },
-  { band: "medium", label: "Medium", min: 30, max: 54 },
-  { band: "low", label: "Low", min: 0, max: 29 },
+export interface BandSpec {
+  band: Extract<PriorityBand, "high" | "medium" | "low">;
+  label: string;
+  min: number;
+  max: number | null;
+}
+const HIGH_BAND: BandSpec = { band: "high", label: "High", min: 55, max: null };
+const MEDIUM_BAND: BandSpec & { max: number } = { band: "medium", label: "Medium", min: 30, max: 54 };
+const LOW_BAND: BandSpec & { max: number } = { band: "low", label: "Low", min: 0, max: 29 };
+export const PRIORITY_BANDS: readonly [BandSpec, BandSpec & { max: number }, BandSpec & { max: number }] = [
+  HIGH_BAND,
+  MEDIUM_BAND,
+  LOW_BAND,
 ];
 
 export function bandForScore(score: number): "high" | "medium" | "low" {
-  return (PRIORITY_BANDS.find((b) => score >= b.min && (b.max === null || score <= b.max)) ?? PRIORITY_BANDS[2]).band;
+  return (PRIORITY_BANDS.find((b) => score >= b.min && (b.max === null || score <= b.max)) ?? LOW_BAND).band;
 }
 
-export function bandRangeLabel(b: (typeof PRIORITY_BANDS)[number]): string {
+export function bandRangeLabel(b: BandSpec): string {
   if (b.max === null) return `${b.min}+`;
   if (b.min === 0) return `<${b.max + 1}`;
   return `${b.min}–${b.max}`;

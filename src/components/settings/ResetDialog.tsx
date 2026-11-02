@@ -1,5 +1,6 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
 import { useContext, useState } from "react";
 import { toast } from "sonner";
 
@@ -14,6 +15,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/components/investigation/DocumentCard";
+import { AS_OF_DATE } from "@/domain/clock";
+import { cn } from "@/lib/cn";
 import { resetDemo } from "@/store/dataCommands";
 import { DbContext } from "@/store/hooks";
 import { useOnline } from "@/lib/useOnline";
@@ -27,10 +31,13 @@ export function ResetDialog({
   size = "sm",
   label = "Reset demo data",
   onReset,
+  tone = "neutral",
 }: {
   size?: "sm" | "default";
   label?: string;
   onReset?: () => void;
+  /** "danger": the red-outline trigger Settings uses (TASK-38). */
+  tone?: "neutral" | "danger";
 }) {
   const db = useContext(DbContext);
   const [open, setOpen] = useState(false);
@@ -56,7 +63,14 @@ export function ResetDialog({
     <AlertDialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
       <div className="flex flex-col gap-1.5">
         <AlertDialogTrigger asChild>
-          <Button type="button" variant="outline" size={size} disabled={!db || !online}>
+          <Button
+            type="button"
+            variant="outline"
+            size={size}
+            disabled={!db || !online}
+            className={cn(tone === "danger" && "border-high/60 text-high hover:bg-high-bg")}
+          >
+            {tone === "danger" && <RotateCcw aria-hidden />}
             {label}
           </Button>
         </AlertDialogTrigger>
@@ -68,12 +82,19 @@ export function ResetDialog({
       </div>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset demo data?</AlertDialogTitle>
+          <AlertDialogTitle>Reset workspace demo data?</AlertDialogTitle>
           <AlertDialogDescription>
-            This replaces every invoice, note, draft, dispute and audit entry in this browser with a fresh copy of the demo
-            set. The as-of date returns to its default. Your role is kept. This can’t be undone.
+            This will restore the original synthetic dataset and clear user-created demo changes.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <ul className="flex list-disc flex-col gap-1 pl-5 text-[13px] text-text">
+          <li>Invoices, customers, payments and emails reload from the shipped demo set, replacing any imports.</li>
+          <li>Notes, drafts, disputes and review decisions are cleared; extraction results and priorities are recomputed.</li>
+          <li>The audit log is cleared; the reset becomes its first entry.</li>
+          <li>The as-of date returns to its default ({formatDate(AS_OF_DATE)}).</li>
+          <li>Your role and theme are kept.</li>
+        </ul>
+        <p className="text-[13px] font-medium text-text">This can’t be undone.</p>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
           <Button type="button" variant="destructive" onClick={confirm} disabled={busy}>
