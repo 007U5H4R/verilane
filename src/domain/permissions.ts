@@ -19,6 +19,7 @@ export const ACTIONS = [
   "mark_disputed",
   "dispute_transition",
   "resolve_dispute",
+  "assign_dispute",
   "dismiss_review",
   "action_review",
   "import_csv",
@@ -92,6 +93,7 @@ const ANALYST_RULES: Record<Action, Rule> = {
   dispute_transition: () => ALLOW,
   resolve_dispute: () =>
     deny("Only a Manager can resolve or reject a dispute."),
+  assign_dispute: () => ALLOW,
   dismiss_review: (s) => {
     if (s.review_kind === "reconciliation") {
       return deny("Only a Manager can dismiss a reconciliation item.");

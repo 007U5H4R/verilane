@@ -38,11 +38,14 @@ test("TC-053: disputes list shows every dispute with its provenance, and the sid
   const facts = await disputeFacts(page);
   test.skip(facts.total === 0, "seed carries no disputed/duplicate emails to assert against");
 
-  await expect(page.getByTestId("dispute-row")).toHaveCount(facts.total);
+  // TASK-38: the list pages six disputes at a time.
+  await expect(page.getByTestId("dispute-row")).toHaveCount(Math.min(facts.total, 6));
   await expect(page.getByTestId("dispute-count")).toHaveText(String(facts.open));
 
   if (facts.withEmail.length > 0) {
     const { dispute, email } = facts.withEmail[0]!;
+    // TASK-38: the row may be on a later page, so search for it first.
+    await page.getByPlaceholder("Search by customer, invoice no., or keyword...").fill(dispute.dispute_id);
     const row = page.getByTestId("dispute-row").filter({ hasText: dispute.claim_text });
     await expect(row.getByTestId("dispute-provenance")).toHaveText(`${email!.from_address} · ${email!.subject}`);
   }

@@ -42,6 +42,7 @@ const BASELINE = {
   mark_disputed: { subject: inv, analyst: true, manager: true },
   dispute_transition: { subject: disp, analyst: true, manager: true },
   resolve_dispute: { subject: disp, analyst: false, manager: true },
+  assign_dispute: { subject: disp, analyst: true, manager: true },
   dismiss_review: { subject: review(), analyst: true, manager: true },
   action_review: { subject: review(), analyst: true, manager: true },
   import_csv: { subject: sys, analyst: true, manager: true },

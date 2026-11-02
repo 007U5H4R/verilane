@@ -6,9 +6,13 @@ import { useParams, useSearchParams } from "next/navigation";
 
 import { ErrorState } from "@/components/states/ErrorState";
 import { RowSkeleton } from "@/components/states/RowSkeleton";
-import { Badge } from "@/components/ui/badge";
-import { DbContext, useDispute } from "@/store/hooks";
-import { DISPUTE_STATUS_LABELS, DISPUTE_STATUS_VARIANT, DISPUTE_TYPE_LABELS } from "./DisputeLabels";
+import { Button } from "@/components/ui/button";
+import { DbContext } from "@/store/hooks";
+import { AssignMenu } from "./AssignMenu";
+import { DisputeInvestigation } from "./DisputeInvestigation";
+import { ResolveDialog } from "./ResolveDialog";
+import { useAssignDispute } from "./useAssignDispute";
+import { useDisputeCases } from "./useDisputeCases";
 
 export function DisputeDetailSkeleton() {
   return (
@@ -19,8 +23,8 @@ export function DisputeDetailSkeleton() {
 }
 
 /**
- * Dispute detail (TASK-17.3, Design.md §14): claim text, email provenance
- * and AI recommendation for one dispute. No `generateStaticParams` (dispute
+ * Dispute detail (TASK-17.3, redesigned in TASK-38): the full investigation
+ * for one dispute, with assign and resolve. No `generateStaticParams` (dispute
  * ids only exist in the browser's IndexedDB), so the id is read
  * client-side with `useParams()` inside `<Suspense>`.
  */
@@ -41,7 +45,7 @@ export function DisputeDetailView() {
     );
   }
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <DisputeBoundary key={attempt} onRetry={() => setAttempt((n) => n + 1)}>
         <DisputeBody id={id} />
       </DisputeBoundary>
@@ -50,9 +54,12 @@ export function DisputeDetailView() {
 }
 
 function DisputeBody({ id }: { id: string }) {
-  const found = useDispute(id);
-  if (found === undefined) return <DisputeDetailSkeleton />;
-  if (found === null) {
+  const cases = useDisputeCases();
+  const assign = useAssignDispute();
+  const [resolving, setResolving] = useState(false);
+  if (cases === undefined) return <DisputeDetailSkeleton />;
+  const item = cases.find((c) => c.dispute.dispute_id === id);
+  if (!item) {
     return (
       <div data-state="not-found" className="flex flex-col gap-2">
         <p className="text-text">Dispute not found.</p>
@@ -63,48 +70,42 @@ function DisputeBody({ id }: { id: string }) {
     );
   }
 
-  const { dispute, customer, invoice, email } = found;
+  const { dispute } = item;
   return (
-    <div className="flex flex-col gap-4" data-state="working">
-      <Link href="/disputes" className="text-sm text-brand-strong underline">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4" data-state="working">
+      <Link href="/disputes" className="w-fit text-sm text-brand-strong underline">
         ← Back to disputes
       </Link>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={DISPUTE_STATUS_VARIANT[dispute.status]} data-testid="dispute-status">
-          {DISPUTE_STATUS_LABELS[dispute.status]}
-        </Badge>
-        <span className="text-xs text-text-muted">{DISPUTE_TYPE_LABELS[dispute.type]}</span>
-      </div>
-      <div>
-        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-text">
-          {customer?.name ?? dispute.customer_id}
-        </h1>
-        {invoice && (
-          <Link href={`/invoices/${invoice.invoice_id}`} className="font-mono text-sm text-text-muted underline">
-            {invoice.invoice_number ?? invoice.invoice_id}
-          </Link>
-        )}
-      </div>
-      <section className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold text-text">Claim</h2>
-        <p className="text-[13px] text-text-muted" data-testid="dispute-claim-text">
-          {dispute.claim_text}
-        </p>
-      </section>
-      {email && (
-        <section className="flex flex-col gap-1">
-          <h2 className="text-sm font-semibold text-text">Source email</h2>
-          <p className="font-mono text-xs text-text-muted" data-testid="dispute-provenance">
-            {email.from_address} · {email.subject} · {email.sent_at.slice(0, 10)}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-text">
+            {item.customerName}
+          </h1>
+          <p className="font-mono text-[13px] text-text-muted">
+            {dispute.dispute_id} · {item.invoiceLabel}
           </p>
-        </section>
-      )}
-      <section className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold text-text">AI recommendation</h2>
-        <p className="text-[13px] text-text-muted" data-testid="dispute-recommendation">
-          {dispute.ai_recommendation}
-        </p>
-      </section>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <AssignMenu
+            current={dispute.assigned_reviewer ?? null}
+            disabled={!item.open}
+            disabledReason="This dispute is closed."
+            onAssign={(r) => void assign(dispute.dispute_id, r)}
+            label={`Assign owner for ${dispute.dispute_id}`}
+          />
+          <Button
+            type="button"
+            size="sm"
+            disabled={!item.open}
+            title={item.open ? undefined : "This dispute is closed."}
+            onClick={() => setResolving(true)}
+          >
+            Resolve
+          </Button>
+        </div>
+      </div>
+      <DisputeInvestigation item={item} primary />
+      {resolving && <ResolveDialog item={item} open onOpenChange={(o) => setResolving(o)} />}
     </div>
   );
 }
