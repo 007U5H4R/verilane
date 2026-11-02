@@ -298,6 +298,7 @@ export const CASE_STATES = [
   "manager_review",
   "verified",
   "rejected",
+  "closed",
 ] as const;
 export type CaseState = (typeof CASE_STATES)[number];
 
@@ -313,6 +314,7 @@ export const STATE_META: Record<CaseState, { label: string; heading: string; ton
   manager_review: { label: "Manager review", heading: "With a Manager for review", tone: "pending" },
   verified: { label: "Verified", heading: "Verified against the ledger", tone: "verified" },
   rejected: { label: "Rejected", heading: "Claim rejected", tone: "unknown" },
+  closed: { label: "Closed", heading: "Closed without a verification record", tone: "unknown" },
 };
 
 export interface CaseFacts {
@@ -351,7 +353,7 @@ export function caseFacts(input: {
   const wf = head?.workflow_state;
   if (head?.status === "actioned" && wf === "verified") return withD("verified", false);
   if (head?.status === "dismissed" || wf === "rejected") return withD("rejected", false);
-  if (head?.status !== "open" && head !== undefined) return withD("rejected", false);
+  if (head?.status !== "open" && head !== undefined) return withD("closed", false);
   if (wf === "awaiting_evidence" || wf === "bank_verification" || wf === "manager_review") return withD(wf, true);
 
   if (kind === "duplicate_invoice" || !invoice) return withD("ambiguous_invoice", true);

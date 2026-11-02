@@ -21,6 +21,8 @@ export const ACTIONS = [
   "resolve_dispute",
   "dismiss_review",
   "action_review",
+  "reconcile_flag",
+  "reconcile_decide",
   "import_csv",
   "reset_demo",
   "switch_role",
@@ -105,6 +107,12 @@ const ANALYST_RULES: Record<Action, Rule> = {
     s.requires_role === "manager"
       ? deny("This item was escalated to a Manager.")
       : ALLOW,
+  // TASK-38: workflow steps on a payment claim (request proof, escalate,
+  // assign, request a partial / a link for Manager review). They never touch
+  // the ledger, so an Analyst may take them even on a Manager-only item.
+  reconcile_flag: () => ALLOW,
+  reconcile_decide: () =>
+    deny("Only a Manager can verify or reject a payment claim."),
   import_csv: () => ALLOW,
   reset_demo: () => ALLOW,
   switch_role: () => ALLOW,

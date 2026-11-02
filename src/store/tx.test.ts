@@ -78,6 +78,8 @@ beforeEach(async () => {
   await db.reviewItems.bulkAdd([
     { review_id: "RV-A", kind: "data_issue", status: "open" },
     { review_id: "RV-D", kind: "data_issue", status: "open" },
+    { review_id: "RV-REC", kind: "reconciliation", status: "open", requires_role: "manager", invoice_id: "INV-2", message_id: "E-1", ledger_outstanding_paise: 1_000_000 },
+    { review_id: "RV-REJ", kind: "reconciliation", status: "open", requires_role: "manager", invoice_id: "INV-2", message_id: "E-2", ledger_outstanding_paise: 1_000_000 },
   ]);
 });
 
@@ -97,6 +99,11 @@ const COMMANDS: Array<{ cmd: CommandInput; asManager?: boolean }> = [
   { cmd: { type: "resolve_dispute", subject: { kind: "dispute", id: "D-R" }, payload: { outcome: "resolved" } }, asManager: true },
   { cmd: { type: "action_review", subject: { kind: "review", id: "RV-A" } } },
   { cmd: { type: "dismiss_review", subject: { kind: "review", id: "RV-D" } } },
+  { cmd: { type: "reconcile_flag", subject: { kind: "review", id: "RV-REC" }, payload: { step: "request_proof" } } },
+  {
+    cmd: { type: "reconcile_decide", subject: { kind: "review", id: "RV-REJ" }, payload: { decision: "reject", reason: "Not on the statement" } },
+    asManager: true,
+  },
   { cmd: { type: "switch_role", subject: { kind: "system", id: "workspace" }, payload: { role: "manager" } } },
 ];
 

@@ -156,6 +156,8 @@ describe("caseFacts — state mapping", () => {
       open: false,
     });
     expect(caseFacts({ ...base, items: [{ ...head, status: "dismissed" }] }).state).toBe("rejected");
+    // Actioned elsewhere (e.g. the queue) without a verification record is never shown as verified.
+    expect(caseFacts({ ...base, items: [{ ...head, status: "actioned" }] })).toMatchObject({ state: "closed", open: false });
     expect(caseFacts({ ...base, items: [{ ...head, workflow_state: "manager_review" }] })).toMatchObject({
       state: "manager_review",
       open: true,
