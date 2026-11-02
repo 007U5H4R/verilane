@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { DataProviderLoader } from "@/components/DataProviderLoader";
 import { AppShell } from "@/components/shell/AppShell";
+import { ShellSkeleton } from "@/components/states/ShellSkeleton";
 import { requestTour } from "@/components/tour/tourStore";
 import { readTourLink } from "@/components/tour/tourLink";
 import { isAuthRoute, startGuestSession, useSession } from "@/lib/session";
@@ -51,8 +52,14 @@ function GatedApp({ children }: { children: ReactNode }) {
   );
 }
 
-/** Neutral first paint: no shell chrome, no data — just a quiet status. */
+/** TASK-43: first paint of an app route — the app frame as placeholders,
+ * never app content. */
 export function GateSkeleton() {
+  return <ShellSkeleton />;
+}
+
+/** Neutral first paint for shell-less routes (the tour): just a quiet status. */
+export function QuietSkeleton() {
   return (
     <div className="grid min-h-dvh place-items-center bg-canvas p-6">
       <div role="status" aria-busy="true" aria-label="Loading workspace" className="flex flex-col items-center gap-3">

@@ -27,6 +27,8 @@ describe("queueParams (TC-017)", () => {
       { ...DEFAULT_FILTERS, sort: { column: "customer", desc: true } },
       { ...DEFAULT_FILTERS, sort: { column: "invoice_number", desc: false } },
       { ...DEFAULT_FILTERS, page: 7 },
+      { ...DEFAULT_FILTERS, sort: { column: "due_date", desc: false } },
+      { ...DEFAULT_FILTERS, sort: { column: "due_date", desc: true } },
     ];
     for (const f of cases) {
       expect(parse(new URLSearchParams(serialize(f)))).toEqual(f);

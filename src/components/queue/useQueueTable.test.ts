@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Customer, Invoice, Priority } from "@/domain/schema";
 import { DEFAULT_FILTERS } from "./queueParams";
-import { filterRows, type QueueRow } from "./useQueueTable";
+import { filterRows, sortRows, type QueueRow } from "./useQueueTable";
 import { paise } from "@/domain/money";
 
 function row(
@@ -53,5 +53,43 @@ describe("filterRows (TASK-9.1)", () => {
     ];
     expect(ids(filterRows(withClosed, { ...DEFAULT_FILTERS, ageing: ["60+"] }))).toEqual([]);
     expect(ids(filterRows(withClosed, DEFAULT_FILTERS))).toContain("I4");
+  });
+});
+
+describe("sortRows (TASK-38, replaces TanStack's sorted row model)", () => {
+  it("returns the input (rank) order with no sort", () => {
+    expect(ids(sortRows(rows, null))).toEqual(["I0", "I1", "I2", "I3"]);
+  });
+
+  it("priority desc is rank order, asc reverses it", () => {
+    expect(ids(sortRows(rows, { column: "priority", desc: true }))).toEqual(["I0", "I1", "I2", "I3"]);
+    expect(ids(sortRows(rows, { column: "priority", desc: false }))).toEqual(["I3", "I2", "I1", "I0"]);
+  });
+
+  it("sorts numbers numerically and strings by locale", () => {
+    expect(ids(sortRows(rows, { column: "outstanding", desc: true }))).toEqual(["I3", "I2", "I1", "I0"]);
+    expect(ids(sortRows(rows, { column: "customer", desc: false }))).toEqual(["I0", "I3", "I1", "I2"]);
+  });
+
+  it("keeps rank order between ties in both directions", () => {
+    // I1 and I2 share a customer name: rank order holds whichever way.
+    expect(ids(sortRows(rows, { column: "customer", desc: true }))).toEqual(["I1", "I2", "I3", "I0"]);
+  });
+
+  it("puts unknown values last in both directions (unknown stays unknown)", () => {
+    expect(ids(sortRows(rows, { column: "days_overdue", desc: true }))).toEqual(["I0", "I1", "I2", "I3"]);
+    expect(ids(sortRows(rows, { column: "days_overdue", desc: false }))).toEqual(["I2", "I1", "I0", "I3"]);
+    const dated: QueueRow[] = rows.map((r, i) => ({
+      ...r,
+      invoice: { ...r.invoice, due_date: i === 1 ? null : `2026-0${4 - i}-01` } as Invoice,
+    }));
+    expect(ids(sortRows(dated, { column: "due_date", desc: false }))).toEqual(["I3", "I2", "I0", "I1"]);
+    expect(ids(sortRows(dated, { column: "due_date", desc: true }))).toEqual(["I0", "I2", "I3", "I1"]);
+  });
+
+  it("does not mutate its input", () => {
+    const copy = [...rows];
+    sortRows(rows, { column: "outstanding", desc: true });
+    expect(rows).toEqual(copy);
   });
 });
