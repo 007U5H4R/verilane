@@ -21,7 +21,7 @@ export function KpiStrip({ kpis, openDisputesCount }: { kpis: HomeKpis; openDisp
   return (
     <div data-testid="kpi-strip" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {cells.map((cell) => (
-        <div key={cell.id} className="rounded-lg bg-surface-sunken p-4" data-testid={`kpi-${cell.id}`}>
+        <div key={cell.id} className="glass rounded-lg border border-border p-4 shadow-card" data-testid={`kpi-${cell.id}`}>
           <p className="font-display text-2xl font-semibold text-text" data-testid={`kpi-${cell.id}-value`}>
             {cell.value}
           </p>

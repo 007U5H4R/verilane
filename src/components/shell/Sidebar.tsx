@@ -14,7 +14,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
   return (
     <aside
       aria-label="Primary"
-      className="hidden w-[216px] flex-col gap-4 bg-rail p-4 text-rail-text lg:flex"
+      className="hidden w-[216px] flex-col gap-4 overflow-y-auto bg-rail p-4 text-rail-text lg:sticky lg:top-0 lg:flex lg:h-dvh"
     >
       <LogoCard />
       <div className="flex items-center gap-2.5">

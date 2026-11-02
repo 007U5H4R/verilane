@@ -72,7 +72,7 @@ export function FiltersPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-border glass shadow-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border-strong bg-surface px-3 py-1.5">
           <Search aria-hidden="true" className="size-4 shrink-0 text-text-muted" />

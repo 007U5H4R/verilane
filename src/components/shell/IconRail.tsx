@@ -11,7 +11,7 @@ export function IconRail({ activeHref }: { activeHref: string }) {
   return (
     <aside
       aria-label="Primary"
-      className="hidden w-[72px] flex-col items-center gap-4 bg-rail px-2 py-3 text-rail-text md:flex lg:hidden"
+      className="hidden w-[72px] flex-col items-center gap-4 overflow-y-auto bg-rail px-2 py-3 text-rail-text md:sticky md:top-0 md:flex md:h-dvh lg:hidden"
     >
       <LogoCard compact />
       <span

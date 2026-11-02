@@ -55,19 +55,40 @@ const globalsDarkAttr = parseTokens(
   extractBlock(globalsCss, ':root[data-theme="dark"] {'),
 );
 
+// Design.md Revision R1 (TASK-37) added these after the mockup froze. They
+// are checked for presence in every theme block; the rest stay mockup-locked.
+const R1_TOKENS = ["card-shadow", "canvas-art-opacity", "glass"];
+
+function withoutR1(tokens: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(tokens).filter(([k]) => !R1_TOKENS.includes(k)));
+}
+
 describe("design tokens match the approved mockup", () => {
   it("light theme (:root)", () => {
-    expect(globalsLight).toEqual(mockupLight);
+    expect(withoutR1(globalsLight)).toEqual(mockupLight);
   });
 
   it("dark theme (prefers-color-scheme media query)", () => {
-    expect(globalsDarkMedia).toEqual(mockupDarkMedia);
+    expect(withoutR1(globalsDarkMedia)).toEqual(mockupDarkMedia);
   });
 
   it("dark theme ([data-theme=dark] override)", () => {
-    expect(globalsDarkAttr).toEqual(mockupDarkAttr);
+    expect(withoutR1(globalsDarkAttr)).toEqual(mockupDarkAttr);
+  });
+
+  it("Revision R1 tokens are defined in every theme block", () => {
+    for (const block of [globalsLight, globalsDarkMedia, globalsDarkAttr]) {
+      for (const name of R1_TOKENS) expect(block[name], name).toBeTruthy();
+    }
+    // Dark mode must set its own values, not inherit the light ones.
+    expect(globalsDarkMedia).toMatchObject(withR1Only(globalsDarkAttr));
+    expect(globalsDarkAttr.glass).not.toBe(globalsLight.glass);
   });
 });
+
+function withR1Only(tokens: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(tokens).filter(([k]) => R1_TOKENS.includes(k)));
+}
 
 // --- WCAG contrast -----------------------------------------------------
 

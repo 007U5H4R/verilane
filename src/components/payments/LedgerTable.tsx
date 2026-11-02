@@ -16,13 +16,13 @@ export function LedgerTable({
 }) {
   if (payments.length === 0) {
     return (
-      <p data-testid="ledger-empty" className="rounded-lg border border-border bg-surface p-4 text-[13px] text-text-muted">
+      <p data-testid="ledger-empty" className="rounded-lg border border-border glass shadow-card p-4 text-[13px] text-text-muted">
         No payments recorded in the ledger.
       </p>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+    <div className="overflow-x-auto rounded-lg border border-border glass shadow-card">
       <table className="w-full min-w-[520px] border-collapse text-[13px]" aria-label="Payments ledger">
         <thead>
           <tr className="border-b border-border text-left text-xs text-text-muted">
