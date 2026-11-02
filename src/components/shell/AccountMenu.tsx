@@ -20,18 +20,19 @@ export function AccountMenu() {
     <div ref={ref} className="relative">
       <button
         type="button"
-        aria-label="Account"
+        // The name starts with the visible initials (WCAG 2.5.3 label in name; axe label-content-name-mismatch).
+        aria-label="AR, Account"
         aria-expanded={open}
         aria-controls="account-panel"
         onClick={() => setOpen((o) => !o)}
-        className="grid size-9 place-items-center rounded-full bg-rail-active text-xs font-semibold text-rail-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-avatar text-[14px] font-semibold text-avatar-text ring-1 ring-topbar-control-border transition-shadow duration-150 hover:ring-2 hover:ring-brand/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
       >
         AR
       </button>
       {open && (
         <div
           id="account-panel"
-          className="absolute top-full right-0 z-30 mt-1.5 flex w-64 flex-col gap-1.5 rounded-xl border border-border bg-surface p-3 text-sm shadow-lg"
+          className="absolute top-full right-0 z-30 mt-2 flex w-[min(16rem,calc(100vw-2rem))] flex-col gap-1.5 rounded-2xl border border-border bg-surface p-3 text-sm shadow-lg"
         >
           <p className="font-semibold">Demo Workspace</p>
           <p className="text-xs text-text-muted">

@@ -33,12 +33,12 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      className="icon-btn grid size-9 place-items-center rounded-full border border-border bg-surface"
+      className="grid size-11 shrink-0 place-items-center rounded-full border border-topbar-control-border bg-surface text-text shadow-[0_1px_2px_rgb(8_47_37/0.05)] transition-colors duration-150 hover:bg-mint-pale"
       aria-label="Toggle dark theme"
       onClick={toggle}
     >
-      <Sun className="theme-icon-light size-4" />
-      <Moon className="theme-icon-dark size-4" />
+      <Sun className="theme-icon-light size-5" strokeWidth={1.75} aria-hidden />
+      <Moon className="theme-icon-dark size-5" strokeWidth={1.75} aria-hidden />
     </button>
   );
 }

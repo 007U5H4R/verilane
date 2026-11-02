@@ -44,7 +44,7 @@ export function InstallChip() {
   return (
     <div
       data-testid="install-chip"
-      className="inline-flex shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs text-text"
+      className="hidden h-11 shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap rounded-full border border-topbar-control-border bg-surface px-3 text-[13px] text-text xl:inline-flex"
     >
       <Download className="size-3.5" aria-hidden />
       <button type="button" onClick={promptInstall} className="font-medium underline-offset-2 hover:underline">

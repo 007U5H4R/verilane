@@ -36,13 +36,13 @@ export function NotificationsBell() {
         aria-expanded={open}
         aria-controls="notifications-panel"
         onClick={() => setOpen((o) => !o)}
-        className="icon-btn relative grid size-9 place-items-center rounded-full border border-border bg-surface"
+        className="relative grid size-11 shrink-0 place-items-center rounded-full text-text transition-colors duration-150 hover:bg-mint-pale aria-expanded:bg-mint-pale"
       >
-        <Bell className="size-4" aria-hidden="true" />
+        <Bell className="size-5" strokeWidth={1.75} aria-hidden="true" />
         {total > 0 && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] leading-none font-semibold text-white tabular-nums"
+            className="absolute top-1 right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand px-1 text-[11px] leading-none font-semibold text-on-brand tabular-nums ring-2 ring-surface"
           >
             {total > 99 ? "99+" : total}
           </span>
@@ -51,7 +51,7 @@ export function NotificationsBell() {
       {open && (
         <div
           id="notifications-panel"
-          className="absolute top-full right-0 z-30 mt-1.5 w-72 rounded-xl border border-border bg-surface p-2 text-sm shadow-lg"
+          className="absolute top-full right-0 z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-border bg-surface p-2 text-sm shadow-lg"
         >
           <p className="px-2 pt-1 pb-2 font-semibold">Needs attention</p>
           {!counts ? (

@@ -156,7 +156,7 @@ test("breadcrumb: detail pages show their trail, named as the page names them", 
   await openInvoice(page, "INV-042");
   const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
   // T34-1: the invoice number the Queue row and header show, not invoice_id.
-  await expect(crumbs).toHaveText(/^Queue\s*›\s*INV-1042$/);
+  await expect(crumbs).toHaveText(/^Collection Queue\s*INV-1042$/);
   await expect(crumbs.locator('[aria-current="page"]')).toHaveText("INV-1042");
   // T34-6: the nav highlights the parent section, not Home.
   await expect(page.locator('a[href="/queue"][aria-current="page"]').first()).toBeAttached();
@@ -173,7 +173,7 @@ test("breadcrumb: detail pages show their trail, named as the page names them", 
   await page.goto(href!);
   // A dispute is headed by its customer; the crumb says the same.
   const heading = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
-  await expect(crumbs).toHaveText(new RegExp(`^Disputes\\s*›\\s*${heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+  await expect(crumbs).toHaveText(new RegExp(`^Disputes\\s*${heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
 
   await crumbs.getByRole("link", { name: "Disputes" }).click();
   await expect(page).toHaveURL(/\/disputes$/);

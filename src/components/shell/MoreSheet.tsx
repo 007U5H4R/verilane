@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/shell/NavItems";
@@ -10,18 +10,24 @@ export const MORE_HREFS = ["/payments", "/drafts", "/audit", "/settings"];
 const MORE_ITEMS = NAV_ITEMS.filter((item) => MORE_HREFS.includes(item.href));
 
 // TASK-20.1: the bottom tabs' "More" sheet (Payments, Drafts, Audit log,
-// Settings). A native modal <dialog> gives focus containment, Escape and an
+// Settings). TASK-38: variant "menu" backs the top bar's <768 menu button —
+// the same sheet listing every nav item. A native modal <dialog> gives focus containment, Escape and an
 // inert background without another primitive; `open` drives showModal/close.
 export function MoreSheet({
   open,
   onClose,
   activeHref,
+  variant = "more",
 }: {
   open: boolean;
   onClose: () => void;
   activeHref: string;
+  variant?: "more" | "menu";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const title = variant === "menu" ? "Menu" : "More";
+  const items = variant === "menu" ? NAV_ITEMS : MORE_ITEMS;
 
   useEffect(() => {
     const dialog = ref.current;
@@ -33,7 +39,7 @@ export function MoreSheet({
   return (
     <dialog
       ref={ref}
-      aria-labelledby="more-sheet-title"
+      aria-labelledby={titleId}
       onClose={onClose}
       // A click on the backdrop lands on the <dialog> itself.
       onClick={(e) => {
@@ -42,8 +48,8 @@ export function MoreSheet({
       className="fixed inset-x-0 top-auto bottom-0 m-0 w-full max-w-none rounded-t-lg border-t border-border bg-surface p-0 pb-[env(safe-area-inset-bottom)] text-text shadow-lg backdrop:bg-black/40 md:hidden"
     >
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <h2 id="more-sheet-title" className="text-sm font-semibold">
-          More
+        <h2 id={titleId} className="text-sm font-semibold">
+          {title}
         </h2>
         <button
           type="button"
@@ -54,9 +60,9 @@ export function MoreSheet({
           <X className="size-5" strokeWidth={1.5} aria-hidden />
         </button>
       </div>
-      <nav aria-label="More">
+      <nav aria-label={title}>
         <ul className="flex flex-col px-2 pb-3">
-          {MORE_ITEMS.map((item) => {
+          {items.map((item) => {
             const isActive = item.href === activeHref;
             const Icon = item.icon;
             return (

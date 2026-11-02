@@ -35,6 +35,13 @@
   --disabled-bg: #eaeeeb;
   --disabled-text: #66726b;
   --on-brand: #fff;
+  --topbar-bg: rgb(248 250 248 / 0.88);
+  --topbar-wave: rgb(45 154 112 / 0.09);
+  --topbar-wave-edge: rgb(142 215 176 / 0.22);
+  --topbar-divider: #dde8e0;
+  --topbar-control-border: #dce7df;
+  --avatar-bg: #dcdaea;
+  --avatar-text: #2f2b45;
   --card-shadow: 0 1px 2px rgb(8 47 37 / 0.04), 0 4px 16px rgb(8 47 37 / 0.06);
   --r-lg: 14px;
   --r-md: 10px;
@@ -77,6 +84,13 @@
     --disabled-bg: #1f2c27;
     --disabled-text: #93a29a;
     --on-brand: #06231a;
+    --topbar-bg: rgb(13 21 17 / 0.86);
+    --topbar-wave: rgb(76 192 143 / 0.08);
+    --topbar-wave-edge: rgb(76 192 143 / 0.14);
+    --topbar-divider: #293a30;
+    --topbar-control-border: #2f4237;
+    --avatar-bg: #34314a;
+    --avatar-text: #e6e3f4;
     --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
@@ -114,6 +128,13 @@
   --disabled-bg: #1f2c27;
   --disabled-text: #93a29a;
   --on-brand: #06231a;
+  --topbar-bg: rgb(13 21 17 / 0.86);
+  --topbar-wave: rgb(76 192 143 / 0.08);
+  --topbar-wave-edge: rgb(76 192 143 / 0.14);
+  --topbar-divider: #293a30;
+  --topbar-control-border: #2f4237;
+  --avatar-bg: #34314a;
+  --avatar-text: #e6e3f4;
   --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
   color-scheme: dark;
 }
@@ -151,6 +172,11 @@
   --color-disabled-bg: var(--disabled-bg);
   --color-disabled-text: var(--disabled-text);
   --color-on-brand: var(--on-brand);
+  --color-topbar: var(--topbar-bg);
+  --color-topbar-divider: var(--topbar-divider);
+  --color-topbar-control-border: var(--topbar-control-border);
+  --color-avatar: var(--avatar-bg);
+  --color-avatar-text: var(--avatar-text);
   --radius-lg: var(--r-lg);
   --radius-md: var(--r-md);
   --shadow-card: var(--card-shadow);
@@ -237,4 +263,26 @@ table {
 
 :root[data-theme="dark"] .theme-icon-dark {
   display: block;
+}
+
+/* TASK-38 top bar: a restrained emerald wave along the lower edge. Behind
+   the controls, never hit-testable, tokens so dark mode stays intentional. */
+.topbar-wave::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 140% at 72% 120%, var(--topbar-wave), transparent 70%),
+    radial-gradient(28% 120% at 0% 100%, var(--topbar-wave-edge), transparent 72%);
+}
+.topbar-wave::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--topbar-wave-edge) 35%, var(--topbar-wave-edge) 80%, transparent);
 }

@@ -27,10 +27,16 @@ export function LlmStatusBadge() {
     };
   }, []);
 
+  const label = live ? "Live LLM" : "Simulated LLM";
+  // TASK-38: a status, not a control. Below 1440 only the icon shows; the
+  // label stays in the accessibility tree and in the tooltip.
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs text-text-muted">
-      <Sparkles className="size-3.5" />
-      {live ? "Live LLM" : "Simulated LLM"}
+    <span
+      title={label}
+      className="inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-topbar-control-border bg-surface px-3 text-[14px] font-medium text-text shadow-[0_1px_2px_rgb(8_47_37/0.05)] min-[1440px]:px-4"
+    >
+      <Sparkles className="size-[18px] text-brand" strokeWidth={1.75} aria-hidden />
+      <span className="sr-only min-[1440px]:not-sr-only">{label}</span>
     </span>
   );
 }
