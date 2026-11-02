@@ -54,7 +54,7 @@ export function useReconciliationData(): ReconciliationData | undefined {
       extractions: new Map((extractions as Extraction[]).map((x) => [x.message_id, x])),
       items,
       audit: (audit as AuditEventRow[])
-        .filter((e) => ids.has(e.subject_id))
+        .filter((e) => ids.has(String(e.subject_id)))
         .sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
     };
   }, [db]);
