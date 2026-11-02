@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Bot,
   CalendarDays,
   Database,
   Download,
@@ -11,6 +12,7 @@ import {
   SlidersHorizontal,
   Upload,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useContext } from "react";
 
@@ -25,6 +27,11 @@ import { PriorityWeights } from "./PriorityWeights";
 import { ResetDialog } from "./ResetDialog";
 import { SettingsCard, SettingsSubsection } from "./SettingsCard";
 import { ThemeControl } from "./ThemeControl";
+
+// TASK-41: loaded on demand so /settings stays inside the route budget.
+const AutopilotControl = dynamic(() => import("./AutopilotControl").then((m) => m.AutopilotControl), {
+  loading: () => <p className="text-[13px] text-text-muted">Loading autopilot policy…</p>,
+});
 /** TASK-24.5: the Settings entry point for installing the PWA, sharing the
  * captured `beforeinstallprompt` event with the header chip. */
 function InstallSection() {
@@ -144,6 +151,17 @@ export function SettingsView() {
           icon={CalendarDays}
         >
           <AsOfControl db={db} />
+        </SettingsCard>
+      )}
+
+      {db && (
+        <SettingsCard
+          id="autopilot"
+          title="Copilot autopilot"
+          description="Let Copilot send the lowest-risk reminders on its own (simulated)."
+          icon={Bot}
+        >
+          <AutopilotControl db={db} />
         </SettingsCard>
       )}
 

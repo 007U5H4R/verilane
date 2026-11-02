@@ -42,11 +42,12 @@ export type AuditIcon =
  * - `human` — a person acting in the app under their session role;
  * - `system` — automated processing (e.g. an email extraction rejected by
  *   the pipeline), recorded with the session role it ran under;
+ * - `copilot` — Copilot autopilot (TASK-41): a simulated AI send the Manager
+ *   switched on, capped at Analyst authority. Its own type, so an AI action is
+ *   never presented as a human approval;
  * - `unknown` — the row doesn't say (never assumed to be a person).
- * There is no AI actor: the app records no AI-made decision, and an AI
- * recommendation is never presented as a human approval.
  */
-export type ActorType = "human" | "system" | "unknown";
+export type ActorType = "human" | "system" | "copilot" | "unknown";
 
 export interface ActionMeta {
   label: string;
@@ -55,7 +56,7 @@ export interface ActionMeta {
   module: AuditModule;
   category: AuditCategory;
   /** How the actor type is derived for this action. */
-  actor: "human" | "system";
+  actor: "human" | "system" | "copilot";
 }
 
 export const MODULES: Record<AuditModule, { label: string; href: string | null }> = {
@@ -96,6 +97,9 @@ export const ACTION_META: Record<AuditAction, ActionMeta> = {
   demo_reset: { label: "Demo reset", tone: "warning", icon: "reset", module: "settings", category: "data", actor: "human" },
   switch_role: { label: "Role switched", tone: "neutral", icon: "role", module: "workspace", category: "workspace", actor: "human" },
   set_as_of: { label: "As-of date changed", tone: "neutral", icon: "clock", module: "settings", category: "data", actor: "human" },
+  set_autopilot: { label: "Autopilot policy changed", tone: "neutral", icon: "role", module: "settings", category: "workspace", actor: "human" },
+  autopilot_send: { label: "Auto-sent by Copilot", tone: "success", icon: "send", module: "drafts", category: "approval", actor: "copilot" },
+  autopilot_held: { label: "Held for review by Copilot", tone: "warning", icon: "blocked", module: "drafts", category: "approval", actor: "copilot" },
 };
 
 /**
@@ -157,6 +161,7 @@ export function actorType(event: ClassifiableEvent): ActorType {
   const meta = describe(event);
   if (!meta.known) return typeof event.actor_role === "string" && event.actor_role in ROLE_NAMES ? "human" : "unknown";
   if (meta.actor === "system") return "system";
+  if (meta.actor === "copilot") return "copilot";
   return typeof event.actor_role === "string" && event.actor_role in ROLE_NAMES ? "human" : "unknown";
 }
 
@@ -166,7 +171,7 @@ export interface ActorView {
   name: string;
   /** The recorded role, as a label; `null` when not recorded. */
   role: string | null;
-  /** The filter key (`analyst` | `manager` | `system` | `unknown`). */
+  /** The filter key (`analyst` | `manager` | `system` | `copilot` | `unknown`). */
   key: string;
 }
 
@@ -179,6 +184,7 @@ export function actorOf(event: ClassifiableEvent): ActorView {
         ? (ROLE_NAMES[event.actor_role] ?? null)
         : null;
   if (type === "system") return { type, name: "System", role, key: "system" };
+  if (type === "copilot") return { type, name: "Copilot", role, key: "copilot" };
   if (type === "unknown") return { type, name: "Not recorded", role, key: "unknown" };
   return { type, name: role ?? "Not recorded", role, key: String(event.actor_role) };
 }
@@ -186,5 +192,6 @@ export function actorOf(event: ClassifiableEvent): ActorView {
 export const ACTOR_TYPE_LABEL: Record<ActorType, string> = {
   human: "User",
   system: "System (automated processing)",
+  copilot: "Copilot (AI, simulated autopilot)",
   unknown: "Not recorded",
 };

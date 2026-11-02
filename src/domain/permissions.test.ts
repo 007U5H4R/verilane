@@ -49,6 +49,10 @@ const BASELINE = {
   reset_demo: { subject: sys, analyst: true, manager: true },
   switch_role: { subject: sys, analyst: true, manager: true },
   set_as_of: { subject: sys, analyst: true, manager: true },
+  // TASK-41: only a Manager sets the policy; the send itself is gated by the
+  // policy and Analyst authority inside the handler, so the action is open.
+  set_autopilot: { subject: sys, analyst: false, manager: true },
+  autopilot_send: { subject: draft(), analyst: true, manager: true },
 } satisfies Record<Action, Row>;
 
 /** Escalated subject conditions (S4 + A6). */

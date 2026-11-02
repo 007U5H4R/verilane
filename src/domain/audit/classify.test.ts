@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ACTIONS } from "@/domain/permissions";
 import { ACTION_META, MODULES, actorOf, actorType, describe as describeEvent, isAuditAction, labelFor } from "./classify";
 
-const EXTRA = ["import_rejected", "demo_reset", "validation_failure"] as const;
+const EXTRA = ["import_rejected", "demo_reset", "validation_failure", "autopilot_held"] as const;
 const ALL = [...ACTIONS, ...EXTRA];
 
 describe("audit classification (central mapping)", () => {
@@ -27,9 +27,17 @@ describe("audit classification (central mapping)", () => {
     expect(labelFor("some_legacy_thing")).toBe("some legacy thing");
   });
 
-  it("counts only approve / reject / blocked-approval as approvals", () => {
+  it("counts only approve / reject / blocked-approval (and Copilot's send / hold) as approvals", () => {
     const approvals = ALL.filter((a) => ACTION_META[a].category === "approval").sort();
-    expect(approvals).toEqual(["approve_draft", "reject_draft", "validation_failure"]);
+    expect(approvals).toEqual(["approve_draft", "autopilot_held", "autopilot_send", "reject_draft", "validation_failure"]);
+  });
+
+  it("attributes Copilot autopilot rows to Copilot, never to a person (TASK-41)", () => {
+    for (const action of ["autopilot_send", "autopilot_held"]) {
+      const e = { action, actor_role: "analyst", actor_label: "Copilot (autopilot)" };
+      expect(actorType(e)).toBe("copilot");
+      expect(actorOf(e)).toEqual({ type: "copilot", name: "Copilot", role: "Copilot (autopilot)", key: "copilot" });
+    }
   });
 
   it("is a human action only when a role was recorded", () => {

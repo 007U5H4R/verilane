@@ -170,7 +170,7 @@ export function matchesKpi(e: AuditEntry, kpi: KpiFilter): boolean {
     case "user":
       return e.actor.type === "human";
     case "system":
-      return e.actor.type === "system";
+      return e.actor.type === "system" || e.actor.type === "copilot";
     case "approvals":
       return e.meta.category === "approval";
   }
@@ -313,7 +313,7 @@ export function kpis(entries: AuditEntry[]): AuditKpis {
   const k: AuditKpis = { total: entries.length, user: 0, system: 0, unattributed: 0, approvals: 0 };
   for (const e of entries) {
     if (e.actor.type === "human") k.user++;
-    else if (e.actor.type === "system") k.system++;
+    else if (e.actor.type === "system" || e.actor.type === "copilot") k.system++;
     else k.unattributed++;
     if (e.meta.category === "approval") k.approvals++;
   }
