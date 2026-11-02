@@ -71,6 +71,13 @@ describe("check-e2e-hooks", () => {
     expect(output).toContain("__verilane in");
   });
 
+  it("fails when a chunk still carries the __session opt-out (TASK-39)", () => {
+    writeStatic("d.js", 'if(q.get("__session")==="none")x();');
+    const { status, output } = runIn(root);
+    expect(status).toBe(1);
+    expect(output).toContain("__session in");
+  });
+
   it("passes on a clean tree and reports how many files it scanned", () => {
     writeStatic("a.js", "const s=null;");
     const { status, output } = runIn(root);

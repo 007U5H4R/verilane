@@ -2,13 +2,14 @@
 // Guard (TASK-25 · TC-079, decisions.md): the `?__state=` screen-state
 // override and the `window.__verilane` command hook exist only for the e2e
 // build (NEXT_PUBLIC_E2E=1). A plain `pnpm build` must compile them away, so
-// neither name may appear anywhere under .next/static.
+// neither name may appear anywhere under .next/static. TASK-39 adds the
+// `?__session=none` opt-out from the e2e default guest session.
 // Run after `pnpm build` — never after `pnpm build:e2e`, where it is expected.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const STATIC_DIR = join(process.cwd(), ".next/static");
-const HOOKS = ["__state", "__verilane"];
+const HOOKS = ["__state", "__verilane", "__session"];
 
 function walk(dir: string): string[] {
   const files: string[] = [];
