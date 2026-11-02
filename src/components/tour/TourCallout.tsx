@@ -27,6 +27,12 @@ function useIsDesktop(): boolean {
   return desktop;
 }
 
+/** Phone: dock the sheet to the bottom tabs' measured top (their height comes from their content). */
+function dock(): React.CSSProperties {
+  const tabs = document.querySelector("[data-tour=nav-more]")?.closest("nav");
+  return tabs ? { bottom: window.innerHeight - tabs.getBoundingClientRect().top } : {};
+}
+
 /** Below the target if it fits, else above, else the bottom-right corner. */
 function place(rect: Rect | null, height: number): React.CSSProperties {
   const vw = window.innerWidth;
@@ -68,7 +74,7 @@ export function TourCallout(props: TourCalloutProps) {
   }, [focusKey]);
 
   useLayoutEffect(() => {
-    setStyle(desktop ? place(rect, card.current?.offsetHeight ?? 220) : {});
+    setStyle(desktop ? place(rect, card.current?.offsetHeight ?? 220) : dock());
   }, [desktop, rect, focusKey]);
 
   return (
@@ -79,12 +85,13 @@ export function TourCallout(props: TourCalloutProps) {
       aria-labelledby={headingId}
       data-testid="tour-callout"
       data-tour-callout=""
+      data-tour-ui=""
       style={style}
       className={cn(
         "fixed z-[70] border border-border bg-surface p-4 text-text shadow-xl",
         "transition-[top,left] duration-200 motion-reduce:transition-none",
-        // <768: a bottom sheet above the bottom tabs; never wider than the screen.
-        "inset-x-0 bottom-0 max-w-[100vw] rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        // <768: a bottom sheet above the bottom tabs (docked by dock(); the class is the fallback); never wider than the screen.
+        "inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-w-[100vw] rounded-t-2xl",
         "md:inset-x-auto md:bottom-auto md:w-[360px] md:rounded-xl md:pb-4",
       )}
     >

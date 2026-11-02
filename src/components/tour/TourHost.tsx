@@ -11,6 +11,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useDb } from "@/store/hooks";
+import { escOwnedByApp, useAppModalOpen } from "./appModal";
 import { SpotlightRing, useTargetRect } from "./Spotlight";
 import { confirmStartTour } from "./startTour";
 import { TOUR_STEPS, currentStage, isStepComplete, type TourSnapshot } from "./steps";
@@ -22,7 +23,8 @@ import { useTourSnapshot } from "./useTourSnapshot";
 function useEscToExit() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") exitTour();
+      // An Esc the app owns (its dialog, menu or open search) never ends the tour.
+      if (e.key === "Escape" && !escOwnedByApp(e)) exitTour();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -31,7 +33,7 @@ function useEscToExit() {
 
 function CenterCard({ children, labelledBy, role, testId }: { children: React.ReactNode; labelledBy: string; role: "alertdialog" | "dialog"; testId: string }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgb(8_20_15/0.55)] p-4">
+    <div data-tour-ui="" className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgb(8_20_15/0.55)] p-4">
       <div
         role={role}
         aria-modal="true"
@@ -144,8 +146,10 @@ function Running({ t, snap }: { t: TourState; snap: TourSnapshot }) {
   const selector = wrongPage && hint ? hint.target : (resolved?.stage.target ?? "");
   const fallback = wrongPage && hint ? hint.mobileTarget : undefined;
   const rect = useTargetRect(selector, fallback);
+  // An app modal (the approve confirm, the More sheet) owns the screen: step aside.
+  const modal = useAppModalOpen();
 
-  if (!step || !resolved) return null;
+  if (!step || !resolved || modal) return null;
   const prompt = wrongPage && hint ? `Open ${hint.label} to continue.` : resolved.stage.prompt;
 
   return (

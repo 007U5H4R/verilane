@@ -189,8 +189,12 @@ for (const width of [375, 768]) {
       expect(overflow).toBeLessThanOrEqual(0);
       const box = await callout(page).boundingBox();
       expect(box).not.toBeNull();
-      if (width < 768) expect(box!.y + box!.height).toBeGreaterThanOrEqual(800 - 1);
-      else expect(box!.y + box!.height).toBeLessThanOrEqual(800);
+      // Phone: a sheet docked just above the bottom tabs, never over them.
+      if (width < 768) {
+        const tabs = await page.locator("[data-tour=nav-more]").boundingBox();
+        expect(tabs).not.toBeNull();
+        expect(box!.y + box!.height).toBeLessThanOrEqual(tabs!.y + 1);
+      } else expect(box!.y + box!.height).toBeLessThanOrEqual(800);
     };
     await fits();
 
@@ -214,6 +218,33 @@ for (const width of [375, 768]) {
         return Math.max(Math.abs(ring.x + 6 - more.x), Math.abs(ring.y + 6 - more.y));
       };
       await expect.poll(offset).toBeLessThanOrEqual(2);
+      // Scar: the sheet covered the bottom tabs the ring pointed at. The
+      // ringed More tab must take a real tap.
+      const hit = await page.evaluate(() => {
+        const more = document.querySelector("[data-tour=nav-more]")!;
+        const r = more.getBoundingClientRect();
+        return more.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+      });
+      expect(hit).toBe(true);
     }
   });
 }
+
+// Scar: Esc in an app dialog also ended the tour, and the tour's dim and
+// callout sat on top of the dialog.
+test("an app dialog owns Esc and the screen while it is open", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto("/queue");
+  await goToStep4(page);
+  await page.getByTestId("action-bar").getByTestId("primary-action").click();
+  await expectStep(page, 5);
+  await setRole(page, "Manager");
+  await page.getByTestId("action-bar").getByTestId("primary-action").click();
+  const dialog = page.getByRole("alertdialog", { name: "Approve and send this reminder?" });
+  await expect(dialog).toBeVisible();
+  await expect(callout(page)).toHaveCount(0);
+  await expect(page.getByTestId("tour-spotlight")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expectStep(page, 5);
+});
