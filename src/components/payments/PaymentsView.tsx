@@ -2,6 +2,7 @@
 
 import { Component, useContext, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 
 import { EmptyState } from "@/components/states/EmptyState";
@@ -10,11 +11,13 @@ import { RowSkeleton } from "@/components/states/RowSkeleton";
 import { Button } from "@/components/ui/button";
 import { DbContext, useRole } from "@/store/hooks";
 import { useReconciliationData, type ReconciliationData } from "@/store/paymentsHooks";
-import { LedgerTab } from "./LedgerTab";
 import { buildModel } from "./model";
 import { Illustration, KpiCards, Tabs, isTab, useUrlState, type TabId } from "./parts";
 import { ReconciliationTab } from "./ReconciliationTab";
-import { UnmatchedTab } from "./UnmatchedTab";
+
+// Only one tab shows at a time; the other two load when chosen (route budget).
+const UnmatchedTab = dynamic(() => import("./UnmatchedTab").then((m) => m.UnmatchedTab), { loading: () => <RowSkeleton /> });
+const LedgerTab = dynamic(() => import("./LedgerTab").then((m) => m.LedgerTab), { loading: () => <RowSkeleton /> });
 
 const PANEL_ID = "payments-panel";
 

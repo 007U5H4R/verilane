@@ -29,7 +29,7 @@ import type { Customer, Invoice, Payment } from "@/domain/schema";
 import { cn } from "@/lib/cn";
 import type { PaymentsModel } from "./model";
 import { CARD, Field, INPUT, LINK, Pager, SELECT, useUrlState } from "./parts";
-import { download } from "./ReconciliationTab";
+import { download } from "./download";
 import { StatusPill } from "./tone";
 
 const PAGE_SIZE = 20;
