@@ -24,8 +24,7 @@ import {
 } from "@/domain/settings/importPreview";
 import { cn } from "@/lib/cn";
 import { useOnline } from "@/lib/useOnline";
-import { parseImport, type RowError } from "@/store/csv";
-import { importCsv } from "@/store/dataCommands";
+import type { RowError } from "@/store/csv";
 import type { VerilaneDb } from "@/store/db";
 
 const KIND_LABEL: Record<ImportKind, string> = {
@@ -89,6 +88,13 @@ export function ImportDialog({ db }: { db: VerilaneDb }) {
     try {
       const text = await file.text();
       if (token !== pickToken.current) return;
+      // TASK-40: the parser and the import command load when a file is picked,
+      // not in the Settings first load.
+      const [{ parseImport }, { importCsv }] = await Promise.all([
+        import("@/store/csv"),
+        import("@/store/dataCommands"),
+      ]);
+      if (token !== pickToken.current) return;
       const parsed = parseImport(forKind, text);
       const errors = parsed.ok ? [] : parsed.error;
       setPicked({
@@ -131,6 +137,7 @@ export function ImportDialog({ db }: { db: VerilaneDb }) {
     if (picked?.kind !== "checked" || busy) return;
     setBusy(true);
     try {
+      const { importCsv } = await import("@/store/dataCommands");
       const result = await importCsv(db, kind, picked.name, picked.text);
       if (result.ok) {
         const count = result.value.rows.length;

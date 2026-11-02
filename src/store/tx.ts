@@ -11,7 +11,8 @@ import type { Customer, DataIssue, Invoice, Match, Payment, ReviewItem } from "@
 import { asOf } from "@/domain/clock";
 import type { DraftSources } from "@/domain/validate";
 import type { AuditEventRow, VerilaneDb } from "./db";
-import { recompute, SEED_VERSION_KEY } from "./loader";
+import type { recompute as Recompute } from "./loader";
+import { SEED_VERSION_KEY } from "./seedVersion";
 
 /** What callers pass: the actor is always the persisted role, never the caller's claim. */
 export type CommandInput = Omit<Command, "actor"> & { actor?: Role };
@@ -28,7 +29,7 @@ const KEY: Record<Exclude<TableName, "invoices">, string> = {
   meta: "key",
 };
 
-function dexieTx(db: VerilaneDb): Tx {
+function dexieTx(db: VerilaneDb, recompute: typeof Recompute): Tx {
   return {
     async get(table, id) {
       if (table === "invoices") {
@@ -51,7 +52,7 @@ function dexieTx(db: VerilaneDb): Tx {
       await db.audit.add(e as unknown as AuditEventRow);
     },
     now: () => new Date().toISOString(),
-    data: dexieDataOps(db),
+    data: dexieDataOps(db, recompute),
     draftSources: () => readDraftSources(db),
   };
 }
@@ -69,7 +70,7 @@ function isIngestResult(v: unknown): v is IngestResult {
  * They run inside `execute()`'s transaction, whose scope is every table for
  * these commands, so the nested `recompute()` joins it.
  */
-function dexieDataOps(db: VerilaneDb): DataOps {
+function dexieDataOps(db: VerilaneDb, recompute: typeof Recompute): DataOps {
   return {
     async replaceSource(kind, rows, dataIssues) {
       if (kind === "invoices") {
@@ -132,16 +133,16 @@ export async function execute(
         ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
         ...(DRAFT_COMMANDS.has(input.type) || LEDGER_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
       ];
-  // TASK-40: the command core loads on first use, not in every route's first
-  // load. Imported before the transaction opens: a non-Dexie await inside it
-  // would let Dexie auto-commit early.
-  const { run } = await import("@/domain/commands");
+  // TASK-40: the command core and the loader's recompute load on first use,
+  // not in every route's first load. Imported before the transaction opens: a
+  // non-Dexie await inside it would let Dexie auto-commit early.
+  const [{ run }, { recompute }] = await Promise.all([import("@/domain/commands"), import("./loader")]);
   return db.transaction(
     "rw",
     scope,
     async () => {
       const actor = await currentRole(db);
-      const event = await run({ ...input, actor }, dexieTx(db));
+      const event = await run({ ...input, actor }, dexieTx(db, recompute));
       await opts.beforeCommit?.();
       return event;
     },

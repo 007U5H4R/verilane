@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { openDb, type VerilaneDb } from "@/store/db";
-import { ensureSeeded } from "@/store/loader";
+import { seedStatus } from "@/store/seedVersion";
 import { DbContext, PersistentContext, SeedUpdateContext } from "@/store/hooks";
 import { E2EBridge } from "@/components/E2EBridge";
 import { ShellLoading } from "@/components/shell/ShellLoading";
@@ -30,7 +30,9 @@ export function DataProvider({ children }: DataProviderProps) {
     (async () => {
       try {
         const { db, persistent } = await openDb();
-        const result = await ensureSeeded(db);
+        // TASK-40: a returning visit only checks the seed version; the
+        // loader loads when the database still needs seeding.
+        const result = (await seedStatus(db)) ?? (await (await import("@/store/loader")).ensureSeeded(db));
         if (!cancelled) {
           setStatus({
             kind: "ready",

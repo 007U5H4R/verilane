@@ -1,9 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { CalendarDays, Database } from "lucide-react";
 
 import { AsOfLabel } from "@/components/shell/AsOfLabel";
-import { ResetDialog } from "@/components/settings/ResetDialog";
+import { Button } from "@/components/ui/button";
+
+// TASK-40: the reset path (dataCommands → loader, csv) loads after the shell,
+// not in every route's first load. Same label and size while it arrives.
+const ResetDialog = dynamic(() => import("@/components/settings/ResetDialog").then((m) => m.ResetDialog), {
+  loading: () => (
+    <Button size="sm" variant="outline" disabled>
+      Reset Demo
+    </Button>
+  ),
+});
 
 /*
  * Restyles the shared ResetDialog trigger (Settings owns it) as the pale-mint

@@ -2,11 +2,13 @@
  * The UI-facing data operations (TASK-19.2). Each does its non-Dexie IO
  * (reading the file, fetching the seed) BEFORE opening the transaction, then
  * goes through `execute()` so the write and its audit event commit together.
+ * TASK-40: the parser and the seed loader load on call, so a page that only
+ * sets the as-of date doesn't ship them in its first load.
  */
 import type { ImportKind } from "@/domain/commands";
-import { parseImport, type ParsedImport, type Result, type RowError } from "./csv";
+import type { ParsedImport, Result, RowError } from "./csv";
 import type { VerilaneDb } from "./db";
-import { loadSeed, type Fetcher } from "./loader";
+import type { Fetcher } from "./seedVersion";
 import { execute } from "./tx";
 
 const IMPORT_SUBJECT = { kind: "system", id: "import" } as const;
@@ -22,6 +24,7 @@ export async function importCsv(
   fileName: string,
   text: string,
 ): Promise<Result<ParsedImport, RowError[]>> {
+  const { parseImport } = await import("./csv");
   const parsed = parseImport(kind, text);
   if (parsed.ok) {
     await execute(db, {
@@ -53,6 +56,7 @@ export async function resetDemo(
   fetcher: Fetcher = fetch,
   manifestUrl = "/seed/manifest.json",
 ) {
+  const { loadSeed } = await import("./loader");
   const { manifest, ingested } = await loadSeed(fetcher, manifestUrl);
   return execute(db, {
     type: "reset_demo",

@@ -25,40 +25,21 @@ import type {
 import { simulateExtraction } from "@/ai/simulated";
 import type { VerilaneDb } from "./db";
 
-export interface SeedManifest {
-  seedVersion: string;
-  invoices: string;
-  customers: string;
-  payments: string;
-  emails: string;
-}
+import {
+  fetchJson,
+  fetchText,
+  seedStatus,
+  SEED_VERSION_KEY,
+  type EnsureSeededResult,
+  type Fetcher,
+  type SeedManifest,
+} from "./seedVersion";
 
-/** Matches the global `fetch` signature; injectable so tests can stub it. */
-export type Fetcher = typeof fetch;
-
-export const SEED_VERSION_KEY = "seedVersion";
-
-export type EnsureSeededResult = "seeded" | "current" | "update-available";
+export { SEED_VERSION_KEY, type EnsureSeededResult, type Fetcher, type SeedManifest };
 
 function parseCsv(text: string): Row[] {
   const { data } = Papa.parse<Row>(text, { header: true, skipEmptyLines: true });
   return data;
-}
-
-async function fetchOrThrow(fetcher: Fetcher, url: string): Promise<Response> {
-  const res = await fetcher(url);
-  if (!res.ok) {
-    throw new Error(`seed fetch failed: ${url} (${res.status})`);
-  }
-  return res;
-}
-
-async function fetchText(fetcher: Fetcher, url: string): Promise<string> {
-  return (await fetchOrThrow(fetcher, url)).text();
-}
-
-async function fetchJson<T>(fetcher: Fetcher, url: string): Promise<T> {
-  return (await fetchOrThrow(fetcher, url)).json() as Promise<T>;
 }
 
 /**
@@ -98,12 +79,8 @@ export async function ensureSeeded(
   fetcher: Fetcher = fetch,
   manifestUrl = "/seed/manifest.json",
 ): Promise<EnsureSeededResult> {
-  const existing = await db.meta.get(SEED_VERSION_KEY);
-
-  if (existing) {
-    const manifest = await fetchJson<SeedManifest>(fetcher, manifestUrl);
-    return existing.value === manifest.seedVersion ? "current" : "update-available";
-  }
+  const status = await seedStatus(db, fetcher, manifestUrl);
+  if (status) return status;
 
   const { manifest, ingested } = await loadSeed(fetcher, manifestUrl);
 
