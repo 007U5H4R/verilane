@@ -78,6 +78,8 @@ beforeEach(async () => {
   await db.reviewItems.bulkAdd([
     { review_id: "RV-A", kind: "data_issue", status: "open" },
     { review_id: "RV-D", kind: "data_issue", status: "open" },
+    { review_id: "RV-REC", kind: "reconciliation", status: "open", requires_role: "manager", invoice_id: "INV-2", message_id: "E-1", ledger_outstanding_paise: 1_000_000 },
+    { review_id: "RV-REJ", kind: "reconciliation", status: "open", requires_role: "manager", invoice_id: "INV-2", message_id: "E-2", ledger_outstanding_paise: 1_000_000 },
   ]);
 });
 
@@ -98,6 +100,11 @@ const COMMANDS: Array<{ cmd: CommandInput; asManager?: boolean }> = [
   { cmd: { type: "assign_dispute", subject: { kind: "dispute", id: "D-T" }, payload: { reviewer: "Ananya Rao" } } },
   { cmd: { type: "action_review", subject: { kind: "review", id: "RV-A" } } },
   { cmd: { type: "dismiss_review", subject: { kind: "review", id: "RV-D" } } },
+  { cmd: { type: "reconcile_flag", subject: { kind: "review", id: "RV-REC" }, payload: { step: "request_proof" } } },
+  {
+    cmd: { type: "reconcile_decide", subject: { kind: "review", id: "RV-REJ" }, payload: { decision: "reject", reason: "Not on the statement" } },
+    asManager: true,
+  },
   { cmd: { type: "switch_role", subject: { kind: "system", id: "workspace" }, payload: { role: "manager" } } },
 ];
 
@@ -227,5 +234,33 @@ describe("execute() — priorities and dataIssues are in scope (R11)", () => {
     expect(await db.priorities.get("INV-1")).toBeDefined();
     expect(await db.dataIssues.where("record_id").equals("INV-1").count()).toBe(1);
     expect(await db.audit.count()).toBe(1);
+  });
+});
+
+// TASK-38: verifying a claim and proposing a link read the ledger and the
+// matcher's output, so those tables must be in the transaction — read only.
+describe("execute() — reconcile commands read the ledger without writing it", () => {
+  it("a Manager verifies a claim against a recorded payment; the ledger is unchanged", async () => {
+    await db.payments.add({ payment_id: "P-1", invoice_id: "INV-2", paid_on: "2026-10-20", amount_paise: 1_000_000 } as never);
+    await db.meta.put({ key: "role", value: "manager" });
+    const before = await db.payments.toArray();
+    await execute(db, {
+      type: "reconcile_decide",
+      subject: { kind: "review", id: "RV-REC" },
+      payload: { decision: "verify", payment_id: "P-1", reference: "Statement line 14", confirmed: true },
+    });
+    expect(await db.reviewItems.get("RV-REC")).toMatchObject({ status: "actioned", workflow_state: "verified", verified_payment_id: "P-1" });
+    expect(await db.payments.toArray()).toEqual(before);
+  });
+
+  it("an Analyst proposes a same-customer link for Manager review", async () => {
+    await db.matches.add({ message_id: "E-9", outcome: "customer_only", customer_id: "C-2", candidates: [] } as never);
+    await db.reviewItems.add({ review_id: "RV-UM", kind: "uncertain_match", status: "open", requires_role: "analyst", message_id: "E-9" } as never);
+    await execute(db, {
+      type: "reconcile_flag",
+      subject: { kind: "review", id: "RV-UM" },
+      payload: { step: "request_link", invoice_id: "INV-2" },
+    });
+    expect(await db.reviewItems.get("RV-UM")).toMatchObject({ status: "open", workflow_state: "manager_review", proposed_invoice_id: "INV-2" });
   });
 });

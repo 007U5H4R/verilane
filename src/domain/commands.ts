@@ -149,6 +149,8 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
   assign_dispute: "dispute",
   dismiss_review: "review",
   action_review: "review",
+  reconcile_flag: "review",
+  reconcile_decide: "review",
   import_csv: "system",
   reset_demo: "system",
   switch_role: "system",
@@ -498,6 +500,9 @@ const HANDLERS: Record<Action, Handler> = {
     };
   },
 
+  reconcile_flag: (ctx) => reconcileFlag(ctx),
+  reconcile_decide: (ctx) => reconcileDecide(ctx),
+
   generate_draft: (ctx) => generateDraft(ctx),
 
   /**
@@ -679,6 +684,231 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
 
   await tx.audit(event);
   return event;
+}
+
+// --- Payment reconciliation workflow (TASK-38) ------------------------------
+//
+// Both commands write only the review item and the one audit event. They
+// never create or edit a ledger (payments) row, and never change an
+// invoice's status or balance: a claim is not proof.
+
+const FLAG_STEPS = [
+  "request_proof",
+  "bank_verification",
+  "escalate",
+  "assign",
+  "request_partial",
+  "request_link",
+] as const;
+type FlagStep = (typeof FLAG_STEPS)[number];
+const FLAG_STATE: Partial<Record<FlagStep, string>> = {
+  request_proof: "awaiting_evidence",
+  bank_verification: "bank_verification",
+  escalate: "manager_review",
+  request_partial: "manager_review",
+  request_link: "manager_review",
+};
+const WORKFLOW_FIELDS = [
+  "workflow_state",
+  "workflow_note",
+  "assignee",
+  "requested_partial_paise",
+  "proposed_invoice_id",
+] as const;
+
+function workflowSnapshot(row: Row | undefined): Row {
+  const out: Row = {};
+  for (const k of WORKFLOW_FIELDS) {
+    if (row?.[k] !== undefined) out[k] = row[k];
+  }
+  if (out.workflow_state === undefined) out.workflow_state = null;
+  return out;
+}
+
+function requireOpen(ctx: Ctx): void {
+  if (status(ctx.row) !== "open") {
+    throw new InvalidCommand(`Review item ${ctx.cmd.subject.id} is closed.`);
+  }
+}
+
+function requiredText(v: unknown, message: string): string {
+  const text = (str(v) ?? "").trim();
+  if (text === "") throw new InvalidCommand(message);
+  if (text.length > NOTE_MAX_LENGTH) {
+    throw new InvalidCommand(`Keep it under ${NOTE_MAX_LENGTH} characters.`);
+  }
+  return text;
+}
+
+function clippedText(v: unknown): string | undefined {
+  const text = (str(v) ?? "").trim();
+  return text === "" ? undefined : text.slice(0, NOTE_MAX_LENGTH);
+}
+
+async function sourcesFor(ctx: Ctx): Promise<DraftSources> {
+  if (!ctx.tx.draftSources) {
+    throw new InvalidCommand("This needs the ledger, which is not available here.");
+  }
+  return ctx.tx.draftSources();
+}
+
+async function reconcileFlag(ctx: Ctx): Promise<Effect> {
+  requireOpen(ctx);
+  const stepName = ctx.payload.step;
+  if (!(FLAG_STEPS as readonly unknown[]).includes(stepName)) {
+    throw new InvalidCommand("Unknown reconciliation step.");
+  }
+  const s = stepName as FlagStep;
+  const id = ctx.cmd.subject.id;
+  const kind = str(ctx.row?.kind);
+  const extra: Row = {};
+  const afterExtra: Row = {};
+  let summary: string;
+
+  switch (s) {
+    case "request_proof":
+      summary = `Requested payment proof for ${id}`;
+      break;
+    case "bank_verification":
+      summary = `Sent ${id} for bank verification`;
+      break;
+    case "escalate":
+      extra.workflow_note = requiredText(ctx.payload.note, "Give a reason for the escalation.");
+      summary = `Escalated ${id} to a Manager`;
+      break;
+    case "assign": {
+      const assignee = ctx.payload.assignee;
+      if (!isRole(assignee)) {
+        throw new InvalidCommand("Assign to an Analyst or a Manager.");
+      }
+      extra.assignee = assignee;
+      summary = `Assigned ${id} to ${ROLE_LABEL[assignee]}`;
+      break;
+    }
+    case "request_partial": {
+      if (kind !== "reconciliation") {
+        throw new InvalidCommand("A partial payment applies to a reconciliation item.");
+      }
+      const outstanding = ctx.row?.ledger_outstanding_paise;
+      const amount = ctx.payload.amount_paise;
+      if (typeof outstanding !== "number" || !Number.isInteger(outstanding)) {
+        throw new InvalidCommand("The ledger outstanding is not available.");
+      }
+      if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0 || amount > outstanding) {
+        throw new InvalidCommand("Enter an amount above zero and no more than the outstanding.");
+      }
+      extra.requested_partial_paise = amount;
+      afterExtra.remaining_paise = outstanding - amount;
+      summary = `Requested Manager review of a partial payment of ${formatInr(paise(amount))} on ${id}; ${formatInr(paise(outstanding - amount))} would remain`;
+      break;
+    }
+    case "request_link": {
+      if (kind !== "uncertain_match") {
+        throw new InvalidCommand("A link request applies to an unmatched email.");
+      }
+      const invoiceId = str(ctx.payload.invoice_id) ?? "";
+      const src = await sourcesFor(ctx);
+      const messageId = str(ctx.row?.message_id);
+      const match = src.matches.find((m) => m.message_id === messageId);
+      const invoice = src.invoices.find((i) => i.invoice_id === invoiceId);
+      if (!invoice) throw new InvalidCommand(`No invoice ${invoiceId}.`);
+      const customerId = match?.customer_id;
+      if (customerId === undefined) {
+        throw new InvalidCommand("The sender's customer is unknown, so no link can be proposed.");
+      }
+      if (invoice.customer_id !== customerId) {
+        throw new InvalidCommand(`${invoiceId} belongs to another customer.`);
+      }
+      extra.proposed_invoice_id = invoiceId;
+      summary = `Proposed linking ${id} to ${invoiceId} for Manager review`;
+      break;
+    }
+  }
+
+  const state = FLAG_STATE[s];
+  if (state !== undefined) extra.workflow_state = state;
+  const note = clippedText(ctx.payload.note);
+  if (note !== undefined && extra.workflow_note === undefined) extra.workflow_note = note;
+
+  const before = workflowSnapshot(ctx.row);
+  const next = { ...ctx.row, ...extra };
+  await ctx.tx.put("reviewItems", next);
+  return {
+    summary,
+    before,
+    after: { ...workflowSnapshot(next), step: s, ...afterExtra },
+  };
+}
+
+async function reconcileDecide(ctx: Ctx): Promise<Effect> {
+  requireOpen(ctx);
+  const id = ctx.cmd.subject.id;
+  const before = { status: status(ctx.row), ...workflowSnapshot(ctx.row) };
+  const decision = ctx.payload.decision;
+
+  if (decision === "verify") {
+    const reference = requiredText(
+      ctx.payload.reference,
+      "Verification needs evidence: a bank statement line or reference.",
+    );
+    if (ctx.payload.confirmed !== true) {
+      throw new InvalidCommand("Please confirm the verification explicitly.");
+    }
+    const paymentId = str(ctx.payload.payment_id) ?? "";
+    const src = await sourcesFor(ctx);
+    const payment = src.payments.find((p) => p.payment_id === paymentId);
+    if (!payment) {
+      throw new InvalidCommand(`No ledger entry ${paymentId}; only a recorded payment can be verified.`);
+    }
+    if (payment.invoice_id !== str(ctx.row?.invoice_id)) {
+      throw new InvalidCommand(`${paymentId} is not recorded against this invoice.`);
+    }
+    const extra: Row = {
+      workflow_state: "verified",
+      verified_payment_id: paymentId,
+      verified_reference: reference,
+    };
+    const note = clippedText(ctx.payload.note);
+    if (note !== undefined) extra.workflow_note = note;
+    const { to } = await step(ctx, "review", "reviewItems", ["action"], extra);
+    return {
+      summary: `Verified ${id} against ledger entry ${paymentId}`,
+      before,
+      after: { status: to, ...extra },
+      evidence_ids: [paymentId],
+    };
+  }
+
+  if (decision === "reject") {
+    const reason = requiredText(ctx.payload.reason, "Give a reason for rejecting the claim.");
+    const extra: Row = { workflow_state: "rejected", workflow_note: reason };
+    const { to } = await step(ctx, "review", "reviewItems", ["dismiss"], extra);
+    return {
+      summary: `Rejected payment claim ${id}`,
+      before,
+      after: { status: to, ...extra },
+    };
+  }
+
+  if (decision === "approve_link") {
+    const proposed = str(ctx.row?.proposed_invoice_id);
+    if (proposed === undefined) {
+      throw new InvalidCommand("There is no proposed invoice to approve.");
+    }
+    if (ctx.payload.confirmed !== true) {
+      throw new InvalidCommand("Please confirm the link explicitly.");
+    }
+    const extra: Row = { workflow_state: "verified", linked_invoice_id: proposed };
+    const { to } = await step(ctx, "review", "reviewItems", ["action"], extra);
+    return {
+      summary: `Approved linking ${id} to ${proposed}`,
+      before,
+      after: { status: to, ...extra },
+      evidence_ids: [proposed],
+    };
+  }
+
+  throw new InvalidCommand("The decision must be verify, reject or approve_link.");
 }
 
 // --- Reminder drafts (TASK-15) ----------------------------------------------

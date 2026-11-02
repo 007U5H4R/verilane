@@ -131,7 +131,9 @@ export async function execute(
     : [
         // priorities + dataIssues: derived tables a command may touch (R11).
         ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
-        ...(DRAFT_COMMANDS.has(input.type) || LEDGER_COMMANDS.has(input.type) ? DRAFT_READS(db) : []),
+        ...(DRAFT_COMMANDS.has(input.type) || LEDGER_COMMANDS.has(input.type) || RECONCILE_COMMANDS.has(input.type)
+          ? DRAFT_READS(db)
+          : []),
       ];
   // TASK-40: the command core and the loader's recompute load on first use,
   // not in every route's first load. Imported before the transaction opens: a
@@ -153,6 +155,8 @@ export async function execute(
 const DRAFT_COMMANDS: ReadonlySet<string> = new Set(["generate_draft", "edit_draft", "submit_draft", "approve_draft"]);
 /** TASK-38: resolving as "payment reconciled" checks the ledger for a real payment. */
 const LEDGER_COMMANDS: ReadonlySet<string> = new Set(["resolve_dispute"]);
+/** TASK-38: verify / propose-link read the ledger and matches (never write them). */
+const RECONCILE_COMMANDS: ReadonlySet<string> = new Set(["reconcile_flag", "reconcile_decide"]);
 const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractions, db.matches];
 
 /** Everything the nine draft checks read, as of the persisted "today". */
