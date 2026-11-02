@@ -64,7 +64,7 @@ const ROUTES: RouteStates[] = [
   },
   {
     href: "/audit",
-    empty: /No activity yet/,
+    empty: /No activity recorded yet/,
     error: /Couldn’t load the audit log\./,
     working: (p) => p.locator('[data-state="working"]'),
     // The seed writes no audit events; submitting a draft records some.
