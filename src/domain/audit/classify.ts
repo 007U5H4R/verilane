@@ -87,6 +87,7 @@ export const ACTION_META: Record<AuditAction, ActionMeta> = {
   mark_disputed: { label: "Marked disputed", tone: "dispute", icon: "flag", module: "disputes", category: "dispute", actor: "human" },
   dispute_transition: { label: "Dispute updated", tone: "dispute", icon: "transition", module: "disputes", category: "dispute", actor: "human" },
   resolve_dispute: { label: "Dispute closed", tone: "success", icon: "resolve", module: "disputes", category: "dispute", actor: "human" },
+  assign_dispute: { label: "Dispute assigned", tone: "dispute", icon: "role", module: "disputes", category: "dispute", actor: "human" },
   dismiss_review: { label: "Review dismissed", tone: "neutral", icon: "dismiss", module: "payments", category: "review", actor: "human" },
   action_review: { label: "Review actioned", tone: "success", icon: "review", module: "payments", category: "review", actor: "human" },
   import_csv: { label: "CSV imported", tone: "info", icon: "import", module: "settings", category: "data", actor: "human" },
