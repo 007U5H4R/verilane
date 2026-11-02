@@ -6,11 +6,13 @@ const REPORTS_DIR = "/Volumes/E Drive/Dev/.scratch/verilane/reports";
 
 const NAV_ROUTES = [
   { href: "/", label: "Home" },
-  { href: "/queue", label: "Queue" },
+  { href: "/queue", label: "Collection Queue" },
   { href: "/disputes", label: "Disputes" },
-  { href: "/payments", label: "Payments" },
+  { href: "/emails", label: "Email Conversations" },
+  { href: "/invoices", label: "Invoices" },
   { href: "/drafts", label: "Drafts" },
-  { href: "/audit", label: "Audit log" },
+  { href: "/payments", label: "Payments" },
+  { href: "/audit", label: "Audit Log" },
   { href: "/settings", label: "Settings" },
 ] as const;
 const INVESTIGATION = "/invoices/INV-042";
@@ -49,7 +51,7 @@ test("TC-062: no route scrolls horizontally at 1440, 1280, 768 or 390", async ({
   expect(overflow).toEqual([]);
 });
 
-test("TC-063: at 390 the bottom tabs + More reach all 7 routes with 48px targets; at 768 the rail is labelled", async ({
+test("TC-063: at 390 the bottom tabs + More reach every nav route with 48px targets; at 768 the rail is labelled", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });

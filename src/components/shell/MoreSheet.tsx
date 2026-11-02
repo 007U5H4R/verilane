@@ -6,11 +6,11 @@ import { X } from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 
-export const MORE_HREFS = ["/payments", "/drafts", "/audit", "/settings"];
+export const MORE_HREFS = ["/emails", "/invoices", "/drafts", "/payments", "/audit", "/settings"];
 const MORE_ITEMS = NAV_ITEMS.filter((item) => MORE_HREFS.includes(item.href));
 
-// TASK-20.1: the bottom tabs' "More" sheet (Payments, Drafts, Audit log,
-// Settings). TASK-38: variant "menu" backs the top bar's <768 menu button —
+// TASK-20.1: the bottom tabs' "More" sheet (every route not on a tab).
+// TASK-38: variant "menu" backs the top bar's <768 menu button —
 // the same sheet listing every nav item. A native modal <dialog> gives focus containment, Escape and an
 // inert background without another primitive; `open` drives showModal/close.
 export function MoreSheet({

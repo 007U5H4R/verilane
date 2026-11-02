@@ -126,7 +126,7 @@ test("TC-076: offline loads from cache with the offline banner; import/reset dis
     await expect(page.getByTestId("import-offline-reason")).toHaveText(/Unavailable offline/);
     const resetSection = page.locator("#reset");
     await expect(resetSection.getByRole("button", { name: /reset/i })).toBeDisabled();
-    await expect(page.getByTestId("reset-offline-reason")).toHaveText(/Unavailable offline/);
+    await expect(resetSection.getByTestId("reset-offline-reason")).toHaveText(/Unavailable offline/);
     await page.screenshot({ path: `${SHOTS}/TASK-24-TC-076-settings-${info.project.name}.png`, fullPage: true });
   } finally {
     await context.setOffline(false);

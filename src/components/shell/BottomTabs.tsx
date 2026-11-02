@@ -15,7 +15,7 @@ const TAB_CLASS =
 const ACTIVE_CLASS = "font-bold text-brand-strong";
 
 // TASK-20.1: the <768px primary navigation (Design.md §13) — Home · Queue ·
-// Disputes · More, 48px targets; More opens the sheet with the other four.
+// Disputes · More, 48px targets; More opens the sheet with every other route.
 // Rendered after <main>, so tab order matches its place at the bottom.
 export function BottomTabs({ activeHref }: { activeHref: string }) {
   const [moreOpen, setMoreOpen] = useState(false);

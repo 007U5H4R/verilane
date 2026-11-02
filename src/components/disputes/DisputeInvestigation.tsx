@@ -188,7 +188,7 @@ export function DisputeInvestigation({ item, primary = false }: { item: DisputeC
       </Section>
 
       <Section title="Evidence">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Evidence table">
           <table className="w-full min-w-[420px] text-left text-sm">
             <caption className="sr-only">Evidence for {dispute.dispute_id}, with the source of each value</caption>
             <thead>
