@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-/** Investigation error state (Design.md §17): "Couldn't load INV-…" + back to queue. */
+/** Investigation error state (Design.md §17): "Couldn't load INV-…" + back to invoices. */
 export default function InvestigationError({ error, retry }: { error: unknown; retry: () => void }) {
   const params = useParams<{ id: string }>();
   const invoiceId = params.id ? decodeURIComponent(params.id) : "this invoice";
@@ -23,9 +24,9 @@ export default function InvestigationError({ error, retry }: { error: unknown; r
         <Button variant="outline" onClick={() => retry()}>
           Try again
         </Button>
-        <a href="/queue" className="text-sm text-brand hover:underline">
-          ← Back to queue
-        </a>
+        <Link href="/invoices" className="text-sm text-brand hover:underline">
+          ← Back to invoices
+        </Link>
       </div>
     </div>
   );

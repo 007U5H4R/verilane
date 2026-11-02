@@ -119,5 +119,5 @@ test("Investigation shows not-found for an unknown invoice id", async ({ page })
 
   await page.goto("/invoices/INV-DOES-NOT-EXIST");
   await expect(page.getByRole("heading", { name: "Invoice not found" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Back to queue/ })).toHaveAttribute("href", "/queue");
+  await expect(page.getByRole("link", { name: /Back to invoices/ })).toHaveAttribute("href", "/invoices");
 });

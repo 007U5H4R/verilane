@@ -48,10 +48,10 @@ function factValue(ev: Evidence): ReactNode {
   }
 }
 
-function BackToQueue() {
+function BackToInvoices() {
   return (
-    <Link href="/queue" className="text-sm text-brand hover:underline">
-      ← Back to queue
+    <Link href="/invoices" className="text-sm text-brand hover:underline">
+      ← Back to invoices
     </Link>
   );
 }
@@ -106,7 +106,7 @@ function InvestigationError({ invoiceId, onRetry }: { invoiceId: string; onRetry
     <div className="flex flex-col gap-4 p-4 md:p-7">
       <ErrorState message={`Couldn’t load ${invoiceId}.`} onRetry={onRetry} />
       <p>
-        <BackToQueue />
+        <BackToInvoices />
       </p>
     </div>
   );
@@ -168,7 +168,7 @@ function InvestigationBody({ invoiceId }: { invoiceId: string }) {
           No invoice <span className="font-mono">{invoiceId}</span> in the loaded data.
         </p>
         <p className="mt-4">
-          <BackToQueue />
+          <BackToInvoices />
         </p>
       </div>
     );
@@ -180,7 +180,7 @@ function InvestigationBody({ invoiceId }: { invoiceId: string }) {
   return (
     <div className="p-4 md:p-7">
       <p className="mb-4">
-        <BackToQueue />
+        <BackToInvoices />
       </p>
       <ActionBar
         role={role}

@@ -9,9 +9,9 @@ export type CrumbResolve = { kind: "invoice" | "dispute"; id: string };
  */
 export type Crumb = { label: string; href?: string; resolve?: CrumbResolve };
 
-/** Detail routes and the nav section they sit under (Design.md mockup: "Queue › INV-…"). */
+/** Detail routes and the nav section they sit under (TASK-38: invoices sit under the Invoices register). */
 const PARENTS: Record<string, { label: string; href: string; kind: CrumbResolve["kind"] }> = {
-  invoices: { label: "Collection Queue", href: "/queue", kind: "invoice" },
+  invoices: { label: "Invoices", href: "/invoices", kind: "invoice" },
   disputes: { label: "Disputes", href: "/disputes", kind: "dispute" },
 };
 

@@ -11,9 +11,9 @@ describe("crumbsFor", () => {
 
   // T34-1: the label is the id until the rendering component resolves it to
   // what the page shows (invoice number / customer); crumbsFor stays pure.
-  it("puts an invoice under the Queue, resolved by invoice id", () => {
+  it("puts an invoice under Invoices, resolved by invoice id", () => {
     expect(crumbsFor("/invoices/INV-042")).toEqual([
-      { label: "Collection Queue", href: "/queue" },
+      { label: "Invoices", href: "/invoices" },
       { label: "INV-042", resolve: { kind: "invoice", id: "INV-042" } },
     ]);
   });
@@ -34,7 +34,7 @@ describe("crumbsFor", () => {
 
   it("ignores a trailing slash and decodes the id", () => {
     expect(crumbsFor("/invoices/INV%20042/")).toEqual([
-      { label: "Collection Queue", href: "/queue" },
+      { label: "Invoices", href: "/invoices" },
       { label: "INV 042", resolve: { kind: "invoice", id: "INV 042" } },
     ]);
   });
@@ -55,7 +55,7 @@ describe("navHrefFor", () => {
   });
 
   it("highlights the parent section of a detail or sub page", () => {
-    expect(navHrefFor("/invoices/INV-042")).toBe("/queue");
+    expect(navHrefFor("/invoices/INV-042")).toBe("/invoices");
     expect(navHrefFor("/disputes/D-003")).toBe("/disputes");
     expect(navHrefFor("/settings/eval")).toBe("/settings");
   });

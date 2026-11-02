@@ -156,10 +156,10 @@ test("breadcrumb: detail pages show their trail, named as the page names them", 
   await openInvoice(page, "INV-042");
   const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
   // T34-1: the invoice number the Queue row and header show, not invoice_id.
-  await expect(crumbs).toHaveText(/^Collection Queue\s*INV-1042$/);
+  await expect(crumbs).toHaveText(/^Invoices\s*INV-1042$/);
   await expect(crumbs.locator('[aria-current="page"]')).toHaveText("INV-1042");
   // T34-6: the nav highlights the parent section, not Home.
-  await expect(page.locator('a[href="/queue"][aria-current="page"]').first()).toBeAttached();
+  await expect(page.locator('a[href="/invoices"][aria-current="page"]').first()).toBeAttached();
   await expect(page.locator('a[href="/"][aria-current="page"]')).toHaveCount(0);
   if (testInfo.project.name === "chromium-light")
     await page.screenshot({ path: shotPath(testInfo, "TASK-34-breadcrumb-invoice.png") });
