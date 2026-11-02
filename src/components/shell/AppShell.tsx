@@ -11,6 +11,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { crumbsFor, navHrefFor } from "@/components/shell/breadcrumb";
 import { useSidebarState } from "@/components/shell/topbar/useSidebarState";
 import { SeedUpdatePrompt } from "@/components/SeedUpdatePrompt";
+import { useTour } from "@/components/tour/tourStore";
 import { useOnline } from "@/lib/useOnline";
 import { useAutopilotPolicy } from "@/store/hooks";
 
@@ -19,6 +20,12 @@ import { useAutopilotPolicy } from "@/store/hooks";
 const AutopilotRunner = dynamic(() => import("@/components/drafts/AutopilotRunner").then((m) => m.AutopilotRunner));
 function AutopilotGate() {
   return useAutopilotPolicy()?.enabled ? <AutopilotRunner /> : null;
+}
+
+// TASK-44: the demo tour loads only once a tour is requested.
+const TourHost = dynamic(() => import("@/components/tour/TourHost"));
+function TourGate() {
+  return useTour().phase !== "idle" ? <TourHost /> : null;
 }
 
 // TASK-20 (Design.md §13): ≥1024 216px sidebar · 768–1023 72px icon rail ·
@@ -54,6 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <BannerHost offline={!online} />
         <SeedUpdatePrompt />
         <AutopilotGate />
+        <TourGate />
         <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>
       </div>
       <BottomTabs activeHref={activeHref} />
