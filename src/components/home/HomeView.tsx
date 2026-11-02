@@ -7,22 +7,35 @@ import { useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { ageingBuckets, kpis, priorityMix, type HomeAggregateInput } from "@/domain/aggregates";
-import { DbContext, useDisputeCount, useQueue, usePayments } from "@/store/hooks";
+import { formatDate } from "@/domain/clock";
+import { attentionGroups, type DraftLike } from "@/domain/home/attention";
+import {
+  DbContext,
+  useAsOf,
+  useCustomers,
+  useDisputeCount,
+  useDraftsAwaitingApproval,
+  useQueue,
+  usePayments,
+} from "@/store/hooks";
 import { HomeSkeleton } from "./HomeSkeleton";
 import { KpiStrip } from "./KpiStrip";
 import { TaskFeed } from "./TaskFeed";
+import { useOpenPaymentReviews } from "./useHomeAttention";
 
 // Charts load in their own chunk: recharts alone pushed Home's First Load JS
 // past the 300 KB gzip budget (TASK-25 · TC-083). The fallback reserves the
 // chart's height so nothing shifts when it arrives.
 function ChartFallback({ height }: { height: string }) {
-  return <div className={`${height} w-full animate-pulse rounded-md bg-surface-sunken`} aria-hidden="true" />;
+  return (
+    <div className={`${height} w-full animate-pulse rounded-2xl border border-border bg-surface shadow-card`} aria-hidden="true" />
+  );
 }
 const AgeingChart = dynamic(() => import("./AgeingChart").then((m) => m.AgeingChart), {
-  loading: () => <ChartFallback height="h-64" />,
+  loading: () => <ChartFallback height="h-[400px]" />,
 });
 const PriorityMixChart = dynamic(() => import("./PriorityMixChart").then((m) => m.PriorityMixChart), {
-  loading: () => <ChartFallback height="h-32" />,
+  loading: () => <ChartFallback height="h-[240px]" />,
 });
 
 type BlockId = "kpi" | "feed" | "ageing" | "mix";
@@ -37,6 +50,7 @@ type BlockId = "kpi" | "feed" | "ageing" | "mix";
  */
 export function HomeView() {
   const db = useContext(DbContext);
+  const asOf = useAsOf();
   const params = useSearchParams();
   // E2E-only state overrides (TP7): a normal build inlines `false`/`null` here.
   const isE2E = process.env.NEXT_PUBLIC_E2E === "1";
@@ -51,15 +65,17 @@ export function HomeView() {
   else body = <HomeBody forcedBlockError={forcedBlockError} />;
 
   return (
-    <section className="flex flex-col gap-6 p-7" aria-labelledby="home-title">
+    <section className="flex min-w-0 flex-col gap-6 p-4 sm:p-7" aria-labelledby="home-title">
       <header className="flex flex-col gap-1">
         <h1
           id="home-title"
-          className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text"
+          className="font-display text-[28px] font-semibold leading-tight tracking-tight text-text sm:text-[32px]"
         >
           Home
         </h1>
-        <p className="text-text-muted">What needs your attention today.</p>
+        <p className="text-text-muted" data-testid="home-as-of">
+          As of {formatDate(asOf)} · What needs your attention today.
+        </p>
       </header>
       {body}
     </section>
@@ -70,30 +86,54 @@ function HomeBody({ forcedBlockError }: { forcedBlockError: BlockId | null }) {
   const items = useQueue();
   const payments = usePayments();
   const openDisputes = useDisputeCount();
+  const customers = useCustomers();
+  const drafts = useDraftsAwaitingApproval();
+  const reviews = useOpenPaymentReviews();
 
-  if (items === undefined || payments === undefined || openDisputes === undefined) return <HomeSkeleton />;
+  if (
+    items === undefined ||
+    payments === undefined ||
+    openDisputes === undefined ||
+    customers === undefined ||
+    drafts === undefined ||
+    reviews === undefined
+  )
+    return <HomeSkeleton />;
   if (items.length === 0) return <NoAttention />;
 
   const input: HomeAggregateInput = { items, payments };
+  const customerNames = new Map([...customers].map(([id, c]) => [id, c.name]));
+  const draftRows: DraftLike[] = drafts.map((d) => d.draft);
   // E2E (TC-056): a forced block gets input that throws when its aggregate
   // reads it, so the hook exercises the real aggregate-throws path.
   const inputFor = (id: BlockId) => (forcedBlockError === id ? poisoned(input) : input);
 
   return (
-    <div className="flex flex-col gap-6" data-state="working">
+    <div className="flex min-w-0 flex-col gap-6" data-state="working">
       <Block
         id="kpi"
         input={inputFor("kpi")}
         message="Couldn’t load the KPI strip."
         render={(i) => <KpiStrip kpis={kpis(i)} openDisputesCount={openDisputes} />}
       />
-      <Block
-        id="feed"
-        input={inputFor("feed")}
-        message="Couldn’t load the task feed."
-        render={(i) => <TaskFeed items={i.items} />}
-      />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <Block
+          id="feed"
+          input={inputFor("feed")}
+          message="Couldn’t load the task feed."
+          render={(i) => (
+            <TaskFeed
+              groups={attentionGroups({
+                items: i.items,
+                payments: i.payments,
+                customerNames,
+                drafts: draftRows,
+                reviews,
+              })}
+            />
+          )}
+        />
+        <div className="flex min-w-0 flex-col gap-6">
         <Block
           id="ageing"
           input={inputFor("ageing")}
@@ -106,6 +146,7 @@ function HomeBody({ forcedBlockError }: { forcedBlockError: BlockId | null }) {
           message="Couldn’t load the priority mix chart."
           render={(i) => <PriorityMixChart mix={priorityMix(i)} />}
         />
+        </div>
       </div>
     </div>
   );
@@ -146,7 +187,7 @@ function Block({
 }) {
   const [attempt, setAttempt] = useState(0);
   return (
-    <div data-testid={`home-block-${id}`}>
+    <div data-testid={`home-block-${id}`} className="min-w-0">
       <BlockBoundary key={attempt} message={message} onRetry={() => setAttempt((n) => n + 1)}>
         <BlockContent input={input} render={render} />
       </BlockBoundary>
