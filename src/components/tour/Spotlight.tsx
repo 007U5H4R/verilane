@@ -31,7 +31,10 @@ export function useTargetRect(selector: string, mobileFallback?: string): Rect |
       const el = findTarget(selector, mobileFallback);
       if (el && el !== last) {
         // New target (first find, or re-rendered): bring it into view once.
-        el.scrollIntoView({ block: "center", behavior: "auto" });
+        // A target taller than the screen (the ranked list) shows its top,
+        // not its middle.
+        const tall = el.getBoundingClientRect().height > window.innerHeight;
+        el.scrollIntoView({ block: tall ? "start" : "center", behavior: "auto" });
       }
       last = el;
       const r = el?.getBoundingClientRect();

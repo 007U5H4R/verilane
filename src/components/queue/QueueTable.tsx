@@ -76,7 +76,9 @@ export function QueueTable({
     // `relative`: the scroller must be the containing block of absolutely
     // positioned descendants (the sr-only "Actions" header), or they sit at
     // their static x past the clip and widen the page (TC-062).
-    <div className="relative overflow-x-auto rounded-lg border border-border bg-surface shadow-card max-md:overflow-visible max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:shadow-none">
+    // TASK-44: the tour rings this frame; scroll-mt keeps its top (the column
+    // header and top-ranked rows) clear of the sticky top bar.
+    <div data-tour="queue-list" className="relative scroll-mt-24 overflow-x-auto rounded-lg border border-border bg-surface shadow-card max-md:overflow-visible max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:shadow-none">
       <table className="w-full min-w-[1000px] border-collapse text-sm max-md:block max-md:min-w-0">
         <caption className="sr-only">Invoices in priority order. Select a row to open its investigation.</caption>
         <thead className="border-b border-border bg-surface-sunken max-md:hidden">
@@ -105,7 +107,7 @@ export function QueueTable({
             </th>
           </tr>
         </thead>
-        <tbody data-tour="queue-list" className="max-md:flex max-md:flex-col max-md:gap-2">
+        <tbody className="max-md:flex max-md:flex-col max-md:gap-2">
           {rows.map((r) => {
             const { invoice, priority } = r;
             const id = invoice.invoice_id;

@@ -119,6 +119,17 @@ test("step 1 screenshot", async ({ page }, info) => {
   await page.goto("/queue");
   await startTour(page);
   await expect(page.getByTestId("tour-spotlight")).toBeVisible();
+  // Scar: the ranked list is taller than the screen; centring it scrolled
+  // past the top-ranked rows the pitch is about.
+  // …and must not hide them under the sticky top bar either.
+  const firstRow = page.locator("[data-tour^=queue-row-]").first();
+  await expect(firstRow).toBeInViewport();
+  const below = async () => {
+    const bar = await page.locator("header").first().boundingBox();
+    const row = await firstRow.boundingBox();
+    return bar && row ? row.y - (bar.y + bar.height) : -Infinity;
+  };
+  await expect.poll(below).toBeGreaterThanOrEqual(0);
   await page.screenshot({ path: `${SHOTS}/TASK-44-step1-${info.project.name}.png` });
 });
 
@@ -195,11 +206,14 @@ for (const width of [375, 768]) {
     await page.screenshot({ path: `${SHOTS}/TASK-44-${width}-step6-${info.project.name}.png` });
 
     if (width === 375) {
-      const ring = await page.getByTestId("tour-spotlight").boundingBox();
-      const more = await page.locator("[data-tour=nav-more]").boundingBox();
-      expect(ring && more).toBeTruthy();
-      expect(Math.abs(ring!.x + 6 - more!.x)).toBeLessThanOrEqual(2);
-      expect(Math.abs(ring!.y + 6 - more!.y)).toBeLessThanOrEqual(2);
+      // The ring slides (200ms) to its target: poll until it settles.
+      const offset = async () => {
+        const ring = await page.getByTestId("tour-spotlight").boundingBox();
+        const more = await page.locator("[data-tour=nav-more]").boundingBox();
+        if (!ring || !more) return Infinity;
+        return Math.max(Math.abs(ring.x + 6 - more.x), Math.abs(ring.y + 6 - more.y));
+      };
+      await expect.poll(offset).toBeLessThanOrEqual(2);
     }
   });
 }
