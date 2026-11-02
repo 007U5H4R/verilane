@@ -173,7 +173,8 @@ function Interpretation({ extraction: x, invoices }: { extraction?: Extraction; 
         AI interpretation
         {x && (
           <span className="font-normal normal-case tracking-normal">
-            · {x.mode === "live" ? "Live" : "Simulated"} · {x.provider}
+            · {x.mode === "live" ? "Live" : "Simulated"}
+            {x.provider && x.provider.toLowerCase() !== x.mode ? ` · ${x.provider}` : ""}
             {x.model ? ` · ${x.model}` : ""}
           </span>
         )}
@@ -199,7 +200,7 @@ function Interpretation({ extraction: x, invoices }: { extraction?: Extraction; 
               ? NA
               : resolveInvoiceRefs(x.invoice_refs, invoices).map(({ ref, invoice_id }) =>
                   invoice_id ? (
-                    <Link key={ref} href={invoiceHref(invoice_id)} className={`${LINK} font-mono`}>
+                    <Link key={ref} href={invoiceHref(invoice_id)} className={`${LINK} inline-flex min-h-11 items-center font-mono lg:min-h-0`}>
                       {ref}
                     </Link>
                   ) : (

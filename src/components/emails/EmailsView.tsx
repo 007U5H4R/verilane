@@ -199,7 +199,7 @@ function Working({ data }: { data: EmailThreadsData }) {
           tone="low"
           label="Rejected extractions"
           value={kpis.rejected}
-          caption="messages the validator rejected"
+          caption="rejected by the validator"
           pressed={filters.intent === "rejected"}
           onClick={() => toggleFacet({ intent: "rejected" }, filters.intent === "rejected")}
         />
