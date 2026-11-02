@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, useContext, useState, type ReactNode } from "react";
+import { Component, useContext, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -8,14 +8,21 @@ import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { RowSkeleton } from "@/components/states/RowSkeleton";
 import { Button } from "@/components/ui/button";
-import { DbContext, usePaymentsData } from "@/store/hooks";
-import { LedgerTable } from "./LedgerTable";
-import { UnmatchedList } from "./UnmatchedList";
+import { DbContext, useRole } from "@/store/hooks";
+import { useReconciliationData, type ReconciliationData } from "@/store/paymentsHooks";
+import { LedgerTab } from "./LedgerTab";
+import { buildModel } from "./model";
+import { Illustration, KpiCards, Tabs, isTab, useUrlState, type TabId } from "./parts";
+import { ReconciliationTab } from "./ReconciliationTab";
+import { UnmatchedTab } from "./UnmatchedTab";
+
+const PANEL_ID = "payments-panel";
 
 /**
- * Payments (TASK-13.4): the payments ledger, plus the emails that need a
- * person — claimed payments to reconcile and emails the strict matcher could
- * not tie to one invoice. Four states: loading, empty, error, working.
+ * Payments & Reconciliation (TASK-13.4, redesigned in TASK-38): the ledger,
+ * plus the emails that need a person — claimed payments to reconcile and
+ * emails the strict matcher could not tie to one invoice. Nothing on this
+ * page writes the ledger. Four states: loading, empty, error, working.
  * Must render inside <Suspense> (it reads search params).
  */
 export function PaymentsView() {
@@ -37,12 +44,15 @@ export function PaymentsView() {
     );
 
   return (
-    <section className="flex flex-col gap-4 p-7" aria-labelledby="payments-title">
-      <header className="flex flex-col gap-1">
-        <h1 id="payments-title" className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">
-          Payments
-        </h1>
-        <p className="text-text-muted">The ledger, and the emails that need a person before anything changes.</p>
+    <section className="flex flex-col gap-5 p-4 sm:p-7" aria-labelledby="payments-title">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 id="payments-title" className="font-display text-[28px] font-semibold leading-tight tracking-tight text-text sm:text-[32px]">
+            Payments
+          </h1>
+          <p className="text-text-muted">The ledger, and the emails that need a person before anything changes.</p>
+        </div>
+        <Illustration className="hidden shrink-0 sm:block" />
       </header>
       {body}
     </section>
@@ -50,38 +60,35 @@ export function PaymentsView() {
 }
 
 function PaymentsBody() {
-  const data = usePaymentsData();
+  const data = useReconciliationData();
   if (!data) return <RowSkeleton label="Loading payments" />;
   if (data.invoices.size === 0) return <NoData />;
-
-  const reconcile = data.reviewItems.filter((r) => r.kind === "reconciliation");
-  const unmatched = data.reviewItems.filter((r) => r.kind === "uncertain_match");
-  const shared = { emails: data.emails, matches: data.matches, invoices: data.invoices };
-
-  return (
-    <div className="flex flex-col gap-6" data-state="working">
-      <Section id="payments-reconcile" title="Needs reconciliation" count={reconcile.length}>
-        <UnmatchedList items={reconcile} label="Needs reconciliation" emptyText="No claimed payments to reconcile." {...shared} />
-      </Section>
-      <Section id="payments-unmatched" title="Unmatched emails" count={unmatched.length}>
-        <UnmatchedList items={unmatched} label="Unmatched emails" emptyText="Every email is tied to one invoice." {...shared} />
-      </Section>
-      <Section id="payments-ledger" title="Ledger" count={data.payments.length}>
-        <LedgerTable payments={data.payments} invoices={data.invoices} customers={data.customers} />
-      </Section>
-    </div>
-  );
+  return <Working data={data} />;
 }
 
-function Section({ id, title, count, children }: { id: string; title: string; count: number; children: ReactNode }) {
+function Working({ data }: { data: ReconciliationData }) {
+  const role = useRole();
+  const { params, set } = useUrlState();
+  const model = useMemo(() => buildModel(data), [data]);
+  const raw = params.get("tab");
+  const tab: TabId = isTab(raw) ? raw : "reconcile";
+  const select = (t: TabId) => set({ tab: t === "reconcile" ? null : t });
+  const counts: Record<TabId, number> = {
+    reconcile: model.kpis.needsReconciliation,
+    unmatched: model.kpis.unmatchedEmails,
+    ledger: model.kpis.ledgerEntries,
+  };
+
   return (
-    <section className="flex flex-col gap-2" aria-labelledby={id}>
-      <h2 id={id} className="flex items-baseline gap-2 text-sm font-semibold text-text">
-        {title}
-        <span className="text-xs font-normal text-text-muted">{count}</span>
-      </h2>
-      {children}
-    </section>
+    <div className="flex flex-col gap-5" data-state="working">
+      <KpiCards kpis={model.kpis} onPick={select} />
+      <Tabs active={tab} counts={counts} onSelect={select} panelId={PANEL_ID} />
+      <div id={PANEL_ID} role="tabpanel" aria-labelledby={`payments-tab-${tab}`} tabIndex={-1} className="outline-none">
+        {tab === "reconcile" && <ReconciliationTab model={model} role={role} onViewLedger={() => select("ledger")} />}
+        {tab === "unmatched" && <UnmatchedTab model={model} role={role} />}
+        {tab === "ledger" && <LedgerTab model={model} />}
+      </div>
+    </div>
   );
 }
 
