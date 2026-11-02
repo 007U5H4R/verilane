@@ -145,7 +145,10 @@ test("TC-079: an unknown invoice shows 'Invoice not found' with a way back, neve
   await page.goto("/invoices/INV-DOES-NOT-EXIST");
   await waitForShell(page);
   await expect(page.getByRole("heading", { name: "Invoice not found" })).toBeVisible();
-  await expect(page.locator("main").getByRole("link", { name: /queue/i })).toBeVisible();
+  // Invoice details sit under Invoices since TASK-38 (a2a3c4f), so the way back is to /invoices.
+  const back = page.locator("main").getByRole("link", { name: /Back to invoices/ });
+  await expect(back).toBeVisible();
+  await expect(back).toHaveAttribute("href", "/invoices");
 });
 
 test("TC-079: after Settings → Reset, /drafts shows its real empty state", async ({ page }, testInfo) => {

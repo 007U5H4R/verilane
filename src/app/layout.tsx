@@ -65,7 +65,12 @@ const THEME_SCRIPT = `
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    // suppressHydrationWarning: THEME_SCRIPT sets data-theme before React
+    // hydrates, so the server HTML never has it. This is the documented
+    // pattern for a pre-paint theme script (Next docs: guides/
+    // preventing-flash-before-hydration.md, "Themes") — it only ignores the
+    // mismatch on this element's own attributes, not its children.
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

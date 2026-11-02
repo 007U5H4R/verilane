@@ -33,13 +33,15 @@ async function open(page: Page, href: string): Promise<void> {
   if (href.startsWith("/invoices/")) await expect(page.getByTestId("priority-reason")).toHaveText(/\S/);
 }
 
-test("TC-062: no route scrolls horizontally at 1440, 1280, 768 or 390", async ({ page }) => {
-  // Seed once so every route renders real data.
-  await open(page, "/queue");
-  const overflow: string[] = [];
-  for (const vp of VIEWPORTS) {
-    await page.setViewportSize(vp);
-    for (const href of ALL_ROUTES) {
+// One test per route (TASK-47): all 40 route × width loads in a single test
+// took ~70s, past the 30s budget, though no single load takes over ~3.5s.
+for (const href of ALL_ROUTES) {
+  test(`TC-062: ${href} does not scroll horizontally at 1440, 1280, 768 or 390`, async ({ page }) => {
+    // Seed first so the route renders real data.
+    await open(page, "/queue");
+    const overflow: string[] = [];
+    for (const vp of VIEWPORTS) {
+      await page.setViewportSize(vp);
       await open(page, href);
       const { scrollWidth, innerWidth } = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
@@ -47,9 +49,9 @@ test("TC-062: no route scrolls horizontally at 1440, 1280, 768 or 390", async ({
       }));
       if (scrollWidth > innerWidth) overflow.push(`${href} @${vp.width}: ${scrollWidth} > ${innerWidth}`);
     }
-  }
-  expect(overflow).toEqual([]);
-});
+    expect(overflow).toEqual([]);
+  });
+}
 
 test("TC-063: at 390 the bottom tabs + More reach every nav route with 48px targets; at 768 the rail is labelled", async ({
   page,
@@ -164,7 +166,7 @@ async function checkFocusOrder(page: Page): Promise<void> {
     });
     seen.push(info?.idx ?? "null");
     if (info && !info.visible) {
-      // A background change also reads as a focus indicator (RowCard).
+      // A background change also reads as a focus indicator (RowMenuList).
       const blurredStyle = await page.evaluate((idx) => {
         const el = document.querySelector<HTMLElement>(`[data-focus-idx="${idx}"]`);
         if (!el) return "";

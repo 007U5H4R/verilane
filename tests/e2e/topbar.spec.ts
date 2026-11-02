@@ -102,6 +102,56 @@ test("T38: the theme toggle flips and persists the theme", async ({ page }) => {
   await expect(html).toHaveAttribute("data-theme", after);
 });
 
+// TASK-38 scar: the pre-paint THEME_SCRIPT sets data-theme on <html>, which
+// the server HTML can't know. Without suppressHydrationWarning on <html>,
+// React logs "A tree hydrated but some attributes ... didn't match" (dev).
+// Prod React doesn't print that attribute diff, so the minified hydration
+// errors (#418/#423/#425) are matched too; layout.test.ts pins the prop itself.
+// Runs in both projects: stored dark under a light OS is the flash-prone case.
+test("T38: a stored dark theme paints dark on the first frame, with no hydration warnings", async ({ page }) => {
+  const hydration: string[] = [];
+  const HYDRATION = /hydrat|didn't match|data-theme|react\.dev\/errors\/(418|423|425)\b|#(418|423|425)\b/i;
+  page.on("console", (m) => {
+    if ((m.type() === "error" || m.type() === "warning") && HYDRATION.test(m.text())) hydration.push(m.text());
+  });
+  page.on("pageerror", (e) => {
+    if (HYDRATION.test(e.message)) hydration.push(e.message);
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem("verilane-theme", "dark");
+    // Runs before any page script: record every data-theme value <html> takes
+    // and the theme + body background on the first animation frame, which
+    // fires before the first paint.
+    const w = window as unknown as { __themeLog: (string | null)[]; __firstFrame?: { theme: string | null; bg: string } };
+    w.__themeLog = [];
+    new MutationObserver(() => w.__themeLog.push(document.documentElement.getAttribute("data-theme"))).observe(
+      document,
+      { attributes: true, attributeFilter: ["data-theme"], subtree: true },
+    );
+    requestAnimationFrame(() => {
+      w.__firstFrame = {
+        theme: document.documentElement.getAttribute("data-theme"),
+        bg: document.body ? getComputedStyle(document.body).backgroundColor : "",
+      };
+    });
+  });
+
+  await ready(page);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  // Let any late hydration recovery or warning surface before asserting.
+  await page.waitForLoadState("networkidle");
+
+  const { log, first, bg } = await page.evaluate(() => {
+    const w = window as unknown as { __themeLog: (string | null)[]; __firstFrame?: { theme: string | null; bg: string } };
+    return { log: w.__themeLog, first: w.__firstFrame, bg: getComputedStyle(document.body).backgroundColor };
+  });
+  expect(first?.theme).toBe("dark");
+  expect(first?.bg).toBe(bg);
+  // Set once by the script and never flipped (no light→dark correction).
+  expect(log).toEqual(["dark"]);
+  expect(hydration).toEqual([]);
+});
+
 test("T38: the bell's count is the live attention count from the store", async ({ page }) => {
   await ready(page);
   const facts = await page.evaluate(async () => {

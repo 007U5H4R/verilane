@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SeedUpdatePrompt />
         <AutopilotGate />
         <TourGate />
-        <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       </div>
       <BottomTabs activeHref={activeHref} />
     </div>
