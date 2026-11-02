@@ -1,9 +1,10 @@
 ---
 id: TASK-44
 title: Add guided demo tour with per-step pitch
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 13:09'
+updated_date: '2026-11-02 17:20'
 labels:
   - P2
 dependencies: []
