@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import { useContext } from "react";
 
 import { BannerHost } from "@/components/shell/Banner";
 import { BottomTabs } from "@/components/shell/BottomTabs";
@@ -13,7 +14,7 @@ import { useSidebarState } from "@/components/shell/topbar/useSidebarState";
 import { SeedUpdatePrompt } from "@/components/SeedUpdatePrompt";
 import { useTour } from "@/components/tour/tourStore";
 import { useOnline } from "@/lib/useOnline";
-import { useAutopilotPolicy } from "@/store/hooks";
+import { DbContext, useAutopilotPolicy } from "@/store/hooks";
 
 // TASK-41: the runner (and the command path it pulls in) loads only once a
 // Manager switches autopilot on, so it adds nothing to first-load JS.
@@ -22,10 +23,14 @@ function AutopilotGate() {
   return useAutopilotPolicy()?.enabled ? <AutopilotRunner /> : null;
 }
 
-// TASK-44: the demo tour loads only once a tour is requested.
+// TASK-44: the demo tour loads only once a tour is requested. The shell also
+// paints while the database is still opening (ShellLoading, no DbContext), so
+// a request made then waits for the db instead of crashing in useDb().
 const TourHost = dynamic(() => import("@/components/tour/TourHost"));
 function TourGate() {
-  return useTour().phase !== "idle" ? <TourHost /> : null;
+  const db = useContext(DbContext);
+  const { phase } = useTour();
+  return db && phase !== "idle" ? <TourHost /> : null;
 }
 
 // TASK-20 (Design.md §13): ≥1024 216px sidebar · 768–1023 72px icon rail ·

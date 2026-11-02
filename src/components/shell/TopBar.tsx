@@ -22,10 +22,10 @@ function Divider() {
 }
 
 // TASK-38: sticky premium top bar. DOM order is visual order (TC-064):
-// toggle · breadcrumb · search · guest (TASK-39) · LLM · role · theme · bell · avatar.
+// toggle · breadcrumb · search · demo (TASK-44) · guest (TASK-39) · LLM · role · theme · bell · avatar.
 // ≥1280 one 76px row with an inline search field; 768–1279 the search is an
 // icon that opens a full-width row under the bar; <768 two rows — menu,
-// current page, demo pill and search, then the controls.
+// current page, demo pill, search and Demo, then the controls.
 export function TopBar({
   crumbs,
   sidebar,
@@ -48,12 +48,16 @@ export function TopBar({
         <GlobalSearch />
       </Suspense>
       <Divider />
-      <div className="flex basis-full items-center justify-between gap-2 md:ml-auto md:basis-auto md:justify-end md:gap-3 xl:ml-0">
+      {/* TASK-44: <768 the Demo button ends row 1 (row 2 is full at 375px);
+          ≥768 it leads the right-hand controls. */}
+      <div className="flex shrink-0 md:ml-auto xl:ml-0">
+        <DemoButton />
+      </div>
+      <div className="flex basis-full items-center justify-between gap-2 md:basis-auto md:justify-end md:gap-3">
         <div className="flex items-center gap-1.5 md:gap-3">
           <GuestSlot />
           <LlmStatusBadge />
           <InstallChip />
-          <DemoButton />
           <RoleSwitcher />
         </div>
         <Divider />

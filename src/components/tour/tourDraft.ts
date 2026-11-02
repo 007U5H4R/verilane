@@ -9,6 +9,6 @@ import type { TourSnapshot } from "./steps";
 export function toTourDraft(d: Draft | null): TourSnapshot["draftA"] {
   if (!d) return null;
   if (d.status !== "sent_simulated") return { status: d.status };
-  const sentBy = (d as { sent_by?: string }).sent_by === "copilot" ? "copilot" : "human";
+  const sentBy = d.sent_by === "copilot" ? "copilot" : "human";
   return { status: d.status, sent_by: sentBy };
 }

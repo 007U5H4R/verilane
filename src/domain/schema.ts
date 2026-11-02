@@ -340,6 +340,8 @@ export const DraftSchema = z.object({
   /** Ids of the checks that failed at the last validation. */
   failed_checks: z.array(z.number().int()),
   created_at: isoTimestamp,
+  /** Set only by autopilot_send (TASK-41); a human approve-and-send leaves it unset. */
+  sent_by: z.literal("copilot").optional(),
 });
 export type Draft = z.infer<typeof DraftSchema>;
 
