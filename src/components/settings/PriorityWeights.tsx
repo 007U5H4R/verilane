@@ -24,7 +24,12 @@ export function PriorityWeights() {
         {high.min} or more is High, {medium.min} to {medium.max} is Medium, below {low.max + 1} is Low. Data-quality,
         dispute and payment gates are checked before any score.
       </p>
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div
+        role="region"
+        aria-label="Priority weights table"
+        tabIndex={0}
+        className="overflow-x-auto rounded-md border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
         <table className="w-full min-w-[22rem] text-left text-[13px]">
           <caption className="sr-only">Priority weights, {table.version}</caption>
           <thead className="bg-surface-sunken text-text-muted">
