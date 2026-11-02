@@ -98,10 +98,16 @@ test.describe("@perf", () => {
     const rowOrder = () => page.$$eval(ROWS, (as) => as.map((a) => a.getAttribute("href")).join("|"));
     const fullCount = (await resultCount.textContent()) ?? "";
 
-    // Queries that narrow the list: real customer names from the facet pills.
+    // Queries that narrow the list: real customer names from the facet options.
+    // TASK-38: the customer facet is a searchable picker, so its options exist
+    // only while it is open — open it, read the names, close it again.
+    await page.getByRole("button", { name: /^Customer: / }).click();
+    // The list loads on first open — wait for it before reading (allInnerTexts doesn't wait).
+    await expect(page.getByRole("group", { name: "Customer" }).getByRole("button").first()).toBeVisible();
     const names = (await page.getByRole("group", { name: "Customer" }).getByRole("button").allInnerTexts())
       .map((n) => n.trim())
       .filter(Boolean);
+    await page.keyboard.press("Escape");
     expect(names.length).toBeGreaterThan(0);
 
     const filterTimings: number[] = [];
