@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint --ignore-pattern src/domain/__lint__/**",
+    "lint": "eslint src tests scripts eval next.config.ts playwright.config.ts vitest.config.ts eslint.config.mjs --ignore-pattern src/domain/__lint__/**",
     "lint:domain-fixture": "eslint src/domain/__lint__/forbidden.fixture.ts",
     "test": "vitest run --project unit",
     "perf": "vitest run --project perf",
