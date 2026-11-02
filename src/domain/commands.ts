@@ -27,6 +27,12 @@ import {
   PaymentSchema,
 } from "./schema";
 import { transition } from "./transitions";
+import {
+  closingOutcome,
+  isDisputeReviewer,
+  isResolutionCode,
+  RESOLUTION_LABELS,
+} from "./disputes/model";
 import { buildDraft, factsFor, locateFootnotes } from "./draft";
 import { VerifiedFactSchema, type Extraction, type VerifiedFact } from "./schema";
 import { draftContextFor, validate, type DraftSources } from "./validate";
@@ -158,6 +164,7 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
   mark_disputed: "invoice",
   dispute_transition: "dispute",
   resolve_dispute: "dispute",
+  assign_dispute: "dispute",
   dismiss_review: "review",
   action_review: "review",
   import_csv: "system",
@@ -231,6 +238,69 @@ function amountNote(row: Row | undefined): string {
 
 const DRAFT_TEXT_FIELDS = ["subject", "body"] as const;
 const DISPUTE_EVENTS = ["start_review", "await_customer", "customer_replied"];
+const CLOSED_DISPUTE: ReadonlySet<string> = new Set(["resolved", "rejected"]);
+
+/** An optional free-text field: trimmed, capped, `undefined` when blank. */
+function optionalText(v: unknown, what: string): string | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "string") throw new InvalidCommand(`${what} must be text.`);
+  const text = v.trim();
+  if (text === "") return undefined;
+  if (text.length > NOTE_MAX_LENGTH) {
+    throw new InvalidCommand(`${what} can be at most ${NOTE_MAX_LENGTH} characters.`);
+  }
+  return text;
+}
+
+/**
+ * Validates `resolve_dispute`'s optional `resolution` payload (TASK-38).
+ * The outcome code must agree with the closing outcome and notes are
+ * required. "Payment reconciled" needs a real ledger payment for the
+ * disputed invoice: a customer saying they paid is never proof.
+ */
+async function resolutionRecord(
+  ctx: Ctx,
+  outcome: "resolved" | "rejected",
+): Promise<{ record: Row; label: string }> {
+  const r = ctx.payload.resolution;
+  if (typeof r !== "object" || r === null || Array.isArray(r)) {
+    throw new InvalidCommand("A resolution needs an outcome and notes.");
+  }
+  const res = r as Row;
+  const code = res.code;
+  if (!isResolutionCode(code)) throw new InvalidCommand("Choose a resolution outcome.");
+  if (closingOutcome(code) !== outcome) {
+    throw new InvalidCommand("That outcome does not match how the dispute is being closed.");
+  }
+  const notes = optionalText(res.notes, "Resolution notes");
+  if (!notes) throw new InvalidCommand("Resolution notes are required.");
+  const evidence = optionalText(res.evidence, "Evidence");
+  const date = res.date === undefined || res.date === "" ? undefined : res.date;
+  if (date !== undefined && (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+    throw new InvalidCommand("The resolution date must be a date (YYYY-MM-DD).");
+  }
+  const reviewer = res.reviewer === undefined || res.reviewer === null ? undefined : res.reviewer;
+  if (reviewer !== undefined && !isDisputeReviewer(reviewer)) {
+    throw new InvalidCommand("Choose a reviewer from the dispute team.");
+  }
+  if (code === "payment_reconciled") {
+    const invoiceId = str(ctx.row?.invoice_id);
+    const sources = ctx.tx.draftSources ? await ctx.tx.draftSources() : undefined;
+    const paid =
+      invoiceId !== undefined &&
+      (sources?.payments ?? []).some((p) => p.invoice_id === invoiceId);
+    if (!paid) {
+      throw new InvalidCommand(
+        "No payment for this invoice is in the ledger. A customer saying they paid is not proof.",
+      );
+    }
+  }
+  const record: Row = { code, notes };
+  if (evidence) record.evidence = evidence;
+  if (date) record.date = date;
+  if (reviewer) record.reviewer = reviewer;
+  return { record, label: RESOLUTION_LABELS[code] };
+}
 
 const HANDLERS: Record<Action, Handler> = {
   add_note: async ({ payload }) => {
@@ -366,11 +436,13 @@ const HANDLERS: Record<Action, Handler> = {
         "Use resolve_dispute to resolve or reject a dispute.",
       );
     }
+    // TASK-38: an optional note, recorded on the audit event only.
+    const note = optionalText(ctx.payload.note, "A note");
     const { from, to } = await step(ctx, "dispute", "disputes", [event]);
     return {
       summary: `Dispute ${ctx.cmd.subject.id} moved to ${to.replace(/_/g, " ")}`,
       before: { status: from },
-      after: { status: to },
+      after: note ? { status: to, note } : { status: to },
     };
   },
 
@@ -380,11 +452,49 @@ const HANDLERS: Record<Action, Handler> = {
       throw new InvalidCommand("Outcome must be resolved or rejected.");
     }
     const event = outcome === "resolved" ? "resolve" : "reject";
+    // TASK-38: an optional resolution record, validated before any write.
+    // It lands on the audit event only; the invoice is never touched.
+    const resolution =
+      ctx.payload.resolution === undefined
+        ? undefined
+        : await resolutionRecord(ctx, outcome);
     const { from, to } = await step(ctx, "dispute", "disputes", [event]);
     return {
-      summary: `Dispute ${ctx.cmd.subject.id} ${to}`,
+      summary: `Dispute ${ctx.cmd.subject.id} ${to}${resolution ? `: ${resolution.label}` : ""}`,
       before: { status: from },
-      after: { status: to },
+      after: resolution ? { status: to, resolution: resolution.record } : { status: to },
+    };
+  },
+
+  /**
+   * TASK-38: sets or clears the dispute's owner, from the fixed synthetic
+   * review team only. Writes nothing but `assigned_reviewer`.
+   */
+  assign_dispute: async (ctx) => {
+    const raw = ctx.payload.reviewer;
+    if (raw !== null && !isDisputeReviewer(raw)) {
+      throw new InvalidCommand("Choose someone from the dispute team.");
+    }
+    if (CLOSED_DISPUTE.has(status(ctx.row))) {
+      throw new InvalidCommand("This dispute is closed.");
+    }
+    const prev = str(ctx.row?.assigned_reviewer) ?? null;
+    if (prev === raw) {
+      throw new InvalidCommand(
+        raw === null ? "This dispute is already unassigned." : `Already assigned to ${raw}.`,
+      );
+    }
+    const next: Row = { ...ctx.row };
+    if (raw === null) delete next.assigned_reviewer;
+    else next.assigned_reviewer = raw;
+    await ctx.tx.put("disputes", next);
+    return {
+      summary:
+        raw === null
+          ? `Dispute ${ctx.cmd.subject.id} unassigned`
+          : `Dispute ${ctx.cmd.subject.id} assigned to ${raw}`,
+      before: { assigned_reviewer: prev },
+      after: { assigned_reviewer: raw },
     };
   },
 

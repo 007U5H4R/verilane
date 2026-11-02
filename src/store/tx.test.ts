@@ -95,6 +95,7 @@ const COMMANDS: Array<{ cmd: CommandInput; asManager?: boolean }> = [
   { cmd: { type: "reject_draft", subject: { kind: "draft", id: "DR-R" } } },
   { cmd: { type: "dispute_transition", subject: { kind: "dispute", id: "D-T" }, payload: { event: "start_review" } } },
   { cmd: { type: "resolve_dispute", subject: { kind: "dispute", id: "D-R" }, payload: { outcome: "resolved" } }, asManager: true },
+  { cmd: { type: "assign_dispute", subject: { kind: "dispute", id: "D-T" }, payload: { reviewer: "Ananya Rao" } } },
   { cmd: { type: "action_review", subject: { kind: "review", id: "RV-A" } } },
   { cmd: { type: "dismiss_review", subject: { kind: "review", id: "RV-D" } } },
   { cmd: { type: "switch_role", subject: { kind: "system", id: "workspace" }, payload: { role: "manager" } } },
@@ -141,6 +142,29 @@ describe("execute() — TC-037 one audit event per command", () => {
     expect(await db.audit.count()).toBe(0);
   });
 
+});
+
+describe("execute() — resolve_dispute reads the payment ledger (TASK-38)", () => {
+  const reconcile: CommandInput = {
+    type: "resolve_dispute",
+    subject: { kind: "dispute", id: "D-R" },
+    payload: { outcome: "resolved", resolution: { code: "payment_reconciled", notes: "Matched to bank" } },
+  };
+
+  it("refuses 'payment reconciled' when the ledger has no payment for the invoice", async () => {
+    await db.meta.put({ key: "role", value: "manager" });
+    await expect(execute(db, reconcile)).rejects.toThrow(/not proof/);
+    expect((await db.disputes.get("D-R"))?.status).toBe("under_review");
+  });
+
+  it("allows it once a ledger payment exists, and leaves the invoice untouched", async () => {
+    await db.meta.put({ key: "role", value: "manager" });
+    await db.payments.add({ payment_id: "P-1", invoice_id: "INV-1", paid_on: "2026-10-01", amount_paise: 100 } as never);
+    const invoiceBefore = await db.invoices.get("INV-1");
+    await execute(db, reconcile);
+    expect((await db.disputes.get("D-R"))?.status).toBe("resolved");
+    expect(await db.invoices.get("INV-1")).toEqual(invoiceBefore);
+  });
 });
 
 describe("execute() — TC-038 atomic rollback", () => {
