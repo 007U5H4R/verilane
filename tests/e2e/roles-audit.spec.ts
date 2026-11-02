@@ -74,7 +74,7 @@ test("TC-039: Analyst cannot approve a >₹5L reminder, even when forced", async
 test("TC-040: audit log is reverse-chronological, filterable, read-only", async ({ page }, info) => {
   // Empty state on a fresh workspace.
   await page.goto("/audit");
-  await expect(page.getByText("No activity yet")).toBeVisible();
+  await expect(page.getByText("No activity recorded yet")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/TASK-14-tc040-empty-${info.project.name}.png`, fullPage: true });
 
   // A role switch is an audited event.
@@ -109,14 +109,14 @@ test("TC-040: audit log is reverse-chronological, filterable, read-only", async 
   await page.getByLabel("Action").selectOption("switch_role");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toHaveAttribute("data-action", "switch_role");
-  await page.getByRole("button", { name: "Clear filters" }).click();
+  await page.getByRole("button", { name: "Clear all" }).click();
   await expect(rows).toHaveCount(2);
 
   // Subject filter.
-  await page.getByLabel("Subject").fill("INV-A");
+  await page.getByLabel("Search audit log").fill("INV-A");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toHaveAttribute("data-action", "add_note");
-  await page.getByLabel("Subject").fill("no-such-subject");
+  await page.getByLabel("Search audit log").fill("no-such-subject");
   await expect(page.getByText("No events match these filters")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/TASK-14-tc040-filtered-empty-${info.project.name}.png`, fullPage: true });
 });
@@ -142,5 +142,5 @@ test("TC-040: audit log shows an error state with retry when the store fails", a
     delete (window.__verilane!.db.audit as unknown as Record<string, unknown>).orderBy;
   });
   await page.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByText("No activity yet")).toBeVisible();
+  await expect(page.getByText("No activity recorded yet")).toBeVisible();
 });
