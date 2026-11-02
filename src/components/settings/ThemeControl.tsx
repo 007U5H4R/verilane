@@ -73,7 +73,7 @@ export function ThemeControl() {
             <label
               key={c.value}
               className={cn(
-                "flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-center text-[13px] text-text transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand",
+                "relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-center text-[13px] text-text transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand",
                 on ? "border-brand bg-brand-tint font-medium" : "border-border bg-surface hover:bg-surface-sunken",
               )}
             >
@@ -83,7 +83,7 @@ export function ThemeControl() {
                 value={c.value}
                 checked={on}
                 onChange={() => pick(c.value)}
-                className="sr-only"
+                className="absolute inset-0 m-0 cursor-pointer appearance-none rounded-[inherit] opacity-0"
               />
               <Icon aria-hidden className={cn("size-4", on ? "text-brand" : "text-text-muted")} />
               {c.label}

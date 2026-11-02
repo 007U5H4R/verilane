@@ -89,13 +89,13 @@ export function DataOps({ db }: { db: VerilaneDb }) {
               <label
                 key={d.kind}
                 className={cn(
-                  "flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand",
+                  "relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand",
                   on ? "border-brand bg-brand-tint text-text" : "border-border bg-surface text-text hover:bg-surface-sunken",
                 )}
               >
                 <input
                   type="checkbox"
-                  className="sr-only"
+                  className="absolute inset-0 m-0 cursor-pointer appearance-none rounded-[inherit] opacity-0"
                   checked={on}
                   onChange={() => setSelection((s) => toggleDataset(s, d.kind))}
                 />
