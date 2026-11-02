@@ -160,10 +160,10 @@ describe("execute() — resolve_dispute reads the payment ledger (TASK-38)", () 
   it("allows it once a ledger payment exists, and leaves the invoice untouched", async () => {
     await db.meta.put({ key: "role", value: "manager" });
     await db.payments.add({ payment_id: "P-1", invoice_id: "INV-1", paid_on: "2026-10-01", amount_paise: 100 } as never);
-    const invoiceBefore = await db.invoices.get("INV-1");
+    const invoicesBefore = await db.invoices.toArray();
     await execute(db, reconcile);
     expect((await db.disputes.get("D-R"))?.status).toBe("resolved");
-    expect(await db.invoices.get("INV-1")).toEqual(invoiceBefore);
+    expect(await db.invoices.toArray()).toEqual(invoicesBefore);
   });
 });
 
