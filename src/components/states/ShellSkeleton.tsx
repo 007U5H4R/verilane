@@ -53,7 +53,7 @@ export function ShellSkeleton({ label = "Loading workspace" }: { label?: string 
           <span key={i} className={`size-10 lg:h-10 lg:w-full ${RAIL_BAR}`} />
         ))}
       </div>
-      <div className="flex min-w-0 flex-col pb-16 md:pb-0">
+      <div className="flex min-w-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <div
           aria-hidden
           className="flex h-[60px] items-center gap-3 border-b border-topbar-divider bg-topbar px-3 md:h-[68px] md:px-6 lg:h-[76px] lg:px-7"

@@ -164,7 +164,7 @@ async function checkFocusOrder(page: Page): Promise<void> {
     });
     seen.push(info?.idx ?? "null");
     if (info && !info.visible) {
-      // A background change also reads as a focus indicator (RowCard).
+      // A background change also reads as a focus indicator (RowMenuList).
       const blurredStyle = await page.evaluate((idx) => {
         const el = document.querySelector<HTMLElement>(`[data-focus-idx="${idx}"]`);
         if (!el) return "";
