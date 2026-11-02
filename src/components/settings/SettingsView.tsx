@@ -1,7 +1,18 @@
 "use client";
 
+import {
+  BarChart3,
+  CalendarDays,
+  Database,
+  Download,
+  MonitorSmartphone,
+  Palette,
+  RotateCcw,
+  SlidersHorizontal,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
-import { useContext, type ReactNode } from "react";
+import { useContext } from "react";
 
 import { ErrorState } from "@/components/states/ErrorState";
 import { DbContext } from "@/store/hooks";
@@ -12,23 +23,8 @@ import { DataOps } from "./DataOps";
 import { ImportDialog } from "./ImportDialog";
 import { PriorityWeights } from "./PriorityWeights";
 import { ResetDialog } from "./ResetDialog";
+import { SettingsCard, SettingsSubsection } from "./SettingsCard";
 import { ThemeControl } from "./ThemeControl";
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section
-      id={id}
-      aria-labelledby={`${id}-title`}
-      className="flex scroll-mt-6 flex-col gap-3 rounded-lg border border-border bg-surface shadow-card p-5"
-    >
-      <h2 id={`${id}-title`} className="font-semibold text-text">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
 /** TASK-24.5: the Settings entry point for installing the PWA, sharing the
  * captured `beforeinstallprompt` event with the header chip. */
 function InstallSection() {
@@ -55,53 +51,124 @@ function InstallSection() {
   );
 }
 
-/** Settings (TASK-19): data operations, as-of override, weights, theme, eval. */
+/** Decorative header art: a settings panel with sliders, in theme tokens. */
+function HeaderArt() {
+  return (
+    <svg aria-hidden viewBox="0 0 160 96" className="hidden h-20 w-auto shrink-0 sm:block" fill="none">
+      <rect x="8" y="10" width="112" height="76" rx="10" className="fill-mint-pale stroke-border" strokeWidth="1.5" />
+      <rect x="20" y="24" width="88" height="6" rx="3" className="fill-surface-sunken" />
+      <rect x="20" y="24" width="54" height="6" rx="3" className="fill-brand" />
+      <circle cx="74" cy="27" r="6" className="fill-surface stroke-brand" strokeWidth="2" />
+      <rect x="20" y="45" width="88" height="6" rx="3" className="fill-surface-sunken" />
+      <rect x="20" y="45" width="30" height="6" rx="3" className="fill-brand" />
+      <circle cx="50" cy="48" r="6" className="fill-surface stroke-brand" strokeWidth="2" />
+      <rect x="20" y="66" width="88" height="6" rx="3" className="fill-surface-sunken" />
+      <rect x="20" y="66" width="70" height="6" rx="3" className="fill-brand" />
+      <circle cx="90" cy="69" r="6" className="fill-surface stroke-brand" strokeWidth="2" />
+      <circle cx="132" cy="40" r="20" className="fill-surface stroke-brand" strokeWidth="1.5" />
+      <path d="M124 40l6 6 11-12" className="stroke-brand" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * Settings (TASK-19, redesigned in TASK-38): data management and the read-only
+ * priority weights side by side, the as-of date full width, then theme,
+ * install and evaluation. The shell renders the breadcrumb above this.
+ */
 export function SettingsView() {
   const db = useContext(DbContext);
   return (
-    <div className="flex max-w-3xl flex-col gap-4 p-7">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight text-text">Settings</h1>
-        <p className="text-text-muted">Everything here applies to this browser only.</p>
+    <div className="flex flex-col gap-5 p-4 sm:p-6 lg:p-7">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-text sm:text-[32px]">
+            Settings
+          </h1>
+          <p className="text-text-muted">Configure your workspace, data and scoring preferences.</p>
+          <p className="text-[13px] text-text-muted">Everything here applies to this browser only.</p>
+        </div>
+        <HeaderArt />
       </header>
-      {db ? (
-        <>
-          <Section id="import" title="Import data">
-            <ImportDialog db={db} />
-          </Section>
-          <Section id="export" title="Export data">
-            <DataOps db={db} />
-          </Section>
-          <Section id="reset" title="Reset demo data">
-            <p className="text-[13px] text-text-muted">
-              Start over from the shipped demo set. Notes, drafts, disputes and the audit log are cleared.
-            </p>
-            <div>
-              <ResetDialog />
-            </div>
-          </Section>
-          <Section id="as-of" title="As-of date">
-            <AsOfControl db={db} />
-          </Section>
-        </>
-      ) : (
-        <ErrorState message="Couldn’t open this browser’s data, so data settings are unavailable." onRetry={() => window.location.reload()} />
+
+      <div className="grid gap-5 lg:grid-cols-[56fr_44fr] lg:items-start">
+        {db ? (
+          <SettingsCard
+            id="data"
+            title="Data management"
+            description="Import, export or reset your workspace data."
+            icon={Database}
+          >
+            <SettingsSubsection
+              id="import"
+              title="Import data"
+              description="Upload a CSV file to add or replace records."
+              icon={Upload}
+            >
+              <ImportDialog db={db} />
+            </SettingsSubsection>
+            <SettingsSubsection id="export" title="Export data" description="Download workspace data as CSV." icon={Download}>
+              <DataOps db={db} />
+            </SettingsSubsection>
+            <SettingsSubsection
+              id="reset"
+              title="Reset demo data"
+              description="Start over from the shipped demo set. Notes, drafts, disputes and the audit log are cleared."
+              icon={RotateCcw}
+              tone="warn"
+              aside={<ResetDialog tone="danger" />}
+            />
+          </SettingsCard>
+        ) : (
+          <ErrorState
+            message="Couldn’t open this browser’s data, so data settings are unavailable."
+            onRetry={() => window.location.reload()}
+          />
+        )}
+        <SettingsCard
+          id="priority"
+          title="Priority weights"
+          description="How the queue ranks open invoices."
+          icon={SlidersHorizontal}
+          tone="info"
+        >
+          <PriorityWeights />
+        </SettingsCard>
+      </div>
+
+      {db && (
+        <SettingsCard
+          id="as-of"
+          title="As-of date"
+          description="Set the reference date for ageing, overdue and queue ordering."
+          icon={CalendarDays}
+        >
+          <AsOfControl db={db} />
+        </SettingsCard>
       )}
-      <Section id="priority" title="Priority weights">
-        <PriorityWeights />
-      </Section>
-      <Section id="theme" title="Theme">
-        <ThemeControl />
-      </Section>
-      <Section id="install" title="Install app">
-        <InstallSection />
-      </Section>
-      <Section id="eval" title="Evaluation">
-        <p className="text-[13px] text-text-muted">How well extraction and matching score against the labelled demo set.</p>
-        <Link href="/settings/eval" className="w-fit text-[13px] font-medium text-brand underline underline-offset-2">
-          Open evaluation report
-        </Link>
-      </Section>
+
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <SettingsCard id="theme" title="Theme" description="Choose how Verilane looks in this browser." icon={Palette}>
+          <ThemeControl />
+        </SettingsCard>
+        <SettingsCard id="install" title="Install app" description="Use Verilane like a desktop or phone app." icon={MonitorSmartphone}>
+          <InstallSection />
+        </SettingsCard>
+        <SettingsCard
+          id="eval"
+          title="Evaluation"
+          description="See how well extraction and matching score against the labelled demo set."
+          icon={BarChart3}
+          tone="info"
+        >
+          <Link
+            href="/settings/eval"
+            className="w-fit text-[13px] font-medium text-brand underline underline-offset-2 hover:text-brand-strong"
+          >
+            Open evaluation report →
+          </Link>
+        </SettingsCard>
+      </div>
     </div>
   );
 }

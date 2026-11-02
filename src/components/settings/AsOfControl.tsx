@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarCheck } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 
@@ -36,10 +37,11 @@ export function AsOfControl({ db }: { db: VerilaneDb }) {
     }
   }
 
+  const pending = draft !== null && draft !== asOf;
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <form
-        className="flex flex-wrap items-end gap-3"
+        className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           if (value) void apply(value);
@@ -54,25 +56,37 @@ export function AsOfControl({ db }: { db: VerilaneDb }) {
             type="date"
             value={value}
             required
+            disabled={busy}
+            aria-describedby={pending ? `${inputId}-pending` : undefined}
             onChange={(e) => setDraft(e.target.value)}
-            className="min-h-9 rounded-md border border-border bg-surface px-2 text-text"
+            className="min-h-9 w-full rounded-md border border-border bg-surface px-2 text-[13px] text-text sm:w-48"
           />
         </div>
-        <Button type="submit" size="sm" disabled={busy || !value || value === asOf}>
-          Apply
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={busy || asOf === AS_OF_DATE}
-          onClick={() => void apply(null)}
-        >
-          Use default ({formatDate(AS_OF_DATE)})
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" size="sm" disabled={busy || !value || value === asOf}>
+            {busy ? "Applying…" : "Apply"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy || asOf === AS_OF_DATE}
+            onClick={() => void apply(null)}
+          >
+            Use default ({formatDate(AS_OF_DATE)})
+          </Button>
+        </div>
+        {pending && (
+          <p id={`${inputId}-pending`} className="text-[13px] text-med sm:pb-2">
+            Not applied yet — press Apply to recalculate.
+          </p>
+        )}
       </form>
-      <p className="text-[13px] text-text-muted">
-        Currently {formatDate(asOf)}. Days overdue and the queue order are calculated from this date.
+      <p className="flex items-start gap-2 rounded-md bg-surface-sunken px-3 py-2 text-[13px] text-text">
+        <CalendarCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-brand" />
+        <span>
+          Currently {formatDate(asOf)}. Days overdue and the queue order are calculated from this date.
+        </span>
       </p>
     </div>
   );
