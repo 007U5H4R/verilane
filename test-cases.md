@@ -455,3 +455,15 @@
 | **Total** | **90** | **63** |
 
 FS1–FS13 coverage: FS1/FS2 TC-008 · FS3–FS5 TC-027/028/030 · FS6 TC-033 · FS7 TC-031 · FS8/FS10 TC-009 · FS9 TC-026 · FS11 TC-070 · FS12 TC-042 · FS13 TC-039. NFR1–3 TC-083–085 · NFR7 TC-001 · NFR8 TC-073.
+
+---
+
+## Reserved block · TASK-46 (Indian heritage background system)
+
+**TC-091 … TC-125 are allocated to TASK-46** (Stage 5, 2026-11-02, draft at the gate). Full cases live in [`docs/test-cases-TASK-46.md`](docs/test-cases-TASK-46.md); this file is not their source. **Next free ID: TC-126.**
+
+---
+
+## Reserved block · TASK-45 (Cinematic lighthouse splash screen)
+
+**TC-126 … TC-171 are allocated to TASK-45** (Stage 5, 2026-11-02, draft at the gate). Full cases live in [`docs/test-cases-TASK-45.md`](docs/test-cases-TASK-45.md); this file is not their source. **Next free ID: TC-172.**

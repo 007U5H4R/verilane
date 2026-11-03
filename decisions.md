@@ -416,3 +416,7 @@
   - T34-4 (Low): the deep-link e2e test writes a screenshot to an absolute dev-machine path for every project run, not just the one project that needs it. Test-only nit.
 - Re-reviewed MERGE-READY after fix round 1 (head `218a015`); merged as-is, with T34-6 added afterward in this close-out session.
 - Merged at `c8c7fa9` (head `218a015`, base `3902427`); T34-6 committed on top of the merged branch. Gates on the combined TASK-33+34+T34-6 result: tsc and lint clean, unit 847/847, perf 1/1, build, check:secrets and check:e2e-hooks clean, route budget 12/12, e2e 185 passed / 1 skipped (`--workers=1`).
+
+## DEP1 · Production deploy target: `verilane.tusharpathak.com` — user-requested 2026-11-03
+- Stage 10 deploys to the subdomain `verilane.tusharpathak.com` (user's own domain). Acted on only after the Stage 9 `QA-report.md` gate is approved; the DNS record and Vercel domain binding are confirmed with the user at that point, not before.
+- Consequence: Verilane gets a public URL, so the OG/Twitter link-preview gate (D6, web-deliverables) changes from "N/A — private app" to **required**: a 1200×630 image mocked and approved before Stage 10, absolute `https://verilane.tusharpathak.com/...` URLs, verified with LinkedIn Post Inspector + opengraph.xyz. Stage 7 (TASK-49) checks the current tag state as a DES- finding.

@@ -391,3 +391,15 @@ Format: each `TASK-N.k` is 2–5 minutes and touches the listed files. **Gate** 
 | M-004 | m-3 | TASK-18, 19, 20 | TC-054–TC-064 |
 | M-005 | m-4 | TASK-21, 22, 23 | TC-065–TC-074 |
 | M-006 | m-5 | TASK-24, 25, 26, 27, 28 | TC-075–TC-090 |
+
+---
+
+## Pointer · TASK-46 (Indian heritage background system)
+
+Ticket-scoped plan: [`docs/technical-plan-TASK-46.md`](docs/technical-plan-TASK-46.md) (Campfire TASK-46.1–46.8, TC-091–TC-125). Nothing above is changed by it.
+
+---
+
+## Pointer · TASK-45 (Cinematic lighthouse splash screen)
+
+Ticket-scoped plan: [`docs/technical-plan-TASK-45.md`](docs/technical-plan-TASK-45.md) (Campfire TASK-45.1–45.10, TC-126–TC-171; Stage 5 draft at the gate, 2026-11-02). Nothing above is changed by it.
