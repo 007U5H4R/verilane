@@ -24,7 +24,13 @@ const ROUTES = ["/", "/queue", "/disputes", "/payments", "/drafts", "/audit", "/
 async function open(page: Page, href: string): Promise<void> {
   await page.goto(href);
   await expect(page.getByRole("status", { name: "Loading workspace" })).toHaveCount(0);
-  if (href === "/queue") await expect(page.locator('main a[href^="/invoices/"]').first()).toBeVisible();
+  if (href === "/queue") {
+    // QA-001: the queue has its own "Loading queue" skeleton while its Dexie
+    // live queries resolve after the workspace gate; across ~100 reloads in a
+    // full-suite run that occasionally outlasted the default 5s. Wait for it.
+    await expect(page.getByRole("status", { name: "Loading queue" })).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.locator('main a[href^="/invoices/"]').first()).toBeVisible();
+  }
   if (href.startsWith("/invoices/")) await expect(page.getByTestId("priority-reason")).toHaveText(/\S/);
   if (/^\/disputes\/./.test(href)) await expect(page.getByTestId("dispute-claim-text")).toBeVisible();
 }
