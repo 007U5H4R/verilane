@@ -236,7 +236,7 @@ function QueueBody({ db, params }: { db: VerilaneDb; params: string }) {
             <p className="font-medium tabular-nums text-text">
               {table.matched} {table.matched === 1 ? "invoice" : "invoices"}
             </p>
-            {selectedIds.size > 0 && (
+            {count > 0 && (
               <>
                 <span className="tabular-nums text-text-muted">{count} selected</span>
                 <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
