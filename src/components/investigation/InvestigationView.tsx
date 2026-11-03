@@ -192,6 +192,7 @@ function InvestigationBody({ invoiceId }: { invoiceId: string }) {
         }}
         onApprove={draft ? () => setApproveOpen(true) : undefined}
         openDispute={openDispute}
+        editing={editing}
         onMarkDisputed={() => setDisputeOpen(true)}
       />
       {draft ? (

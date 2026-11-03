@@ -18,6 +18,8 @@ export interface ActionBarProps {
   onMarkDisputed?: () => void;
   /** The invoice has an open dispute right now (TASK-16): blocks the primary inline. */
   openDispute?: boolean;
+  /** The draft editor is open (CR-001): blocks the primary until saved or cancelled. */
+  editing?: boolean;
 }
 
 const EDITABLE = new Set<Draft["status"]>(["generated", "edited", "validated", "blocked"]);
@@ -27,9 +29,9 @@ const EDITABLE = new Set<Draft["status"]>(["generated", "edited", "validated", "
  * secondaries first, exactly one primary. A disabled action says why inline,
  * next to it, not only in a tooltip.
  */
-export function ActionBar({ role, draft, busy = false, onEdit, onSubmit, onApprove, onMarkDisputed, openDispute = false }: ActionBarProps) {
+export function ActionBar({ role, draft, busy = false, onEdit, onSubmit, onApprove, onMarkDisputed, openDispute = false, editing = false }: ActionBarProps) {
   const loading = draft === undefined;
-  const primary = primaryAction(role, draft ?? null, { approveWired: onApprove !== undefined, openDispute });
+  const primary = primaryAction(role, draft ?? null, { approveWired: onApprove !== undefined, openDispute, editing });
   const primaryDisabled = loading || busy || !primary.enabled;
   const editable = !!draft && EDITABLE.has(draft.status);
 

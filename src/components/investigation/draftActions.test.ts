@@ -148,3 +148,19 @@ describe("nextStep (TC-045)", () => {
     );
   });
 });
+
+// CR-001: approving or submitting while the editor is open would send the
+// stored body, not the unsaved text on screen.
+describe("primaryAction while the draft editor is open (CR-001)", () => {
+  it("blocks Approve & send for a Manager until the edit is saved or cancelled", () => {
+    const p = primaryAction("manager", draft({ status: "validated" }), { approveWired: true, editing: true });
+    expect(p.enabled).toBe(false);
+    expect(p.reason).toBe("Save or cancel your edits first");
+  });
+
+  it("blocks Submit for approval for an Analyst too", () => {
+    const p = primaryAction("analyst", draft(), { approveWired: true, editing: true });
+    expect(p.enabled).toBe(false);
+    expect(p.reason).toBe("Save or cancel your edits first");
+  });
+});

@@ -68,11 +68,12 @@ function closedReason(status: Draft["status"]): string | null {
  * (TASK-16) is mounted, so the button says so instead of failing silently.
  * `openDispute` is the live dispute state (TASK-16): a dispute opened after
  * validation blocks the primary even though the stored checks predate it.
+ * `editing` is true while the draft editor is open with possibly unsaved text.
  */
 export function primaryAction(
   role: Role,
   draft: Draft | null,
-  opts: { approveWired: boolean; openDispute?: boolean },
+  opts: { approveWired: boolean; openDispute?: boolean; editing?: boolean },
 ): PrimaryAction {
   const base =
     role === "manager"
@@ -86,6 +87,8 @@ export function primaryAction(
   const failing = draft.checks.filter((c) => !c.passed).length;
   if (failing > 0) return disabled(failingReason(failing));
   if (opts.openDispute) return disabled("This invoice has an open dispute");
+  // CR-001: the stored body, not the unsaved text on screen, would go out.
+  if (opts.editing) return disabled("Save or cancel your edits first");
 
   if (base.action === "submit") {
     if (draft.status === "validated") return disabled("Already submitted for approval");
