@@ -35,3 +35,12 @@ test("queue page carries well-formed OG/Twitter link-preview meta tags", async (
   expect(imageRes.ok()).toBe(true);
   expect(imageRes.headers()["content-type"]).toContain("image/png");
 });
+
+// TASK-49 DES-005: / is the URL people share, so it carries its own og:url,
+// and with NEXT_PUBLIC_SITE_URL unset the fallback is the production host.
+test("home page carries an absolute og:url on the production host", async ({ page }) => {
+  await page.goto("/");
+  const html = await page.content();
+  expect(metaContent(html, "property", "og:url")).toMatch(/^https:\/\/verilane\.tusharpathak\.com\/?$/);
+  expect(metaContent(html, "property", "og:image")).toBe("https://verilane.tusharpathak.com/og.png");
+});

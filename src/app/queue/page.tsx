@@ -3,33 +3,12 @@ import { Suspense } from "react";
 
 import { QueueView } from "@/components/queue/QueueView";
 import { RowSkeleton } from "@/components/states/RowSkeleton";
+import { shareMetadata } from "@/lib/site";
 
-// TASK-27.3 / TC-088: /queue is the route the OG e2e check loads, and it's
-// fully static, so it's safe to carry an explicit openGraph.url here (the
-// root layout deliberately omits one — see layout.tsx's comment — because
-// that field blocks the dynamic /invoices/[id] route's prerender). Repeats
-// the whole openGraph/twitter object rather than relying on deep-merge with
-// the parent layout's metadata.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://verilane.vercel.app";
-const DESCRIPTION =
-  "Every collection action has evidence. Every uncertain decision has a human.";
-const OG_IMAGE_URL = `${SITE_URL}/og.png`;
-
+// TASK-27.3 / TC-088: /queue is fully static, so it's safe to carry an
+// explicit og:url (the root layout deliberately omits one; see layout.tsx).
 export const metadata: Metadata = {
-  openGraph: {
-    title: "Verilane — AR Copilot",
-    description: DESCRIPTION,
-    url: `${SITE_URL}/queue`,
-    siteName: "Verilane",
-    type: "website",
-    images: [{ url: OG_IMAGE_URL, width: 1200, height: 630, alt: "Verilane — AR Copilot" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Verilane — AR Copilot",
-    description: DESCRIPTION,
-    images: [OG_IMAGE_URL],
-  },
+  ...shareMetadata("/queue"),
 };
 
 // QueueView reads the URL (useSearchParams), so it renders client-side under
