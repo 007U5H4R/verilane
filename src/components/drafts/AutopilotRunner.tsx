@@ -6,6 +6,7 @@ import { autopilotEligibility } from "@/domain/autopilot";
 import type { VerilaneDb } from "@/store/db";
 import { DbContext, useAutopilotPolicy, useDraftsAwaitingApproval } from "@/store/hooks";
 import { execute } from "@/store/tx";
+import { runAutopilotBatch } from "./autopilotBatch";
 
 /**
  * TASK-41 · Copilot autopilot (simulated). While a Manager has autopilot on,
@@ -15,7 +16,7 @@ import { execute } from "@/store/tx";
  *
  * Stop rule: each draft is attempted at most once per mount. A sent draft
  * leaves the awaiting list; a held one is re-checked and stored, so it no
- * longer looks eligible. Renders nothing.
+ * longer looks eligible. Unmounting stops the batch (CR-007). Renders nothing.
  */
 export function AutopilotRunner() {
   const db = useContext(DbContext);
@@ -30,6 +31,15 @@ function Runner({ db }: { db: VerilaneDb }) {
   const running = useRef(false);
   // Re-evaluates once a batch ends, for drafts that arrived while it ran.
   const [pass, setPass] = useState(0);
+  // Unmount-only: the send effect re-runs as each sent draft leaves the
+  // list, so its own cleanup must not cancel the batch in flight.
+  const unmounted = useRef(false);
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!policy?.enabled || !drafts || running.current) return;
@@ -38,22 +48,23 @@ function Runner({ db }: { db: VerilaneDb }) {
     );
     if (due.length === 0) return;
     running.current = true;
-    void (async () => {
-      for (const { draft, customer } of due) {
-        attempted.current.add(draft.draft_id);
-        try {
-          const event = await execute(db, { type: "autopilot_send", subject: { kind: "draft", id: draft.draft_id } });
-          const who = customer?.name ?? draft.customer_id;
-          if (event.action === "autopilot_send") toast.success(`Copilot sent the reminder to ${who} (simulated).`);
-          else toast.message(`Copilot held the reminder to ${who} for you.`);
-        } catch (err) {
-          // Refused (policy switched off, draft changed): it waits for a person.
-          console.warn("[verilane] autopilot skipped", draft.draft_id, err);
-        }
-      }
+    for (const { draft } of due) attempted.current.add(draft.draft_id);
+    const items = due.map(({ draft, customer }) => ({ id: draft.draft_id, who: customer?.name ?? draft.customer_id }));
+    void runAutopilotBatch(items, {
+      send: async (id) => {
+        const event = await execute(db, { type: "autopilot_send", subject: { kind: "draft", id } });
+        return event.action === "autopilot_send" ? "sent" : "held";
+      },
+      notify: ({ kind, who }) => {
+        if (kind === "sent") toast.success(`Copilot sent the reminder to ${who} (simulated).`);
+        else if (kind === "held") toast.message(`Copilot held the reminder to ${who} for you.`);
+        else toast.error(`Copilot couldn't send the reminder to ${who}. It's waiting for you in Drafts.`);
+      },
+      isCancelled: () => unmounted.current,
+    }).finally(() => {
       running.current = false;
-      setPass((n) => n + 1);
-    })();
+      if (!unmounted.current) setPass((n) => n + 1);
+    });
   }, [db, policy, drafts, pass]);
 
   return null;
