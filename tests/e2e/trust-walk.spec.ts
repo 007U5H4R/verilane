@@ -22,20 +22,22 @@ function trackConsoleErrors(page: Page): string[] {
 }
 
 /** `invoice_id → row_id` from the CSV the app loads (as in tracer.spec.ts). */
-async function csvRowIds(page: Page): Promise<Map<string, string>> {
+async function csvColumn(page: Page, column: string): Promise<Map<string, string>> {
   const res = await page.request.get("/seed/invoices.csv");
   expect(res.ok()).toBe(true);
   const [header = "", ...lines] = (await res.text()).trim().split(/\r?\n/);
   const cols = header.split(",");
-  const rowIdCol = cols.indexOf("row_id");
+  const valueCol = cols.indexOf(column);
   const idCol = cols.indexOf("invoice_id");
   return new Map(
     lines.map((line) => {
       const cells = line.split(",");
-      return [cells[idCol] ?? "", cells[rowIdCol] ?? ""];
+      return [cells[idCol] ?? "", cells[valueCol] ?? ""];
     }),
   );
 }
+
+const csvRowIds = (page: Page) => csvColumn(page, "row_id");
 
 test("TC-086/TC-087: S6 trust walk end to end, same-origin only", async ({ page, context, baseURL }, info) => {
   // TC-087: record every request the context makes — pages and the service
@@ -70,6 +72,8 @@ test("TC-086/TC-087: S6 trust walk end to end, same-origin only", async ({ page,
   await expect(page.getByTestId("priority-reason")).toContainText("High");
   const rowNo = (await csvRowIds(page)).get(invoiceId);
   expect(rowNo, `${invoiceId} in invoices.csv`).toBeTruthy();
+  const invoiceNumber = (await csvColumn(page, "invoice_number")).get(invoiceId);
+  expect(invoiceNumber, `${invoiceId} has an invoice_number`).toBeTruthy();
   await expect(page.getByTestId("priority-reason")).toContainText(`row ${rowNo} · due_date`);
   const facts = page.locator('section[aria-labelledby="ev-invoice-facts"]');
   await expect(facts.locator('tr[data-field="due_date"]').getByTestId("provenance")).toHaveText(
@@ -109,7 +113,8 @@ test("TC-086/TC-087: S6 trust walk end to end, same-origin only", async ({ page,
   await confirm.getByRole("button", { name: "Approve & send" }).click();
   await expect(confirm).toHaveCount(0);
   await expect(
-    page.locator("[data-sonner-toast]").filter({ hasText: `Reminder for ${invoiceId}` }),
+    // DES-004: the toast names the invoice by its number (INV-1012), not the internal key (INV-A).
+    page.locator("[data-sonner-toast]").filter({ hasText: `Reminder for ${invoiceNumber} ` }),
   ).toContainText("approved and sent (simulated).");
   await expect(bar.getByTestId("primary-reason")).toHaveText("Unavailable: This reminder has been sent");
   await shot("4-sent");
