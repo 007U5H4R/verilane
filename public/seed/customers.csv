@@ -1,0 +1,11 @@
+customer_id,name,contact_emails,payment_terms_days,segment
+C-001,Aravalli Textiles Pvt Ltd,accounts@aravalli-textiles.test;payables@aravalli-textiles.test,30,Mid-Market
+C-002,Bharat Polymers Ltd,ap@bharatpolymers.test,30,SMB
+C-003,Coromandel Foods Pvt Ltd,finance@coromandelfoods.test,45,Enterprise
+C-004,Deccan Logistics LLP,accounts@deccanlogistics.test,30,Mid-Market
+C-005,Everest Pharma Distributors,payables@everestpharma.test,30,SMB
+C-006,Ganga Steel Works Ltd,ap@gangasteel.test;treasury@gangasteel.test,45,Enterprise
+C-007,Himalaya Electricals,accounts@himalayaelectricals.test,30,SMB
+C-008,Indus Software Services Pvt Ltd,finance@indussoftware.test,15,Mid-Market
+C-009,Jaipur Ceramics Co,accounts@jaipurceramics.test,30,SMB
+C-010,Konkan Agro Exports Ltd,payables@konkanagro.test,60,Enterprise

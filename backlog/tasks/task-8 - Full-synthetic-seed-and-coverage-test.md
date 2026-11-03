@@ -1,9 +1,10 @@
 ---
 id: TASK-8
 title: Full synthetic seed and coverage test
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 02:48'
 labels:
   - P0
   - 'sp:3'

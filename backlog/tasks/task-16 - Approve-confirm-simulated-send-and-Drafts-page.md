@@ -1,9 +1,10 @@
 ---
 id: TASK-16
 title: 'Approve, confirm, simulated send and Drafts page'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 16:50'
 labels:
   - P0
   - 'sp:3'

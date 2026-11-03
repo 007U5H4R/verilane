@@ -1,9 +1,10 @@
 ---
 id: TASK-22
 title: Fault-injection provider and FS11 path
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-11-01 05:12'
 labels:
   - P0
   - 'sp:2'

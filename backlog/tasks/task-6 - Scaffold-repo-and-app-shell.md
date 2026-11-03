@@ -1,9 +1,10 @@
 ---
 id: TASK-6
 title: Scaffold repo and app shell
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-30 18:27'
 labels:
   - P0
   - 'sp:3'

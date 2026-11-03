@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Verilane — OG image candidate</title>
+<style>
+  @font-face { font-family: "Inter"; src: url("inter-latin.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  /* Tokens copied from src/app/globals.css :root (light theme — the OG
+     card always renders light regardless of viewer theme, per
+     web-deliverables.md §4: a social preview is a fixed asset). */
+  :root {
+    --canvas: #f7f9f7;
+    --surface: #fff;
+    --surface-sunken: #f0f8f3;
+    --border: #e4eae5;
+    --border-strong: #cbd6cf;
+    --text: #17231e;
+    --text-muted: #5f6c65;
+    --brand: #176b50;
+    --brand-strong: #104b38;
+    --rail: #082f25;
+    --rail-text: #f3f8f5;
+    --rail-muted: #b9d4c5;
+    --high: #b42318;
+    --high-bg: #fdecea;
+    --med: #8a5a00;
+    --med-bg: #fdf1dc;
+    --r-lg: 14px;
+    --r-md: 10px;
+    --font-ui: "Inter", ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Inter", ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    background: var(--canvas);
+    color: var(--text);
+    font: 14px/1.5 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 1200px;
+    height: 630px;
+    display: flex;
+    flex-direction: column;
+    /* Safe-composition insets (og-image-guidelines §4): generous padding
+       so the brand + headline stay clear of crawler/preview crop. */
+    padding: 56px 64px 48px;
+    position: relative;
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+  }
+  .logo-card img { display: block; height: 32px; width: auto; }
+  .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--rail);
+    color: var(--rail-text);
+    border-radius: 999px;
+    padding: 8px 16px 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .brand-mark .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--brand); }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 40px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 28px 0 8px;
+    color: var(--text);
+    max-width: 760px;
+  }
+  p.tagline {
+    margin: 0 0 28px;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    max-width: 640px;
+  }
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .q-head {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr) 140px 110px minmax(0, 2.2fr);
+    gap: 16px;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--surface-sunken);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .q-row {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr) 140px 110px minmax(0, 2.2fr);
+    gap: 16px;
+    align-items: center;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    width: fit-content;
+  }
+  .chip.high { background: var(--high-bg); color: var(--high); }
+  .chip.med { background: var(--med-bg); color: var(--med); }
+  .chip .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .cust b { display: block; color: var(--text); font-weight: 600; }
+  .cust span { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+  .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; color: var(--text); }
+  .overdue { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .reason { color: var(--text-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="logo-card">
+        <img src="../../../public/brand/verilane-logo.png" alt="Verilane" />
+      </div>
+      <div class="brand-mark"><span class="dot" aria-hidden="true"></span>Collection Queue</div>
+    </div>
+
+    <h1>Every collection action has evidence.</h1>
+    <p class="tagline">Every uncertain decision has a human.</p>
+
+    <div class="q-card">
+      <div class="q-head">
+        <span>Priority</span>
+        <span>Customer · invoice</span>
+        <span style="text-align:right">Outstanding</span>
+        <span>Overdue</span>
+        <span>Reason</span>
+      </div>
+      <div class="q-row">
+        <span class="chip high"><span class="dot" aria-hidden="true"></span>High</span>
+        <span class="cust"><b>Coromandel Foods Pvt Ltd</b><span>INV-1015</span></span>
+        <span class="amt">₹6,00,000.00</span>
+        <span class="overdue">90d overdue</span>
+        <span class="reason">High (80): 90 days overdue · ₹6,00,000 outstanding</span>
+      </div>
+      <div class="q-row">
+        <span class="chip high"><span class="dot" aria-hidden="true"></span>High</span>
+        <span class="cust"><b>Aravalli Textiles Pvt Ltd</b><span>INV-1012</span></span>
+        <span class="amt">₹3,40,000.00</span>
+        <span class="overdue">47d overdue</span>
+        <span class="reason">High (60): 47 days overdue · ₹3,40,000 outstanding</span>
+      </div>
+      <div class="q-row">
+        <span class="chip high"><span class="dot" aria-hidden="true"></span>High</span>
+        <span class="cust"><b>Ganga Steel Works Ltd</b><span>INV-1040</span></span>
+        <span class="amt">₹2,60,000.00</span>
+        <span class="overdue">38d overdue</span>
+        <span class="reason">High (60): 38 days overdue · ₹2,60,000 outstanding</span>
+      </div>
+      <div class="q-row">
+        <span class="chip med"><span class="dot" aria-hidden="true"></span>Medium</span>
+        <span class="cust"><b>Konkan Agro Exports Ltd</b><span>INV-1025</span></span>
+        <span class="amt">₹2,25,000.00</span>
+        <span class="overdue">33d overdue</span>
+        <span class="reason">Medium (52): 33 days overdue · ₹2,25,000 outstanding</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

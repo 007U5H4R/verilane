@@ -1,9 +1,10 @@
 ---
 id: TASK-7
 title: 'Tracer: seed to IndexedDB to priority to Queue to evidence'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 02:48'
 labels:
   - P0
   - 'sp:5'

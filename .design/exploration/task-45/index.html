@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TASK-45 Splash Mockup</title>
+<!-- DESIGN PROTOTYPE — NOT PRODUCTION. Stage 3 mockup for TASK-45 (cinematic lighthouse splash).
+     The cinematic itself is CSS keyframes on transform/opacity only. The small script below only
+     SIMULATES the production inline runtime (phase events -> bar target, hold, ceiling, skip, exit)
+     so each load profile can be reviewed. Breakpoints are emulated with container queries on the
+     stage; production uses the same thresholds as viewport media queries.
+     Scene art is CSS/SVG stand-in for the Stage 6 generated plate (G1) and clouds (G2). -->
+<style>
+:root{
+  /* splash scene — always dark emerald, whatever the theme (Design-TASK-45 §5) */
+  --sp-base:#062f24;      /* --rail-deep : first frame (B0), server-rendered */
+  --sp-deep:#041f18;
+  --sp-mid:#083a2b;       /* --rail-dark */
+  --sp-hill-1:#052a20; --sp-hill-2:#073427; --sp-hill-3:#0a4030;
+  --sp-mint:#8ed7b0;      /* --rail-mint */
+  --sp-soft:#ddf2e7;      /* --rail-soft-mint */
+  --sp-text:#f3f8f5;      /* --rail-text */
+  --sp-muted:#b9d4c5;     /* --rail-muted */
+  --sp-bright:#21845f;    /* --rail-bright */
+  --sp-light:255 236 196; /* warm lantern light, rgb triplet */
+  --sp-tower:#efe9d9; --sp-tower-shade:#cfc7b2; --sp-cap:#176b50;
+  --ease-out:cubic-bezier(.22,.61,.36,1);
+  --ease-in:cubic-bezier(.4,0,1,1);
+  --chrome-bg:#eceeed; --chrome-text:#1b2420; --chrome-muted:#5d6862; --chrome-line:#cfd5d1;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--chrome-bg:#101613;--chrome-text:#e6eee9;--chrome-muted:#9aa9a0;--chrome-line:#2a3730;}
+}
+:root[data-theme="dark"]{--chrome-bg:#101613;--chrome-text:#e6eee9;--chrome-muted:#9aa9a0;--chrome-line:#2a3730;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--chrome-bg);color:var(--chrome-text);font-size:14px;line-height:1.45}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- review chrome (not part of the design) ---------- */
+.chrome{padding:16px;max-width:1500px;margin:0 auto}
+.proto-flag{display:inline-block;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;background:#b3261e;color:#fff;padding:5px 8px;border-radius:4px}
+h1{font-size:18px;margin:10px 0 4px}
+.lede{color:var(--chrome-muted);margin:0 0 12px;max-width:900px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 12px;border:1px solid var(--chrome-line);border-radius:8px;margin-bottom:10px}
+.controls fieldset{border:0;margin:0;padding:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.controls legend{float:left;margin-right:6px;font-size:12px;color:var(--chrome-muted)}
+.controls button,.controls select{font:inherit;font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--chrome-line);background:transparent;color:inherit;cursor:pointer;min-height:32px}
+.controls button[aria-pressed="true"]{background:#176b50;color:#fff;border-color:#176b50}
+.controls label{display:flex;gap:6px;align-items:center;font-size:13px}
+.readout{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--chrome-muted);display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0 10px}
+.readout b{color:var(--chrome-text);font-weight:600}
+.scrub{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.scrub input{flex:1}
+.ticks{position:relative;height:16px;margin:-6px 0 12px;font:10px ui-monospace,monospace;color:var(--chrome-muted)}
+.ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.stage-wrap{position:relative;width:100%;overflow:hidden;border-radius:10px;background:#000}
+.stage-scaler{transform-origin:0 0}
+
+/* ---------- the stage = one emulated viewport ---------- */
+.stage{position:relative;width:1440px;height:900px;overflow:hidden;container-type:size;container-name:vp;
+  background:var(--canvas);color:var(--text);
+  --canvas:#f7f9f7;--surface:#fff;--sunken:#f0f8f3;--border:#e4eae5;--text:#17231e;--muted:#5f6c65;--brand:#176b50;--pulse:#e3ece6}
+.stage[data-theme="dark"]{--canvas:#0d1511;--surface:#141f19;--sunken:#1b2921;--border:#293a30;--text:#edf4ef;--muted:#a0b0a5;--brand:#55b78b;--pulse:#22322a}
+
+/* ---------- app layer: ShellSkeleton replica (exit target) ---------- */
+.app{position:absolute;inset:0;display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr auto;background:var(--canvas)}
+.app[data-bg="panorama"]{background:var(--canvas) url("../task-46/art/light-normal.png") 62% 100%/cover no-repeat}
+.stage[data-theme="dark"] .app[data-bg="panorama"]{background-image:url("../task-46/art/dark-normal.png")}
+.app[data-bg="panorama"] .card,.app[data-bg="panorama"] .topbar{background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(6px)}
+.rail,.side{display:none;background:linear-gradient(180deg,#062f24,#083a2b)}
+.topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--surface)}
+.main{padding:16px;overflow:hidden;display:flex;flex-direction:column;gap:14px}
+.tabs{height:64px;border-top:1px solid var(--border);background:var(--surface);display:grid;grid-template-columns:repeat(4,1fr);align-items:center;justify-items:center}
+.pb{background:var(--pulse);border-radius:6px;animation:pulse 1.6s ease-in-out infinite}
+.rail .pb,.side .pb{background:rgb(255 255 255 / .1)}
+@keyframes pulse{50%{opacity:.55}}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.rows{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:12px;align-items:center}
+.app .real{display:none}
+.app[data-app="ready"] .pb,.app[data-app="error"] .pb{display:none}
+.app[data-app="ready"] .real,.app[data-app="error"] .real{display:block}
+.app .err{display:none;border:1px solid #d6a4a0;background:color-mix(in srgb,#b3261e 9%,var(--surface));color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px}
+.app[data-app="error"] .err{display:block}
+.real.kv{font-size:12px;color:var(--muted)} .real.num{font-size:22px;font-weight:650;margin-top:4px}
+.navitem{color:#d4e3da;font-size:13px;padding:8px 12px;border-radius:8px}
+.navitem.on{background:#147653;color:#fff}
+@container vp (min-width:768px){
+  .app{grid-template-columns:72px 1fr;grid-template-rows:auto 1fr}
+  .rail{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 0;grid-row:1/3}
+  .topbar{height:68px} .tabs{display:none} .main{padding:22px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+}
+@container vp (min-width:1024px){
+  .app{grid-template-columns:272px 1fr}
+  .rail{display:none}
+  .side{display:flex;flex-direction:column;gap:10px;padding:20px 16px;grid-row:1/3}
+  .topbar{height:76px} .main{padding:28px}
+}
+
+/* ---------- SPLASH ---------- */
+.splash{position:absolute;inset:0;z-index:10;overflow:hidden;background:var(--sp-base);color:var(--sp-text);
+  container-type:size;opacity:1;--seek:0ms;--p:0;user-select:none;-webkit-tap-highlight-color:transparent}
+.splash[data-state="exit"]{opacity:0;pointer-events:none;transition:opacity 300ms var(--ease-in)}
+.splash[data-state="done"]{display:none}
+.splash[data-rm][data-state="exit"]{transition:none}
+.splash[data-onion]{opacity:.5 !important;display:block !important;pointer-events:none}
+
+
+/* F01 scene fade-in 0–500ms (base colour is already painted at B0, so this is never a black flash) */
+.scene{position:absolute;inset:0;animation:fade 500ms var(--ease-out)}
+.sky{position:absolute;inset:0;background:
+  radial-gradient(60cqw 46cqh at 84cqw 40cqh, rgb(var(--sp-light) / .10), transparent 70%),
+  linear-gradient(180deg,var(--sp-deep) 0%,var(--sp-base) 42%,var(--sp-mid) 72%,#0a4532 100%)}
+.hills{position:absolute;left:0;right:0;bottom:0;height:34cqh;width:100%}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* clouds (G2 stand-ins) — one-way rightward drift over the 10 s maximum life; FG travels 2x BG */
+.cloud{position:absolute;border-radius:50%;filter:none;pointer-events:none}
+.cloud.bg{left:20cqw;top:13cqh;width:34cqw;height:8cqw;
+  background:radial-gradient(closest-side at 30% 60%,rgb(221 242 231/.13),transparent),
+             radial-gradient(closest-side at 62% 45%,rgb(221 242 231/.11),transparent),
+             radial-gradient(closest-side at 82% 62%,rgb(221 242 231/.08),transparent);
+  animation:drift-bg 10s linear}
+.cloud.fg{left:-8cqw;top:55cqh;width:54cqw;height:13cqw;
+  background:radial-gradient(closest-side at 25% 58%,rgb(221 242 231/.16),transparent),
+             radial-gradient(closest-side at 52% 42%,rgb(221 242 231/.14),transparent),
+             radial-gradient(closest-side at 78% 60%,rgb(221 242 231/.10),transparent);
+  animation:drift-fg 10s linear}
+@keyframes drift-bg{from{transform:translate3d(0,0,0)}to{transform:translate3d(5cqw,0,0)}}
+@keyframes drift-fg{from{transform:translate3d(0,0,0)}to{transform:translate3d(10cqw,0,0)}}
+
+/* lighthouse rig: tower, glow and beam share ONE coordinate box so the beam can never drift off the lantern */
+.rig{position:absolute;left:85cqw;bottom:29cqh;height:clamp(170px,34cqh,380px);aspect-ratio:1/4;transform:translateX(-50%)}
+.rig svg.tower{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.lantern{position:absolute;left:50%;top:11%;width:0;height:0}
+.glow{position:absolute;left:0;top:0;width:clamp(120px,22cqh,260px);aspect-ratio:1;border-radius:50%;
+  transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgb(var(--sp-light)/.75),rgb(var(--sp-light)/.22) 45%,transparent);
+  animation:glow-in 700ms var(--ease-out)}
+@keyframes glow-in{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.beam-tilt{position:absolute;right:0;top:0;width:0;height:0;transform:rotate(-6deg);transform-origin:0 0}
+.beam{position:absolute;right:0;width:92cqw;height:calc(92cqw * .62);top:calc(92cqw * -.31);transform-origin:100% 50%;
+  animation:beam-in 1000ms var(--ease-out)}
+.beam .wide,.beam .core{position:absolute;inset:0;clip-path:polygon(100% 50%,0 0,0 100%)}
+.beam .wide{background:linear-gradient(to left,rgb(var(--sp-light)/.34),rgb(var(--sp-light)/.10) 45%,transparent 88%);
+  -webkit-mask:linear-gradient(to bottom,transparent,#000 35%,#000 65%,transparent);mask:linear-gradient(to bottom,transparent,#000 35%,#000 65%,transparent)}
+.beam .core{clip-path:polygon(100% 50%,0 36%,0 64%);background:linear-gradient(to left,rgb(var(--sp-light)/.5),rgb(var(--sp-light)/.10) 45%,transparent 75%);
+  animation:breathe 5s ease-in-out infinite}
+@keyframes beam-in{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.78}}
+
+/* brand lockup: the official logo file, split into two static clip layers (V, wordmark) — never redrawn */
+.splash{--bx:46cqw}
+.brand{position:absolute;left:var(--bx);top:45cqh;width:clamp(230px,31cqw,440px);transform:translate(-50%,-50%);text-align:center}
+.logo{position:relative;width:100%;aspect-ratio:460/170}
+.logo img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.logo .v{clip-path:inset(0 74.6% 0 0);animation:v-in 600ms var(--ease-out)}
+.logo .word{clip-path:inset(0 0 0 25.4%);animation:word-in 600ms var(--ease-out)}
+.logo .sheen{position:absolute;inset:0;clip-path:inset(0 74.6% 0 0);
+  -webkit-mask:url("../../../public/brand/verilane-logo-light.png") 0 0/100% 100% no-repeat;mask:url("../../../public/brand/verilane-logo-light.png") 0 0/100% 100% no-repeat;
+  background:linear-gradient(100deg,transparent 30%,rgb(var(--sp-light)/.85) 50%,transparent 70%) 0 0/300% 100% no-repeat;
+  animation:sheen 800ms ease-in-out}
+@keyframes v-in{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes word-in{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+@keyframes sheen{0%{opacity:0;background-position:100% 0}30%{opacity:1}100%{opacity:0;background-position:0 0}}
+.tagline{margin-top:clamp(6px,1.2cqh,14px);font-size:clamp(12px,1.15cqw,16px);letter-spacing:.18em;text-transform:uppercase;color:var(--sp-muted);font-weight:500;animation:up-in 600ms var(--ease-out)}
+@keyframes up-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* progress — revealed at 3.2 s; the fill is driven ONLY by real phase targets (--p) */
+.progress{--pw:clamp(200px,24cqw,340px);position:absolute;left:calc(var(--bx) - var(--pw) / 2);bottom:max(116px,13cqh);width:var(--pw);text-align:center;animation:up-in 300ms var(--ease-out)}
+.track{position:relative;height:6px;border-radius:999px;background:rgb(221 242 231/.16);overflow:hidden}
+.fill{position:absolute;inset:0;border-radius:999px;background:linear-gradient(90deg,var(--sp-bright),var(--sp-mint));
+  transform-origin:0 50%;transform:scaleX(var(--p));transition:transform var(--fill-ms,350ms) var(--ease-out)}
+.glint{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--p) * 100%) 0 0 round 999px);opacity:0;transition:opacity 400ms}
+.glint::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:0;background:linear-gradient(90deg,transparent,rgb(255 255 255/.55),transparent);animation:glint 2.4s ease-in-out infinite;transform:translateX(-100%)}
+.splash[data-stall] .glint{opacity:1}
+.splash[data-rm] .glint::after{animation:none;opacity:0}
+@keyframes glint{0%{transform:translateX(-100%)}70%,100%{transform:translateX(260%)}}
+.status{margin-top:10px;font-size:13px;color:var(--sp-muted);min-height:1.45em}
+.status .sub{display:block;margin-top:4px;font-size:12px;color:var(--sp-muted);opacity:.9}
+.dots::after{content:"…"}
+.splash[data-rm] .progress{animation:none}
+
+/* skip — low emphasis, bottom-right, visible from the first frame */
+.skip{position:absolute;right:max(20px,2.2cqw);bottom:max(20px,3cqh);display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.skip button{font:inherit;font-size:13px;font-weight:500;color:var(--sp-text);background:rgb(255 255 255/.06);border:1px solid rgb(221 242 231/.34);
+  border-radius:999px;padding:0 14px;height:36px;min-width:44px;cursor:pointer}
+.skip button:hover{background:rgb(255 255 255/.12)}
+.skip button:focus-visible{outline:2px solid var(--sp-mint);outline-offset:3px}
+.skip .hint{font-size:12px;color:var(--sp-muted)}
+.skip .hint .touch{display:none}
+.splash[data-touch] .skip .hint .key{display:none}.splash[data-touch] .skip .hint .touch{display:inline}
+.splash[data-touch] .skip button{height:44px}
+@media (hover:none){.skip .hint .key{display:none}.skip .hint .touch{display:inline}.skip button{height:44px}}
+
+/* responsive — tablet & phone (thresholds match the app's md breakpoint) */
+@container (max-width:900px){
+  .splash{--bx:44cqw}
+  .brand{top:42cqh;width:clamp(220px,44cqw,380px)}
+  .tagline{font-size:13px}
+  .rig{left:84cqw;height:clamp(170px,28cqh,320px)}
+}
+@container (max-width:600px){
+  .splash{--bx:50cqw}
+  .brand{top:36cqh;width:min(70cqw,300px)}
+  .rig{left:83cqw;bottom:27cqh;height:clamp(150px,24cqh,240px)}
+  .cloud.bg{display:none}                       /* clouds reduced on phones (brief) */
+  .cloud.fg{top:58cqh;width:80cqw;height:22cqw;opacity:.8}
+  .progress{--pw:min(62cqw,260px)}
+  .tagline{letter-spacing:.14em;font-size:12px}
+}
+
+/* ---------- handshake panel ---------- */
+.panel{margin-top:26px;border-top:1px solid var(--chrome-line);padding-top:18px}
+.panel h2{font-size:14px;margin:0 0 4px}
+.panel p{color:var(--chrome-muted);margin:0 0 12px;max-width:900px}
+.duo{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.duo figure{margin:0}
+.duo .frame{position:relative;aspect-ratio:16/10;border-radius:8px;overflow:hidden;background:#062f24}
+.duo figcaption{font:11px ui-monospace,monospace;color:var(--chrome-muted);margin-top:6px}
+.mini{position:absolute;left:0;top:0;width:1440px;height:900px;container-type:size;transform-origin:0 0}
+@media (max-width:600px){.ticks{display:none}}
+.pano{position:absolute;inset:0;background:url("../task-46/art/dark-normal.png") 62% 100%/cover no-repeat}
+@media (max-width:820px){.duo{grid-template-columns:1fr}}
+/* every cinematic layer: delay is relative to t0, shifted by --seek so the scrubber can freeze any frame.
+   Kept LAST and at higher specificity so the per-layer `animation` shorthands above cannot reset it. */
+.splash .a.a{animation-fill-mode:both;animation-delay:calc(var(--d,0ms) - var(--seek))}
+.splash[data-paused] .a.a,.splash[data-paused] .glint::after{animation-play-state:paused}
+.splash[data-rm] .a.a{animation:none !important}
+body[data-bare] .chrome>*:not(.stage-wrap){display:none}
+body[data-bare] .chrome{padding:0;max-width:none}
+body[data-bare] .stage-wrap{border-radius:0}
+</style>
+</head>
+<body>
+<div class="chrome">
+  <span class="proto-flag">DESIGN PROTOTYPE — NOT PRODUCTION</span>
+  <h1>TASK-45 · Cinematic lighthouse splash — Stage 3 mockup</h1>
+  <p class="lede">The cinematic is CSS keyframes only (transform/opacity). The script simulates the inline runtime so you can review each load profile: the bar moves only on simulated phase events, never on a timer. Click, tap or press any key inside the stage to skip (ignored for the first 250 ms). Spec: <code>docs/Design-TASK-45.md</code>.</p>
+
+  <div class="controls" id="controls">
+    <fieldset><legend>Play</legend>
+      <button id="replay" type="button">Replay</button>
+      <button id="skipNow" type="button">Skip now</button>
+    </fieldset>
+    <fieldset><legend>Load</legend>
+      <select id="scenario" aria-label="Simulated load profile">
+        <option value="fast">Fast (warm, ready 0.9 s)</option>
+        <option value="slow" selected>Slow first visit (seeding, ready 7.4 s)</option>
+        <option value="noseed">Slow returning (no seeding, ready 6.8 s)</option>
+        <option value="veryslow">Very slow (never ready, ceiling 9.7 s)</option>
+        <option value="error">Error (DataProvider error at 4.1 s)</option>
+      </select>
+    </fieldset>
+    <fieldset><legend>Viewport</legend>
+      <button type="button" data-w="1440" data-h="900" aria-pressed="true">1440</button>
+      <button type="button" data-w="768" data-h="1024" aria-pressed="false">768</button>
+      <button type="button" data-w="375" data-h="812" aria-pressed="false">375</button>
+    </fieldset>
+    <fieldset><legend>Exit into</legend>
+      <button type="button" data-bg="skeleton" aria-pressed="true">App shell</button>
+      <button type="button" data-bg="panorama" aria-pressed="false">TASK-46 panorama</button>
+    </fieldset>
+    <label><input type="checkbox" id="rm"> Reduced motion</label>
+    <label><input type="checkbox" id="light"> Light theme (app)</label>
+    <label><input type="checkbox" id="touch"> Touch device</label>
+    <label><input type="checkbox" id="onion"> Onion-skin exit frame</label>
+  </div>
+  <div class="scrub"><button id="playHere" type="button" class="controls" style="padding:6px 10px;margin:0">Play from here</button>
+    <input id="scrub" type="range" min="0" max="11000" step="20" value="0" aria-label="Timeline position (ms)"></div>
+  <div class="ticks" id="ticks"></div>
+  <div class="readout" id="readout"></div>
+
+  <div class="stage-wrap" id="wrap"><div class="stage-scaler" id="scaler">
+    <div class="stage" id="stage" data-theme="dark">
+      <!-- app underneath: inert while the splash covers it -->
+      <div class="app" id="app" data-app="loading" data-bg="skeleton" inert>
+        <aside class="side" aria-hidden="true">
+          <div class="pb" style="height:28px;width:130px;margin-bottom:14px"></div>
+          <div class="real navitem on">Queue</div><div class="real navitem">Customers</div><div class="real navitem">Drafts</div><div class="real navitem">Settings</div>
+          <div class="pb" style="height:34px"></div><div class="pb" style="height:34px"></div><div class="pb" style="height:34px"></div><div class="pb" style="height:34px"></div>
+        </aside>
+        <aside class="rail" aria-hidden="true"><div class="pb" style="width:36px;height:36px"></div><div class="pb" style="width:36px;height:36px"></div><div class="pb" style="width:36px;height:36px"></div><div class="pb" style="width:36px;height:36px"></div></aside>
+        <header class="topbar"><div class="pb" style="height:18px;width:160px"></div><div class="real" style="font-weight:650">Collections queue</div></header>
+        <main class="main" role="status" aria-busy="true" aria-label="Loading workspace">
+          <div class="err">Couldn’t load demo data. The app’s own error state and Retry live here (unchanged by TASK-45).</div>
+          <div class="pb" style="height:26px;width:240px"></div><div class="real" style="font-size:22px;font-weight:650">Today’s follow-ups</div>
+          <div class="kpis">
+            <div class="card"><div class="pb" style="height:12px;width:60%"></div><div class="pb" style="height:24px;width:45%;margin-top:10px"></div><div class="real kv">Overdue</div><div class="real num">₹18.4L</div></div>
+            <div class="card"><div class="pb" style="height:12px;width:60%"></div><div class="pb" style="height:24px;width:45%;margin-top:10px"></div><div class="real kv">Due this week</div><div class="real num">₹7.9L</div></div>
+            <div class="card"><div class="pb" style="height:12px;width:60%"></div><div class="pb" style="height:24px;width:45%;margin-top:10px"></div><div class="real kv">Drafts ready</div><div class="real num">12</div></div>
+            <div class="card"><div class="pb" style="height:12px;width:60%"></div><div class="pb" style="height:24px;width:45%;margin-top:10px"></div><div class="real kv">Promised</div><div class="real num">₹3.1L</div></div>
+          </div>
+          <div class="card rows">
+            <div class="row"><div class="pb" style="height:14px;flex:1"></div><div class="real" style="flex:1">Sharma Traders · 42 days · ₹2.4L</div></div>
+            <div class="row"><div class="pb" style="height:14px;flex:1"></div><div class="real" style="flex:1">Kaveri Foods · 31 days · ₹1.1L</div></div>
+            <div class="row"><div class="pb" style="height:14px;flex:1"></div><div class="real" style="flex:1">Lotus Pharma · 18 days · ₹86K</div></div>
+            <div class="row"><div class="pb" style="height:14px;flex:1"></div><div class="real" style="flex:1">Indus Steel · 12 days · ₹64K</div></div>
+            <div class="row"><div class="pb" style="height:14px;flex:1"></div><div class="real" style="flex:1">Ganga Textiles · 7 days · ₹41K</div></div>
+          </div>
+        </main>
+        <nav class="tabs" aria-hidden="true"><div class="pb" style="width:44px;height:28px"></div><div class="pb" style="width:44px;height:28px"></div><div class="pb" style="width:44px;height:28px"></div><div class="pb" style="width:44px;height:28px"></div></nav>
+      </div>
+
+      <!-- SPLASH (template; cloned on every replay so CSS animation timelines restart) -->
+      <template id="splashTpl">
+      <div class="splash" data-state="on">
+        <div class="scene a" aria-hidden="true">
+          <div class="sky"></div>
+          <div class="cloud bg a"></div>
+          <svg class="hills" viewBox="0 0 1440 300" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 120 C 220 60 420 70 640 110 S 1100 150 1440 70 L1440 300 L0 300Z" fill="var(--sp-hill-1)"/>
+            <path d="M0 190 C 260 130 520 150 760 175 S 1180 120 1440 150 L1440 300 L0 300Z" fill="var(--sp-hill-2)"/>
+            <path d="M0 250 C 300 215 640 230 900 240 S 1260 215 1440 225 L1440 300 L0 300Z" fill="var(--sp-hill-3)"/>
+          </svg>
+          <div class="rig">
+            <div class="lantern">
+              <div class="beam-tilt"><div class="beam a" style="--d:800ms"><div class="wide"></div><div class="core a" style="--d:1800ms"></div></div></div>
+              <div class="glow a" style="--d:400ms"></div>
+            </div>
+            <svg class="tower" viewBox="0 0 100 400" aria-hidden="true">
+              <path d="M12 400 L22 300 L78 300 L88 400Z" fill="#0b3a2c"/>
+              <path d="M30 300 L36 84 L64 84 L70 300Z" fill="var(--sp-tower)"/>
+              <path d="M52 84 L64 84 L70 300 L54 300Z" fill="var(--sp-tower-shade)" opacity=".55"/>
+              <path d="M33 180 L67 180 L68 200 L32 200Z M35 120 L65 120 L66 136 L34 136Z M31 240 L69 240 L70 258 L30 258Z" fill="#176b50" opacity=".85"/>
+              <rect x="30" y="76" width="40" height="8" rx="1.5" fill="#0f4d39"/>
+              <rect x="38" y="48" width="24" height="28" fill="rgb(255 236 196)" opacity=".95"/>
+              <path d="M36 48 L50 30 L64 48Z" fill="var(--sp-cap)"/>
+              <rect x="48" y="22" width="4" height="9" fill="var(--sp-cap)"/>
+              <rect x="34" y="46" width="32" height="3" fill="#0f4d39"/>
+            </svg>
+          </div>
+          <div class="cloud fg a"></div>
+        </div>
+
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <img class="v a" style="--d:1400ms" src="../../../public/brand/verilane-logo-light.png" alt="">
+            <div class="sheen a" style="--d:1600ms"></div>
+            <img class="word a" style="--d:2000ms" src="../../../public/brand/verilane-logo-light.png" alt="">
+          </div>
+          <div class="tagline a" style="--d:2600ms" aria-hidden="true">AR Collections Copilot</div>
+        </div>
+
+        <div class="progress a" style="--d:3200ms">
+          <div class="track" role="progressbar" aria-label="Loading Verilane" aria-valuemin="0" aria-valuemax="100" aria-valuenow="10" aria-valuetext="Opening workspace">
+            <div class="fill"></div><div class="glint"></div>
+          </div>
+          <div class="status" role="status" aria-live="polite"><span class="sr-only">Verilane. </span><span class="msg">Opening workspace<span class="dots"></span></span><span class="sub"></span></div>
+        </div>
+
+        <div class="skip"><button type="button" class="skipbtn">Skip intro</button><span class="hint" aria-hidden="true"><span class="key">or press any key</span><span class="touch">or tap anywhere</span></span></div>
+      </div>
+      </template>
+    </div>
+  </div></div>
+
+  <section class="panel" aria-labelledby="hs">
+    <h2 id="hs">TASK-45 ↔ TASK-46 handshake (exit frame vs. panorama first frame)</h2>
+    <p>No shared code — visual language only (Design-TASK-46 §8). The splash never waits on the heritage art. Left: splash final frame (t₀+5.7 s). Middle: the dark panorama at its proposed <code>background-position: 62% 100%</code>. Right: onion-skin at 50 % — the lighthouse (≈85 % x) must sit clear of the landmark cluster; any overlap is fixed on the panorama side by moving its <code>background-position</code>, never by moving the lighthouse. Use “Exit into → TASK-46 panorama” above to see the live crossfade.</p>
+    <div class="duo">
+      <figure><div class="frame"><div class="mini" id="miniSplash"></div></div><figcaption>Splash · final frame (frozen at 5.7 s)</figcaption></figure>
+      <figure><div class="frame"><div class="pano"></div></div><figcaption>TASK-46 · dark-normal.png @ 62% 100%</figcaption></figure>
+      <figure><div class="frame"><div class="pano"></div><div class="mini" id="miniOnion" style="opacity:.5"></div></div><figcaption>Onion-skin · 50 % splash over panorama</figcaption></figure>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---- simulated inline runtime (mockup only). Times are ms from t0 = 'painted'. ---- */
+const D = 5700, D_RM = 1000, EXIT_MS = 300, BEAT = 250, REVEAL = 3200, GUARD = 250;
+const TARGET = {painted:.10, session:.35, provider:.65, seeding:.80, ready:1, error:1};
+const SCEN = {
+  fast:    [['session',120],['provider',450],['ready',900]],
+  slow:    [['session',900],['provider',2400],['seeding',3000],['ready',7400]],
+  noseed:  [['session',900],['provider',2600],['ready',6800]],
+  veryslow:[['session',1500],['provider',4200],['seeding',5000]],
+  error:   [['session',800],['provider',2000],['error',4100]],
+};
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+let opt = {scenario: params.get('scenario') || 'slow', rm: params.has('rm'), touch: params.has('touch'),
+           light: params.get('theme') === 'light', bg: params.get('bg') || 'skeleton', w: +(params.get('w')||1440), h: +(params.get('h')||900), onion:false};
+let splash, t0 = 0, skipAt = null, paused = false, seekT = 0, warned = false, lastSig = '';
+
+function stateAt(t){
+  const rm = opt.rm, d = rm ? D_RM : D, ceiling = d + 4000;
+  let phase = 'painted', last = 0, seeding = false, readyAt = null, kind = null;
+  for (const [ev, at] of SCEN[opt.scenario]) {
+    if (at > t || (readyAt !== null)) break;
+    if (at > ceiling) break;
+    phase = ev; last = at; if (ev === 'seeding') seeding = true;
+    if (ev === 'ready' || ev === 'error') { readyAt = at; kind = ev; }
+  }
+  // exit time if nothing skips: max(t0+D, ready + beat-if-late), capped by ceiling
+  const evReady = SCEN[opt.scenario].find(([e]) => e === 'ready' || e === 'error');
+  const rAt = evReady && evReady[1] <= ceiling ? evReady[1] : null;
+  let exitAt = rAt === null ? ceiling : Math.max(d, rAt + (rAt > d - BEAT ? BEAT : 0));
+  let cause = rAt === null ? 'ceiling' : 'natural';
+  if (skipAt !== null && skipAt < exitAt) { exitAt = skipAt; cause = 'skip'; }
+  if (rm && cause === 'ceiling') exitAt = ceiling;
+  const revealAt = rm ? 0 : REVEAL;
+  const target = TARGET[phase];
+  const shown = t < revealAt ? 0 : target;
+  let state = t < exitAt ? (t >= d && readyAt === null ? 'hold' : 'on') : (t < exitAt + (rm ? 0 : EXIT_MS) ? 'exit' : 'done');
+  const stalled = readyAt === null && t >= revealAt && (t - last) > 1500 && state !== 'exit' && state !== 'done';
+  const longStall = readyAt === null && ((t - last) > 4000 || t > d + 1500);
+  let msg = seeding ? 'Preparing demo data' : 'Opening workspace', dots = true;
+  if (kind === 'ready') { msg = 'Workspace ready'; dots = false; }
+  if (kind === 'error') { msg = 'Workspace opened'; dots = false; }
+  const appReady = rAt !== null && t >= rAt;
+  return {t, phase, target, shown, state, stalled, longStall, msg, dots, ready: readyAt !== null, kind, exitAt, cause, ceiling, d, appReady,
+          fillMs: (readyAt !== null && readyAt > d - BEAT && t - readyAt < 400) ? BEAT : (t - revealAt < 650 && t >= revealAt ? 600 : 350)};
+}
+
+function mount(seek){
+  if (splash) splash.remove();
+  splash = $('#splashTpl').content.firstElementChild.cloneNode(true);
+  splash.style.setProperty('--seek', seek + 'ms');
+  if (opt.rm) splash.setAttribute('data-rm', '');
+  if (opt.touch) splash.setAttribute('data-touch', '');
+  $('#stage').appendChild(splash);
+  splash.addEventListener('pointerdown', e => { if (!e.target.closest('.skipbtn')) trySkip(); });
+  splash.querySelector('.skipbtn').addEventListener('click', trySkip);
+  warned = false; lastSig = '';
+}
+function now(){ return paused ? seekT : performance.now() - t0; }
+function trySkip(){ const t = now(); if (t < GUARD || paused) return; const s = stateAt(t); if (s.state === 'on' || s.state === 'hold') { skipAt = t; } }
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.target.closest('#controls, .scrub, .panel')) return;
+  if (e.target.closest('.skipbtn') && (e.key === 'Enter' || e.key === ' ')) return; // button handles its own activation
+  trySkip();
+});
+
+function render(){
+  const s = stateAt(now());
+  const p = s.shown;
+  splash.style.setProperty('--p', p);
+  splash.style.setProperty('--fill-ms', paused ? '0ms' : s.fillMs + 'ms');
+  splash.querySelector('.fill').style.transition = paused ? 'none' : '';
+  const st = opt.onion ? 'on' : s.state;
+  if (splash.dataset.state !== st) splash.dataset.state = st;
+  if (paused && s.state === 'exit') { splash.style.transition = 'none'; splash.style.opacity = opt.rm ? 0 : 1 - (s.t - s.exitAt) / EXIT_MS; }
+  else { splash.style.transition = ''; splash.style.opacity = ''; }
+  splash.toggleAttribute('data-stall', s.stalled && !opt.rm ? true : (s.stalled && opt.rm));
+  splash.toggleAttribute('data-onion', opt.onion);
+  const sig = s.msg + s.dots + s.longStall;
+  if (sig !== lastSig) {   // only touch the live region when the phase text really changes
+    splash.querySelector('.msg').innerHTML = s.msg + (s.dots ? '<span class="dots"></span>' : '');
+    splash.querySelector('.sub').textContent = s.longStall ? 'Still working — first visits can take a few seconds.' : '';
+    lastSig = sig;
+  }
+  const pb = splash.querySelector('[role=progressbar]');
+  pb.setAttribute('aria-valuenow', Math.round(s.target * 100));
+  pb.setAttribute('aria-valuetext', s.msg);
+  splash.querySelector('.skipbtn').textContent = s.ready ? 'Continue' : 'Skip intro';
+  const app = $('#app');
+  app.dataset.app = s.appReady ? (s.kind || (SCEN[opt.scenario].some(([e])=>e==='error') ? 'error' : 'ready')) : 'loading';
+  if (s.appReady && SCEN[opt.scenario].some(([e])=>e==='error')) app.dataset.app = 'error';
+  app.toggleAttribute('inert', s.state === 'on' || s.state === 'hold');
+  if (s.cause === 'ceiling' && s.t >= s.exitAt && !warned && !paused) { console.warn('[mockup] splash:ceiling — exiting with bar at', Math.round(s.target*100)+'%'); warned = true; }
+  $('#readout').innerHTML = `<span>t = <b>${(s.t/1000).toFixed(2)} s</b></span><span>data-splash=<b>${s.state}</b></span><span>phase <b>${s.phase}</b></span><span>bar <b>${Math.round(p*100)}%</b> (target ${Math.round(s.target*100)}%)</span><span>exit at <b>${(s.exitAt/1000).toFixed(2)} s</b> via ${s.cause}</span><span>D=${s.d} · ceiling ${(s.ceiling/1000).toFixed(1)} s</span>${s.stalled?'<span><b>stalled</b> (glint on)</span>':''}`;
+  if (!paused) $('#scrub').value = Math.min(11000, s.t);
+}
+function loop(){ render(); requestAnimationFrame(loop); }
+
+function replay(from = 0){ paused = false; skipAt = null; t0 = performance.now() - from; mount(from); }
+function seek(t){ paused = true; seekT = t; mount(t); splash.setAttribute('data-paused', ''); }
+
+function applyOpts(){
+  $('#stage').dataset.theme = opt.light ? 'light' : 'dark';
+  $('#app').dataset.bg = opt.bg;
+  const st = $('#stage'); st.style.width = opt.w + 'px'; st.style.height = opt.h + 'px';
+  document.querySelectorAll('[data-w]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.w === opt.w));
+  document.querySelectorAll('[data-bg]').forEach(b => b.setAttribute('aria-pressed', b.dataset.bg === opt.bg));
+  fit();
+}
+function fit(){
+  const wrap = $('#wrap'), sc = $('#scaler');
+  if (document.body.hasAttribute('data-bare')) { sc.style.transform = 'none'; wrap.style.height = opt.h + 'px'; return; }
+  const avail = wrap.clientWidth, k = Math.min(1, avail / opt.w, (innerHeight * .8) / opt.h);
+  sc.style.transform = `scale(${k})`; wrap.style.height = opt.h * k + 'px';
+  sc.style.marginLeft = Math.max(0, (avail - opt.w * k) / 2) + 'px';
+}
+addEventListener('resize', fit);
+
+$('#replay').onclick = () => replay(0);
+$('#skipNow').onclick = () => { if (paused) replay(seekT); skipAt = Math.max(GUARD, now()); };
+$('#playHere').onclick = () => replay(+$('#scrub').value);
+$('#scrub').oninput = e => seek(+e.target.value);
+$('#scenario').value = opt.scenario;
+$('#scenario').onchange = e => { opt.scenario = e.target.value; replay(0); };
+document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { opt.w = +b.dataset.w; opt.h = +b.dataset.h; applyOpts(); });
+document.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => { opt.bg = b.dataset.bg; applyOpts(); });
+[['rm','rm'],['light','light'],['touch','touch'],['onion','onion']].forEach(([id,k]) => { const el = $('#'+id); el.checked = opt[k]; el.onchange = () => { opt[k] = el.checked; applyOpts(); if (k==='rm'||k==='touch') replay(0); }; });
+// timeline ticks
+[[0,'F01'],[400,'F02 glow'],[800,'F03 beam'],[1400,'F04 V'],[2000,'F05 word'],[2600,'F06 tag'],[3200,'F07 bar'],[5700,'D · exit'],[9700,'ceiling']]
+  .forEach(([t,l]) => { const s = document.createElement('span'); s.style.left = (t/11000*100)+'%'; s.textContent = l; $('#ticks').appendChild(s); });
+
+// handshake mini frames: a frozen copy of the splash at 5.7 s
+for (const id of ['#miniSplash','#miniOnion']) {
+  const m = $('#splashTpl').content.firstElementChild.cloneNode(true);
+  m.style.setProperty('--seek','5700ms'); m.setAttribute('data-paused',''); m.style.setProperty('--p','1');
+  m.querySelector('.skip').remove(); m.querySelector('.status').innerHTML = 'Workspace ready';
+  $(id).appendChild(m);
+}
+
+function fitMinis(){ document.querySelectorAll('.mini').forEach(m => { m.style.transform = `scale(${m.parentElement.clientWidth / 1440})`; }); }
+addEventListener('resize', fitMinis); fitMinis();
+if (params.has('bare')) document.body.setAttribute('data-bare', '');
+applyOpts();
+if (params.has('t')) { replay(0); seek(+params.get('t')); } else replay(0);
+if (params.has('skip')) skipAt = +params.get('skip');
+loop();
+</script>
+</body>
+</html>

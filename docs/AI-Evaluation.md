@@ -37,7 +37,7 @@ Also reported, not gated: TP/FP/TN/FN, precision, recall and F1 per email class 
 - **Runner:** Vitest project `eval` (`pnpm eval`). It is pure Node, runs the domain engine and providers directly with no browser, no network in demo mode, and the frozen `AS_OF_DATE`.
 - **Output:** a console table, `eval/report.json` (machine-readable) and `eval/report.md` (human-readable, linked from the app's Settings → "Evaluation results" page, which is static and rebuilt at build time).
 - **Exit code:** non-zero if any gate misses (SR10). It runs in the Stage 8 test pass and pre-deploy.
-- **Determinism:** two runs produce identical `report.json` apart from `generatedAt` (Solution-PRD success criterion 4).
+- **Determinism:** two runs produce byte-identical `report.json` and `report.md`; the run's timestamp and duration are printed to the console only (Solution-PRD success criterion 4).
 - **Live mode (optional):** `pnpm eval:live` runs only if `ANTHROPIC_API_KEY` is set. It shows the cost estimate (thread count × model) and asks for an explicit `--yes` before calling the API. Results go to `eval/report.live.json`, labelled "Live LLM — reported, not gated". The deployed demo never runs it.
 
 ## 5. Regression policy

@@ -1,0 +1,616 @@
+[
+  {
+    "thread_id": "H2-001",
+    "customer_id": "H2C-01",
+    "invoice_id": "H2-3101",
+    "invoice_ids": [
+      "H2-3101"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      23600000
+    ],
+    "invoice_refs": [
+      "INV-3101"
+    ],
+    "commitment_date": "2026-10-30",
+    "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
+    "note": "Hinglish; 'is Friday' sent Mon 2026-10-26 -> Friday of the same week"
+  },
+  {
+    "thread_id": "H2-002",
+    "customer_id": "H2C-02",
+    "invoice_id": "H2-3201",
+    "invoice_ids": [
+      "H2-3201"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      47200000
+    ],
+    "invoice_refs": [
+      "INV-3201"
+    ],
+    "commitment_date": "2026-11-06",
+    "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
+    "note": "forwarded internal thread; promise is 06/11 (DD/MM), the quoted 26/09 is the due date"
+  },
+  {
+    "thread_id": "H2-003",
+    "customer_id": "H2C-04",
+    "invoice_id": "H2-3401",
+    "invoice_ids": [
+      "H2-3401"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      64900000
+    ],
+    "invoice_refs": [
+      "INV-3401"
+    ],
+    "commitment_date": "2026-10-31",
+    "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
+    "note": "bare figure with no currency marker is still the INR amount; typos; 'end of this month'"
+  },
+  {
+    "thread_id": "H2-004",
+    "customer_id": "H2C-06",
+    "invoice_id": "H2-3602",
+    "invoice_ids": [
+      "H2-3602"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      10000000,
+      14780000
+    ],
+    "invoice_refs": [
+      "INV-3602"
+    ],
+    "commitment_date": "2026-11-03",
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "instalment plan; commitment_date = first promised payment date"
+  },
+  {
+    "thread_id": "H2-005",
+    "customer_id": "H2C-07",
+    "invoice_id": "H2-3702",
+    "invoice_ids": [
+      "H2-3702"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      82600000
+    ],
+    "invoice_refs": [
+      "INV-3702"
+    ],
+    "commitment_date": "2026-10-28",
+    "ambiguous": false,
+    "phenomena": [
+      "lakh_amount",
+      "relative_date"
+    ],
+    "note": "lakh amount; 'in two weeks' = sent_at + 14"
+  },
+  {
+    "thread_id": "H2-006",
+    "customer_id": "H2C-08",
+    "invoice_id": "H2-3802",
+    "invoice_ids": [
+      "H2-3802"
+    ],
+    "match_outcome": "matched",
+    "email_class": "commitment",
+    "amounts": [
+      28320000
+    ],
+    "invoice_refs": [
+      "INV-3802"
+    ],
+    "commitment_date": "2026-10-28",
+    "ambiguous": false,
+    "phenomena": [
+      "negation",
+      "dd_mm_date"
+    ],
+    "note": "earlier refusal is retracted; the live statement is a firm promise"
+  },
+  {
+    "thread_id": "H2-007",
+    "customer_id": "H2C-02",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": "2026-11-15",
+    "ambiguous": true,
+    "phenomena": [],
+    "note": "Hinglish; known contact, no ref, several open invoices (FS4)"
+  },
+  {
+    "thread_id": "H2-008",
+    "customer_id": null,
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "unresolved",
+    "email_class": "commitment",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3202"
+    ],
+    "commitment_date": "2026-10-28",
+    "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
+    "note": "sender not in any customer's contacts; a name mention never establishes identity"
+  },
+  {
+    "thread_id": "H2-009",
+    "customer_id": "H2C-03",
+    "invoice_id": "H2-3301",
+    "invoice_ids": [
+      "H2-3301"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      8850000
+    ],
+    "invoice_refs": [
+      "INV-3301"
+    ],
+    "commitment_date": "2026-10-14",
+    "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
+    "note": "UTR is not an amount; 'yesterday' from 2026-10-15"
+  },
+  {
+    "thread_id": "H2-010",
+    "customer_id": "H2C-01",
+    "invoice_id": "H2-3102",
+    "invoice_ids": [
+      "H2-3102"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      11600000,
+      200000
+    ],
+    "invoice_refs": [
+      "INV-3102"
+    ],
+    "commitment_date": "2026-10-19",
+    "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
+    "note": "short payment net of TDS is a payment confirmation, not a dispute; 'Invoice No. 3102' -> INV-3102"
+  },
+  {
+    "thread_id": "H2-011",
+    "customer_id": "H2C-07",
+    "invoice_id": null,
+    "invoice_ids": [
+      "H2-3701",
+      "H2-3703"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "confirmation",
+    "amounts": [
+      118000000,
+      59000000,
+      177000000
+    ],
+    "invoice_refs": [
+      "INV-3701",
+      "INV-3703"
+    ],
+    "commitment_date": "2026-10-26",
+    "ambiguous": true,
+    "phenomena": [
+      "dd_mm_date"
+    ],
+    "note": "multi-invoice remittance: more than one invoice concerned, so not a single match; DD.MM.YYYY date"
+  },
+  {
+    "thread_id": "H2-012",
+    "customer_id": "H2C-05",
+    "invoice_id": "H2-3502",
+    "invoice_ids": [
+      "H2-3502"
+    ],
+    "match_outcome": "matched",
+    "email_class": "confirmation",
+    "amounts": [
+      10620000
+    ],
+    "invoice_refs": [
+      "INV-3502"
+    ],
+    "commitment_date": "2026-10-08",
+    "ambiguous": false,
+    "phenomena": [
+      "relative_date"
+    ],
+    "note": "Hinglish; 'kal' with a completed verb ('kar diya') = yesterday"
+  },
+  {
+    "thread_id": "H2-013",
+    "customer_id": "H2C-04",
+    "invoice_id": null,
+    "invoice_ids": [
+      "H2-3402",
+      "H2-3403"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "confirmation",
+    "amounts": [
+      21240000
+    ],
+    "invoice_refs": [
+      "INV-3402",
+      "INV-3403"
+    ],
+    "commitment_date": "2026-10-19",
+    "ambiguous": true,
+    "phenomena": [
+      "relative_date"
+    ],
+    "note": "two equal-amount candidates; 'on Monday' (past) from Thu 2026-10-22"
+  },
+  {
+    "thread_id": "H2-014",
+    "customer_id": "H2C-06",
+    "invoice_id": "H2-3601",
+    "invoice_ids": [
+      "H2-3601"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "incorrect_amount",
+    "amounts": [
+      1420,
+      1280,
+      700000
+    ],
+    "invoice_refs": [
+      "INV-3601"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "indirect dispute (never says 'dispute'); unit rates count as amounts; 5,000 cartons is a quantity"
+  },
+  {
+    "thread_id": "H2-015",
+    "customer_id": "H2C-04",
+    "invoice_id": "H2-3404",
+    "invoice_ids": [
+      "H2-3404"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "missing_po",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3404"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "ledger row has no po_number"
+  },
+  {
+    "thread_id": "H2-016",
+    "customer_id": "H2C-08",
+    "invoice_id": "H2-3801",
+    "invoice_ids": [
+      "H2-3801"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "not_received",
+    "amounts": [
+      14160000
+    ],
+    "invoice_refs": [
+      "INV-3801"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "forwarded internal note; goods not received, payment held"
+  },
+  {
+    "thread_id": "H2-017",
+    "customer_id": "H2C-03",
+    "invoice_id": "H2-3302",
+    "invoice_ids": [
+      "H2-3302"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "incorrect_billing_period",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3302"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": []
+  },
+  {
+    "thread_id": "H2-018",
+    "customer_id": "H2C-02",
+    "invoice_id": "H2-3204",
+    "invoice_ids": [
+      "H2-3204"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "payment_already_completed",
+    "amounts": [
+      17700000
+    ],
+    "invoice_refs": [
+      "INV-3204"
+    ],
+    "commitment_date": "2026-10-12",
+    "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
+    "note": "already-paid claim in reply to a reminder; claimed payment date 12/10"
+  },
+  {
+    "thread_id": "H2-019",
+    "customer_id": "H2C-01",
+    "invoice_id": "H2-3103",
+    "invoice_ids": [
+      "H2-3103"
+    ],
+    "match_outcome": "matched",
+    "email_class": "dispute",
+    "dispute_type": "unknown",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3103"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "objection with no stated reason"
+  },
+  {
+    "thread_id": "H2-020",
+    "customer_id": "H2C-02",
+    "invoice_id": "H2-3203",
+    "invoice_ids": [
+      "H2-3203",
+      "H2-3202"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      35400000
+    ],
+    "invoice_refs": [
+      "INV-3203",
+      "INV-3202"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "invoice_id = the one asked to cancel; PO number is not an amount"
+  },
+  {
+    "thread_id": "H2-021",
+    "customer_id": "H2C-05",
+    "invoice_id": "H2-3503",
+    "invoice_ids": [
+      "H2-3501",
+      "H2-3503"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [
+      7080000
+    ],
+    "invoice_refs": [
+      "INV-3501",
+      "INV-3503"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "no cancel target named; invoice_id = later re-issue"
+  },
+  {
+    "thread_id": "H2-022",
+    "customer_id": "H2C-08",
+    "invoice_id": "H2-3804",
+    "invoice_ids": [
+      "H2-3804",
+      "H2-3803"
+    ],
+    "match_outcome": "matched",
+    "email_class": "duplicate",
+    "dispute_type": "duplicate_invoice",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3804",
+      "INV-3803"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "Hinglish; asks to cancel 3804"
+  },
+  {
+    "thread_id": "H2-023",
+    "customer_id": "H2C-07",
+    "invoice_id": "H2-3704",
+    "invoice_ids": [
+      "H2-3704"
+    ],
+    "match_outcome": "matched",
+    "email_class": "delay",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3704"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [
+      "negation",
+      "dd_mm_date"
+    ],
+    "note": "negated earlier promise; 25/10 is withdrawn, no new date -> null"
+  },
+  {
+    "thread_id": "H2-024",
+    "customer_id": "H2C-06",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "delay",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true,
+    "phenomena": [
+      "hedging"
+    ],
+    "note": "blanket hold, no ref, several open invoices; '2-3 weeks' is hedged -> null"
+  },
+  {
+    "thread_id": "H2-025",
+    "customer_id": "H2C-03",
+    "invoice_id": null,
+    "invoice_ids": [
+      "H2-3303"
+    ],
+    "match_outcome": "ambiguous",
+    "email_class": "delay",
+    "amounts": [
+      29500000
+    ],
+    "invoice_refs": [
+      "INV-3330"
+    ],
+    "commitment_date": null,
+    "ambiguous": true,
+    "phenomena": [
+      "near_miss_ref",
+      "lakh_amount",
+      "hedging"
+    ],
+    "note": "FS3: INV-3330 does not exist; sender's INV-3303 is the transposition (same amount); hedged date -> null"
+  },
+  {
+    "thread_id": "H2-026",
+    "customer_id": "H2C-05",
+    "invoice_id": "H2-3504",
+    "invoice_ids": [
+      "H2-3504"
+    ],
+    "match_outcome": "matched",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3504"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": []
+  },
+  {
+    "thread_id": "H2-027",
+    "customer_id": "H2C-04",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true,
+    "phenomena": [],
+    "note": "no ref; 'as on 30th Sept' is a statement date, not a payment date"
+  },
+  {
+    "thread_id": "H2-028",
+    "customer_id": null,
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "unresolved",
+    "email_class": "enquiry",
+    "amounts": [],
+    "invoice_refs": [
+      "INV-3999"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [],
+    "note": "unknown sender, ref does not exist"
+  },
+  {
+    "thread_id": "H2-029",
+    "customer_id": "H2C-01",
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "customer_only",
+    "email_class": "unknown",
+    "amounts": [],
+    "invoice_refs": [],
+    "commitment_date": null,
+    "ambiguous": true,
+    "phenomena": [],
+    "note": "out-of-office; the return date is not a payment commitment"
+  },
+  {
+    "thread_id": "H2-030",
+    "customer_id": null,
+    "invoice_id": null,
+    "invoice_ids": [],
+    "match_outcome": "unresolved",
+    "email_class": "unknown",
+    "amounts": [
+      29500000
+    ],
+    "invoice_refs": [
+      "INV-3104"
+    ],
+    "commitment_date": null,
+    "ambiguous": false,
+    "phenomena": [
+      "dd_mm_date"
+    ],
+    "note": "bounce from the customer's mail server, not a contact; quoted reminder's ref and amount still count as stated in the thread"
+  }
+]

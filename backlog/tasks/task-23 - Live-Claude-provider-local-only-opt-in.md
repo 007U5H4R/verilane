@@ -1,9 +1,10 @@
 ---
 id: TASK-23
 title: 'Live Claude provider (local-only, opt-in)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 17:05'
 labels:
   - P2
   - 'sp:3'

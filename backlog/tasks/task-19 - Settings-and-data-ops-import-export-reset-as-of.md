@@ -1,10 +1,10 @@
 ---
 id: TASK-19
 title: 'Settings and data ops: import, export, reset, as-of'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
-updated_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 03:56'
 labels:
   - P1
   - 'sp:5'

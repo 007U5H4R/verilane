@@ -1,9 +1,10 @@
 ---
 id: TASK-11
 title: Author eval labels and held-out set before extractor
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-30 18:08'
+updated_date: '2026-10-31 03:04'
 labels:
   - P0
   - 'sp:3'
