@@ -46,3 +46,6 @@ next-env.d.ts
 
 # agent worktrees (orchestration scratch, never committed)
 .claude/worktrees/
+
+# superpowers plan workspaces (scratch)
+.superpowers/
