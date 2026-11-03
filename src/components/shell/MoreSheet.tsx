@@ -36,6 +36,22 @@ export function MoreSheet({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
+  // CR-006: the sheet is md:hidden, so widening past md while it is open
+  // would leave an invisible modal making the whole page inert. Close it.
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    if (mq.matches) {
+      onClose();
+      return;
+    }
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) onClose();
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [open, onClose]);
+
   return (
     <dialog
       ref={ref}

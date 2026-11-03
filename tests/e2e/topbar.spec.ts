@@ -211,6 +211,19 @@ test("T38: at 390 the menu button opens every nav destination", async ({ page })
   await expect(sheet).toBeHidden();
 });
 
+// CR-006: the sheet is md:hidden, so widening past 768 while it was open left
+// an invisible modal <dialog> making the whole page inert.
+test("CR-006: widening past md while the menu is open closes it and the page stays usable", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ready(page, "/queue");
+  await page.locator("header").getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect.poll(() => page.evaluate(() => document.querySelector("dialog[open]") !== null)).toBe(false);
+  await page.locator("header").getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.locator("[data-sidebar]")).toHaveAttribute("data-sidebar", "collapsed");
+});
+
 // Scar: the two-row mobile header once overflowed a 375px phone by 10px.
 test("T38: the header fits a 375px phone without horizontal scroll", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
