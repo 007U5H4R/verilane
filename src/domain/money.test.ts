@@ -48,6 +48,22 @@ describe("parseInr", () => {
   it("returns null for a negative amount", () => {
     expect(parseInr("₹-5")).toBeNull();
   });
+
+  // CR-004: no float rounding — an amount that isn't a whole number of paise
+  // is rejected rather than silently rounded.
+  it("returns null for a rupee amount with sub-paise precision", () => {
+    expect(parseInr("1.005")).toBeNull();
+    expect(parseInr("₹10.999")).toBeNull();
+  });
+
+  it("parses sub-rupee lakh amounts exactly with integer arithmetic", () => {
+    expect(parseInr("1.23456 lakh")).toBe(12_345_600);
+    expect(parseInr("0.29")).toBe(29);
+  });
+
+  it("returns null for an amount beyond the safe-integer paise range", () => {
+    expect(parseInr("99999999999999999")).toBeNull();
+  });
 });
 
 describe("formatInr", () => {

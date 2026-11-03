@@ -56,16 +56,25 @@ export function parseInr(input: string): Paise | null {
 
   // Strip digit-group separators (commas), whether Indian or Western grouping.
   const normalized = s.replace(/,/g, "");
-  if (!/^\d+(\.\d+)?$/.test(normalized)) {
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(normalized);
+  if (!match) {
     return null;
   }
 
-  const rupees = Number.parseFloat(normalized) * multiplier;
-  if (!Number.isFinite(rupees) || rupees < 0) {
+  // Integer arithmetic (BigInt), so no float rounding: the amount must be a
+  // whole number of paise, else it is rejected rather than silently rounded.
+  const frac = match[2] ?? "";
+  const scale = BigInt(10) ** BigInt(frac.length);
+  const numerator = BigInt(match[1] + frac) * BigInt(multiplier) * BigInt(100);
+  if (numerator % scale !== BigInt(0)) {
+    return null;
+  }
+  const total = numerator / scale;
+  if (total > BigInt(Number.MAX_SAFE_INTEGER)) {
     return null;
   }
 
-  return paise(Math.round(rupees * 100));
+  return paise(Number(total));
 }
 
 /** Formats paise as an Indian-grouped rupee string, e.g. `₹3,40,000.00`. */
