@@ -23,7 +23,10 @@ const ROUTES = ["/", "/queue", "/disputes", "/payments", "/drafts", "/audit", "/
 
 async function open(page: Page, href: string): Promise<void> {
   await page.goto(href);
-  await expect(page.getByRole("status", { name: "Loading workspace" })).toHaveCount(0);
+  // QA-005: the workspace gate (Dexie open + seed manifest fetch) normally
+  // clears in <1.5s, but this helper runs ~170 times in the sweep below and a
+  // loaded machine (load avg 15-23 on 8 cores) pushed one load past 5s.
+  await expect(page.getByRole("status", { name: "Loading workspace" })).toHaveCount(0, { timeout: 15_000 });
   if (href === "/queue") {
     // QA-001: the queue has its own "Loading queue" skeleton while its Dexie
     // live queries resolve after the workspace gate; across ~100 reloads in a
@@ -268,7 +271,10 @@ async function activate(page: Page, target: Locator, tag: string): Promise<strin
 }
 
 test("TC-081: every enabled control has an observable effect when activated", async ({ page }) => {
-  test.setTimeout(240_000);
+  // QA-005: ~170 full page loads by design; 3.0-3.5 min at 1 worker on an idle
+  // machine left <1 min headroom under the old 240s cap. TODO(follow-up): trim
+  // the per-control reloads instead of growing this budget again.
+  test.setTimeout(480_000);
   // Each control is swept from a fresh load, but sessionStorage outlives a
   // reload in the same tab. Sweeping the top-bar Demo button (TASK-44) leaves
   // the tour's confirm dialog persisted there, and its z-[70] scrim then
