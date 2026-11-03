@@ -224,7 +224,7 @@ No thresholds were lowered to reach these results.
 
 - [ ] Vercel env: `VERILANE_LIVE_LLM` is **unset** and `ANTHROPIC_API_KEY` is **unset**.
 - [ ] Vercel env: `NEXT_PUBLIC_E2E` is **unset**, not `1`.
-- [ ] Build command: `pnpm build && pnpm check:secrets && pnpm check:e2e-hooks` (TASK-59, if R5 is approved).
+- [ ] Build command: `pnpm vercel-build` via `vercel.json` (TASK-59; fails the build if `NEXT_PUBLIC_E2E=1`, `VERILANE_LIVE_LLM` or `ANTHROPIC_API_KEY` is set).
 - [ ] Security headers and `poweredByHeader: false` (TASK-58, if R5 is approved).
 - [ ] `og.png` is regenerated, or kept, according to ruling R1.
 - [ ] After deploy, run Lighthouse against verilane.tusharpathak.com: 3 runs on mobile and 3 on desktop.
@@ -240,3 +240,25 @@ No thresholds were lowered to reach these results.
 | R3 | DES-007 nav order versus IA §5 | Keep the current order unless IA §5 is binding for you. |
 | R4 | Welcome eyebrow copy | Your call. It is cosmetic. |
 | R5 | Do SEC-002 (headers) and SEC-003 (build guard) before deploy | **Yes, both.** They are small config changes that harden a public URL. |
+
+### 8.1 Rulings — approved 2026-11-03 ("approve as recommended")
+
+| # | Decision |
+|---|---|
+| R1 | Regenerate `og.png` in the emerald look before deploy. |
+| R2 | QA-004 ships as a known P2 issue; re-measure on the deployed URL in Stage 10. |
+| R3 | Keep the current nav order (DES-007 closed as won't-change). |
+| R4 | Welcome eyebrow copy stays unchanged (cosmetic; no ticket). |
+| R5 | TASK-58 (SEC-002 headers) and TASK-59 (SEC-003 build guard) land before deploy. The Vercel build command becomes `pnpm vercel-build` (`check:deploy-env` → `build` → `check:secrets` → `check:e2e-hooks`), set in `vercel.json`. |
+
+### 8.2 Re-gate after the rulings landed (2026-11-03, HEAD 950d666)
+
+| Item | Commit | Evidence |
+|---|---|---|
+| R1 og.png (emerald) | a5aa604 | og.spec passes; image is 1200×630 |
+| R5 SEC-002 headers | 029cfe9 | `security-headers.test.ts` passes |
+| R5 SEC-003 build guard | b5fabbe | `check-deploy-env.test.ts` passes (12/12 across both files); a local `pnpm vercel-build` exits 0 with the secrets and e2e-hooks checks clean (80 files) |
+| QA-005 TC-081 timeout under host load | 950d666 | Under heavy host load (load avg ~24), TC-081's ~170 page loads overran the per-test timeout. Fix: the test timeout is now 480 s and `open()` waits 15 s; a TODO tracks trimming the per-control reloads. Passes in 2.9 min once load is normal |
+| Full e2e gate (`pnpm build:e2e && pnpm e2e --workers=1`) | 950d666 | **351 passed / 1 skipped / 0 failed** (20.1 min). Typecheck and lint are clean |
+
+§7 items 1–5 are verified locally. Items 6–8 run in Stage 10 against the live URL.

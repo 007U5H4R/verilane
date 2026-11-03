@@ -1,10 +1,10 @@
 ---
 id: TASK-59
 title: Guard the Vercel build against shipping e2e hooks or live LLM mode
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-03 08:38'
-updated_date: '2026-11-03 09:03'
+updated_date: '2026-11-03 12:35'
 labels:
   - P2
 dependencies: []

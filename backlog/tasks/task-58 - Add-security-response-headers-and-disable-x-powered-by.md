@@ -1,10 +1,10 @@
 ---
 id: TASK-58
 title: Add security response headers and disable x-powered-by
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-03 08:38'
-updated_date: '2026-11-03 09:03'
+updated_date: '2026-11-03 12:35'
 labels:
   - P2
 dependencies: []
