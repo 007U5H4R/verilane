@@ -551,7 +551,7 @@ function RecentLedger({ model, onViewLedger }: { model: PaymentsModel; onViewLed
           })}
         </ul>
       )}
-      <button type="button" onClick={onViewLedger} className={cn(LINK, "inline-flex w-fit items-center gap-1 text-sm")}>
+      <button type="button" onClick={onViewLedger} className={cn(LINK, "inline-flex w-fit items-center gap-1 text-sm max-md:min-h-11")}>
         View full ledger <ArrowRight aria-hidden className="size-4" />
       </button>
     </aside>

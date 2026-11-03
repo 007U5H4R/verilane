@@ -397,7 +397,7 @@ function DensityToggle({ value, onChange }: { value: Density; onChange: (d: Dens
             tabIndex={checked ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
-              "flex min-h-8 items-center gap-1.5 rounded px-2.5 text-[13px] font-medium",
+              "flex min-h-8 items-center gap-1.5 rounded px-2.5 text-[13px] font-medium max-md:min-h-11",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive",
               checked ? "bg-brand text-on-brand" : "text-text-muted hover:bg-surface-sunken hover:text-text",
             )}

@@ -133,7 +133,7 @@ export function QueueTable({
                 )}
               >
                 <td className={cn(cell, "w-12 max-md:p-0")}>
-                  <label className="grid size-6 cursor-pointer place-items-center">
+                  <label className="grid size-6 cursor-pointer place-items-center max-md:size-11">
                     <input
                       type="checkbox"
                       aria-label={`Select ${number}`}
@@ -148,7 +148,7 @@ export function QueueTable({
                     <a
                       href={`/invoices/${id}`}
                       data-excluded={excluded || undefined}
-                      className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
+                      className="rounded-md max-md:inline-flex max-md:min-h-6 max-md:items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
                     >
                       {excluded ? (
                         // The badge carries its cause (G4/G5/G7) as a title (TASK-9.5).
@@ -168,7 +168,7 @@ export function QueueTable({
                       <a
                         href={`/disputes/${disputeId}`}
                         data-testid="dispute-link"
-                        className="text-xs text-text-muted underline underline-offset-2 hover:text-text"
+                        className="text-xs text-text-muted underline underline-offset-2 hover:text-text max-md:inline-flex max-md:min-h-6 max-md:items-center"
                       >
                         View dispute
                       </a>

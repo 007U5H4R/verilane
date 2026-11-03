@@ -15,11 +15,14 @@ const buttonVariants = cva(
         ghost: "text-text hover:bg-surface-sunken",
         destructive: "bg-high text-on-brand hover:opacity-90",
       },
+      // TASK-49 DES-008: on touch layouts (below md) every size is a 44px
+      // target, the project's touch goal (WCAG 2.2 SC 2.5.8 needs 24px).
+      // Desktop sizes are unchanged.
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-6",
-        icon: "size-9",
+        default: "h-9 px-4 py-2 max-md:h-11",
+        sm: "h-8 rounded-md px-3 text-xs max-md:h-11",
+        lg: "h-10 rounded-md px-6 max-md:h-11",
+        icon: "size-9 max-md:size-11",
       },
     },
     defaultVariants: {

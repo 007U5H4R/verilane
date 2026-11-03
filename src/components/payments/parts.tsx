@@ -11,11 +11,12 @@ import { showingText } from "@/domain/payments/listing";
 import { cn } from "@/lib/cn";
 
 /* ---------- shared classes ---------- */
+// TASK-49 DES-008: fields, tabs and pager buttons are 44px tall below md.
 
 export const SELECT =
-  "h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-interactive";
+  "h-9 max-md:h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-interactive";
 export const INPUT =
-  "h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted outline-none focus-visible:ring-2 focus-visible:ring-interactive";
+  "h-9 max-md:h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted outline-none focus-visible:ring-2 focus-visible:ring-interactive";
 export const LINK = "font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-interactive rounded-sm";
 export const CARD = "rounded-xl border border-border bg-surface shadow-card";
 
@@ -172,7 +173,7 @@ export function Tabs({
                 else onSelect(t.id);
               }}
               className={cn(
-                "inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive motion-reduce:transition-none",
+                "inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium max-md:min-h-11 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive motion-reduce:transition-none",
                 selected ? "bg-brand-strong text-on-brand" : "text-text-muted hover:bg-mint-pale hover:text-text",
               )}
             >
@@ -199,7 +200,7 @@ export function Pager({ page, onPage, label }: { page: Page<unknown>; onPage: (p
   const id = useId();
   const nums = Array.from({ length: page.pages }, (_, i) => i + 1);
   const btn =
-    "inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface text-sm text-text hover:bg-mint-pale disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-interactive";
+    "inline-flex size-8 max-md:size-11 items-center justify-center rounded-md border border-border bg-surface text-sm text-text hover:bg-mint-pale disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-interactive";
   return (
     <nav aria-label={label} className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
       <span id={id} aria-live="polite" className="tabular-nums">

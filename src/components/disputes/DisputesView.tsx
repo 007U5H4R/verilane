@@ -76,8 +76,9 @@ const money = (p: number) => formatInr(paise(p));
 const TYPE_OPTIONS = Object.entries(DISPUTE_TYPE_LABELS) as [DisputeType, string][];
 const CLOSED_REASON = "This dispute is closed.";
 
+// TASK-49 DES-008: fields, page buttons and the row chevron are 44px tall below md.
 const FIELD =
-  "h-9 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50";
+  "h-9 max-md:h-11 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Disputes (TASK-38, redesigning TASK-17.3): KPI cards that filter, a
@@ -491,7 +492,7 @@ function DisputesBody() {
                   <span
                     key={n}
                     aria-current="page"
-                    className="grid size-8 place-items-center rounded-lg bg-brand text-sm font-semibold text-brand-foreground tabular-nums"
+                    className="grid size-8 max-md:size-11 place-items-center rounded-lg bg-brand text-sm font-semibold text-brand-foreground tabular-nums"
                   >
                     <span className="sr-only">Page </span>
                     {n}
@@ -502,7 +503,7 @@ function DisputesBody() {
                     type="button"
                     onClick={() => setPageNo(n)}
                     aria-label={`Page ${n}`}
-                    className="grid size-8 place-items-center rounded-lg text-sm text-text tabular-nums hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="grid size-8 max-md:size-11 place-items-center rounded-lg text-sm text-text tabular-nums hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     {n}
                   </button>
@@ -762,7 +763,7 @@ function DisputeRow({
           type="button"
           onClick={onOpen}
           aria-label={`Open details for ${id}`}
-          className="grid size-8 place-items-center rounded-lg text-text-muted hover:bg-surface-sunken hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="grid size-8 max-md:size-11 place-items-center rounded-lg text-text-muted hover:bg-surface-sunken hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           <ChevronRight aria-hidden className="size-4" />
         </button>
