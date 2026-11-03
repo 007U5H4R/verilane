@@ -263,6 +263,18 @@ async function activate(page: Page, target: Locator, tag: string): Promise<strin
 
 test("TC-081: every enabled control has an observable effect when activated", async ({ page }) => {
   test.setTimeout(240_000);
+  // Each control is swept from a fresh load, but sessionStorage outlives a
+  // reload in the same tab. Sweeping the top-bar Demo button (TASK-44) leaves
+  // the tour's confirm dialog persisted there, and its z-[70] scrim then
+  // covers every later control. Clear the tour state on every load so each
+  // sweep starts from the same idle page.
+  await page.addInitScript(() => {
+    try {
+      window.sessionStorage.removeItem("verilane-tour");
+    } catch {
+      // Storage blocked: the tour falls back to memory, which a load resets.
+    }
+  });
   const dead: string[] = [];
   const log: string[] = [];
   const all = ROUTES;
