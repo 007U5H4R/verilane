@@ -1,5 +1,25 @@
 # HANDOFF — Verilane
 
+## Main chain — Verilane v1 release on `task/38-emerald-redesign` (Stage 7 DONE 2026-11-03; next: Stage 8 · Code Review + Test Execution)
+
+**Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stage 9 (QA-report.md) is still a user gate before the deploy. Stop for anything destructive.
+
+### Stage 7 · Design Critique — DONE (TASK-49 Done)
+- **Branch:** `task/38-emerald-redesign` at f1fbe13, pushed to origin (github.com/007U5H4R/verilane, public). `main` = 6e53103.
+- **Report:** `/Volumes/E Drive/Dev/.scratch/task49/DES-findings.md` (14 DES findings, Resolutions section, gate logs, `des014/` screenshots).
+- **Fixed (07f9b56..f1fbe13):** DES-001/002 (top bar, mobile More sheet), DES-003 (deep links land below the sticky bar), DES-004 (invoice number in approve dialog and toast), DES-005 (`SITE_URL` falls back to https://verilane.tusharpathak.com; og:url on `/`), DES-006 (nav "Queue", workspace title), DES-008 (44px targets below md; the shared Button grows on mobile everywhere), DES-009 (per-route titles), DES-010 (branded 404), DES-012 ("Recommended action", no sparkles). New spec: `tests/e2e/design-critique.spec.ts`.
+- **Parked:** DES-007 nav order (user's product call), DES-011 duplicated chart (design call), DES-013 dev-only diagnostic (→ Stage 8), DES-014 full-page capture artifact (not a bug), welcome eyebrow "AI-POWERED…" copy (user's call), og.png needs a designed 1200×630 image (known gap before Stage 10).
+- **Gate on f1fbe13:** typecheck clean, unit 1198/1198, e2e 349 passed / 1 skipped in one pass (20.3 min). Log: `/Volumes/E Drive/Dev/.scratch/task49/final-e2e.log`.
+- **Pre-existing, not fixed:** at 1024px the breadcrumb is squeezed to zero width; queue h1 still "Collections Queue" and onboarding `art.tsx` "Collection queue"; lint warning `_done` unused at `src/components/tour/steps.ts:141`; 8 eval failures (ship as known issue).
+
+### Stage 8 · Code Review + Test Execution — NEXT (`bw-code-review-test-eval`)
+- `/code-review` over `git diff main..HEAD` → CR-### findings; fix or park with reason.
+- Execute `test-cases.md` from real output; run `pnpm test:all` (e2e recipe: kill :3100, `TMPDIR="/Volumes/E Drive/Dev/.scratch/tmp" E2E_PORT=3100`).
+- Investigate DES-013. Add `.superpowers` to `.gitignore`.
+- Then Stage 9 (security review + QA-report.md, user gate) → Stage 10 deploy to verilane.tusharpathak.com (Vercel project `verilane` not created yet; no `.vercel` link).
+
+---
+
 ## TASK-45 — Cinematic Lighthouse Splash Screen (independent Full-tier build, Stage 5 APPROVED 2026-11-03; next: Stage 6 at TASK-45.1)
 
 **This is a separate build chain from everything below.** The section below (TASK-38/39) is unrelated, mid-execution work on `task/38-emerald-redesign` and its worktrees — **do not touch that branch or its worktrees for TASK-45.**
