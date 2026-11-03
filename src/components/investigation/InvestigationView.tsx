@@ -209,7 +209,7 @@ function InvestigationBody({ invoiceId }: { invoiceId: string }) {
       <MarkDisputedDialog invoiceId={invoice.invoice_id} open={disputeOpen} onOpenChange={setDisputeOpen} />
       {draft !== undefined ? <NextStepCallout text={nextStep(role, draft)} /> : null}
       {/* Design.md §16: two columns at ≥1280px (evidence | activity), one below. */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <DocumentCard
           invoice={invoice}
           priority={priority}
