@@ -27,12 +27,12 @@ export type NavItem = {
   draftCount?: boolean;
 };
 
-// TASK-38 (Design.md R2): Home / Collection Queue / Disputes / Email
+// TASK-38 (Design.md R2): Home / Queue (TASK-49 DES-006: was "Collection Queue") / Disputes / Email
 // Conversations / Invoices / Drafts / Payments, a divider, Audit Log / Settings.
 // Queue's, Disputes' and Drafts' counts are live (TASK-9.5, TASK-17.3, TASK-16.5).
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/", icon: Home },
-  { label: "Collection Queue", href: "/queue", icon: ListChecks, liveCount: true },
+  { label: "Queue", href: "/queue", icon: ListChecks, liveCount: true },
   { label: "Disputes", href: "/disputes", icon: Flag, disputeCount: true },
   { label: "Email Conversations", href: "/emails", icon: Inbox },
   { label: "Invoices", href: "/invoices", icon: FileText },

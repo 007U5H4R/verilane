@@ -21,7 +21,7 @@ describe("NAV_ITEMS order", () => {
   it("lists the R2 sections in order", () => {
     expect(NAV_ITEMS.map((i) => i.label)).toEqual([
       "Home",
-      "Collection Queue",
+      "Queue",
       "Disputes",
       "Email Conversations",
       "Invoices",

@@ -5,7 +5,7 @@ import { crumbsFor, navHrefFor } from "./breadcrumb";
 describe("crumbsFor", () => {
   it("names a nav route by its label", () => {
     expect(crumbsFor("/")).toEqual([{ label: "Home" }]);
-    expect(crumbsFor("/queue")).toEqual([{ label: "Collection Queue" }]);
+    expect(crumbsFor("/queue")).toEqual([{ label: "Queue" }]);
     expect(crumbsFor("/payments")).toEqual([{ label: "Payments" }]);
   });
 

@@ -6,7 +6,7 @@ const REPORTS_DIR = "/Volumes/E Drive/Dev/.scratch/verilane/reports";
 
 const NAV_ROUTES = [
   { href: "/", label: "Home" },
-  { href: "/queue", label: "Collection Queue" },
+  { href: "/queue", label: "Queue" },
   { href: "/disputes", label: "Disputes" },
   { href: "/emails", label: "Email Conversations" },
   { href: "/invoices", label: "Invoices" },

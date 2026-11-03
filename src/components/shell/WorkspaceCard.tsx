@@ -35,7 +35,7 @@ export function WorkspaceCard() {
           AR
         </span>
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-[15px] font-semibold text-rail-text [@media(min-height:1160px)]:text-[17px]">
+          <b title="Demo Workspace" className="block truncate text-[15px] font-semibold text-rail-text [@media(min-height:1160px)]:text-[17px]">
             Demo Workspace
           </b>
           <small className="block truncate text-[13px] text-rail-mint/80 [@media(min-height:1160px)]:text-[15px]">

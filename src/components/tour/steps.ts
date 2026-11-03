@@ -37,7 +37,7 @@ const INVOICE_B = `/invoices/${B}`;
 
 const never = () => false;
 
-const QUEUE_HINT = { label: "Collection Queue", target: "[data-tour=nav-queue]", mobileTarget: "[data-tour=tab-queue]" };
+const QUEUE_HINT = { label: "Queue", target: "[data-tour=nav-queue]", mobileTarget: "[data-tour=tab-queue]" };
 const SETTINGS_HINT = { label: "Settings", target: "[data-tour=nav-settings]", mobileTarget: "[data-tour=nav-more]" };
 const AUDIT_HINT = { label: "Audit Log", target: "[data-tour=nav-audit]", mobileTarget: "[data-tour=nav-more]" };
 const ROLE_SWITCHER = "[data-tour=role-switcher]";
