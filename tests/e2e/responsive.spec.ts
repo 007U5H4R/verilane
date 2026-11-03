@@ -64,7 +64,10 @@ const GUEST_VIEWPORTS = [
   { width: 768, height: 1024 },
   { width: 375, height: 812 },
 ] as const;
-for (const href of ["/", "/queue", INVESTIGATION]) {
+// TASK-63: INV-A (the queue's first row, live) has a longer recipient and
+// provenance than INV-042; below xl its document card widened the grid to
+// 448px at 375 in production.
+for (const href of ["/", "/queue", INVESTIGATION, "/invoices/INV-A"]) {
   test(`DES-001: ${href} as a stored guest does not scroll horizontally at 1440, 1280, 1024, 768 or 375`, async ({
     page,
   }) => {
