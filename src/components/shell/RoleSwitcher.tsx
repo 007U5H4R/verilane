@@ -63,7 +63,7 @@ function RoleButtons({
             disabled={disabled}
             aria-pressed={pressed}
             onClick={() => onChoose?.(r)}
-            className={`h-9 rounded-full px-2.5 text-[14px] transition-colors duration-200 disabled:cursor-not-allowed md:px-4 md:text-[15px] ${
+            className={`h-9 rounded-full px-2 text-[14px] transition-colors duration-200 disabled:cursor-not-allowed md:px-4 md:text-[15px] ${
               pressed
                 ? "bg-brand font-semibold text-on-brand shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(8_47_37/0.18)]"
                 : "font-medium text-text-muted hover:text-text"

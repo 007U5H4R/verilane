@@ -38,12 +38,17 @@ export function TopBar({
   activeHref: string;
 }) {
   return (
-    <header className="topbar-wave sticky top-0 z-20 isolate flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-topbar-divider bg-topbar px-3 py-2.5 md:h-[68px] md:flex-nowrap md:gap-x-3 md:px-6 md:py-0 lg:h-[76px] lg:px-7">
+    <header className="group/topbar topbar-wave sticky top-0 z-20 isolate flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-topbar-divider bg-topbar px-3 py-2.5 md:h-[68px] md:flex-nowrap md:gap-x-3 md:px-6 md:py-0 lg:h-[76px] lg:px-7">
       <SidebarToggle sidebar={sidebar} onToggle={onToggleSidebar} activeHref={activeHref} />
       <Breadcrumb crumbs={crumbs} />
-      <span className="shrink-0 rounded-full border border-topbar-control-border bg-surface px-2 py-0.5 text-[11px] font-semibold tracking-wide text-text-muted md:hidden">
+      {/* DES-001: <768 a stored guest's pill takes this slot — it already says
+          "Demo Workspace", and row 2 has no room for it at 375px. */}
+      <span className="shrink-0 rounded-full border border-topbar-control-border bg-surface px-2 py-0.5 text-[11px] font-semibold tracking-wide text-text-muted group-has-[[data-guest-badge]]/topbar:hidden md:hidden">
         DEMO DATA
       </span>
+      <div className="flex shrink-0 md:hidden">
+        <GuestSlot />
+      </div>
       <Suspense fallback={<span aria-hidden className="size-11 shrink-0 xl:h-12 xl:min-w-[220px] xl:flex-1" />}>
         <GlobalSearch />
       </Suspense>
@@ -55,7 +60,9 @@ export function TopBar({
       </div>
       <div className="flex basis-full items-center justify-between gap-2 md:basis-auto md:justify-end md:gap-3">
         <div className="flex items-center gap-1.5 md:gap-3">
-          <GuestSlot />
+          <div className="flex max-md:hidden">
+            <GuestSlot />
+          </div>
           <LlmStatusBadge />
           <InstallChip />
           <RoleSwitcher />

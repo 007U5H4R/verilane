@@ -53,6 +53,38 @@ for (const href of ALL_ROUTES) {
   });
 }
 
+// DES-001 (TASK-49): TC-062 runs on the e2e build's implicit session, which
+// hides the guest pill — so it never saw the real visitor's top bar, which
+// overflowed at every width. A real visitor is a stored guest; check that bar
+// too, at the 375 phone width Design.md §13 names.
+const GUEST_VIEWPORTS = [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+  { width: 375, height: 812 },
+] as const;
+for (const href of ["/", "/queue", INVESTIGATION]) {
+  test(`DES-001: ${href} as a stored guest does not scroll horizontally at 1440, 1280, 1024, 768 or 375`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => window.localStorage.setItem("verilane-session", "guest"));
+    await open(page, "/queue");
+    const overflow: string[] = [];
+    for (const vp of GUEST_VIEWPORTS) {
+      await page.setViewportSize(vp);
+      await open(page, href);
+      await expect(page.getByRole("button", { name: /Guest/ })).toBeVisible();
+      const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+      }));
+      if (scrollWidth > innerWidth) overflow.push(`${href} @${vp.width}: ${scrollWidth} > ${innerWidth}`);
+    }
+    expect(overflow).toEqual([]);
+  });
+}
+
 test("TC-063: at 390 the bottom tabs + More reach every nav route with 48px targets; at 768 the rail is labelled", async ({
   page,
 }, testInfo) => {

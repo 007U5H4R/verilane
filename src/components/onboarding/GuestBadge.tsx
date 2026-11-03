@@ -35,7 +35,7 @@ export function GuestBadge({ placement = "down", className }: { placement?: "dow
     "flex min-h-11 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-text hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand";
 
   return (
-    <div ref={ref} className={cn("relative", className)}>
+    <div ref={ref} data-guest-badge className={cn("relative", className)}>
       <button
         type="button"
         aria-expanded={open}
@@ -46,7 +46,9 @@ export function GuestBadge({ placement = "down", className }: { placement?: "dow
         <span className="grid size-6 place-items-center rounded-full bg-surface text-brand">
           <UserRound className="size-3.5" aria-hidden />
         </span>
-        <span className="whitespace-nowrap">
+        {/* DES-001: below 2xl the top bar has no room for the label — the pill
+            shows icon + chevron, the label stays as its accessible name. */}
+        <span className="sr-only whitespace-nowrap 2xl:not-sr-only">
           Guest <span aria-hidden>·</span> <span className="font-medium">Demo Workspace</span>
         </span>
         <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} aria-hidden />
