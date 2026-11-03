@@ -145,6 +145,12 @@ export function CommunicationTable({ invoiceId }: { invoiceId: string }) {
     const target = id.startsWith("ev-") ? document.getElementById(id) : null;
     if (!target) return;
     target.setAttribute("data-landed", "");
+    // TASK-49 DES-003: the top bar is sticky, so a bare scrollIntoView tucks
+    // the badge under it (101px at 375, where the bar wraps to two rows).
+    // Clear the bar's real height, measured now, plus a small gap.
+    const bar = document.querySelector("header.topbar-wave");
+    const barBottom = bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
+    target.style.scrollMarginTop = `${Math.ceil(barBottom) + 12}px`;
     target.scrollIntoView({ block: "start" });
   }, [messages, invoiceId]);
   return (
