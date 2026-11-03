@@ -23,7 +23,7 @@
 - **The desktop performance requirement (NFR1) passes.** Queue LCP is 0.94 s against a 2.5 s budget. Route JS is 293 KB against a 300 KB budget.
 - **There are two known issues that need your ruling.**
   - **QA-001, eval gates.** 8 of the 43 held-out eval gates fail. You have already decided to ship this as a known issue (TASK-51).
-  - **QA-004, mobile lab performance.** Simulated LCP on mobile is 4.4–4.7 s. No requirement covers mobile.
+  - **QA-004, mobile lab performance.** Simulated LCP on mobile was 4.4–4.7 s locally; on the live production URL (Stage 10) it is 3.21 s, "Needs improvement". No requirement covers mobile.
 
 ## 2. Per-stage results
 
@@ -166,7 +166,7 @@ Each row is one underlying problem. Where a problem was found in more than one s
 | Canonical | Sources | Severity | Status | Ticket |
 |---|---|---|---|---|
 | Eval gates below threshold | QA-001, TC-066 | Medium | Known issue, ships | TASK-51 |
-| Mobile lab LCP and TBT | QA-004 | Medium (lab, no requirement) | **Ruling R2** | follow-up |
+| Mobile lab LCP and TBT | QA-004 | Medium (lab, no requirement) | **Ruling R2**; live re-measure 2026-11-03: mobile /queue LCP 3.21 s, TBT 398 ms (Needs improvement) | follow-up (P2) |
 | LLM routes unprotected in live mode | SEC-001, CR-009 | Medium (Info while off) | Accepted, live mode off | TASK-62 |
 | og.png still pre-redesign | DES-005 (partial) | Medium | **Ruling R1** | — |
 | Nav order versus IA §5 | DES-007 | Low | **Ruling R3** | — |
@@ -198,6 +198,7 @@ Each row is one underlying problem. Where a problem was found in more than one s
 1. **QA-001.** A missed dispute in extraction could let an approver send a reminder on an invoice that is in dispute. The approver sees the email thread before sending. Shipping this was your decision on 2026-11-03.
 2. **QA-004.** Simulated mobile LCP is 4.4–4.7 s, in the "Poor" band, and TBT reaches 1.6 s on /queue. Unthrottled, LCP is 0.5–1.2 s. The likely cause is the main-thread render after data loads from IndexedDB. No requirement covers mobile.
    - **Proposal:** ship it as a known P2 issue.
+   - **Stage 10 live re-measure (2026-11-03, Lighthouse 13.6.0, https://verilane.tusharpathak.com, lab):** mobile /queue LCP **3.21 s**, TBT **398 ms**; desktop LCP **0.70 s**. Mobile moves from "Poor" to "Needs improvement" on the production CDN build. Still above the 2.5 s "Good" line, so QA-004 stays an open P2 follow-up. Field INP/CWV are not yet available (no RUM enabled).
    - Re-measure against the deployed URL in Stage 10.
    - Open a follow-up for a DevTools trace and a guard on route-JS size.
 3. **SEC-001.** This risk is acceptable **only while `VERILANE_LIVE_LLM` is unset in Vercel.** Enabling live mode first requires TASK-62:
@@ -262,3 +263,15 @@ No thresholds were lowered to reach these results.
 | Full e2e gate (`pnpm build:e2e && pnpm e2e --workers=1`) | 950d666 | **351 passed / 1 skipped / 0 failed** (20.1 min). Typecheck and lint are clean |
 
 §7 items 1–5 are verified locally. Items 6–8 run in Stage 10 against the live URL.
+
+## 8. Stage 10 live results (2026-11-03)
+
+Measured against https://verilane.tusharpathak.com (Vercel production deploy `dpl_4XZRowwkUyxvWDwkcVcUax98kbrS`, main at f30a953).
+
+| Check | Result |
+|---|---|
+| QA-004 perf re-measure (Lighthouse 13.6.0, lab) | Mobile /queue: LCP **3.21 s**, TBT **398 ms**. Desktop /queue: LCP **0.70 s**. Mobile moves from "Poor" to "Needs improvement". QA-004 stays an open P2 follow-up; field CWV are not collected (no RUM enabled) |
+| TASK-63 (invoice detail widened past 375 px) | Fixed in 69b5888. Live re-check: 10/10 horizontal-scroll checks pass at 375 and 768. Regression test: DES-001 loop in `tests/e2e/responsive.spec.ts` now includes `/invoices/INV-A` |
+| TASK-64 (/queue stat badge truncates at 375 px) | Logged as a P3 cosmetic follow-up; not a release blocker |
+| Link preview (OG) | See HANDOFF.md, Stage 10 |
+

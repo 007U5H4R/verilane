@@ -1,26 +1,37 @@
 # HANDOFF — Verilane
 
-## Main chain — Verilane v1 release on `task/38-emerald-redesign` (Stage 9 DONE 2026-11-03; next: Stage 10 · Deployment — QA-report approved 2026-11-03)
+## Main chain — Verilane v1 release (Stage 10 DONE 2026-11-03; next: Stage 11 · Feedback & Regression — `bw-feedback-regression`)
 
-**Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stage 9 (QA-report.md) is a user gate before the deploy. Stop for anything destructive.
+**Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stop for anything destructive.
 
-### Stage 8 · Code Review + Test Execution — DONE (TASK-50 Done)
-- **Branch:** `task/38-emerald-redesign` at 0de2114, pushed (e6c4a4f..0de2114). `main` = 6e53103.
-- **Fixed:** CR-001 (approve disabled while draft dirty), CR-002/003 + QA-003 (one-open-dispute guard, reject reason cap, `mark_disputed` in LEDGER_COMMANDS), CR-004 (BigInt `parseInr`), CR-005 (`error.tsx`/`global-error.tsx`), CR-006 (MoreSheet closes at ≥768px), CR-007 (autopilot surfaces send failures, stops on unmount), CR-008 (bulk bar uses visible selection), QA-002 (TC-081 flake).
-- **For Stage 9:** CR-009, CR-010, CR-011, CR-017 (security-flavoured). Rest parked → TASK-52..56.
-- **Known issues for the QA-report gate:** QA-001 eval gates 8/43 fail (ship per user decision → TASK-51); QA-004 mobile lab LCP 4.4–4.7 s / queue TBT 1.6 s (P2, re-measure on deployed URL). og.png still needs a designed 1200×630 image.
-- **Gate on 0de2114:** typecheck 0, lint 0 errors (1 warning `_done` steps.ts:141), unit 1214/1214, build OK, e2e 351 passed / 1 skipped / 0 failed. TCs: 86 PASS, 1 FAIL (TC-066 → QA-001), 3 not run (TC-001/002/090).
-- **Artifacts:** `/Volumes/E Drive/Dev/.scratch/task50/` (CR-triage.md, qa-findings.md, perf-report.md); DES: `/Volumes/E Drive/Dev/.scratch/task49/DES-findings.md`.
+Stages 1–9: DONE. Release gate is `QA-report.md` (READY WITH ACCEPTED RISKS, approved 2026-11-03; rulings R1–R5 in §8.1).
 
-### Stage 9 · Security Review — DONE (TASK-57; QA-report gate approved 2026-11-03)
-- **SEC result:** PASS — 0 Critical, 0 High. SEC-001 (LLM routes unauthenticated/unbounded; accepted while live mode off), SEC-002 headers → TASK-58, SEC-003/CR-017 build guard → TASK-59, SEC-004 CSV formula injection → TASK-60, SEC-005 auth forms method=post → TASK-61, SEC-006/007 LLM hardening → TASK-62.
-- **`QA-report.md`** (repo root): recommendation **READY WITH ACCEPTED RISKS**. All release gates PASS (Design with og.png condition).
-- **Rulings approved ("approve as recommended"):** R1 regenerate og.png before deploy · R2 ship QA-004 as known P2, re-measure in Stage 10 · R3 keep nav order · R4 eyebrow copy unchanged · R5 TASK-58 + TASK-59 land before deploy. Recorded in QA-report §8.1.
+### Stage 10 · Deployment + Production Monitoring — DONE (TASK-65)
+- **Live:** https://verilane.tusharpathak.com. It is deployed by the Vercel git integration from `main`.
+- **Vercel:** project `prj_Id5zfSGk5rr2psR93e6wGrv3fahr`, team `team_pLaStAJybzggE3tGD5ioih5M`. The production deploy is `dpl_4XZRowwkUyxvWDwkcVcUax98kbrS` (main at f30a953). The rollback candidate is `dpl_CGMUEFbXeom7dPz8rHKjhvmkWoN9`. *Record new IDs here after every deploy, because they were lost once on compaction.*
+- **Pre-deploy items:** R1 (og.png) and R5 (TASK-58 CSP/headers, TASK-59 `check:deploy-env` build guard) landed before the deploy.
+- **TASK-63 (fixed live):** the invoice detail grid widened to 448px at 375px on INV-A. Fixed in 69b5888 with `grid-cols-[minmax(0,1fr)]`. Live re-check passed 10/10 at 375 and 768. The regression test is the DES-001 loop in `tests/e2e/responsive.spec.ts`, which now includes `/invoices/INV-A`.
+- **TASK-64 (logged, P3):** the /queue stat badge text is truncated at 375px. Cosmetic.
+- **QA-004 perf (live lab results; no RUM):** mobile /queue LCP 3.21 s ("Needs improvement") and TBT 398 ms; desktop LCP 0.70 s. It is still a P2 follow-up. See QA-report §8.
+- **Link preview:**
+  - Verified server-side with curl: og:title, og:description, og:image (https://verilane.tusharpathak.com/og.png, 1200×630, HTTP 200, with alt text) and twitter:card `summary_large_image`.
+  - LinkedIn Post Inspector and opengraph.xyz are **not run**. The Chrome extension was not connected, and opengraph.xyz returned HTTP 429 to a plain fetch. The user needs to run both manually.
+- **Monitoring:** Vercel runtime errors are checked through the MCP `get_runtime_errors` tool. Web Analytics and Speed Insights (RUM) are **not enabled**, which is a follow-up.
+- **Lessons:** `lesson-learnt.md` (repo root).
 
-### Stage 10 · Deployment — NEXT (`bw-deployment-production-monitoring`)
-- Apply approved pre-deploy items (R1, R5), then follow QA-report §7 checklist: Vercel env has no `VERILANE_LIVE_LLM` / `ANTHROPIC_API_KEY` / `NEXT_PUBLIC_E2E`; build command `pnpm vercel-build` (set in `vercel.json`; runs `check:deploy-env` first).
-- Vercel project `verilane` not created yet; no `.vercel` link. Domain verilane.tusharpathak.com.
-- Post-deploy: Lighthouse 13.6.0 (3× mobile + desktop), OG via LinkedIn Post Inspector + opengraph.xyz, mobile 375/768 check.
+### Stage 11 · Feedback & Regression — NEXT (`bw-feedback-regression`)
+- **Inputs:** live findings TASK-63 (already has its regression test) and TASK-64, QA-004, and any runtime errors.
+- **Follow-ups to triage:**
+  - QA-004 trace
+  - Trim reloads in TC-081
+  - Zod jitless
+  - CSP `worker-src`
+  - The `steps.ts:141` lint warning
+  - Enable Analytics and Speed Insights
+  - TASK-60/61/62 (SEC hardening)
+  - Stale In Progress tickets
+  - TASK-64
+  - The manual OG checks
 
 ---
 
