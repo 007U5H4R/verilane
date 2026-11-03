@@ -198,6 +198,7 @@ function InvestigationBody({ invoiceId }: { invoiceId: string }) {
         <ApproveDialog
           draftId={draft.draft_id}
           invoiceId={invoice.invoice_id}
+          invoiceNumber={invoice.invoice_number}
           customerName={customers.get(invoice.customer_id)?.name ?? invoice.customer_id}
           amountPaise={draft.amount_paise}
           open={approveOpen}

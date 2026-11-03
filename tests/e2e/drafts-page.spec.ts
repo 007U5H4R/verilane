@@ -68,7 +68,9 @@ test("TC-048: Manager approves through a confirm dialog; the send is simulated w
 
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toContainText("Approve and send this reminder?");
-  await expect(dialog).toContainText("INV-A");
+  // DES-004: the dialog names the invoice number the user sees, not the key.
+  await expect(dialog).toContainText("INV-1012");
+  await expect(dialog).not.toContainText("INV-A");
   await expect(dialog).toContainText(facts.customer);
   await expect(dialog).toContainText(amountText);
   await page.screenshot({ path: `${SHOTS}/TASK-16-tc048-confirm-${info.project.name}.png`, fullPage: true });
@@ -79,7 +81,7 @@ test("TC-048: Manager approves through a confirm dialog; the send is simulated w
   const onRequest = (r: Request) => requests.push(r);
   page.on("request", onRequest);
   await dialog.getByRole("button", { name: "Approve & send" }).click();
-  const toastText = `Reminder for INV-A (${facts.customer}) approved and sent (simulated).`;
+  const toastText = `Reminder for INV-1012 (${facts.customer}) approved and sent (simulated).`;
   await expect(page.getByText(toastText, { exact: true })).toBeVisible();
   page.off("request", onRequest);
 

@@ -17,6 +17,28 @@ import { formatInr, paise } from "@/domain/money";
 import { DbContext, useExecute } from "@/store/hooks";
 
 /**
+ * DES-004: the copy names the invoice by its number (INV-1012), the identifier
+ * shown everywhere else, not the internal key (INV-A). FS1: an invoice with no
+ * number falls back to its key.
+ */
+export function approveCopy({
+  invoiceNumber,
+  invoiceId,
+  customerName,
+}: {
+  invoiceNumber: string | null;
+  invoiceId: string;
+  customerName: string;
+}) {
+  const label = invoiceNumber ?? invoiceId;
+  return {
+    description: `This sends a simulated reminder for ${label} to ${customerName} for`,
+    success: `Reminder for ${label} (${customerName}) approved and sent (simulated).`,
+    failure: `Reminder for ${label} (${customerName}) failed re-validation and was not sent.`,
+  };
+}
+
+/**
  * Confirms before Approve & send runs the draft through `approve_draft`
  * (TASK-16.2/16.4): no network call, status → `sent_simulated` on success.
  * `approve_draft` re-runs the nine checks inside the transaction, so a
@@ -28,6 +50,7 @@ import { DbContext, useExecute } from "@/store/hooks";
 export function ApproveDialog({
   draftId,
   invoiceId,
+  invoiceNumber,
   customerName,
   amountPaise,
   open,
@@ -36,6 +59,7 @@ export function ApproveDialog({
 }: {
   draftId: string;
   invoiceId: string;
+  invoiceNumber: string | null;
   customerName: string;
   amountPaise: number;
   open: boolean;
@@ -45,6 +69,7 @@ export function ApproveDialog({
   const db = useContext(DbContext);
   const execute = useExecute();
   const [busy, setBusy] = useState(false);
+  const copy = approveCopy({ invoiceNumber, invoiceId, customerName });
 
   async function confirm() {
     if (!db || busy) return;
@@ -56,9 +81,9 @@ export function ApproveDialog({
       });
       onOpenChange(false);
       if (event.action === "validation_failure") {
-        toast.error(`Reminder for ${invoiceId} (${customerName}) failed re-validation and was not sent.`);
+        toast.error(copy.failure);
       } else {
-        toast.success(`Reminder for ${invoiceId} (${customerName}) approved and sent (simulated).`);
+        toast.success(copy.success);
         onApproved?.();
       }
     } catch (err) {
@@ -74,8 +99,7 @@ export function ApproveDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Approve and send this reminder?</AlertDialogTitle>
           <AlertDialogDescription>
-            This sends a simulated reminder for {invoiceId} to {customerName} for{" "}
-            {formatInr(paise(amountPaise))}. No real email is sent.
+            {copy.description} {formatInr(paise(amountPaise))}. No real email is sent.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
