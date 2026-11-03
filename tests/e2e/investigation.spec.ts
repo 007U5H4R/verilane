@@ -179,6 +179,24 @@ test("breadcrumb: detail pages show their trail, named as the page names them", 
   await expect(page).toHaveURL(/\/disputes$/);
 });
 
+// TASK-49: TASK-44's Demo button starved the one-row (>=1280) bar, and the
+// parent crumb shrank to ~12px. The parent stays whole; the current page
+// truncates, and still shows a readable start.
+for (const width of [1280, 1440]) {
+  test(`breadcrumb: at ${width} the parent crumb on a dispute is fully shown`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/disputes/D-E-011-1");
+    await expect(page.getByTestId("dispute-claim-text")).toBeVisible();
+    const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+    const parent = crumbs.getByRole("link", { name: "Disputes" });
+    await expect(parent).toBeVisible();
+    const clipped = await parent.evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(clipped, "parent crumb is truncated").toBe(false);
+    const current = await crumbs.locator('[aria-current="page"]').evaluate((el) => el.getBoundingClientRect().width);
+    expect(current, "current crumb keeps a readable width").toBeGreaterThanOrEqual(40);
+  });
+}
+
 // T34-5: an unknown route claims no current page.
 test("breadcrumb: an unknown route marks no crumb as the current page", async ({ page }) => {
   await page.goto("/e2e-harness");

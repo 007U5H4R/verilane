@@ -102,7 +102,7 @@ export function GlobalSearch() {
   const activeId = showPanel && results[active] ? `${listId}-${active}` : undefined;
 
   return (
-    <div ref={wrapRef} className="contents xl:flex xl:min-w-[220px] xl:flex-1 xl:justify-center xl:px-2">
+    <div ref={wrapRef} className="contents xl:flex xl:min-w-[160px] xl:flex-1 xl:justify-center xl:px-2">
       <button
         ref={buttonRef}
         type="button"

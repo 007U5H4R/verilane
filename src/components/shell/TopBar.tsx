@@ -49,7 +49,7 @@ export function TopBar({
       <div className="flex shrink-0 md:hidden">
         <GuestSlot />
       </div>
-      <Suspense fallback={<span aria-hidden className="size-11 shrink-0 xl:h-12 xl:min-w-[220px] xl:flex-1" />}>
+      <Suspense fallback={<span aria-hidden className="size-11 shrink-0 xl:h-12 xl:min-w-[160px] xl:flex-1" />}>
         <GlobalSearch />
       </Suspense>
       <Divider />
