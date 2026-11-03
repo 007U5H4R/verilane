@@ -42,3 +42,13 @@ Written at the Stage 10 close-out, 2026-11-03 (TASK-65). Each lesson names what 
 
 - **What happened:** after the deploy, mobile /queue measured LCP 3.21 s and TBT 398 ms in the lab ("needs improvement"). Desktop LCP is 0.70 s. There is no RUM, so field Core Web Vitals are unknown.
 - **Guard:** QA-004 stays open. Turning on Speed Insights or Web Analytics is a follow-up, and field data should decide the next fix.
+
+## 8. A page-level overflow check cannot see `truncate` clipping
+
+- **What happened:** TASK-64 — `/queue`'s KPI stat cards clipped their sub-line text (chip labels, the outstanding amount) at 375px. The existing visual QA pass checked for horizontal page overflow (`document.documentElement.scrollWidth` vs. `innerWidth`) and found none, because `truncate` doesn't create overflow — it exists specifically to hide it. The element itself never exceeds its own box; the text inside it does, invisibly.
+- **Why it mattered:** a page-level sweep is blind to any element using `truncate`, `overflow: hidden` or `text-overflow: ellipsis`. Only checking the element itself — `el.scrollWidth > el.clientWidth` — reveals that its content wants more room than it was given.
+- **Guard:** TC-173 (`tests/e2e/responsive.spec.ts`) checks every element inside `[data-testid="queue-kpis"]` for `scrollWidth > clientWidth + 1`, not just the page as a whole. `QueueKpis.tsx`'s sub-line span changed from `truncate` to `break-words`, and the `Chip` component's span got `max-w-full`, so the text wraps instead of clipping.
+
+## Candidate Global CLAUDE.md Improvements
+
+- When a visual QA pass checks for "no horizontal overflow" at narrow viewports, it should also do (or recommend) an element-level `scrollWidth > clientWidth` sweep on any component using `truncate` (or `overflow: hidden` / `text-overflow: ellipsis`), not just a page-level `document.documentElement.scrollWidth` vs. `innerWidth` check. `truncate` is designed to hide overflow, not create it, so a page-level check structurally cannot catch what it clips.

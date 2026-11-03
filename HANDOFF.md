@@ -1,6 +1,6 @@
 # HANDOFF — Verilane
 
-## Main chain — Verilane v1 release (Stage 10 DONE 2026-11-03; next: Stage 11 · Feedback & Regression — `bw-feedback-regression`)
+## Main chain — Verilane v1 release (Stage 10 DONE 2026-11-03; Stage 11 · Feedback & Regression: TASK-64 DONE locally, unpushed — `bw-feedback-regression`)
 
 **Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stop for anything destructive.
 
@@ -8,10 +8,10 @@ Stages 1–9: DONE. Release gate is `QA-report.md` (READY WITH ACCEPTED RISKS, a
 
 ### Stage 10 · Deployment + Production Monitoring — DONE (TASK-65)
 - **Live:** https://verilane.tusharpathak.com. It is deployed by the Vercel git integration from `main`.
-- **Vercel:** project `prj_Id5zfSGk5rr2psR93e6wGrv3fahr`, team `team_pLaStAJybzggE3tGD5ioih5M`. The production deploy is `dpl_4XZRowwkUyxvWDwkcVcUax98kbrS` (main at f30a953). The rollback candidate is `dpl_CGMUEFbXeom7dPz8rHKjhvmkWoN9`. *Record new IDs here after every deploy, because they were lost once on compaction.*
+- **Vercel:** project `prj_Id5zfSGk5rr2psR93e6wGrv3fahr`, team `team_pLaStAJybzggE3tGD5ioih5M`. The production deploy is `dpl_61xSanfPgaoj7aoy5QiNYvdmUcW5` (main at 77d68ed, PR #3). The rollback candidate is `dpl_4XZRowwkUyxvWDwkcVcUax98kbrS`. *Record new IDs here after every deploy, because they were lost once on compaction.*
 - **Pre-deploy items:** R1 (og.png) and R5 (TASK-58 CSP/headers, TASK-59 `check:deploy-env` build guard) landed before the deploy.
 - **TASK-63 (fixed live):** the invoice detail grid widened to 448px at 375px on INV-A. Fixed in 69b5888 with `grid-cols-[minmax(0,1fr)]`. Live re-check passed 10/10 at 375 and 768. The regression test is the DES-001 loop in `tests/e2e/responsive.spec.ts`, which now includes `/invoices/INV-A`.
-- **TASK-64 (logged, P3):** the /queue stat badge text is truncated at 375px. Cosmetic.
+- **TASK-64 (logged, P3):** the /queue stat badge text is truncated at 375px. Cosmetic. Fixed in Stage 11 (see below).
 - **QA-004 perf (live lab results; no RUM):** mobile /queue LCP 3.21 s ("Needs improvement") and TBT 398 ms; desktop LCP 0.70 s. It is still a P2 follow-up. See QA-report §8.
 - **Link preview:**
   - Verified server-side with curl: og:title, og:description, og:image (https://verilane.tusharpathak.com/og.png, 1200×630, HTTP 200, with alt text) and twitter:card `summary_large_image`.
@@ -19,19 +19,17 @@ Stages 1–9: DONE. Release gate is `QA-report.md` (READY WITH ACCEPTED RISKS, a
 - **Monitoring:** Vercel runtime errors are checked through the MCP `get_runtime_errors` tool. Web Analytics and Speed Insights (RUM) are **not enabled**, which is a follow-up.
 - **Lessons:** `lesson-learnt.md` (repo root).
 
-### Stage 11 · Feedback & Regression — NEXT (`bw-feedback-regression`)
-- **Inputs:** live findings TASK-63 (already has its regression test) and TASK-64, QA-004, and any runtime errors.
-- **Follow-ups to triage:**
-  - QA-004 trace
-  - Trim reloads in TC-081
-  - Zod jitless
-  - CSP `worker-src`
-  - The `steps.ts:141` lint warning
-  - Enable Analytics and Speed Insights
-  - TASK-60/61/62 (SEC hardening)
-  - Stale In Progress tickets
-  - TASK-64
-  - The manual OG checks
+### Stage 11 · Feedback & Regression — TASK-64 DONE (loop stays open for new production signals)
+- **Branch:** `fix/task-64-queue-stat-badge`, committed locally (TASK-64), **not pushed**. Production still runs 77d68ed; the fix reaches prod only after push → PR → merge, which needs the user's approval.
+- **Runtime errors:** Vercel `get_runtime_errors` shows 0 in 7 days (verified 2026-11-03). Runtime *logs* are kept only 1 h on Hobby — query ≤30m windows.
+- **TASK-63:** already guarded by the DES-001 loop (includes `/invoices/INV-A`). No new work.
+- **TASK-64 (bug, Low, P3) — Done:**
+  - Root cause: `truncate` on the KPI sub-line `<span>` in `src/components/queue/QueueKpis.tsx` (~80px text column at 375).
+  - Fix: sub-line `truncate` → `break-words`; `max-w-full` on `Chip`.
+  - TC-173 (element-level `scrollWidth > clientWidth + 1` inside `[data-testid="queue-kpis"]`, stored guest, 375): RED before the fix (4 cards clipped), GREEN after in both themes.
+  - Gate: tsc clean; eslint 0 errors (1 pre-existing warning `steps.ts:141`); vitest 1226/1226; full e2e `--workers=1` 353 passed / 2 failed / 1 skipped. The 2 failures are pre-existing and unrelated (TC-081 light: `[data-sweep-target]` click timeout; TC-085 dark: sort median 268 ms > 200 ms). Visual 375/768/1440 light + dark PASS (screenshots in `/Volumes/E Drive/Dev/.scratch/task64/`).
+  - Docs: `decisions.md` RCA1; `test-cases.md` TC-173 (next free TC-174); `lesson-learnt.md` lesson 8 + Candidate Global CLAUDE.md Improvements.
+- **Remaining follow-ups (untriaged):** push/PR/deploy of TASK-64 — user approval; TC-081 flake (trim reloads); TC-085 perf 268 ms / QA-004 trace; Zod jitless; CSP `worker-src`; `steps.ts:141` lint warning; enable Analytics + Speed Insights (RUM); TASK-60/61/62 (SEC hardening); stale In Progress tickets; manual OG validators (LinkedIn Post Inspector, opengraph.xyz) — user; delete `docs/stage10-closeout` branch — user.
 
 ---
 

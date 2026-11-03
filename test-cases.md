@@ -452,7 +452,8 @@
 | M-004 workspace | TC-054–064 | 5 |
 | M-005 eval + AI modes | TC-065–074 | 8 |
 | M-006 ship readiness | TC-075–090 | 8 |
-| **Total** | **90** | **63** |
+| Stage 11 regression | TC-173 | 1 |
+| **Total** | **91** | **64** |
 
 FS1–FS13 coverage: FS1/FS2 TC-008 · FS3–FS5 TC-027/028/030 · FS6 TC-033 · FS7 TC-031 · FS8/FS10 TC-009 · FS9 TC-026 · FS11 TC-070 · FS12 TC-042 · FS13 TC-039. NFR1–3 TC-083–085 · NFR7 TC-001 · NFR8 TC-073.
 
@@ -467,3 +468,14 @@ FS1–FS13 coverage: FS1/FS2 TC-008 · FS3–FS5 TC-027/028/030 · FS6 TC-033 ·
 ## Reserved block · TASK-45 (Cinematic lighthouse splash screen)
 
 **TC-126 … TC-171 are allocated to TASK-45** (Stage 5, 2026-11-02, draft at the gate). Full cases live in [`docs/test-cases-TASK-45.md`](docs/test-cases-TASK-45.md); this file is not their source. **Next free ID: TC-172.**
+
+---
+
+## Stage 11 · Feedback & Regression (TASK-64)
+
+### TC-173 · `/queue` stat badges are not truncated at 375 as a stored guest
+- **Rel:** Stage 11 / TASK-64 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** PASS · **Finding:** —
+- **Steps:** as a stored guest (`verilane-session` set in `localStorage`), open `/queue` at 375×812, then check every element inside `[data-testid="queue-kpis"]`.
+- **Expected:** no element's `scrollWidth` exceeds its `clientWidth + 1` — the KPI chip labels ("Needs decision", "Requires attention", "Resolution required") and the outstanding amount wrap instead of clipping. Confirmed RED before the fix (4 elements clipped: `queue-kpi-total`, `queue-kpi-high`, `queue-kpi-needs_review`, `queue-kpi-disputed`), GREEN after, in both the chromium-light and chromium-dark projects.
+
+**Next free ID: TC-174.**

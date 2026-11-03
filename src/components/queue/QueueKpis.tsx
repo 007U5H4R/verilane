@@ -78,7 +78,7 @@ export function QueueKpis({ kpis, band, apply }: { kpis: Kpis; band: PriorityBan
             <span className="flex min-w-0 flex-col gap-1">
               <span className="text-[13px] font-medium text-text-muted">{c.label}</span>
               <span className="text-2xl font-semibold leading-none tabular-nums text-text">{c.value}</span>
-              <span className="truncate text-xs text-text-muted">{c.sub}</span>
+              <span className="break-words text-xs text-text-muted">{c.sub}</span>
             </span>
           </>
         );
@@ -122,5 +122,9 @@ export function QueueKpis({ kpis, band, apply }: { kpis: Kpis; band: PriorityBan
 }
 
 function Chip({ className, children }: { className: string; children: ReactNode }) {
-  return <span className={cn("inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-medium", className)}>{children}</span>;
+  return (
+    <span className={cn("inline-flex max-w-full rounded-md px-1.5 py-0.5 text-[11px] font-medium", className)}>
+      {children}
+    </span>
+  );
 }
