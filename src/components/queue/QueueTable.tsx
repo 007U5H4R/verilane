@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
 
 import { formatInr } from "@/domain/money";
 import type { PriorityBand } from "@/domain/schema";
@@ -101,7 +100,7 @@ export function QueueTable({
             <th scope="col" className={cn(th, "text-right")}>Amount</th>
             <th scope="col" className={th}>Days Overdue</th>
             <th scope="col" className={th}>Status</th>
-            <th scope="col" className={th}>AI Recommendation</th>
+            <th scope="col" className={th}>Recommended action</th>
             <th scope="col" className="w-12 px-3 py-2.5">
               <span className="sr-only">Actions</span>
             </th>
@@ -206,7 +205,6 @@ export function QueueTable({
                 </td>
                 <td className={cn(cell, "max-md:basis-full max-md:p-0")}>
                   <span className="flex max-w-[280px] items-center gap-1.5 text-text max-md:max-w-full" title={priority.reason}>
-                    <Sparkles aria-hidden className="size-3.5 shrink-0 text-brand" />
                     <span className="truncate">{priority.recommended_action}</span>
                   </span>
                 </td>
