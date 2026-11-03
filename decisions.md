@@ -420,3 +420,9 @@
 ## DEP1 · Production deploy target: `verilane.tusharpathak.com` — user-requested 2026-11-03
 - Stage 10 deploys to the subdomain `verilane.tusharpathak.com` (user's own domain). Acted on only after the Stage 9 `QA-report.md` gate is approved; the DNS record and Vercel domain binding are confirmed with the user at that point, not before.
 - Consequence: Verilane gets a public URL, so the OG/Twitter link-preview gate (D6, web-deliverables) changes from "N/A — private app" to **required**: a 1200×630 image mocked and approved before Stage 10, absolute `https://verilane.tusharpathak.com/...` URLs, verified with LinkedIn Post Inspector + opengraph.xyz. Stage 7 (TASK-49) checks the current tag state as a DES- finding.
+
+## RCA1 · `/queue` stat badges truncated at 375px (TASK-64) — fixed and guarded
+- **Bug:** at 375px, the `/queue` page's KPI stat cards (`src/components/queue/QueueKpis.tsx`) clipped their sub-line text instead of wrapping — the chip labels ("Needs decision", "Requires attention", "Resolution required") and the outstanding amount ("₹61,17,500.00 outstanding") were cut off mid-word.
+- **Root cause:** the sub-line `<span>` had a `truncate` class. At 375px each card's text column is only ~80px wide (2-col grid, `size-10` icon, `p-4` padding), so content that should have wrapped onto a second line was clipped instead.
+- **Fix:** `QueueKpis.tsx` — the sub-line span's class changed from `truncate` to `break-words`, and `max-w-full` was added to the `Chip` component's span, so chip/amount text wraps within the card instead of clipping.
+- **Regression test:** TC-173 (`tests/e2e/responsive.spec.ts`) checks, for every element inside `[data-testid="queue-kpis"]`, that `scrollWidth <= clientWidth + 1`, as a stored guest at 375px. Confirmed RED before the fix (4 elements clipped: `queue-kpi-total`, `queue-kpi-high`, `queue-kpi-needs_review`, `queue-kpi-disputed`), confirmed GREEN after, in both the chromium-light and chromium-dark projects.

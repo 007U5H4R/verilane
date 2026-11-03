@@ -88,6 +88,23 @@ for (const href of ["/", "/queue", INVESTIGATION, "/invoices/INV-A"]) {
   });
 }
 
+// TASK-64 (Stage 11, RCA1): at 375 the KPI sub-line's `truncate` clipped the
+// chips and the outstanding amount in production. Page-level overflow checks
+// cannot see clipping, so check each element's own scroll width.
+test("TC-173: /queue stat badges are not truncated at 375 as a stored guest (TASK-64)", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("verilane-session", "guest"));
+  await page.setViewportSize({ width: 375, height: 812 });
+  await open(page, "/queue");
+  const clipped = await page
+    .locator('[data-testid="queue-kpis"] *')
+    .evaluateAll((els) =>
+      els
+        .filter((e) => e.scrollWidth > e.clientWidth + 1)
+        .map((e) => `${(e.closest("li") as HTMLElement | null)?.dataset.testid}: ${e.textContent}`),
+    );
+  expect(clipped).toEqual([]);
+});
+
 test("TC-063: at 390 the bottom tabs + More reach every nav route with 48px targets; at 768 the rail is labelled", async ({
   page,
 }, testInfo) => {

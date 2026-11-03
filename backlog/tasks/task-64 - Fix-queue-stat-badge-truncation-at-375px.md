@@ -1,9 +1,10 @@
 ---
 id: TASK-64
 title: Fix /queue stat badge truncation at 375px
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-03 14:08'
+updated_date: '2026-11-03 15:01'
 labels:
   - P3
 dependencies: []
