@@ -264,3 +264,25 @@ describe("execute() — reconcile commands read the ledger without writing it", 
     expect(await db.reviewItems.get("RV-UM")).toMatchObject({ status: "open", workflow_state: "manager_review", proposed_invoice_id: "INV-2" });
   });
 });
+
+// CR-002 scar: the one-open-dispute guard reads the disputes through
+// draftSources(), so mark_disputed's real Dexie transaction must have those
+// tables in scope — a fake tx in commands.test.ts can't catch that.
+describe("execute() — mark_disputed guards one open dispute per invoice (CR-002)", () => {
+  const mark = (id: string): CommandInput => ({
+    type: "mark_disputed",
+    subject: { kind: "invoice", id },
+    payload: { type: "incorrect_amount", claim_text: "Amount is wrong." },
+  });
+
+  it("opens a dispute on a dispute-free invoice", async () => {
+    await execute(db, mark("INV-2"));
+    expect((await db.disputes.toArray()).filter((d) => d.invoice_id === "INV-2")).toHaveLength(1);
+  });
+
+  it("refuses a second open dispute on the same invoice", async () => {
+    await execute(db, mark("INV-2"));
+    await expect(execute(db, mark("INV-2"))).rejects.toThrow("already has an open dispute");
+    expect((await db.disputes.toArray()).filter((d) => d.invoice_id === "INV-2")).toHaveLength(1);
+  });
+});

@@ -154,7 +154,8 @@ export async function execute(
 /** Draft commands re-run the nine checks, so they also read the ledger (TASK-15). */
 const DRAFT_COMMANDS: ReadonlySet<string> = new Set(["generate_draft", "edit_draft", "submit_draft", "approve_draft", "autopilot_send"]);
 /** TASK-38: resolving as "payment reconciled" checks the ledger for a real payment. */
-const LEDGER_COMMANDS: ReadonlySet<string> = new Set(["resolve_dispute"]);
+// CR-002: mark_disputed reads draftSources() to refuse a second open dispute.
+const LEDGER_COMMANDS: ReadonlySet<string> = new Set(["resolve_dispute", "mark_disputed"]);
 /** TASK-38: verify / propose-link read the ledger and matches (never write them). */
 const RECONCILE_COMMANDS: ReadonlySet<string> = new Set(["reconcile_flag", "reconcile_decide"]);
 const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractions, db.matches];

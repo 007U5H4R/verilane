@@ -190,6 +190,18 @@ describe("run()", () => {
     expect(e.after).toEqual({ status: "rejected", reason: "Wrong tone" });
   });
 
+  // CR-003: the reject reason is capped like every other free-text field.
+  it("reject_draft refuses a reason longer than NOTE_MAX_LENGTH", async () => {
+    const m = memTx(seed());
+    await expect(
+      run(
+        cmd({ type: "reject_draft", subject: { kind: "draft", id: "DR-GEN" }, payload: { reason: "x".repeat(2001) } }),
+        m.tx,
+      ),
+    ).rejects.toBeInstanceOf(InvalidCommand);
+    expect(m.tables.get("drafts")?.get("DR-GEN")?.status).not.toBe("rejected");
+  });
+
   it("dispute_transition only accepts non-terminal events", async () => {
     const m = memTx(seed());
     await run(
@@ -247,6 +259,47 @@ describe("run()", () => {
       claim_text: "Customer says the amount is wrong",
       status: "new",
     });
+  });
+
+  // CR-002: a second "Mark disputed" must not open a duplicate open dispute.
+  it("mark_disputed refuses when the invoice already has an open dispute", async () => {
+    const m = memTx(seed());
+    const open = [...(m.tables.get("disputes")?.values() ?? [])];
+    m.tx.draftSources = async () =>
+      ({ disputes: open, payments: [] }) as unknown as DraftSources;
+    await expect(
+      run(
+        cmd({
+          type: "mark_disputed",
+          subject: { kind: "invoice", id: "INV-1" },
+          payload: { type: "incorrect_amount", claim_text: "Again" },
+        }),
+        m.tx,
+      ),
+    ).rejects.toBeInstanceOf(InvalidCommand);
+    expect(m.tables.get("disputes")?.size).toBe(1);
+    expect(m.audits).toHaveLength(0);
+  });
+
+  it("mark_disputed opens a dispute when the invoice's earlier ones are closed", async () => {
+    const m = memTx(seed());
+    m.tx.draftSources = async () =>
+      ({
+        disputes: [
+          { dispute_id: "D-1", invoice_id: "INV-1", status: "resolved" },
+          { dispute_id: "D-2", invoice_id: "INV-1", status: "rejected" },
+        ],
+        payments: [],
+      }) as unknown as DraftSources;
+    await run(
+      cmd({
+        type: "mark_disputed",
+        subject: { kind: "invoice", id: "INV-1" },
+        payload: { type: "incorrect_amount", claim_text: "New claim" },
+      }),
+      m.tx,
+    );
+    expect(m.tables.get("disputes")?.size).toBe(2);
   });
 
   it("mark_disputed rejects a blank reason", async () => {

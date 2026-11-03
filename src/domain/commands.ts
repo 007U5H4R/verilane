@@ -479,7 +479,7 @@ const HANDLERS: Record<Action, Handler> = {
   },
 
   reject_draft: async (ctx) => {
-    const reason = str(ctx.payload.reason)?.trim();
+    const reason = optionalText(ctx.payload.reason, "A reject reason");
     const extra: Row = reason ? { reject_reason: reason } : {};
     const { from, to } = await step(ctx, "draft", "drafts", ["reject"], extra);
     return {
@@ -597,6 +597,18 @@ const HANDLERS: Record<Action, Handler> = {
     const claimText = (str(ctx.payload.claim_text) ?? "").trim();
     if (claimText === "") {
       throw new InvalidCommand("A dispute needs a reason.");
+    }
+    // CR-002: one open dispute per invoice. "Open" matches useHasOpenDispute
+    // (anything not resolved or rejected). Skipped when the tx has no ledger
+    // access (pure tests).
+    if (ctx.tx.draftSources) {
+      const { disputes } = await ctx.tx.draftSources();
+      const alreadyOpen = disputes.some(
+        (d) => d.invoice_id === invoiceId && d.status !== "resolved" && d.status !== "rejected",
+      );
+      if (alreadyOpen) {
+        throw new InvalidCommand("This invoice already has an open dispute.");
+      }
     }
     // Sanitized, not the raw ISO string: `/disputes/[id]` puts this in a URL
     // path segment, and a literal `:` there breaks Next's PPR dynamic-param
