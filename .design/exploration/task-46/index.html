@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TASK-46 — Heritage Background System (Design Prototype)</title>
+<style>
+  :root{
+    --light-canvas:#f7f9f7; --light-surface:#ffffff; --light-text:#17231e; --light-muted:#5f6c65;
+    --dark-canvas:#0d1511; --dark-surface:#141f19; --dark-text:#edf4ef; --dark-muted:#a0b0a5;
+    --rail:#062f24; --rail-active:#083a2b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f1ef;color:#17231e;}
+  .banner{position:sticky;top:0;z-index:999;background:#7a1f1f;color:#fff;text-align:center;font-weight:600;font-size:13px;letter-spacing:.04em;padding:6px 0;text-transform:uppercase;}
+  .wrap{display:flex;gap:16px;padding:16px;align-items:flex-start;}
+  .panel{position:sticky;top:40px;width:260px;flex:0 0 260px;background:#fff;border:1px solid #d7dad7;border-radius:8px;padding:14px;font-size:13px;}
+  .panel h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#555;}
+  .panel fieldset{border:none;margin:0 0 12px;padding:0;}
+  .panel legend{font-weight:600;font-size:12px;margin-bottom:4px;color:#333;}
+  .panel label{display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;}
+  .panel .row{display:flex;gap:6px;flex-wrap:wrap;}
+  .panel button.vp{font-size:11px;padding:4px 8px;border:1px solid #c7cac7;border-radius:5px;background:#f6f6f5;cursor:pointer;}
+  .panel button.vp.active{background:#1f3c30;color:#fff;border-color:#1f3c30;}
+  .main{flex:1;min-width:0;}
+  .stage-label{font-size:12px;color:#666;margin:0 0 6px;font-family:ui-monospace,monospace;}
+  .stage{border:1px solid #c7cac7;border-radius:8px;overflow:hidden;background:#000;margin:0 auto 28px;transition:width .15s;}
+
+  /* ---- app shell recreation ---- */
+  .shell{position:relative;width:100%;height:720px;overflow:hidden;font-family:inherit;}
+  .shell[data-theme="light"]{background:var(--light-canvas);color:var(--light-text);}
+  .shell[data-theme="dark"]{background:var(--dark-canvas);color:var(--dark-text);}
+  .sidebar{position:absolute;left:0;top:0;bottom:0;width:272px;background:var(--rail);}
+  .shell[data-vp="tab"] .sidebar{width:72px;}
+  .shell[data-vp="mob"] .sidebar{display:none;}
+  .sidebar .item{color:#cfe6da;font-size:12px;padding:10px 18px;}
+  .shell[data-vp="tab"] .sidebar .item{padding:10px 0;text-align:center;}
+  .sidebar .item.active{background:var(--rail-active);color:#fff;font-weight:600;}
+  .topbar{position:absolute;left:272px;right:0;top:0;height:76px;border-bottom:1px solid rgba(127,127,127,.2);display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:12px;}
+  .shell[data-vp="tab"] .topbar{left:72px;height:68px;}
+  .shell[data-vp="mob"] .topbar{left:0;height:58px;}
+  .pill{border:1px solid rgba(127,127,127,.35);border-radius:999px;padding:4px 10px;font-size:11px;}
+  .content{position:absolute;left:272px;right:0;top:76px;bottom:0;overflow:hidden;isolation:isolate;}
+  .shell[data-vp="tab"] .content{left:72px;top:68px;}
+  .shell[data-vp="mob"] .content{left:0;top:58px;}
+
+  .art{position:absolute;left:0;right:0;top:0;height:clamp(320px,42vw,620px);z-index:-10;pointer-events:none;background-size:cover;background-repeat:no-repeat;background-position:center top;
+       -webkit-mask-image:linear-gradient(to bottom, black 0%, black 55%, transparent 100%); mask-image:linear-gradient(to bottom, black 0%, black 55%, transparent 100%);}
+  .shell[data-vp="tab"] .art{height:300px;background-position:38% top;}
+  .shell[data-vp="mob"] .art{height:clamp(160px,44vw,240px);}
+
+  /* theme × level art swap (desktop/tablet only; mobile = Home strip only) */
+  .shell[data-theme="light"][data-level="normal"] .content .art{background-image:url('art/light-normal.png');}
+  .shell[data-theme="light"][data-level="reduced"] .content .art{background-image:url('art/light-reduced.png');}
+  .shell[data-theme="dark"][data-level="normal"] .content .art{background-image:url('art/dark-normal.png');}
+  .shell[data-theme="dark"][data-level="reduced"] .content .art{background-image:url('art/dark-reduced.png');}
+  .shell[data-level="off"] .content .art{background-image:none;}
+  .shell[data-vp="mob"][data-route="queue"] .art,
+  .shell[data-vp="mob"][data-route="drafts"] .art{background-image:none;} /* mobile: Home strip only */
+
+  .page{position:relative;padding:28px 32px;height:100%;overflow:auto;}
+  .page h1{font-size:26px;margin:0 0 6px;}
+  .shell[data-vp="mob"] .page h1{font-size:20px;}
+  .muted{color:var(--light-muted);font-size:13px;}
+  .shell[data-theme="dark"] .muted{color:var(--dark-muted);}
+
+  .textzone{position:absolute;left:0;top:0;width:55%;height:160px;outline:2px dashed #e07a1f;z-index:5;pointer-events:none;}
+  .textzone::after{content:"text zone — mist excluded here — AA ≥4.5:1 enforced";position:absolute;bottom:-18px;left:0;font-size:10px;color:#e07a1f;font-family:ui-monospace,monospace;white-space:nowrap;}
+  .cr-badge{position:absolute;z-index:6;background:#1f3c30;color:#fff;font-size:10px;font-family:ui-monospace,monospace;padding:2px 6px;border-radius:4px;}
+
+  .card{background:var(--light-surface);border:1px solid rgba(127,127,127,.18);border-radius:10px;padding:16px;margin-top:16px;max-width:640px;}
+  .shell[data-theme="dark"] .card{background:var(--dark-surface);}
+  .skeleton{height:14px;border-radius:4px;background:linear-gradient(90deg,rgba(127,127,127,.18),rgba(127,127,127,.32),rgba(127,127,127,.18));margin-bottom:10px;width:70%;}
+  .skeleton.short{width:40%;}
+  .empty{text-align:center;padding:60px 20px;color:var(--light-muted);}
+  .shell[data-theme="dark"] .empty{color:var(--dark-muted);}
+  .err{background:#5a1f1f;color:#fde8e8;border-radius:10px;padding:16px;margin-top:16px;max-width:640px;}
+
+  .menu{position:absolute;top:70px;right:24px;width:220px;background:var(--light-surface);border:1px solid rgba(127,127,127,.3);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;z-index:20;display:none;}
+  .shell[data-theme="dark"] .menu{background:var(--dark-surface);}
+  .menu.open{display:block;}
+  .menu .mi{padding:8px 10px;font-size:13px;border-radius:6px;}
+  .menu .mi:hover{background:rgba(127,127,127,.12);}
+
+  .evidence{margin-top:28px;}
+  .evidence h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#666;margin:0 0 8px;}
+  .evidence img{max-width:100%;border:1px solid #c7cac7;border-radius:6px;display:block;}
+
+  .splash-coord{margin-top:40px;border-top:2px solid #c7cac7;padding-top:24px;}
+  .splash-coord .two{display:flex;gap:16px;}
+  .splash-frame,.panorama-frame{flex:1;height:260px;border-radius:8px;position:relative;overflow:hidden;background:#06130d;}
+  .panorama-frame{background:var(--dark-canvas);}
+  .panorama-frame .art{position:absolute;inset:0;height:100%;mask-image:none;-webkit-mask-image:none;background-image:url('art/dark-normal.png');background-size:cover;background-position:center 30%;z-index:0;}
+  .splash-frame .beam{position:absolute;right:12%;bottom:28%;width:46%;height:70%;background:linear-gradient(120deg, rgba(255,230,140,.35), transparent 70%);transform:rotate(-18deg);}
+  .splash-frame .tower{position:absolute;right:14%;bottom:30%;width:14px;height:90px;background:#e9e2cf;border-radius:3px 3px 0 0;}
+  .splash-frame .label,.panorama-frame .label{position:absolute;bottom:10px;left:12px;color:#cfe6da;font-size:11px;font-family:ui-monospace,monospace;}
+</style>
+</head>
+<body>
+<div class="banner">DESIGN PROTOTYPE — NOT PRODUCTION — TASK-46 Heritage Background System</div>
+<div class="wrap">
+
+  <div class="panel">
+    <h2>Controls</h2>
+    <fieldset>
+      <legend>Theme</legend>
+      <label><input type="radio" name="theme" value="light" checked> Light</label>
+      <label><input type="radio" name="theme" value="dark"> Dark</label>
+    </fieldset>
+    <fieldset>
+      <legend>Heritage level</legend>
+      <label><input type="radio" name="level" value="normal" checked> Normal</label>
+      <label><input type="radio" name="level" value="reduced"> Reduced</label>
+      <label><input type="radio" name="level" value="off"> Off</label>
+    </fieldset>
+    <fieldset>
+      <legend>Route</legend>
+      <label><input type="radio" name="route" value="home" checked> Home</label>
+      <label><input type="radio" name="route" value="queue"> Queue</label>
+      <label><input type="radio" name="route" value="drafts"> Drafts</label>
+    </fieldset>
+    <fieldset>
+      <legend>Screen state</legend>
+      <label><input type="radio" name="state" value="working" checked> Working</label>
+      <label><input type="radio" name="state" value="loading"> Loading</label>
+      <label><input type="radio" name="state" value="empty"> Empty</label>
+      <label><input type="radio" name="state" value="error"> Error</label>
+    </fieldset>
+    <fieldset>
+      <legend>Viewport</legend>
+      <div class="row">
+        <button class="vp active" data-vp="desk" data-w="1440">1440</button>
+        <button class="vp" data-vp="tab" data-w="768">768</button>
+        <button class="vp" data-vp="mob" data-w="390">390</button>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Overlays</legend>
+      <label><input type="checkbox" id="annotate"> Show text-zone + contrast annotations</label>
+      <label><input type="checkbox" id="menuToggle"> Open account menu (over art)</label>
+    </fieldset>
+  </div>
+
+  <div class="main">
+    <p class="stage-label" id="stageLabel">desk 1440 · light · normal · home · working</p>
+    <div class="stage" id="stage" style="width:1440px;">
+      <div class="shell" id="shell" data-theme="light" data-level="normal" data-route="home" data-vp="desk" data-state="working">
+        <div class="sidebar">
+          <div class="item active">Home</div>
+          <div class="item">Queue</div>
+          <div class="item">Disputes</div>
+          <div class="item">Payments</div>
+          <div class="item">Drafts</div>
+          <div class="item">Audit log</div>
+          <div class="item">Settings</div>
+        </div>
+        <div class="topbar">
+          <div></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="pill">Guest · Demo Workspace</span>
+            <span class="pill" style="cursor:pointer;" id="menuTrigger">Account ▾</span>
+          </div>
+        </div>
+        <div class="menu" id="menu">
+          <div class="mi">Profile</div>
+          <div class="mi">Switch workspace</div>
+          <div class="mi">Sign out</div>
+        </div>
+        <div class="content">
+          <div class="art"></div>
+          <div class="textzone" id="textzone" style="display:none;"></div>
+          <div class="cr-badge" id="crbadge" style="display:none;top:40px;left:300px;">text 11.9:1 · muted 4.9:1</div>
+          <div class="page" id="page"><!-- filled by JS --></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="evidence">
+      <h3>Real app evidence (current <code>task/38-emerald-redesign</code>, pre-heritage-art)</h3>
+      <img id="evidenceImg" src="shots/light-desk-home.png" alt="real app screenshot evidence" />
+      <p class="muted" id="evidenceCaption" style="margin-top:6px;"></p>
+    </div>
+
+    <div class="splash-coord">
+      <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#666;">TASK-45 ↔ TASK-46 handshake — one coordinated first frame</h3>
+      <p class="muted" style="max-width:640px;">Conceptual only — no shared code. The splash's last frame (lighthouse + beam, dark emerald) and the heritage panorama's first visible frame share silhouette language (a tall landmark element on the right, warm light breaking left-to-right through cool mist) so the fade-to-app reads as one continuous image, not a hard cut.</p>
+      <div class="two">
+        <div class="splash-frame">
+          <div class="beam"></div>
+          <div class="tower"></div>
+          <div class="label">TASK-45 splash — exit frame (dark, t0+D)</div>
+        </div>
+        <div class="panorama-frame">
+          <div class="art"></div>
+          <div class="label">TASK-46 panorama — first frame under app shell (dark-normal)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const shell = document.getElementById('shell');
+const stage = document.getElementById('stage');
+const page = document.getElementById('page');
+const menu = document.getElementById('menu');
+const textzone = document.getElementById('textzone');
+const crbadge = document.getElementById('crbadge');
+const evidenceImg = document.getElementById('evidenceImg');
+const evidenceCaption = document.getElementById('evidenceCaption');
+const stageLabel = document.getElementById('stageLabel');
+
+const vpWidths = {desk:1440, tab:768, mob:390};
+const vpShotPrefix = {desk:'desk', tab:'tab', mob:'mob'};
+
+const titles = {home:'Home', queue:'Collections Queue', drafts:'Drafts'};
+
+function renderPage(){
+  const route = shell.dataset.route;
+  const state = shell.dataset.state;
+  const title = titles[route];
+  if(state === 'loading'){
+    page.innerHTML = `<div class="skeleton" style="width:200px;height:28px;"></div>
+      <div class="card"><div class="skeleton"></div><div class="skeleton short"></div><div class="skeleton"></div></div>`;
+    return;
+  }
+  if(state === 'empty' && route === 'drafts'){
+    page.innerHTML = `<h1>${title}</h1><p class="muted">Low-risk reminder drafts awaiting review.</p>
+      <div class="empty"><p>No drafts yet.</p><p class="muted">Drafts appear here once the copilot proposes a reminder.</p></div>`;
+    return;
+  }
+  if(state === 'error'){
+    page.innerHTML = `<h1>${title}</h1>
+      <div class="err"><strong>Could not load this record.</strong><br/>The invoice ID in the URL doesn't exist in this workspace. <a href="#" style="color:#fff;text-decoration:underline;">Go back to ${title}</a>.</div>`;
+    return;
+  }
+  page.innerHTML = `<h1>${title}</h1><p class="muted">Working state — representative data.</p>
+    <div class="card"><strong>Sample record</strong><p class="muted">Real copy/data lives in the actual route; this mockup only verifies the art layer composites correctly behind it.</p></div>`;
+}
+
+function renderEvidence(){
+  const vp = shell.dataset.vp;
+  const theme = shell.dataset.theme;
+  const route = shell.dataset.route;
+  const prefix = vpShotPrefix[vp];
+  let file = `${theme}-${prefix}-${route}.png`;
+  evidenceImg.src = 'shots/' + file;
+  evidenceImg.onerror = () => { evidenceImg.src = `shots/${theme}-desk-${route}.png`; };
+  evidenceCaption.textContent = `shots/${file} — real geometry this mockup's shell recreation is built to match (main left/top, h1 bounding box).`;
+}
+
+function updateLabel(){
+  stageLabel.textContent = `${shell.dataset.vp} ${vpWidths[shell.dataset.vp]} · ${shell.dataset.theme} · ${shell.dataset.level} · ${shell.dataset.route} · ${shell.dataset.state}`;
+}
+
+document.querySelectorAll('input[name=theme]').forEach(r=>r.addEventListener('change',e=>{shell.dataset.theme=e.target.value; renderEvidence(); updateLabel();}));
+document.querySelectorAll('input[name=level]').forEach(r=>r.addEventListener('change',e=>{shell.dataset.level=e.target.value; updateLabel();}));
+document.querySelectorAll('input[name=route]').forEach(r=>r.addEventListener('change',e=>{shell.dataset.route=e.target.value; renderPage(); renderEvidence(); updateLabel();}));
+document.querySelectorAll('input[name=state]').forEach(r=>r.addEventListener('change',e=>{shell.dataset.state=e.target.value; renderPage(); updateLabel();}));
+document.querySelectorAll('button.vp').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('button.vp').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  shell.dataset.vp = b.dataset.vp;
+  stage.style.width = b.dataset.w + 'px';
+  renderEvidence(); updateLabel();
+}));
+document.getElementById('annotate').addEventListener('change', e=>{
+  textzone.style.display = e.target.checked ? 'block':'none';
+  crbadge.style.display = e.target.checked ? 'block':'none';
+});
+document.getElementById('menuTrigger').addEventListener('click', ()=>menu.classList.toggle('open'));
+document.getElementById('menuToggle').addEventListener('change', e=>menu.classList.toggle('open', e.target.checked));
+
+renderPage();
+renderEvidence();
+updateLabel();
+</script>
+</body>
+</html>
