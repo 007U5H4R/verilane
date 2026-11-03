@@ -4,30 +4,31 @@
 <meta charset="utf-8" />
 <title>Verilane — OG image candidate</title>
 <style>
+  @font-face { font-family: "Inter"; src: url("inter-latin.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
   /* Tokens copied from src/app/globals.css :root (light theme — the OG
      card always renders light regardless of viewer theme, per
      web-deliverables.md §4: a social preview is a fixed asset). */
   :root {
-    --canvas: #f8f7f3;
-    --surface: #ffffff;
-    --surface-sunken: #f1efe8;
-    --border: #e4e1d8;
-    --border-strong: #cdc8bb;
-    --text: #17221c;
-    --text-muted: #53605a;
-    --brand: #1f7a4d;
-    --brand-strong: #145c38;
-    --rail: #0f3d29;
+    --canvas: #f7f9f7;
+    --surface: #fff;
+    --surface-sunken: #f0f8f3;
+    --border: #e4eae5;
+    --border-strong: #cbd6cf;
+    --text: #17231e;
+    --text-muted: #5f6c65;
+    --brand: #176b50;
+    --brand-strong: #104b38;
+    --rail: #082f25;
     --rail-text: #f3f8f5;
     --rail-muted: #b9d4c5;
-    --high: #b3261e;
-    --high-bg: #fbe9e7;
+    --high: #b42318;
+    --high-bg: #fdecea;
     --med: #8a5a00;
     --med-bg: #fdf1dc;
     --r-lg: 14px;
     --r-md: 10px;
-    --font-ui: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --font-display: "Iowan Old Style", "Charter", "Source Serif 4", Georgia, serif;
+    --font-ui: "Inter", ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Inter", ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
