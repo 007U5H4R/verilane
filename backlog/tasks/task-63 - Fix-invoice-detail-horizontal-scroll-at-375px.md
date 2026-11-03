@@ -1,10 +1,10 @@
 ---
 id: TASK-63
 title: Fix invoice detail horizontal scroll at 375px
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-03 13:16'
-updated_date: '2026-11-03 13:16'
+updated_date: '2026-11-03 14:06'
 labels:
   - P1
 dependencies: []
