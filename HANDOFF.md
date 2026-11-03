@@ -1,6 +1,6 @@
 # HANDOFF — Verilane
 
-## Main chain — Verilane v1 release on `task/38-emerald-redesign` (Stage 8 DONE 2026-11-03; next: Stage 9 · Security Review + QA-report.md gate)
+## Main chain — Verilane v1 release on `task/38-emerald-redesign` (Stage 9 DONE 2026-11-03; next: Stage 10 · Deployment — BLOCKED on QA-report.md approval)
 
 **Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stage 9 (QA-report.md) is a user gate before the deploy. Stop for anything destructive.
 
@@ -12,10 +12,15 @@
 - **Gate on 0de2114:** typecheck 0, lint 0 errors (1 warning `_done` steps.ts:141), unit 1214/1214, build OK, e2e 351 passed / 1 skipped / 0 failed. TCs: 86 PASS, 1 FAIL (TC-066 → QA-001), 3 not run (TC-001/002/090).
 - **Artifacts:** `/Volumes/E Drive/Dev/.scratch/task50/` (CR-triage.md, qa-findings.md, perf-report.md); DES: `/Volumes/E Drive/Dev/.scratch/task49/DES-findings.md`.
 
-### Stage 9 · Security Review — NEXT (`bw-security-review`)
-- `/security-review` + threat model over `git diff main..HEAD` → SEC-### findings (cover CR-009/010/011/017).
-- Assemble `QA-report.md` (perf scorecard, TC tally, QA-001..004, CR, DES, SEC). **STOP for user approval.**
-- Then Stage 10 deploy to verilane.tusharpathak.com (Vercel project `verilane` not created yet; no `.vercel` link).
+### Stage 9 · Security Review — DONE (TASK-57; gate awaiting user)
+- **SEC result:** PASS — 0 Critical, 0 High. SEC-001 (LLM routes unauthenticated/unbounded; accepted while live mode off), SEC-002 headers → TASK-58, SEC-003/CR-017 build guard → TASK-59, SEC-004 CSV formula injection → TASK-60, SEC-005 auth forms method=post → TASK-61, SEC-006/007 LLM hardening → TASK-62.
+- **`QA-report.md`** (repo root): recommendation **READY WITH ACCEPTED RISKS**. All release gates PASS (Design with og.png condition).
+- **Rulings pending from user:** R1 regenerate og.png before deploy (rec: yes) · R2 ship QA-004 as known P2 (rec: yes) · R3 DES-007 nav order (rec: keep) · R4 eyebrow copy (user's call) · R5 do TASK-58 + TASK-59 before deploy (rec: yes).
+
+### Stage 10 · Deployment — NEXT, only after QA-report approval (`bw-deployment-production-monitoring`)
+- Apply approved pre-deploy items (R1, R5), then follow QA-report §7 checklist: Vercel env has no `VERILANE_LIVE_LLM` / `ANTHROPIC_API_KEY` / `NEXT_PUBLIC_E2E`; build `pnpm build && pnpm check:secrets && pnpm check:e2e-hooks`.
+- Vercel project `verilane` not created yet; no `.vercel` link. Domain verilane.tusharpathak.com.
+- Post-deploy: Lighthouse 13.6.0 (3× mobile + desktop), OG via LinkedIn Post Inspector + opengraph.xyz, mobile 375/768 check.
 
 ---
 
