@@ -18,6 +18,8 @@
     "check:secrets": "tsx scripts/check-bundle-secrets.ts",
     "route-budget": "tsx scripts/route-budget.ts",
     "check:e2e-hooks": "tsx scripts/check-e2e-hooks.ts",
+    "check:deploy-env": "tsx scripts/check-deploy-env.ts",
+    "vercel-build": "pnpm check:deploy-env && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks",
     "seed": "tsx scripts/seed.ts",
     "eval:live": "tsx --conditions=react-server scripts/eval-live.ts",
     "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm perf && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm build:e2e && pnpm e2e --workers=1"
