@@ -452,3 +452,26 @@ The user chose to restyle the whole app closer to the Expensify web reference an
 - **Queue rows:** these are now separated row-cards with an 8px gap, replacing the single fused list.
 
 Also: the sidebar and icon rail are now sticky at full viewport height, and the top bar is translucent (`bg-canvas/75` + blur).
+
+## Revision R2 — 2026-11-02 (TASK-38, emerald FinTech redesign) — *recorded retroactively by TASK-46; TASK-38 owner to confirm*
+
+Code already cites "Design.md Revision R2 (TASK-38)" (`globals.css`, `layout.tsx`, `NavItems.tsx`, `tokens.test.ts`) but the entry was never written. This records what shipped:
+
+- **Palette:** emerald FinTech tokens in `src/app/globals.css` are authoritative. Light canvas `#f7f9f7`, surface `#ffffff`, text `#17231e`, muted `#5f6c65`, rail `#062f24`/`#083a2b`. Dark canvas `#0d1511`, surface `#141f19`, text `#edf4ef`, muted `#a0b0a5`. `tokens.test.ts` guards them.
+- **Type:** Inter via `next/font` replaces the prior stack.
+- **Navigation order:** as defined in `NavItems.tsx`.
+- **Surfaces:** solid surfaces replace R1's frosted glass (commit `583ebab`).
+- **R1 decorative asset removed:** `public/bg/canvas-blur.webp` and `--canvas-art-opacity` are deleted. The canvas is a flat `var(--canvas)`. R1's shadow, row-card and translucent top-bar items stand where the code still uses them.
+- §1 "visual quietness is the trust signal" stands unchanged.
+
+## Revision R3 — 2026-11-02 (TASK-46, user override with switch-off rule)
+
+**Scoped exception to §1 "no decorative illustration".** One decorative layer is permitted: the Indian heritage panorama (`IndianHeritageBackground`). Nothing else gains illustration through this revision.
+
+- **Where:** only inside the authenticated `AppShell` content column, anchored to the top of the content area, scrolling with the page. Never on auth or onboarding routes, never behind the sidebar, never over surfaces (cards, tables, dialogs and menus stay solid).
+- **What:** a monochrome emerald-neutral linework and mist panorama of eight named Indian landmarks, with mist breaks between them and no shared ground line. Exact canvas background. No birds, people, text or motion. Assets are listed in `src/lib/heritage.ts`, and the user is the cultural reviewer for any replacement.
+- **How strong:** three levels, `normal` / `reduced` / `off`, set per route in `heritageLevelFor()`. Normal is P 8–15% (CIELAB prominence against the canvas, normalised to text). Reduced is P 4–8%. **Every text pixel over the art keeps ≥ 4.5:1** (≥ 3:1 for large text and UI glyphs). In light theme, the art is L\* ≥ 92.1 in the page-header text zone.
+- **Mobile:** Home only, as a top strip. Tablet repositions the desktop asset.
+- **Off by system:** hidden under `forced-colors: active` and in print. No motion exists to reduce.
+- **Weight:** ≤ 60 KB per theme on desktop and ≤ 25 KB on the mobile strip, AVIF with WebP fallback, enforced by `scripts/image-budget.ts`.
+- **Switch-off rule (binding):** if Stage 7 critique or Stage 8 measurement shows the art failing SC1 (contrast) or SC2 (prominence band) on any data-dense route, **or** the user judges it to be noise after one week of use, set `heritageLevelFor()` to return `"off"` for the affected routes, or for all of them. **Do not redesign the art to rescue it.** Switching off is a one-line change and needs no further design review. Deleting the feature reverts this revision.
