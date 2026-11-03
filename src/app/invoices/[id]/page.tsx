@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { InvestigationSkeleton, InvestigationView } from "@/components/investigation/InvestigationView";
+
+// TASK-49 DES-009: the tab title names the page (root template adds " — Verilane").
+export const metadata: Metadata = { title: "Invoice" };
 
 /**
  * Investigation. No `generateStaticParams` (invoice ids only exist in the

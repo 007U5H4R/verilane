@@ -15,7 +15,9 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Verilane — AR Copilot",
+  // TASK-49 DES-009: child pages set a short title and the template names
+  // the app; the default covers any route without one.
+  title: { template: "%s — Verilane", default: "Verilane — AR Copilot" },
   description: DESCRIPTION,
   // No og:url here: setting one (even a constant site-wide string) makes
   // Next's Cache Components metadata resolver treat the dynamic

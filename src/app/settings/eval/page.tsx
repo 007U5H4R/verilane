@@ -1,8 +1,12 @@
+import type { Metadata } from "next";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Link from "next/link";
 
 import { parseMarkdown, type Block, type Inline } from "./markdown";
+
+// TASK-49 DES-009: the tab title names the page (root template adds " — Verilane").
+export const metadata: Metadata = { title: "Evaluation report" };
 
 // TASK-21.5: the committed `eval/report.md`, read with synchronous I/O so it
 // is prerendered into the static shell at build time (Next 16 caching docs,

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { WelcomeView } from "@/components/onboarding/WelcomeView";
 
-export const metadata: Metadata = { title: "Welcome — Verilane" };
+export const metadata: Metadata = { title: "Welcome" };
 
 export default function WelcomePage() {
   return <WelcomeView />;

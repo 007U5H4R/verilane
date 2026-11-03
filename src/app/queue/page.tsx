@@ -8,6 +8,7 @@ import { shareMetadata } from "@/lib/site";
 // TASK-27.3 / TC-088: /queue is fully static, so it's safe to carry an
 // explicit og:url (the root layout deliberately omits one; see layout.tsx).
 export const metadata: Metadata = {
+  title: "Queue",
   ...shareMetadata("/queue"),
 };
 

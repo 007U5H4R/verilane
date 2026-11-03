@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DisputeDetailSkeleton, DisputeDetailView } from "@/components/disputes/DisputeDetailView";
+
+// TASK-49 DES-009: the tab title names the page (root template adds " — Verilane").
+export const metadata: Metadata = { title: "Dispute" };
 
 /**
  * Dispute detail. No `generateStaticParams` (dispute ids only exist in the

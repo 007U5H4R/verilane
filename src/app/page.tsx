@@ -7,6 +7,7 @@ import { shareMetadata } from "@/lib/site";
 
 // DES-005: / is the URL people share, and it's static, so it carries og:url.
 export const metadata: Metadata = {
+  title: { absolute: "Home — Verilane" },
   ...shareMetadata("/"),
 };
 
