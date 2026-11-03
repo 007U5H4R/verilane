@@ -1,22 +1,21 @@
 # HANDOFF — Verilane
 
-## Main chain — Verilane v1 release on `task/38-emerald-redesign` (Stage 7 DONE 2026-11-03; next: Stage 8 · Code Review + Test Execution)
+## Main chain — Verilane v1 release on `task/38-emerald-redesign` (Stage 8 DONE 2026-11-03; next: Stage 9 · Security Review + QA-report.md gate)
 
-**Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stage 9 (QA-report.md) is still a user gate before the deploy. Stop for anything destructive.
+**Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stage 9 (QA-report.md) is a user gate before the deploy. Stop for anything destructive.
 
-### Stage 7 · Design Critique — DONE (TASK-49 Done)
-- **Branch:** `task/38-emerald-redesign` at f1fbe13, pushed to origin (github.com/007U5H4R/verilane, public). `main` = 6e53103.
-- **Report:** `/Volumes/E Drive/Dev/.scratch/task49/DES-findings.md` (14 DES findings, Resolutions section, gate logs, `des014/` screenshots).
-- **Fixed (07f9b56..f1fbe13):** DES-001/002 (top bar, mobile More sheet), DES-003 (deep links land below the sticky bar), DES-004 (invoice number in approve dialog and toast), DES-005 (`SITE_URL` falls back to https://verilane.tusharpathak.com; og:url on `/`), DES-006 (nav "Queue", workspace title), DES-008 (44px targets below md; the shared Button grows on mobile everywhere), DES-009 (per-route titles), DES-010 (branded 404), DES-012 ("Recommended action", no sparkles). New spec: `tests/e2e/design-critique.spec.ts`.
-- **Parked:** DES-007 nav order (user's product call), DES-011 duplicated chart (design call), DES-013 dev-only diagnostic (→ Stage 8), DES-014 full-page capture artifact (not a bug), welcome eyebrow "AI-POWERED…" copy (user's call), og.png needs a designed 1200×630 image (known gap before Stage 10).
-- **Gate on f1fbe13:** typecheck clean, unit 1198/1198, e2e 349 passed / 1 skipped in one pass (20.3 min). Log: `/Volumes/E Drive/Dev/.scratch/task49/final-e2e.log`.
-- **Pre-existing, not fixed:** at 1024px the breadcrumb is squeezed to zero width; queue h1 still "Collections Queue" and onboarding `art.tsx` "Collection queue"; lint warning `_done` unused at `src/components/tour/steps.ts:141`; 8 eval failures (ship as known issue).
+### Stage 8 · Code Review + Test Execution — DONE (TASK-50 Done)
+- **Branch:** `task/38-emerald-redesign` at 0de2114, pushed (e6c4a4f..0de2114). `main` = 6e53103.
+- **Fixed:** CR-001 (approve disabled while draft dirty), CR-002/003 + QA-003 (one-open-dispute guard, reject reason cap, `mark_disputed` in LEDGER_COMMANDS), CR-004 (BigInt `parseInr`), CR-005 (`error.tsx`/`global-error.tsx`), CR-006 (MoreSheet closes at ≥768px), CR-007 (autopilot surfaces send failures, stops on unmount), CR-008 (bulk bar uses visible selection), QA-002 (TC-081 flake).
+- **For Stage 9:** CR-009, CR-010, CR-011, CR-017 (security-flavoured). Rest parked → TASK-52..56.
+- **Known issues for the QA-report gate:** QA-001 eval gates 8/43 fail (ship per user decision → TASK-51); QA-004 mobile lab LCP 4.4–4.7 s / queue TBT 1.6 s (P2, re-measure on deployed URL). og.png still needs a designed 1200×630 image.
+- **Gate on 0de2114:** typecheck 0, lint 0 errors (1 warning `_done` steps.ts:141), unit 1214/1214, build OK, e2e 351 passed / 1 skipped / 0 failed. TCs: 86 PASS, 1 FAIL (TC-066 → QA-001), 3 not run (TC-001/002/090).
+- **Artifacts:** `/Volumes/E Drive/Dev/.scratch/task50/` (CR-triage.md, qa-findings.md, perf-report.md); DES: `/Volumes/E Drive/Dev/.scratch/task49/DES-findings.md`.
 
-### Stage 8 · Code Review + Test Execution — NEXT (`bw-code-review-test-eval`)
-- `/code-review` over `git diff main..HEAD` → CR-### findings; fix or park with reason.
-- Execute `test-cases.md` from real output; run `pnpm test:all` (e2e recipe: kill :3100, `TMPDIR="/Volumes/E Drive/Dev/.scratch/tmp" E2E_PORT=3100`).
-- Investigate DES-013. Add `.superpowers` to `.gitignore`.
-- Then Stage 9 (security review + QA-report.md, user gate) → Stage 10 deploy to verilane.tusharpathak.com (Vercel project `verilane` not created yet; no `.vercel` link).
+### Stage 9 · Security Review — NEXT (`bw-security-review`)
+- `/security-review` + threat model over `git diff main..HEAD` → SEC-### findings (cover CR-009/010/011/017).
+- Assemble `QA-report.md` (perf scorecard, TC tally, QA-001..004, CR, DES, SEC). **STOP for user approval.**
+- Then Stage 10 deploy to verilane.tusharpathak.com (Vercel project `verilane` not created yet; no `.vercel` link).
 
 ---
 
