@@ -143,7 +143,7 @@ describe("report", () => {
       { item: "raster sky.webp", bytes: 62464, limit: 61440, over: true },
     ]);
     expect(r.code).toBe(1);
-    expect(r.lines.join("\n")).toMatch(/OVER .*raster sky\.webp.*62464 B/);
-    expect(r.lines.at(-1)).toMatch(/1 item\(s\) over budget/);
+    expect(r.lines.join("\n")).toMatch(/OVER +62464 B .*raster sky\.webp/);
+    expect(r.lines.at(-1)).toMatch(/1 item\(s\) over budget: raster sky\.webp \(62464 B\)/);
   });
 });
