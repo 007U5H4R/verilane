@@ -162,6 +162,43 @@
   color-scheme: dark;
 }
 
+/* TASK-46 heritage — start (Design.md R3). Decorative art behind the AppShell
+   column (IndianHeritageBackground). Theme is picked here off data-theme, set
+   before first paint, so the first request already matches the theme. */
+[data-heritage] {
+  height: clamp(320px, 42vw, 620px);
+  background: no-repeat center top / cover;
+  background-image: image-set(
+    url("/heritage/heritage-light-desk.v1.avif") type("image/avif"),
+    url("/heritage/heritage-light-desk.v1.webp") type("image/webp")
+  );
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  transition: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-heritage] {
+    background-image: image-set(
+      url("/heritage/heritage-dark-desk.v1.avif") type("image/avif"),
+      url("/heritage/heritage-dark-desk.v1.webp") type("image/webp")
+    );
+  }
+}
+:root[data-theme="dark"] [data-heritage] {
+  background-image: image-set(
+    url("/heritage/heritage-dark-desk.v1.avif") type("image/avif"),
+    url("/heritage/heritage-dark-desk.v1.webp") type("image/webp")
+  );
+}
+[data-heritage-preload] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+/* TASK-46 heritage — end */
+
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
