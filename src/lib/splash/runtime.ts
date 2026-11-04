@@ -18,10 +18,16 @@ export type Attr = "on" | "hold" | "exit" | "done";
 
 export interface SplashCopy {
   opening: string;
+  /** Only after a real seeding phase (Design §7). */
+  seeding: string;
   ready: string;
   error: string;
   skip: string;
   cont: string;
+  /** The long-stall sub-line (Design §4). */
+  stall: string;
+  /** Spoken lead-in on the status line; dropped from the bar's aria-valuetext. */
+  prefix: string;
 }
 
 export interface SplashConfig {
@@ -34,6 +40,14 @@ export interface SplashConfig {
   guardMs: number;
   /** Hard ceiling = D + ceilingExtra; the overlay exits regardless. */
   ceilingExtra: number;
+  /** The bar is revealed this long after paint (Design §1: amends PRD R13's 4.0 s). */
+  revealAt: number;
+  /** Stalled: this long since the last phase, after reveal, not ready (Design §4). */
+  stallMs: number;
+  /** The sub-line shows after a stall this long … */
+  stallLineMs: number;
+  /** … or this long past D, whichever comes first. */
+  stallLinePastD: number;
   e2e: boolean;
   /** URL param that forces the splash on in e2e builds; "" outside e2e. */
   forceParam: string;
@@ -54,6 +68,11 @@ export interface Model {
   exitAt: number | null;
   tExit: number | null;
   skipped: boolean;
+  /** Time of the last accepted phase (paint counts as the first). */
+  lastT: number;
+  revealed: boolean;
+  stalled: boolean;
+  longStall: boolean;
 }
 
 export type Effect =
@@ -63,6 +82,10 @@ export type Effect =
   | { k: "timer"; v: number }
   | { k: "status"; v: string }
   | { k: "bar"; v: number }
+  | { k: "cont" }
+  | { k: "reveal" }
+  | { k: "stall"; v: boolean }
+  | { k: "sub"; v: string }
   | { k: "uninert" };
 
 export type SplashEvent =
@@ -131,16 +154,47 @@ export function splashRuntime(): Runtime {
   }
 
   function begin(t0: number, cfg: SplashConfig): { m: Model; fx: Effect[] } {
-    const m: Model = { t0: t0, attr: "on", phases: [], tReady: null, exitAt: null, tExit: null, skipped: false };
+    const m: Model = {
+      t0: t0,
+      attr: "on",
+      phases: [],
+      tReady: null,
+      exitAt: null,
+      tExit: null,
+      skipped: false,
+      lastT: t0,
+      revealed: false,
+      stalled: false,
+      longStall: false,
+    };
     return {
       m: m,
       fx: [
         { k: "attr", v: "on" },
         { k: "mark", v: "splash:painted" },
+        { k: "timer", v: t0 + cfg.revealAt },
         { k: "timer", v: t0 + cfg.D },
+        { k: "timer", v: t0 + cfg.D + cfg.stallLinePastD },
         { k: "timer", v: t0 + cfg.D + cfg.ceilingExtra },
       ],
     };
+  }
+
+  // Design §4: reveal, the stall glint and the stall line are pure functions
+  // of time since paint and since the last phase. They are visual only and
+  // never touch the bar's value (R13). Each flag is emitted only on change.
+  function visuals(m: Model, t: number, cfg: SplashConfig, fx: Effect[]): Model {
+    const ready = m.tReady !== null;
+    const revealed = m.revealed || t >= m.t0 + cfg.revealAt;
+    const stalled = revealed && !ready && t - m.lastT >= cfg.stallMs;
+    // sticky until ready: a line that comes and goes reads as flicker
+    const longStall =
+      !ready && (m.longStall || t - m.lastT >= cfg.stallLineMs || t >= m.t0 + cfg.D + cfg.stallLinePastD);
+    if (revealed && !m.revealed) fx.push({ k: "reveal" });
+    if (stalled !== m.stalled) fx.push({ k: "stall", v: stalled });
+    if (longStall !== m.longStall) fx.push({ k: "sub", v: longStall ? cfg.copy.stall : "" });
+    if (revealed === m.revealed && stalled === m.stalled && longStall === m.longStall) return m;
+    return with_(m, { revealed: revealed, stalled: stalled, longStall: longStall });
   }
 
   function exit(m: Model, t: number, cfg: SplashConfig, fx: Effect[]): Model {
@@ -158,14 +212,21 @@ export function splashRuntime(): Runtime {
     if (ev.type === "phase") {
       if (!live(m) || m.phases.indexOf(ev.phase) >= 0 || !(ev.phase in PROGRESS)) return { m: m, fx: fx };
       const phases = m.phases.concat([ev.phase]);
-      let n = with_(m, { phases: phases });
+      let n = with_(m, { phases: phases, lastT: ev.t });
       fx.push({ k: "bar", v: progress(phases) });
       if ((ev.phase === "ready" || ev.phase === "error") && m.tReady === null) {
         const exitAt = Math.max(m.t0 + cfg.D, ev.t + cfg.beatMs);
         n = with_(n, { tReady: ev.t, exitAt: exitAt });
-        fx.push({ k: "status", v: ev.phase === "error" ? cfg.copy.error : cfg.copy.ready }, { k: "timer", v: exitAt });
+        fx.push(
+          { k: "status", v: ev.phase === "error" ? cfg.copy.error : cfg.copy.ready },
+          { k: "cont" },
+          { k: "timer", v: exitAt },
+        );
+      } else if (m.tReady === null) {
+        if (ev.phase === "seeding") fx.push({ k: "status", v: cfg.copy.seeding });
+        fx.push({ k: "timer", v: ev.t + cfg.stallMs }, { k: "timer", v: ev.t + cfg.stallLineMs });
       }
-      return { m: n, fx: fx };
+      return { m: visuals(n, ev.t, cfg, fx), fx: fx };
     }
     if (ev.type === "tick") {
       const t = ev.t;
@@ -177,6 +238,7 @@ export function splashRuntime(): Runtime {
         return { m: m, fx: fx };
       }
       if (!live(m)) return { m: m, fx: fx };
+      m = visuals(m, t, cfg, fx);
       if (t >= m.t0 + cfg.D + cfg.ceilingExtra) {
         fx.push({ k: "mark", v: "splash:ceiling" });
         const n = exit(m, t, cfg, fx);
@@ -225,6 +287,11 @@ export function splashRuntime(): Runtime {
       return d.getElementById("verilane-splash");
     }
 
+    function q(sel: string): HTMLElement | null {
+      const o = overlay();
+      return o ? (o.querySelector(sel) as HTMLElement | null) : null;
+    }
+
     function setInert(on: boolean) {
       if (!app) app = d.getElementById("verilane-app");
       if (!app) return;
@@ -254,14 +321,33 @@ export function splashRuntime(): Runtime {
             const a = d.activeElement as HTMLElement | null;
             if (o && a && o.contains(a) && a.blur) a.blur();
           } else if (f.k === "status") {
-            const o2 = overlay();
-            const s = o2 && o2.querySelector("[data-splash-status]");
+            // one live region: only the message node changes, so the
+            // sub-line beside it is not re-announced (Design §7)
+            const s = q("[data-splash-msg]") || q("[data-splash-status]");
             if (s) s.textContent = f.v;
-            const b = o2 && o2.querySelector("[data-splash-skip]");
+            const pb = q("[role=progressbar]");
+            const pre = cfg.copy.prefix;
+            if (pb) pb.setAttribute("aria-valuetext", f.v.indexOf(pre) === 0 ? f.v.slice(pre.length) : f.v);
+          } else if (f.k === "cont") {
+            const b = q("[data-splash-skip]");
             if (b) b.textContent = cfg.copy.cont;
           } else if (f.k === "bar") {
             const o3 = overlay();
             if (o3) o3.style.setProperty("--splash-p", String(f.v / 100));
+            const pb2 = q("[role=progressbar]");
+            if (pb2) pb2.setAttribute("aria-valuenow", String(f.v));
+          } else if (f.k === "reveal") {
+            const r = q("[data-splash-bar]");
+            if (r) r.setAttribute("data-splash-bar", "shown");
+          } else if (f.k === "stall") {
+            const g = q("[data-splash-bar]");
+            if (g) {
+              if (f.v) g.setAttribute("data-stalled", "");
+              else g.removeAttribute("data-stalled");
+            }
+          } else if (f.k === "sub") {
+            const sub = q("[data-splash-sub]");
+            if (sub) sub.textContent = f.v;
           }
         } catch {
           /* one failed effect must not strand the overlay */
@@ -476,10 +562,13 @@ export const { decide, progress, begin, step, boot } = splashRuntime();
 
 export const SPLASH_COPY: SplashCopy = {
   opening: "Verilane. Opening workspace…",
+  seeding: "Verilane. Preparing demo data…",
   ready: "Verilane. Workspace ready",
   error: "Verilane. Workspace opened",
   skip: "Skip intro",
   cont: "Continue",
+  stall: "Still working — first visits can take a few seconds.",
+  prefix: "Verilane. ",
 };
 
 export function splashConfig(e2e: boolean): SplashConfig {
@@ -489,6 +578,10 @@ export function splashConfig(e2e: boolean): SplashConfig {
     beatMs: 250,
     guardMs: 250,
     ceilingExtra: 4000,
+    revealAt: 3200,
+    stallMs: 1500,
+    stallLineMs: 4000,
+    stallLinePastD: 1500,
     e2e: e2e,
     forceParam: e2e ? "__splash" : "",
     forceKey: "verilane-splash-force",

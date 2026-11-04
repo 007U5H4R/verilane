@@ -15,6 +15,8 @@ html[data-splash="exit"] #verilane-splash {
   --sp-soft: #ddf2e7;
   --sp-text: #f3f8f5;
   --sp-muted: #b9d4c5;
+  --sp-bright: #21845f;
+  --sp-mint: #8ed7b0;
   display: block;
   position: fixed;
   inset: 0;
@@ -47,6 +49,98 @@ html[data-splash="hold"] {
 #verilane-splash .splash-status {
   font-size: 13px;
   margin: 0;
+}
+
+/* TASK-45.4 (Design §4, §7): the real-phase bar. Its value is --splash-p,
+   set by the runtime from real phases only; the glint is visual only. */
+#verilane-splash .splash-progress {
+  width: clamp(200px, 24vw, 340px);
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+#verilane-splash .splash-bar {
+  transition:
+    opacity 300ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* hidden until 3.2 s: out of the a11y tree as well as invisible */
+#verilane-splash .splash-bar[data-splash-bar="hidden"] {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+#verilane-splash .splash-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(221 242 231 / 0.16);
+  /* 1.4.11: the outline keeps the bar at ≥ 3:1 over the hills (Design §10 note) */
+  box-shadow: 0 0 0 1px rgb(221 242 231 / 0.55);
+  overflow: hidden;
+}
+
+#verilane-splash .splash-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sp-bright), var(--sp-mint));
+  transform-origin: 0 50%;
+  transform: scaleX(var(--splash-p, 0.1));
+  transition: transform 350ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+#verilane-splash .splash-glint {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 calc(100% - var(--splash-p, 0.1) * 100%) 0 0 round 999px);
+  opacity: 0;
+  transition: opacity 400ms;
+}
+
+#verilane-splash .splash-glint::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  transform: translateX(-100%);
+}
+
+#verilane-splash .splash-bar[data-stalled] .splash-glint {
+  opacity: 1;
+}
+
+#verilane-splash .splash-bar[data-stalled] .splash-glint::after {
+  animation: splash-glint 2.4s ease-in-out infinite;
+}
+
+@keyframes splash-glint {
+  0% {
+    transform: translateX(-100%);
+  }
+  70%,
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+#verilane-splash .splash-sub:empty {
+  display: none;
+}
+
+#verilane-splash .splash-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.9;
 }
 
 #verilane-splash .splash-skip-wrap {

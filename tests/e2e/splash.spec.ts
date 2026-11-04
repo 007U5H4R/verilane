@@ -135,8 +135,9 @@ test("TC-129: overlay node identity is stable across the ShellGate swaps", async
   expect(same.skip).toBe(true);
   expect(same.attrs).toEqual(before.attrs);
   expect(same.style).toMatch(/^(--splash-p: [\d.]+;)?$/);
-  // React never rewrites the overlay; only the runtime's own ready copy may replace the opening copy.
-  expect(["Verilane. Opening workspace…", "Verilane. Workspace ready"]).toContain(same.status);
+  // React never rewrites the overlay; only the runtime's own phase copy may
+  // replace the opening copy (45.4 adds the seeding line on a fresh profile).
+  expect(["Verilane. Opening workspace…", "Verilane. Preparing demo data…", "Verilane. Workspace ready"]).toContain(same.status);
   expect(before.status).toBe("Verilane. Opening workspace…");
 });
 

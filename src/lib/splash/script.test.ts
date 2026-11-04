@@ -15,7 +15,7 @@ interface Stub {
   marks: string[];
   window: Record<string, unknown> & { verilaneSplash?: { state(): string; skip(): void; show(): void; reset(): void } };
   /** Pending setTimeout callbacks, with the delay each was scheduled for. */
-  timers: { fn: () => void; delay: number; id: number }[];
+  timers: { fn: () => void; delay: number; id: number; due: number }[];
   /** Calls the window's listeners for `type` the way a browser would (deduped by fn + capture). */
   dispatch(type: string, init?: Record<string, unknown>): FakeEvent;
   /** Runs pending timers (and any they schedule) until none are left. */
@@ -27,6 +27,13 @@ interface Stub {
   overlay: FakeEl;
   app: FakeEl;
   skipButton: FakeEl;
+  /** TASK-45.4: the bar wrapper, the progressbar, the status message and the stall sub-line. */
+  bar: FakeEl;
+  track: FakeEl;
+  msg: FakeEl;
+  sub: FakeEl;
+  /** Sets the clock to `t` and runs the timers due by then, in order (needs `clock`). */
+  advance(t: number): void;
   /** Calls the document's listeners for `type` (DOMContentLoaded). */
   docDispatch(type: string): void;
 }
@@ -123,7 +130,18 @@ function stubWindow(
   const tab = opts.tab ?? store({});
   const skipButton = fakeEl();
   const status = fakeEl();
-  const overlay = fakeEl({ "[data-splash-skip]": skipButton, "[data-splash-status]": status });
+  const bar = fakeEl();
+  const track = fakeEl();
+  const msg = fakeEl();
+  const sub = fakeEl();
+  const overlay = fakeEl({
+    "[data-splash-skip]": skipButton,
+    "[data-splash-status]": status,
+    "[data-splash-bar]": bar,
+    "[role=progressbar]": track,
+    "[data-splash-msg]": msg,
+    "[data-splash-sub]": sub,
+  });
   const app = fakeEl();
   const docListeners: { type: string; fn: () => void }[] = [];
   const location = { search: opts.search ?? "", pathname: opts.pathname ?? "/" };
@@ -152,7 +170,7 @@ function stubWindow(
     console: { warn: () => {} },
     setTimeout: (fn: () => void, delay: number) => {
       nextId += 1;
-      timers.push({ fn, delay, id: nextId });
+      timers.push({ fn, delay, id: nextId, due: (opts.clock ? opts.clock.t : 0) + delay });
       return nextId;
     },
     clearTimeout: (id: number) => {
@@ -204,8 +222,18 @@ function stubWindow(
   const flush = () => {
     for (let i = 0; i < 50 && timers.length; i++) timers.splice(0).forEach((x) => x.fn());
   };
+  const advance = (to: number) => {
+    for (let i = 0; i < 200; i++) {
+      const due = timers.filter((x) => x.due <= to).sort((a, b) => a.due - b.due)[0];
+      if (!due) break;
+      timers.splice(timers.indexOf(due), 1);
+      if (opts.clock) opts.clock.t = due.due;
+      due.fn();
+    }
+    if (opts.clock) opts.clock.t = to;
+  };
   const docDispatch = (type: string) => docListeners.filter((l) => l.type === type).forEach((l) => l.fn());
-  return { attrs, marks, window, timers, dispatch, flush, local, tab, location, overlay, app, skipButton, docDispatch };
+  return { attrs, marks, window, timers, dispatch, flush, local, tab, location, overlay, app, skipButton, bar, track, msg, sub, advance, docDispatch };
 }
 
 function exec(src: string, stub: Stub) {
@@ -612,6 +640,59 @@ describe("buildSplashScript", () => {
       expect(stub.marks).toContain("splash:done");
       // nothing left listening: a key no longer reaches the runtime
       expect(stub.dispatch("keydown", { key: "a" }).stopped).toBe(false);
+    });
+  });
+
+  // TASK-45.4 · 45.4.3: the bar, status and stall effects reach the right nodes.
+  describe("progress bar and status DOM (45.4)", () => {
+    const phase = (stub: Stub, p: string) => stub.dispatch("verilane:splash", { detail: { phase: p } });
+
+    it("each phase sets the fill and aria-valuenow together", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", dom: true, clock });
+      exec(prod, stub);
+      for (const [p, v] of [["session", 35], ["provider", 65], ["seeding", 80], ["ready", 100]] as const) {
+        clock.t += 100;
+        phase(stub, p);
+        expect(stub.track.attrs["aria-valuenow"]).toBe(String(v));
+        expect(stub.overlay.props["--splash-p"]).toBe(String(v / 100));
+      }
+    });
+
+    it("seeding updates the message and valuetext but not the skip button; ready turns it into Continue", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", dom: true, clock });
+      exec(prod, stub);
+      phase(stub, "seeding");
+      expect(stub.msg.textContent).toBe("Verilane. Preparing demo data…");
+      expect(stub.track.attrs["aria-valuetext"]).toBe("Preparing demo data…");
+      expect(stub.skipButton.textContent).toBe("");
+      phase(stub, "ready");
+      expect(stub.msg.textContent).toBe("Verilane. Workspace ready");
+      expect(stub.track.attrs["aria-valuetext"]).toBe("Workspace ready");
+      expect(stub.skipButton.textContent).toBe("Continue");
+    });
+
+    it("reveals at 3.2 s, stalls 1.5 s after the last phase, shows the sub-line after a 4 s stall, and ready clears both", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", dom: true, clock });
+      exec(prod, stub);
+      clock.t = 2500;
+      phase(stub, "session");
+      stub.advance(3199);
+      expect(stub.bar.attrs["data-splash-bar"]).toBeUndefined();
+      stub.advance(3200);
+      expect(stub.bar.attrs["data-splash-bar"]).toBe("shown");
+      expect(stub.bar.hasAttribute("data-stalled")).toBe(false);
+      stub.advance(4000);
+      expect(stub.bar.hasAttribute("data-stalled")).toBe(true);
+      expect(stub.sub.textContent).toBe("");
+      stub.advance(6500);
+      expect(stub.sub.textContent).toBe("Still working — first visits can take a few seconds.");
+      expect(stub.track.attrs["aria-valuenow"]).toBe("35");
+      phase(stub, "ready");
+      expect(stub.bar.hasAttribute("data-stalled")).toBe(false);
+      expect(stub.sub.textContent).toBe("");
     });
   });
 

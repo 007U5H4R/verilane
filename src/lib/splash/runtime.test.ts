@@ -186,6 +186,180 @@ describe("progress (minimal)", () => {
   });
 });
 
+// TASK-45.4 · TC-142: only real phases move the bar.
+describe("progress() is phase-driven, monotonic and capped before ready (TC-142)", () => {
+  const PH = ["session", "provider", "seeding"];
+  /** Every ordering of every subset of the pre-ready phases, with duplicates. */
+  const seqs: string[][] = [[]];
+  for (const a of PH) {
+    seqs.push([a], [a, a]);
+    for (const b of PH) if (b !== a) {
+      seqs.push([a, b], [a, b, a]);
+      for (const c of PH) if (c !== a && c !== b) seqs.push([a, b, c], [a, b, c, b]);
+    }
+  }
+
+  it("hits 10/35/65/80/100 in order, with and without seeding", () => {
+    expect([[], ["session"], ["session", "provider"], ["session", "provider", "seeding"]].map(progress)).toEqual([10, 35, 65, 80]);
+    expect(progress(["session", "provider", "seeding", "ready"])).toBe(100);
+    expect(progress(["session", "provider", "ready"])).toBe(100);
+    expect(progress(["session", "provider", "error"])).toBe(100);
+  });
+
+  it.each(seqs.map((s) => [s.join(",") || "(none)", s] as const))("%s: never decreases and stays ≤ 90 before ready", (_n, s) => {
+    let last = progress([]);
+    for (let i = 1; i <= s.length; i++) {
+      const v = progress(s.slice(0, i));
+      expect(v).toBeGreaterThanOrEqual(last);
+      expect(v).toBeLessThanOrEqual(90);
+      last = v;
+    }
+  });
+
+  it("ignores unknown phases", () => {
+    expect(progress(["bogus"])).toBe(10);
+    expect(progress(["session", "bogus"])).toBe(35);
+  });
+
+  it("step() emits a bar value only for real phases: time, input guards and duplicates never move it", () => {
+    const evs: Ev[] = [tick(1000), phase("session", 1200), tick(3200), phase("session", 3300), tick(4800), tick(5700), phase("provider", 6000), tick(7200), phase("bogus", 7300), tick(8000)];
+    const { fx } = run(evs);
+    expect(fx.filter((f) => f.k === "bar").map((f) => f.v)).toEqual([35, 65]);
+    for (const t of [100, 3200, 4800, 5700, 7200, 9000]) {
+      const r = step(begin(0, cfg).m, tick(t), cfg);
+      expect(r.fx.filter((f) => f.k === "bar")).toEqual([]);
+    }
+  });
+});
+
+// TASK-45.4 · 45.4.2: reveal, stall and the stall line (Design §1, §4, §18).
+describe("step · reveal, stall, stall line, hold", () => {
+  const has = (fx: Effect[], f: Effect) => fx.some((x) => JSON.stringify(x) === JSON.stringify(f));
+  const stalls = (fx: Effect[]) => fx.filter((f) => f.k === "stall").map((f) => f.v);
+  const subs = (fx: Effect[]) => fx.filter((f) => f.k === "sub").map((f) => f.v);
+
+  it("uses the frozen reveal and stall timings", () => {
+    expect(cfg).toMatchObject({ revealAt: 3200, stallMs: 1500, stallLineMs: 4000, stallLinePastD: 1500 });
+    expect(cfg.copy).toMatchObject({
+      seeding: "Verilane. Preparing demo data…",
+      stall: "Still working — first visits can take a few seconds.",
+      prefix: "Verilane. ",
+    });
+  });
+
+  it("begin schedules the reveal and the D + 1.5 s stall-line check", () => {
+    expect(timers(begin(0, cfg).fx)).toEqual(expect.arrayContaining([3200, 7200]));
+  });
+
+  it("reveals the bar once at t0 + 3.2 s", () => {
+    expect(run([tick(3199)]).fx.filter((f) => f.k === "reveal")).toHaveLength(0);
+    const { m, fx } = run([tick(3200), tick(3300), tick(5700)]);
+    expect(fx.filter((f) => f.k === "reveal")).toHaveLength(1);
+    expect(m.revealed).toBe(true);
+  });
+
+  it("reveals relative to t0, not 0", () => {
+    const s = begin(1000, cfg);
+    expect(step(s.m, tick(3200), cfg).fx.some((f) => f.k === "reveal")).toBe(false);
+    expect(step(s.m, tick(4200), cfg).fx.some((f) => f.k === "reveal")).toBe(true);
+  });
+
+  it("a phase schedules its own stall checks", () => {
+    const r = step(begin(0, cfg).m, phase("session", 2000), cfg);
+    expect(timers(r.fx)).toEqual(expect.arrayContaining([3500, 6000]));
+  });
+
+  it("is not stalled before reveal, however long since the last phase", () => {
+    expect(stalls(run([phase("session", 100), tick(3000)]).fx)).toEqual([]);
+  });
+
+  it("stalls at reveal when the last phase is already 1.5 s old", () => {
+    const { m, fx } = run([phase("session", 1000), tick(3200)]);
+    expect(stalls(fx)).toEqual([true]);
+    expect(m.stalled).toBe(true);
+  });
+
+  it("stalls 1.5 s after the last phase once revealed, and a new phase clears it", () => {
+    const a = run([phase("session", 2500), tick(3200), tick(3999)]);
+    expect(stalls(a.fx)).toEqual([]);
+    const b = run([phase("session", 2500), tick(3200), tick(4000)]);
+    expect(stalls(b.fx)).toEqual([true]);
+    const c = run([phase("session", 2500), tick(3200), tick(4000), phase("provider", 4100)]);
+    expect(stalls(c.fx)).toEqual([true, false]);
+    expect(c.m.stalled).toBe(false);
+  });
+
+  it("never stalls once ready, and ready clears a stall", () => {
+    const a = run([phase("ready", 1000), tick(3200), tick(5000)]);
+    expect(stalls(a.fx)).toEqual([]);
+    const b = run([phase("session", 500), tick(3200), phase("ready", 3500)]);
+    expect(stalls(b.fx)).toEqual([true, false]);
+  });
+
+  it("emits the stall flag only when it changes", () => {
+    const { fx } = run([phase("session", 500), tick(3200), tick(4000), tick(4500), tick(5700)]);
+    expect(stalls(fx)).toEqual([true]);
+  });
+
+  it("shows the stall line after a 4 s stall", () => {
+    expect(subs(run([phase("session", 500), tick(4499)]).fx)).toEqual([]);
+    const { m, fx } = run([phase("session", 500), tick(4500)]);
+    expect(subs(fx)).toEqual([cfg.copy.stall]);
+    expect(m.longStall).toBe(true);
+  });
+
+  it("shows the stall line at D + 1.5 s even when phases keep arriving", () => {
+    const evs = [phase("session", 3000), phase("provider", 6000), tick(7199)];
+    expect(subs(run(evs).fx)).toEqual([]);
+    expect(subs(run([...evs, tick(7200)]).fx)).toEqual([cfg.copy.stall]);
+  });
+
+  it("keeps the stall line once shown, until ready clears it", () => {
+    const { fx } = run([phase("session", 500), tick(4500), phase("provider", 4600), tick(5000), phase("ready", 6000)]);
+    expect(subs(fx)).toEqual([cfg.copy.stall, ""]);
+  });
+
+  it("never shows the stall line after ready", () => {
+    expect(subs(run([phase("ready", 1000), tick(5000), tick(7200)]).fx)).toEqual([]);
+  });
+
+  it("shows the seeding copy only after a real seeding phase, and never after ready", () => {
+    const st = (fx: Effect[]) => fx.filter((f) => f.k === "status").map((f) => f.v);
+    expect(st(run([phase("session", 100), phase("provider", 200), phase("ready", 300)]).fx)).toEqual([cfg.copy.ready]);
+    expect(st(run([phase("session", 100), phase("seeding", 200), phase("ready", 3000)]).fx)).toEqual([cfg.copy.seeding, cfg.copy.ready]);
+    expect(st(run([phase("ready", 100), phase("seeding", 200)]).fx)).toEqual([cfg.copy.ready]);
+  });
+
+  it("turns the skip button into Continue only at ready or error", () => {
+    const conts = (fx: Effect[]) => fx.filter((f) => f.k === "cont").length;
+    expect(conts(run([phase("seeding", 200)]).fx)).toBe(0);
+    expect(conts(run([phase("ready", 200)]).fx)).toBe(1);
+    expect(conts(run([phase("error", 200)]).fx)).toBe(1);
+  });
+
+  it("holds after D without restarting: on → hold once, then exit, never back to on", () => {
+    const { m, fx } = run([phase("session", 1000), tick(5700), tick(6000), tick(7200), phase("provider", 7400), phase("ready", 8000), tick(8250), tick(8550)]);
+    expect(attrs(fx)).toEqual(["on", "hold", "exit", "done"]);
+    expect(m.attr).toBe("done");
+    expect(fx.filter((f) => f.k === "reveal")).toHaveLength(1);
+    expect(has(fx, { k: "bar", v: 100 })).toBe(true);
+  });
+
+  it("neither the ceiling nor a skip moves the bar or completes it", () => {
+    const ceiling = run([phase("session", 100), phase("provider", 200), tick(9700)]);
+    expect(ceiling.fx.filter((f) => f.k === "bar").map((f) => f.v)).toEqual([35, 65]);
+    const skip = run([phase("session", 100), phase("provider", 200), key(1000)]);
+    expect(skip.fx.filter((f) => f.k === "bar").map((f) => f.v)).toEqual([35, 65]);
+  });
+
+  it("stops stall bookkeeping once the overlay leaves", () => {
+    const { fx } = run([phase("session", 100), key(1000), tick(3200), tick(4500), tick(7200)]);
+    expect(stalls(fx)).toEqual([]);
+    expect(subs(fx)).toEqual([]);
+    expect(fx.filter((f) => f.k === "reveal")).toHaveLength(0);
+  });
+});
+
 // TASK-45.3 · TC-136: every combination of the trigger inputs (PRD §2.3).
 describe("decide truth table (TC-136)", () => {
   const PATHS = ["/", "/welcome", "/sign-in", "/sign-up", "/onboarding", "/queue"];
