@@ -120,7 +120,7 @@
   - `inert` is removed.
 
 ### TC-135 · Off by default in e2e builds; `?__splash=1` forces it and survives client navigation
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · TP-45.f · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Steps 1–2 Pass (2026-11-04, 694f703); step 3 deferred to TASK-45.3 · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · TP-45.f · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Steps 1–2 Pass (2026-11-04, 694f703); step 3 Pass via TC-137 (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** The existing 185 specs never see the splash; the force param works.
 - **Preconditions:** `pnpm build:e2e`; guest session.
 - **Steps:**
@@ -135,7 +135,7 @@
 ## M-45.2 · Behaviour on a placeholder scene
 
 ### TC-136 · `decide()` truth table
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.1 · S21, §6 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.1 · S21, §6 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** The splash shows only for a guest, on a non-auth route, once per tab, when storage works.
 - **Preconditions:** vitest `unit`.
 - **Steps:** Table-test every combination.
@@ -145,7 +145,7 @@
   - Any storage throw → false.
 
 ### TC-137 · Client entry from onboarding shows the splash before any skeleton frame; a double click shows one
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.3 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.3 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170, EXE49) · **Finding:** —
 - **Objective:** No skeleton flash between Finish and the splash.
 - **Preconditions:** splash-on started at `/onboarding` with no session; a rAF probe records the first frame in which `[data-skeleton]` and `data-splash` exist.
 - **Steps:** Complete onboarding; double-click Finish.
@@ -153,7 +153,7 @@
 - **Expected:** `data-splash=on` is set in or before the first frame where the skeleton exists. `show()` runs once (one `splash:painted` mark).
 
 ### TC-138 · Refresh does not replay, a new tab does, in-app navigation never does
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** Once per tab.
 - **Preconditions:** splash-on; skip once.
 - **Steps:** Reload; navigate to `/queue` via a link; open a new page in the same context.
@@ -161,7 +161,7 @@
 - **Expected:** Reload: no splash. Link: no splash. New page: splash.
 
 ### TC-139 · Never on auth routes, without a session, or with blocked storage
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** The real browser matches TC-136.
 - **Preconditions:** `?__splash=1` in each case.
 - **Steps:** Load each of the 4 auth routes as guest; load `/` with no session (`?__session=none`); load `/` with an init script that makes `localStorage.getItem` throw.
@@ -169,7 +169,7 @@
 - **Expected:** No `data-splash` in any case; no `pageerror`.
 
 ### TC-140 · bfcache restore does not show the splash
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** Back/forward restores never re-cover the app.
 - **Preconditions:** splash-on; skip.
 - **Steps:** Navigate to an external `about:blank`, then `goBack()`.
@@ -177,7 +177,7 @@
 - **Expected:** `data-splash` is `done` or absent; `#verilane-app` is not `inert`.
 
 ### TC-141 · Readiness hooks are observe-only (R7 pinning)
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.5 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.5 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** Adding the hooks changes no app behaviour.
 - **Preconditions:** splash off (no param).
 - **Steps:** Run the existing onboarding, tracer and DataProvider error specs. In addition, assert that `?tour=1`, the null-session redirect to `/welcome`, and the error render match the pre-change behaviour, and that `verilane:splash` events fire in the order session → provider → (seeding) → ready.

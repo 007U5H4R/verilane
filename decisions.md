@@ -681,3 +681,15 @@
 - **Rule.** The touch variant passes `clock: "handler"`. It reads input from the init script's first listener, which runs before the runtime's, and asserts the same ≤ 50 and ≤ 350 bounds. Key and mouse keep `e.timeStamp`. Every run annotates both clocks, so the delivery gap stays visible.
 - Real-device touch latency is not measured here; check it on a phone at Stage 8.
 - **Mixed clocks on the touch click (review N-4).** In the pointer pass, `click − input` under `clock: "handler"` subtracts the tap's first-listener `performance.now()` from the row click's `e.timeStamp`. Both are on the same performance timeline, but they are different kinds of reading. Because the handler runs after the tap's late delivery, the number leaves out the emulator's 40–220 ms delivery gap. It does not leave out any of the app's time. The annotation names the clock, so the comparison is visible. Mouse and keyboard compare `e.timeStamp` with `e.timeStamp`.
+
+## EXE48 · The overlay is `inert` while it exits (TASK-45.3, review-45.2 Q2 carry-in) — accepted
+- **Change.** The effect that removes `inert` from `#verilane-app` (on `exit`) also sets `inert` on `#verilane-splash`. The skip button can no longer take focus, or be activated, during the 300 ms fade. Before this, Tab from the page start landed on a button that was fading out (noted in EXE46).
+- **Scope.** The runtime only. GatedApp and DataProvider output are unchanged (R7). `start()` removes the overlay's `inert` again, so a client-entry splash in the same document is interactive.
+- **Owner.** a11y TC-45.43 still owns the full focus check. Pinned in `script.test.ts` ("overlay inert (EXE48)").
+
+## EXE49 · TC-137 probes `[data-state="loading"]` because `[data-skeleton]` does not exist (TASK-45.3) — accepted
+- **Found.** TC-137's precondition names `[data-skeleton]`, but no element in the app has that attribute. Every loading skeleton the client entry can paint carries `data-state="loading"` already: ShellLoading (the DataProviderLoader fallback), ShellSkeleton, HomeSkeleton and RowSkeleton.
+- **Rule.** The probe uses `[data-state="loading"]`. Adding a `data-skeleton` marker would change GatedApp/DataProvider output, which R7 forbids for this task.
+- **Probe.** An init script counts animation frames after an armed flag is set (just before the double click on "Get started"). It records the first frame with a skeleton and the `data-splash` value in that frame. `seed/manifest.json` is held for 1 s, so the loading frames are long enough to see.
+- **Red proof.** With the `showSplash()` call removed from GatedApp's layout effect, TC-137 fails: the splash never turns on.
+- **Start step.** The spec opens `/onboarding?step=3` instead of clicking through steps 1–2. Steps 1–2 are client-side `?step=` pushes that never mount GatedApp, so they do not change what is measured.
