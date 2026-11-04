@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { HERITAGE_ENABLED, HERITAGE_LEVELS, heritageLevelFor, type HeritageLevel } from "./heritage";
+import { HERITAGE_ENABLED, HERITAGE_LEVELS, heritageLevelFor, isHeritageHome, type HeritageLevel } from "./heritage";
 
 // TASK-46.3 · Solution-PRD-TASK-46 §4: one table, exact levels per route.
 // Detail routes and /settings/eval are `reduced`: the 46.2.10 exposure at
@@ -51,17 +51,31 @@ describe("heritageLevelFor (TC-099)", () => {
 });
 
 describe("unmapped routes (TC-100)", () => {
-  it.each(["/something-new", "/a/b/c", ""])("%j → reduced", (path) => {
+  // R-9: near-miss names are not their neighbours (no prefix matching).
+  it.each(["/something-new", "/a/b/c", "", "/invoicesX", "/queue-archive", "/settingsx"])("%j → reduced", (path) => {
     expect(heritageLevelFor(path)).toBe("reduced");
   });
 });
 
 describe("switch-off (TC-103a, SC9)", () => {
+  // Tripwire (R-7): the SC9 switch-off is HERITAGE_ENABLED = false in heritage.ts
+  // AND flipping this expectation. If you are here because this failed, that is
+  // the point: confirm the switch-off is intended, then update both together.
   it("ships enabled", () => {
     expect(HERITAGE_ENABLED).toBe(true);
   });
 
   it.each([...TABLE.map(([p]) => p), "/something-new"])("%s → off when disabled", (path) => {
     expect(heritageLevelFor(path, false)).toBe("off");
+  });
+});
+
+describe("isHeritageHome (R-8)", () => {
+  it.each(["/", "/?q=1", "/#h"])("%s is Home", (path) => {
+    expect(isHeritageHome(path)).toBe(true);
+  });
+
+  it.each(["/queue", "/invoices/INV-1", ""])("%j is not Home", (path) => {
+    expect(isHeritageHome(path)).toBe(false);
   });
 });
