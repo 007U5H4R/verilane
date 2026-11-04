@@ -322,10 +322,16 @@ test("TC-147: a slow load holds after D and never restarts the cinematic", async
   within(exit!, el.want, el.L, "exit");
   const dl = await lag(page, "done");
   within(done! - exit!, 300, dl.L, "done − exit");
-  // EXE74: the intro keyframes are TASK-45.5; until then, no animation other
-  // than the looping stall glint may start twice (nothing replays at hold).
+  // EXE74 + R-2 (TASK-45.5): the intro played, and no animation other than
+  // the looping stall glint started twice (nothing replays at hold). The
+  // recorder attaches at DOMContentLoaded, so only the later-starting intro
+  // beats (the wordmark at 2 s, the tagline/status rise) are asserted.
   const anims = (await bar(page)).filter((s) => s.what === "anim" && s.v !== "splash-glint").map((s) => s.v!);
-  for (const name of new Set(anims)) expect(anims.filter((a) => a === name), name).toHaveLength(1);
+  expect(anims, "intro animations started").toEqual(expect.arrayContaining(["splash-word-in", "splash-up-in"]));
+  const once = anims.filter((a) => a !== "splash-up-in");
+  for (const name of new Set(once)) expect(once.filter((a) => a === name), name).toHaveLength(1);
+  // splash-up-in runs on two layers (tagline and status), once each
+  expect(anims.filter((a) => a === "splash-up-in").length, "splash-up-in").toBeLessThanOrEqual(2);
   // the bar was revealed once
   expect((await bar(page)).filter((s) => s.what === "bar" && s.v === "shown")).toHaveLength(1);
 });

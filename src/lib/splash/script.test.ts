@@ -497,6 +497,13 @@ describe("buildSplashScript", () => {
       expect(ev.defaultPrevented).toBe(false);
       expect(ev.stopped).toBe(false);
     });
+
+    it.each([{ key: "Tab" }, { key: "Tab", shiftKey: true }])("Tab moves focus and does not skip (%j)", (init) => {
+      const { stub, ev } = skipByKey(init);
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(ev.defaultPrevented).toBe(false);
+      expect(ev.stopped).toBe(false);
+    });
   });
 
   // TASK-45.3 · 45.3.2: once per tab, client entry, phase replay, bfcache.
