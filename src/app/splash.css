@@ -70,7 +70,9 @@ html[data-splash="hold"] {
     linear-gradient(180deg, var(--sp-deep) 0%, var(--sp-base) 42%, var(--sp-mid) 72%, #0a4532 100%);
   /* TASK-45.9: the G1 sky plate over the same gradient. The gradient shows
      until the art decodes (S21: nothing waits on it); a browser that cannot
-     parse image-set() keeps the declaration above. */
+     parse image-set() keeps the declaration above. The var() in this
+     declaration is what keeps Turbopack's url() rewrite working on
+     image-set(); see EXE101, guarded by splash-budget checkBuiltRefs. */
   background:
     image-set(url("../assets/splash/sky.avif") type("image/avif"), url("../assets/splash/sky.webp") type("image/webp"))
       62% 70% / cover no-repeat,
