@@ -197,6 +197,52 @@
   opacity: 0;
   pointer-events: none;
 }
+/* Idle preload (TASK-46.4, F4): once [data-idle] is set, the 1px span asks for
+   the OTHER theme's image, so the first toggle swaps from cache. Same
+   image-set, so the browser picks the same format as the band. Desk at
+   >=48rem, strip below (where only Home renders the box at all). */
+[data-heritage][data-idle] [data-heritage-preload] {
+  background-image: image-set(
+    url("/heritage/heritage-dark-desk.v1.avif") type("image/avif"),
+    url("/heritage/heritage-dark-desk.v1.webp") type("image/webp")
+  );
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-heritage][data-idle] [data-heritage-preload] {
+    background-image: image-set(
+      url("/heritage/heritage-light-desk.v1.avif") type("image/avif"),
+      url("/heritage/heritage-light-desk.v1.webp") type("image/webp")
+    );
+  }
+}
+:root[data-theme="dark"] [data-heritage][data-idle] [data-heritage-preload] {
+  background-image: image-set(
+    url("/heritage/heritage-light-desk.v1.avif") type("image/avif"),
+    url("/heritage/heritage-light-desk.v1.webp") type("image/webp")
+  );
+}
+@media (width < 48rem) {
+  [data-heritage][data-idle] [data-heritage-preload] {
+    background-image: image-set(
+      url("/heritage/heritage-dark-strip.v1.avif") type("image/avif"),
+      url("/heritage/heritage-dark-strip.v1.webp") type("image/webp")
+    );
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) [data-heritage][data-idle] [data-heritage-preload] {
+      background-image: image-set(
+        url("/heritage/heritage-light-strip.v1.avif") type("image/avif"),
+        url("/heritage/heritage-light-strip.v1.webp") type("image/webp")
+      );
+    }
+  }
+  :root[data-theme="dark"] [data-heritage][data-idle] [data-heritage-preload] {
+    background-image: image-set(
+      url("/heritage/heritage-light-strip.v1.avif") type("image/avif"),
+      url("/heritage/heritage-light-strip.v1.webp") type("image/webp")
+    );
+  }
+}
 /* Levels (PRD §4, src/lib/heritage.ts). `reduced` is the same asset, quieter:
    0.6 is the provisional strength from the Design §6.1 calibration (EXE59),
    re-tuned against the contrast gate in TASK-46.6. `off` never fetches. */

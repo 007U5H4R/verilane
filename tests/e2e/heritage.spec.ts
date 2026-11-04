@@ -1,4 +1,4 @@
-import { test, expect, type Browser, type Page } from "@playwright/test";
+import { test, expect, type Browser, type Page, type Request } from "@playwright/test";
 
 // TASK-46.2 · Tracer: placeholder heritage art behind the AppShell column,
 // served through `image-set()` in globals.css (production build).
@@ -40,6 +40,54 @@ async function heritageRefs(page: Page): Promise<{ raw: string; url: URL; sheet:
 async function openHome(page: Page): Promise<void> {
   await page.goto("/");
   await ready(page);
+}
+
+// TASK-46.4: the idle preload adds the other theme's image after [data-idle].
+// To tell first-paint requests from idle ones, an init script stamps when
+// data-idle first appears (epoch ms, the page's clock), and each request's
+// start comes from the browser's network timing on the same clock. Resource
+// Timing is not used: the shell remounts the layer twice after the splash,
+// and Chromium then drops entries for the art at random (measured, EXE61).
+type IdleWindow = Window & { __heritageIdleAt?: number };
+
+function trackHeritageIdle(): void {
+  const w = window as IdleWindow;
+  new MutationObserver(() => {
+    if (w.__heritageIdleAt === undefined && document.querySelector("[data-heritage][data-idle]")) {
+      w.__heritageIdleAt = performance.timeOrigin + performance.now();
+    }
+  }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-idle"] });
+}
+
+/** Collects every heritage request the page sends from now on. */
+function watchHeritage(page: Page): Request[] {
+  const seen: Request[] = [];
+  page.on("request", (r) => {
+    if (/heritage-/.test(r.url())) seen.push(r);
+  });
+  return seen;
+}
+
+/**
+ * Heritage requests (pathnames) split at the moment data-idle first appeared;
+ * idleAt null = never. A request whose start is unknown counts as first paint,
+ * so an unmeasurable request can only fail the "nothing extra on first paint"
+ * checks, never pass them.
+ */
+async function heritageTimeline(page: Page, seen: Request[]): Promise<{ idleAt: number | null; beforeIdle: string[]; afterIdle: string[] }> {
+  const idleAt = await page.evaluate(() => (window as IdleWindow).__heritageIdleAt ?? null);
+  const entries = await Promise.all(
+    seen.map(async (r) => {
+      await r.response().catch(() => null);
+      return { path: new URL(r.url()).pathname, start: r.timing().startTime };
+    }),
+  );
+  const after = (e: { start: number }) => idleAt !== null && e.start > 0 && e.start >= idleAt;
+  return {
+    idleAt,
+    beforeIdle: entries.filter((e) => !after(e)).map((e) => e.path),
+    afterIdle: entries.filter(after).map((e) => e.path),
+  };
 }
 
 test("TC-092: emitted CSS carries versioned heritage URLs with type() hints in both image-set entries", async ({ page }) => {
@@ -101,22 +149,21 @@ async function firstHeritageRequest(
   browser: Browser,
   baseURL: string,
   opts: { colorScheme: "light" | "dark"; stored?: "dark" },
-): Promise<string[]> {
+): Promise<{ seen: string[]; beforeIdle: string[] }> {
   const context = await browser.newContext({ baseURL, colorScheme: opts.colorScheme, serviceWorkers: "block" });
+  await context.addInitScript(trackHeritageIdle);
   if (opts.stored) {
     const stored = opts.stored;
     await context.addInitScript((t) => localStorage.setItem("verilane-theme", t), stored);
   }
   const page = await context.newPage();
-  const seen: string[] = [];
-  page.on("request", (r) => {
-    if (/heritage-/.test(r.url())) seen.push(r.url());
-  });
+  const watched = watchHeritage(page);
   await openHome(page);
-  await expect.poll(() => seen.length).toBeGreaterThan(0);
+  await expect.poll(() => watched.length).toBeGreaterThan(0);
   await page.waitForLoadState("networkidle");
+  const { beforeIdle } = await heritageTimeline(page, watched);
   await context.close();
-  return seen;
+  return { seen: watched.map((r) => r.url()), beforeIdle };
 }
 
 test("TC-095: the first heritage request matches the theme (light, stored dark, system dark)", async ({ browser, baseURL }) => {
@@ -126,10 +173,11 @@ test("TC-095: the first heritage request matches the theme (light, stored dark, 
     { opts: { colorScheme: "dark" as const }, stem: "heritage-dark-", other: "heritage-light-" },
   ];
   for (const c of cases) {
-    const seen = await firstHeritageRequest(browser, baseURL!, c.opts);
+    const { seen, beforeIdle } = await firstHeritageRequest(browser, baseURL!, c.opts);
     expect(seen[0], JSON.stringify(c.opts)).toContain(c.stem);
-    // No idle preload exists yet (TASK-46.4), so the other theme is never requested.
-    expect(seen.filter((u) => u.includes(c.other)), JSON.stringify(c.opts)).toEqual([]);
+    // The other theme may only arrive with the idle preload (TASK-46.4, TC-106b), never on first paint.
+    expect(beforeIdle.length, JSON.stringify(c.opts)).toBeGreaterThan(0);
+    expect(beforeIdle.filter((u) => u.includes(c.other)), JSON.stringify(c.opts)).toEqual([]);
   }
 });
 
@@ -321,6 +369,8 @@ type Load = {
   url: string;
   viewport?: { width: number; height: number };
   media?: Parameters<Page["emulateMedia"]>[0];
+  /** Extra wait after networkidle, e.g. past the 4 s idle timeout (TC-103). */
+  settleMs?: number;
 };
 
 /**
@@ -329,14 +379,15 @@ type Load = {
  */
 async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light" | "dark", load: Load) {
   const context = await browser.newContext({ baseURL, colorScheme, serviceWorkers: "block", viewport: load.viewport });
+  await context.addInitScript(trackHeritageIdle);
   const page = await context.newPage();
   if (load.media) await page.emulateMedia(load.media);
-  const requests: string[] = [];
-  page.on("request", (r) => {
-    if (/heritage-/.test(r.url())) requests.push(new URL(r.url()).pathname);
-  });
+  const watched = watchHeritage(page);
   await page.goto(load.url);
   await page.waitForLoadState("networkidle");
+  if (load.settleMs) await page.waitForTimeout(load.settleMs);
+  const timeline = await heritageTimeline(page, watched);
+  const requests = watched.map((r) => new URL(r.url()).pathname);
   const band = await page.evaluate(() => {
     const el = document.querySelector("[data-heritage]");
     if (!el) return null;
@@ -353,7 +404,8 @@ async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light"
   const pathname = new URL(page.url()).pathname;
   const count = await page.locator("[data-heritage]").count();
   await context.close();
-  return { requests, band, pathname, count };
+  // `requests` is every heritage request; `firstPaint` drops the idle preload's.
+  return { requests, firstPaint: timeline.beforeIdle, everIdle: timeline.idleAt !== null, band, pathname, count };
 }
 
 function schemeOf(info: { project: { use: { colorScheme?: string | null } } }): "light" | "dark" {
@@ -366,8 +418,8 @@ test("TC-101: below 768 only Home fetches art, and only the theme's strip (F5)",
 
   const home = await loadFresh(browser, baseURL!, theme, { url: "/", viewport });
   expect(home.band).toMatchObject({ level: "normal", display: "block" });
-  expect(home.requests.length).toBeGreaterThan(0);
-  for (const r of home.requests) expect(r).toMatch(new RegExp(`^/heritage/heritage-${theme}-strip\\.v\\d+\\.(avif|webp)$`));
+  expect(home.firstPaint.length).toBeGreaterThan(0);
+  for (const r of home.firstPaint) expect(r).toMatch(new RegExp(`^/heritage/heritage-${theme}-strip\\.v\\d+\\.(avif|webp)$`));
 
   for (const url of ["/queue", "/drafts"]) {
     const off = await loadFresh(browser, baseURL!, theme, { url, viewport });
@@ -466,10 +518,15 @@ test("TC-101c: reduced routes are quieter and tablet uses the 300px box at 38% (
 });
 
 test("TC-103: a route at level off renders an inert layer and fetches nothing (SC9)", async ({ browser, baseURL }, info) => {
-  const r = await loadFresh(browser, baseURL!, schemeOf(info), { url: "/e2e-harness", viewport: { width: 1440, height: 900 } });
+  // Past the 4 s rIC timeout, with the observer watching, so "never idle" means never (R-3).
+  const r = await loadFresh(browser, baseURL!, schemeOf(info), {
+    url: "/e2e-harness",
+    viewport: { width: 1440, height: 900 },
+    settleMs: 4500,
+  });
   expect(r.pathname).toBe("/e2e-harness");
-  // `idle: false` can only fail once TASK-46.4 adds the idle preload (R-3).
   expect(r.band).toMatchObject({ level: "off", display: "none", idle: false });
+  expect(r.everIdle, "data-idle was set at some point").toBe(false);
   expect(r.requests).toEqual([]);
 });
 
@@ -482,4 +539,58 @@ test("TC-104: auth routes never mount the layer (F1)", async ({ browser, baseURL
     expect(r.count, route).toBe(0);
     expect(r.requests, route).toEqual([]);
   }
+});
+
+// TASK-46.4 · Idle preload of the other theme (F4), Save-Data skip.
+
+const other = (theme: "light" | "dark") => (theme === "light" ? "dark" : "light");
+
+test("TC-106b: after idle, exactly one request for the other theme, issued after data-idle (F4)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  for (const { viewport, size } of [
+    { viewport: { width: 1440, height: 900 }, size: "desk" },
+    { viewport: { width: 390, height: 844 }, size: "strip" },
+  ]) {
+    const label = `${viewport.width}`;
+    const context = await browser.newContext({ baseURL, colorScheme: theme, serviceWorkers: "block", viewport });
+    await context.addInitScript(trackHeritageIdle);
+    const page = await context.newPage();
+    const watched = watchHeritage(page);
+    await openHome(page);
+    await page.waitForFunction(() => document.querySelector("[data-heritage][data-idle]") !== null);
+    await page.waitForTimeout(1000);
+    const t = await heritageTimeline(page, watched);
+    await context.close();
+    const opposite = watched.map((r) => new URL(r.url()).pathname).filter((p) => p.includes(`heritage-${other(theme)}-`));
+
+    expect(opposite, label).toHaveLength(1);
+    expect(opposite[0], label).toMatch(new RegExp(`^/heritage/heritage-${other(theme)}-${size}\\.v\\d+\\.(avif|webp)$`));
+    expect(t.idleAt, label).not.toBeNull();
+    expect(t.beforeIdle.filter((p) => p.includes(`heritage-${other(theme)}-`)), `${label} first paint`).toEqual([]);
+    expect(t.afterIdle, `${label} after idle`).toEqual(opposite);
+  }
+});
+
+test("TC-107b: Save-Data skips the preload: no other-theme request and no data-idle within 5 s", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  const context = await browser.newContext({ baseURL, colorScheme: theme, serviceWorkers: "block", viewport: { width: 1440, height: 900 } });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "connection", { configurable: true, get: () => ({ saveData: true }) });
+  });
+  await context.addInitScript(trackHeritageIdle);
+  const page = await context.newPage();
+  const watched = watchHeritage(page);
+  await openHome(page);
+  await page.waitForTimeout(5000);
+  const saveData = await page.evaluate(() => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
+  const t = await heritageTimeline(page, watched);
+  const seen = watched.map((r) => new URL(r.url()).pathname);
+  const idleAttr = await page.locator("[data-heritage]").getAttribute("data-idle");
+  await context.close();
+
+  expect(saveData, "the override took").toBe(true);
+  expect(seen.length, "the theme's own art still loads").toBeGreaterThan(0);
+  expect(seen.filter((p) => p.includes(`heritage-${other(theme)}-`))).toEqual([]);
+  expect(t.idleAt).toBeNull();
+  expect(idleAttr).toBeNull();
 });
