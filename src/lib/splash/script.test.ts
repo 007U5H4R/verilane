@@ -106,6 +106,8 @@ function stubWindow(
     tab?: KV;
     /** Render the overlay and app nodes (otherwise getElementById finds nothing). */
     dom?: boolean;
+    /** TASK-45.6: what `matchMedia("(prefers-reduced-motion: reduce)")` reports; "throw" makes it throw; absent leaves matchMedia undefined. */
+    rm?: boolean | "throw";
   } = {},
 ): Stub {
   const attrs: Record<string, string> = {};
@@ -186,6 +188,14 @@ function stubWindow(
       if (i >= 0) listeners.splice(i, 1);
     },
     location,
+    ...(opts.rm === undefined
+      ? {}
+      : {
+          matchMedia: (q: string) => {
+            if (opts.rm === "throw") throw new Error("matchMedia");
+            return { matches: opts.rm === true && q === "(prefers-reduced-motion: reduce)" };
+          },
+        }),
     MutationObserver: class {
       observe() {}
       disconnect() {}
@@ -693,6 +703,60 @@ describe("buildSplashScript", () => {
       phase(stub, "ready");
       expect(stub.bar.hasAttribute("data-stalled")).toBe(false);
       expect(stub.sub.textContent).toBe("");
+    });
+  });
+
+  // TASK-45.6 · 45.6.1: boot reads prefers-reduced-motion once, at show().
+  describe("reduced motion", () => {
+    it("under reduce, reveals the bar at once, holds from 1 s and cuts straight to done at the 5 s ceiling", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", dom: true, clock, rm: true });
+      exec(prod, stub);
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(stub.bar.attrs["data-splash-bar"]).toBe("shown");
+      stub.advance(999);
+      expect(stub.attrs["data-splash"]).toBe("on");
+      stub.advance(1000);
+      expect(stub.attrs["data-splash"]).toBe("hold");
+      stub.advance(5000);
+      expect(stub.attrs["data-splash"]).toBe("done");
+      expect(stub.marks).toEqual(expect.arrayContaining(["splash:ceiling", "splash:exit", "splash:done"]));
+      expect(stub.app.hasAttribute("inert")).toBe(false);
+    });
+
+    it("on a hard load, reveals the bar once the overlay markup is parsed (show() runs in <head>, before it exists)", () => {
+      const clock = { t: 0 };
+      // stubWindow reads opts.dom at each lookup, so flipping it models the parser reaching <body>.
+      const opts = { session: "guest", dom: false, clock, rm: true };
+      const stub = stubWindow(opts);
+      exec(prod, stub);
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(stub.bar.attrs["data-splash-bar"]).toBeUndefined();
+      opts.dom = true;
+      stub.docDispatch("DOMContentLoaded");
+      expect(stub.bar.attrs["data-splash-bar"]).toBe("shown");
+    });
+
+    it("a skip under reduce goes to done at once and drops the listeners", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", dom: true, clock, rm: true });
+      exec(prod, stub);
+      clock.t = 400;
+      stub.dispatch("keydown", { key: "a" });
+      expect(stub.attrs["data-splash"]).toBe("done");
+      const later = stub.dispatch("keydown", { key: "b" });
+      expect(later.stopped).toBe(false);
+    });
+
+    it("without reduce, or with no or a throwing matchMedia, keeps the full timings", () => {
+      for (const rm of [false, "throw" as const, undefined]) {
+        const clock = { t: 0 };
+        const stub = stubWindow({ session: "guest", dom: true, clock, rm });
+        expect(() => exec(prod, stub)).not.toThrow();
+        expect(stub.bar.attrs["data-splash-bar"]).toBeUndefined();
+        stub.advance(5000);
+        expect(stub.attrs["data-splash"]).toBe("on");
+      }
     });
   });
 
