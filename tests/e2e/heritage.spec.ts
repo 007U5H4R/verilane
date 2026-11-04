@@ -391,12 +391,14 @@ async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light"
   if (load.untilIdle) {
     // R-3: networkidle can come before idle, so "fetches nothing" was read
     // before the preload had its chance. Settled = data-idle set, two frames
-    // on (any preload image is requested by then), then the network quiet.
-    // Don't wait for the preload's image itself: forced colors and print
-    // never apply it, which is exactly what TC-102 asserts.
+    // on (any preload image is requested by then), then every heritage
+    // request seen so far answered. (A second networkidle wait would return
+    // at once: it already fired for this document.) Don't wait for the
+    // preload's image itself: where it is hidden it is never fetched. The
+    // positive controls in TC-101 and TC-102 prove this settle sees a preload.
     await page.waitForSelector("[data-heritage][data-idle] [data-heritage-preload]", { state: "attached" });
     await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
-    await page.waitForLoadState("networkidle");
+    await Promise.all(watched.map((r) => r.response()));
   }
   const timeline = await heritageTimeline(page, watched);
   const requests = watched.map((r) => new URL(r.url()).pathname);
@@ -428,10 +430,15 @@ test("TC-101: below 768 only Home fetches art, and only the theme's strip (F5)",
   const theme = schemeOf(info);
   const viewport = { width: 390, height: 844 };
 
-  const home = await loadFresh(browser, baseURL!, theme, { url: "/", viewport });
+  // Positive control: the same untilIdle settle the off routes use must see
+  // Home's idle preload, or their "fetched nothing" could pass vacuously.
+  const home = await loadFresh(browser, baseURL!, theme, { url: "/", viewport, untilIdle: true });
   expect(home.band).toMatchObject({ level: "normal", display: "block" });
   expect(home.firstPaint.length).toBeGreaterThan(0);
   for (const r of home.firstPaint) expect(r).toMatch(new RegExp(`^/heritage/heritage-${theme}-strip\\.v\\d+\\.(avif|webp)$`));
+  const preloaded = home.requests.filter((r) => r.includes(`heritage-${other(theme)}-`));
+  expect(preloaded).toHaveLength(1);
+  expect(preloaded[0]).toMatch(new RegExp(`^/heritage/heritage-${other(theme)}-strip\\.v\\d+\\.(avif|webp)$`));
 
   for (const url of ["/queue", "/drafts"]) {
     const off = await loadFresh(browser, baseURL!, theme, { url, viewport, untilIdle: true });
@@ -450,6 +457,9 @@ test("TC-102: forced colors and print hide the art and fetch nothing (F6)", asyn
     { width: 1440, height: 900 },
     { width: 390, height: 844 },
   ]) {
+    // Positive control: without the media, the same settle sees the preload.
+    const control = await loadFresh(browser, baseURL!, theme, { url: "/", viewport, untilIdle: true });
+    expect(control.requests.filter((r) => r.includes(`heritage-${other(theme)}-`)), `${viewport.width} control`).toHaveLength(1);
     for (const media of [{ forcedColors: "active" }, { media: "print" }] as const) {
       const label = `${viewport.width} ${JSON.stringify(media)}`;
       const r = await loadFresh(browser, baseURL!, theme, { url: "/", viewport, media, untilIdle: true });
@@ -578,7 +588,8 @@ test("TC-106b: after idle, exactly one request for the other theme, issued after
     await expect.poll(() => watched.filter(isOpposite).length, `${label} preload request`).toBeGreaterThan(0);
     await Promise.all(watched.filter(isOpposite).map((r) => r.response()));
     // A late duplicate would still be in flight here; give it a chance to land
-    // before counting (R-3 finding 2).
+    // before counting (R-3 finding 2). Best effort: this waits only if
+    // networkidle has not already fired for this document.
     await page.waitForLoadState("networkidle");
     const t = await heritageTimeline(page, watched);
     await context.close();
