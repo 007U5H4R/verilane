@@ -79,7 +79,10 @@ test("TC-128: zero hydration warnings with the splash on", async ({ page }) => {
   page.on("pageerror", (err) => problems.push(`pageerror: ${err.message}`));
 
   await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
-  expect(await splashState(page)).toBe("on");
+  // The pre-hydration DOM really carries what the runtime sets (R-1): the
+  // attributes React must tolerate are present while it hydrates.
+  expect(await splashState(page)).toMatch(/^(on|hold)$/);
+  expect(await appInert(page)).toBe(true);
   await waitPastT0(page, 300);
   await page.keyboard.press("x");
   await waitForSplash(page, "done");
