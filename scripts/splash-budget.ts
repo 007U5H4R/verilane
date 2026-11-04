@@ -5,12 +5,13 @@
 //   1. gzip-9 of the inline head script + splash.css + splashMarkup() together ≤ 15 KB;
 //   2. rasters in src/assets/splash/ (recursive): sky ≤ 60 KB per format, clouds
 //      ≤ 30 KB across all formats (TASK-45.9); every url() in splash.css must name a file in that folder (EXE89);
-//   3. each route's First Load JS (route-budget's own measure) grows ≤ 512 B over E1;
 //   2b. the built CSS references each of those rasters through a content-hashed
-//      _next/static/media URL and leaves no ../assets/splash/ path unresolved (TASK-45.9);
+//      _next/static/media URL that exists on disk, and leaves no ../assets/splash/
+//      path unresolved (TASK-45.9);
+//   3. each route's First Load JS (route-budget's own measure) grows ≤ 512 B over E1;
 //   4. no splash runtime/markup marker in .next/static/chunks/*.js (the runtime
 //      lives in server HTML; only the events.ts dispatch may reach shared JS).
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, posix, relative, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 import { SPLASH_SCENE_COPY, splashMarkup } from "../src/lib/splash/markup";
@@ -141,10 +142,16 @@ export function checkRasterRefs(css: string, files: string[]): Finding[] {
  * media URL, but Lightning CSS prints a fully parsed image-set() candidate as a
  * string and that path is never rewritten (it would 404). So the built CSS is
  * checked: each raster in src/assets/splash/ appears as ../media/<stem>.<hash><ext>
- * (or /_next/static/media/...), and no ../assets/splash/ path survives.
+ * (or /_next/static/media/...) whose file `mediaExists` confirms was emitted,
+ * and no ../assets/splash/ path survives.
+ * Every file in src/assets/splash/ must be referenced: a spare or unused raster
+ * there fails this check, so keep only the art the splash ships.
+ * An assetPrefix or CDN absolute URL (https://cdn/_next/static/media/...) is not
+ * matched; next.config.ts sets none today, and adding one must update this regex.
  * `css` is every built stylesheet that carries the splash rules, concatenated.
+ * `mediaExists` gets the emitted file name (e.g. sky.238e-cvcczsaz.avif).
  */
-export function checkBuiltRefs(css: string, files: string[]): Finding[] {
+export function checkBuiltRefs(css: string, files: string[], mediaExists: (name: string) => boolean = () => true): Finding[] {
   if (!css.includes("#verilane-splash")) {
     return [{ item: "built CSS: no stylesheet contains #verilane-splash", bytes: 0, limit: 0, over: true }];
   }
@@ -154,10 +161,13 @@ export function checkBuiltRefs(css: string, files: string[]): Finding[] {
     const ext = extname(f);
     const stem = posix.basename(f, ext);
     const m = css.match(new RegExp(`url\\(\\s*['"]?((?:\\.\\./|/_next/static/)media/${esc(stem)}\\.[A-Za-z0-9_-]+${esc(ext)})`));
-    out.push(m ? { item: `built CSS ${f} -> ${m[1]}`, bytes: 0, limit: 0, over: false } : { item: `built CSS ${f}: no hashed media URL`, bytes: 0, limit: 0, over: true });
+    if (!m) out.push({ item: `built CSS ${f}: no hashed media URL`, bytes: 0, limit: 0, over: true });
+    else if (!mediaExists(posix.basename(m[1]!))) out.push({ item: `built CSS ${f} -> ${m[1]}: not in .next/static/media`, bytes: 0, limit: 0, over: true });
+    else out.push({ item: `built CSS ${f} -> ${m[1]}`, bytes: 0, limit: 0, over: false });
   }
-  for (const m of css.matchAll(/(?:\.\.\/)*assets\/splash\/[^"')\s]+/g)) {
-    out.push({ item: `built CSS: unresolved ${m[0]}`, bytes: 0, limit: 0, over: true });
+  // image-set() and its -webkit-image-set() fallback carry the same path: report it once.
+  for (const path of new Set(Array.from(css.matchAll(/(?:\.\.\/)*assets\/splash\/[^"')\s]+/g), (m) => m[0]))) {
+    out.push({ item: `built CSS: unresolved ${path}`, bytes: 0, limit: 0, over: true });
   }
   return out;
 }
@@ -274,7 +284,8 @@ function main(): void {
     .map((p) => readFileSync(p, "utf-8"))
     .filter((t) => t.includes("#verilane-splash"))
     .join("\n");
-  findings.push(...checkBuiltRefs(builtCss, rasters.map((r) => r.name)));
+  const mediaDir = join(root, ".next/static/media");
+  findings.push(...checkBuiltRefs(builtCss, rasters.map((r) => r.name), (name) => existsSync(join(mediaDir, name))));
 
   findings.push(...checkRouteDeltas(measureRoutes(stats, (p) => readFileSync(join(root, p)))));
 

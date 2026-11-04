@@ -301,6 +301,24 @@ describe("checkBuiltRefs (TASK-45.9: the build hashed every splash raster)", () 
     expect(checkBuiltRefs(css, files)).toContainEqual({ item: "built CSS: unresolved ../assets/splash/clouds-bg.avif", bytes: 0, limit: 0, over: true });
   });
 
+  it("fails a hashed URL whose media file the build did not emit", () => {
+    const emitted = new Set(["sky.238e-cvcczsaz.avif", "sky.1l_v5iwf51lrn.webp"]);
+    expect(checkBuiltRefs(good, files, (name) => emitted.has(name))).toContainEqual({
+      item: "built CSS clouds-fg.avif -> ../media/clouds-fg.36uox7uoktvrl.avif: not in .next/static/media",
+      bytes: 0,
+      limit: 0,
+      over: true,
+    });
+  });
+
+  it("reports an unresolved source path once, though image-set() and -webkit-image-set() both carry it", () => {
+    const path = '"../assets/splash/clouds-bg.avif" 1x type("image/avif")';
+    const css = good + `.splash-cloud-bg{background:-webkit-image-set(${path});background:image-set(${path})}`;
+    expect(checkBuiltRefs(css, files).filter((f) => f.item.includes("unresolved"))).toEqual([
+      { item: "built CSS: unresolved ../assets/splash/clouds-bg.avif", bytes: 0, limit: 0, over: true },
+    ]);
+  });
+
   it("fails when no built CSS carries the splash rules", () => {
     expect(checkBuiltRefs("", files)).toEqual([{ item: "built CSS: no stylesheet contains #verilane-splash", bytes: 0, limit: 0, over: true }]);
   });
