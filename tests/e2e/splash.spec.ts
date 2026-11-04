@@ -139,7 +139,7 @@ test.describe("TC-131: skip exits within 50 ms and the app is interactive afterw
   type Probe = { input: number | null; handled: number | null; search: number | null; click: number | null };
   // The row opens its invoice as a full document load (splash or not), so the
   // probe lives in sessionStorage to outlive the page that took the input.
-  const probe = (page: Page) =>
+  const probe = (page: Page): Promise<Probe> =>
     page.evaluate(() => {
       const n = (k: string) => (sessionStorage.getItem(k) === null ? null : Number(sessionStorage.getItem(k)));
       return { input: n("probe:input"), handled: n("probe:handled"), search: n("probe:search"), click: n("probe:click") };
