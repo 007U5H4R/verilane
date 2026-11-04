@@ -187,7 +187,7 @@
 - **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d · EXE91) · **Finding:** —
 - **Objective:** The byte budget is enforced, not hoped for.
 - **Preconditions:** —
-- **Steps:** `checkBudget` with `heritage-light-desk.avif` at 61 440 bytes (and a 61 440 WebP).
+- **Steps:** `checkBudget` with `heritage-light-desk.v1.avif` at 62 464 bytes (61 KB) and a 62 464-byte WebP. A file of exactly 61 440 bytes (60 KB, the limit) passes; the limit is inclusive (EXE91).
 - **Data:** —
 - **Expected:** `ok:false`; error names the file and its size and the 60 KB limit. `main()` exits 1 (46.5.4 demonstration).
 
