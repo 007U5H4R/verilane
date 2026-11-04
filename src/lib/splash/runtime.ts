@@ -200,7 +200,10 @@ export function splashRuntime(): Runtime {
   function exit(m: Model, t: number, cfg: SplashConfig, fx: Effect[]): Model {
     // Mark first: it records when the exit began; un-inerting can take tens of ms.
     fx.push({ k: "mark", v: "splash:exit" }, { k: "attr", v: "exit" }, { k: "uninert" }, { k: "timer", v: t + cfg.exitMs });
-    return with_(m, { attr: "exit", tExit: t });
+    // A ceiling or skip exit fades without the glint or "Still working" (review-45.4 R-4)
+    if (m.stalled) fx.push({ k: "stall", v: false });
+    if (m.longStall) fx.push({ k: "sub", v: "" });
+    return with_(m, { attr: "exit", tExit: t, stalled: false, longStall: false });
   }
 
   function live(m: Model): boolean {
