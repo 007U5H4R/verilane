@@ -6,6 +6,8 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { AUTH_ROUTES } from "@/lib/auth-routes";
+
 import { begin, decide, progress, splashConfig, step, type Effect, type Model } from "./runtime";
 
 const cfg = splashConfig(false);
@@ -184,16 +186,47 @@ describe("progress (minimal)", () => {
   });
 });
 
-describe("decide (45.2 minimum; the full truth table is TASK-45.3)", () => {
-  const env = { path: "/", session: "guest", seen: false, force: false, storageOk: true, rm: false };
-  it("needs a guest session and readable storage", () => {
-    expect(decide(env, cfg)).toBe(true);
-    expect(decide({ ...env, session: null }, cfg)).toBe(false);
-    expect(decide({ ...env, storageOk: false }, cfg)).toBe(false);
+// TASK-45.3 · TC-136: every combination of the trigger inputs (PRD §2.3).
+describe("decide truth table (TC-136)", () => {
+  const PATHS = ["/", "/welcome", "/sign-in", "/sign-up", "/onboarding", "/queue"];
+  const SESSIONS = ["guest", null, "garbage"];
+  const AUTH = ["/welcome", "/sign-in", "/sign-up", "/onboarding"];
+  const cases: { path: string; session: string | null; seen: boolean; storageOk: boolean; e2e: boolean; force: boolean }[] = [];
+  for (const path of PATHS)
+    for (const session of SESSIONS)
+      for (const seen of [false, true])
+        for (const storageOk of [true, false])
+          for (const [e2e, force] of [
+            [false, false],
+            [false, true],
+            [true, false],
+            [true, true],
+          ] as const)
+            cases.push({ path, session, seen, storageOk, e2e, force });
+
+  it.each(cases)("%o", ({ path, session, seen, storageOk, e2e, force }) => {
+    const want = !AUTH.includes(path) && session === "guest" && !seen && storageOk && (!e2e || force);
+    const env = { path, session, seen, force, storageOk, rm: false };
+    expect(decide(env, splashConfig(e2e))).toBe(want);
   });
-  it("is off in e2e builds unless forced", () => {
-    const e2e = splashConfig(true);
-    expect(decide(env, e2e)).toBe(false);
-    expect(decide({ ...env, force: true }, e2e)).toBe(true);
+
+  it("covers 288 combinations, 6 of them true", () => {
+    expect(cases).toHaveLength(288);
+    const on = cases.filter(
+      (c) => !AUTH.includes(c.path) && c.session === "guest" && !c.seen && c.storageOk && (!c.e2e || c.force),
+    );
+    expect(on).toHaveLength(6);
+  });
+
+  it("treats nested auth paths as auth routes, and a lookalike prefix as not", () => {
+    const env = { path: "/", session: "guest", seen: false, force: false, storageOk: true, rm: false };
+    expect(decide({ ...env, path: "/onboarding/step" }, cfg)).toBe(false);
+    expect(decide({ ...env, path: "/welcomex" }, cfg)).toBe(true);
+  });
+});
+
+describe("splashConfig", () => {
+  it("uses the one AUTH_ROUTES list from the session module", () => {
+    expect(cfg.authRoutes).toBe(AUTH_ROUTES);
   });
 });

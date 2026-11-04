@@ -12,6 +12,8 @@
  * compiler emit a helper outside this function.
  */
 
+import { AUTH_ROUTES } from "@/lib/auth-routes";
+
 export type Attr = "on" | "hold" | "exit" | "done";
 
 export interface SplashCopy {
@@ -37,6 +39,10 @@ export interface SplashConfig {
   forceParam: string;
   forceKey: string;
   sessionKey: string;
+  /** Tab-scoped "already shown" flag (PRD §2.3). */
+  seenKey: string;
+  /** `AUTH_ROUTES` from `src/lib/auth-routes.ts`; never shown on these or below them. */
+  authRoutes: readonly string[];
   copy: SplashCopy;
 }
 
@@ -97,11 +103,16 @@ interface Runtime {
 export function splashRuntime(): Runtime {
   const PROGRESS: Record<string, number> = { session: 35, provider: 65, seeding: 80, ready: 100, error: 100 };
 
+  // PRD §2.3: all of these must hold. Reduced motion (env.rm) only changes
+  // the length, never whether it shows (TASK-45.6).
   function decide(env: DecideEnv, cfg: SplashConfig): boolean {
-    if (!env.storageOk) return false;
-    // 45.2 minimum. Auth routes, the seen flag and reduced motion are TASK-45.3/45.6.
-    if (cfg.e2e) return env.force;
-    return env.session === "guest";
+    if (!env.storageOk || env.seen || env.session !== "guest") return false;
+    const p = env.path;
+    for (let i = 0; i < cfg.authRoutes.length; i++) {
+      const r = cfg.authRoutes[i];
+      if (p === r || p.indexOf(r + "/") === 0) return false;
+    }
+    return cfg.e2e ? env.force : true;
   }
 
   function progress(phases: string[]): number {
@@ -434,6 +445,8 @@ export function splashConfig(e2e: boolean): SplashConfig {
     forceParam: e2e ? "__splash" : "",
     forceKey: "verilane-splash-force",
     sessionKey: "verilane-session",
+    seenKey: "verilane-splash-seen",
+    authRoutes: AUTH_ROUTES,
     copy: SPLASH_COPY,
   };
 }

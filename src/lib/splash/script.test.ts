@@ -182,7 +182,8 @@ describe("buildSplashScript", () => {
     const off = stubWindow({ session: "guest" });
     exec(e2e, off);
     expect(off.attrs["data-splash"]).toBeUndefined();
-    const on = stubWindow({ search: "?__splash=1" });
+    // TASK-45.3: forcing needs a stored guest session too (PRD §2.3: all must hold).
+    const on = stubWindow({ session: "guest", search: "?__splash=1" });
     exec(e2e, on);
     expect(on.attrs["data-splash"]).toBe("on");
   });
