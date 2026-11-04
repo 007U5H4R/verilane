@@ -665,3 +665,18 @@
 - User ruling 2026-11-04: harden the test, then rerun. Interleaved mode now runs `PAIRS = 21`, alternates which side of each pair runs first, and judges `median(on[i] − off[i])`, which cancels drift between pairs and ignores a lone stalled run. Simple mode is unchanged (9 runs, difference of medians). This stays within TC-130 (n ≥ 9, compare medians).
 - Caveat: the paired metric was chosen after the failing run was seen, so only fresh runs count as evidence. Fresh run on bbb8955: delta −13.7 ms. The difference of medians agrees (740.7 vs 738.1 ms), so the verdict does not depend on which estimator is used. Load average 5.7–10 during the run. Raw data: `task45/perf/tc-130-chromium-light-1793764705812.json`.
 - Re-verify TC-130 at the Stage 8 test pass, after 45.3–45.10 add the full scene and bar.
+
+## EXE46 · TC-131 measures each app interaction in its own pass, after the app has mounted (TASK-45.2, review R-6) — accepted
+- **Input clock.** `input` is the skipping event's own `e.timeStamp`, captured by a window capture listener in an init script. That listener is registered before the runtime's own listener. The skip runs `splash:exit − input ≤ 50`.
+- **The skip waits for the first `/invoices/` row to be attached.** The row attaches about 1.1 s after t0. Without this wait, "interactive ≤ 350 ms after input" would time the app's own load, not the splash. So the skip lands after the TC's nominal 400 ms. The skip time itself is unchanged. Separately, the ticket says "~2 s after ready" while TC-131 says 400 ms; the TC text is left alone and the mismatch is raised for review.
+- **One interaction per pass.** Each skip variant runs twice: a keyboard pass and a pointer pass. The measured interaction is the first driver action after the skip. When both were chained in one pass, Playwright round-trips (probe and mark reads, Escape, scroll) added 430–790 ms that the app never spent.
+  - **Keyboard pass.** Ctrl/Cmd+K must focus the shell's search combobox inside `#verilane-app` within 350 ms. Tab cannot be used, because the overlay's skip button comes first in DOM order and stays focusable during the exit (raised for review).
+  - **Pointer pass.** The first row is scrolled to the centre under the overlay before the skip. A raw `mouse.click` at its box (no actionability wait) must reach the row within 350 ms of input.
+- **The probe lives in `sessionStorage`.** A row click opens the invoice as a full document load, with or without the splash (checked with the splash off). An in-page probe would be lost with that page.
+- Evidence: `task45/tc-131-timings.txt`. The worst cases were exit−input 30.1 ms, search−input 311.6 ms and click−input 92.1 ms.
+
+## EXE47 · TC-131 times emulated touch from the first listener, not `e.timeStamp` (TASK-45.2, review R-6) — accepted
+- **Found in R-6.** On touch, `splash:exit − e.timeStamp` was about 163 ms in both projects, while `exit − (first listener's performance.now())` was under 1 ms.
+- **Cause.** Headless Chromium delivers an emulated `touchscreen.tap` 40–220 ms after its timeStamp. This happens with or without the splash: 133–145 ms with the splash on and idle, and 100–123 ms with the splash off. Mouse and keyboard are delivered 4–11 ms after their timeStamp. Evidence: `task45/touch-latency-evidence.txt` and `task45/touch-latency-nosplash.log`.
+- **Rule.** The touch variant passes `clock: "handler"`. It reads input from the init script's first listener, which runs before the runtime's, and asserts the same ≤ 50 and ≤ 350 bounds. Key and mouse keep `e.timeStamp`. Every run annotates both clocks, so the delivery gap stays visible.
+- Real-device touch latency is not measured here; check it on a phone at Stage 8.
