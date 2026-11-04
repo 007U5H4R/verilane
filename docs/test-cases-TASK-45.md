@@ -354,7 +354,7 @@
 ### TC-161 · The per-route shared-JS delta against E1 is ≤ 0.5 KB
 - **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · S-budget · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The hooks are nearly free.
-- **Preconditions:** `pnpm build`; the E1 stats snapshot is committed under `scripts/fixtures/` in TASK-45.7.
+- **Preconditions:** `pnpm build`; E1 snapshot is `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` (EXE85).
 - **Steps:** `pnpm splash-budget`.
 - **Data:** E1 route stats.
 - **Expected:** Every route's delta is ≤ 512 B; `route-budget` stays green (`/settings` < 300 KB).

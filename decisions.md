@@ -706,7 +706,7 @@
 - **Ask.** If the 2 KB runtime cap is meant to be hard, that is a product call (it would fail today, before TASK-45.4's bar logic lands). Not decided here.
 
 ## EXE87 · Splash rasters are classified by file name (TASK-45.7, TC-160) — accepted
-- **Rule.** Under `src/assets/splash/`, a raster (`.avif .webp .png .jpg .jpeg .gif`) whose name contains `sky` is capped at 60 KB per file; names containing `cloud` are summed per format and capped at 30 KB (Design §11: two strips ≤ 30 KB total; TC-165: AVIF and the WebP fallback each within the same caps). Any other raster fails as "not sky or clouds". Bytes are raw file size, since images ship uncompressed.
+- **Rule.** Under `src/assets/splash/`, a raster (`.avif .webp .png .jpg .jpeg .gif`) whose name contains `sky` is capped at 60 KB per file; names containing `cloud` are summed per format and capped at 30 KB (Design §11: two strips ≤ 30 KB total; TC-164: AVIF and the WebP fallback each within the same caps). Any other raster fails as "not sky or clouds". Bytes are raw file size, since images ship uncompressed.
 - **Consequence.** TASK-45.9 must name its files with `sky` / `cloud`. The directory does not exist yet, so the check passes with nothing to measure and says so.
 
 ## EXE88 · TC-162 scans `.next/static/chunks/*.js` for markers taken from the runtime config and markup (TASK-45.7) — accepted
@@ -714,3 +714,9 @@
 - **Scope.** JS only. `splash.css` is imported by `layout.tsx` and lands in a CSS chunk by design; it is counted in the inline total instead.
 - **Not vacuous.** All five markers appear in the 15 prerendered `.next/server/app/*.html` files; injecting `"verilane-splash-seen"` into a built chunk makes the gate exit 1 naming the chunk and 20 B (`task45/side-45.7/negative-check.log`).
 - **Inline measure.** The script is measured from source (`buildSplashScript` under tsx), which is not minified. The string in the built HTML is SWC-minified, so the source figure is an upper bound.
+
+## EXE89 · The raster check fails closed and splash.css url() refs must land in `src/assets/splash/`; the shared-JS markers widen (TASK-45.7 fix round 1, review R-1/R-4) — accepted
+- **Supersedes** EXE87's "the directory does not exist yet, so the check passes". `src/assets/splash/` is now walked recursively, and a file is named by its path under the folder, so `clouds/a.webp` still sums as clouds. Only ENOENT counts as "no rasters". Any other read error fails the gate with the error message.
+- **url() rule.** Every `url()` in `src/app/splash.css` is resolved from `src/app/` and must name an existing file under `src/assets/splash/`. If it does not, it fails with "no such file". A ref that resolves outside the folder, or an absolute or remote URL, fails with "outside". A missing or empty folder therefore passes only while the CSS has no such ref. `data:` URIs are skipped, since they are counted in the inline gzip, and so are `#fragment` refs; neither is a network request. A query or hash suffix is ignored when matching the file.
+- **Markers.** EXE88's set, plus `splash:skip`, `splash:ceiling` and the ceiling warn message, plus `SPLASH_COPY` opening/ready/error/skip. `SPLASH_COPY.cont` ("Continue") is left out because app UI ships that word in 3 of the 68 shared chunks, which would be a false positive. All the added strings appear in the 15 prerendered HTML files and in 0 chunks.
+- **Evidence.** Appending `url("../assets/splash/sky.webp")` to splash.css makes the real gate exit 1 with `splash.css url(../assets/splash/sky.webp): no such file in src/assets/splash/`. After the restore it exits 0 (`task45/side-45.7/fix1-negative-url.log`).
