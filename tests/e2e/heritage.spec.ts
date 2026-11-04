@@ -371,6 +371,8 @@ type Load = {
   media?: Parameters<Page["emulateMedia"]>[0];
   /** Extra wait after networkidle, e.g. past the 4 s idle timeout (TC-103). */
   settleMs?: number;
+  /** Wait for data-idle and the preload rule to apply before reading anything (R-3). */
+  untilIdle?: boolean;
 };
 
 /**
@@ -386,6 +388,16 @@ async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light"
   await page.goto(load.url);
   await page.waitForLoadState("networkidle");
   if (load.settleMs) await page.waitForTimeout(load.settleMs);
+  if (load.untilIdle) {
+    // R-3: networkidle can come before idle, so "fetches nothing" was read
+    // before the preload had its chance. Settled = data-idle set and the
+    // preload span's computed style carrying an image, two frames on.
+    await page.waitForFunction(() => {
+      const span = document.querySelector("[data-heritage][data-idle] [data-heritage-preload]");
+      return !!span && getComputedStyle(span).backgroundImage.includes("heritage-");
+    });
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  }
   const timeline = await heritageTimeline(page, watched);
   const requests = watched.map((r) => new URL(r.url()).pathname);
   const band = await page.evaluate(() => {
@@ -422,9 +434,10 @@ test("TC-101: below 768 only Home fetches art, and only the theme's strip (F5)",
   for (const r of home.firstPaint) expect(r).toMatch(new RegExp(`^/heritage/heritage-${theme}-strip\\.v\\d+\\.(avif|webp)$`));
 
   for (const url of ["/queue", "/drafts"]) {
-    const off = await loadFresh(browser, baseURL!, theme, { url, viewport });
+    const off = await loadFresh(browser, baseURL!, theme, { url, viewport, untilIdle: true });
     expect(off.pathname, url).toBe(url);
     expect(off.band?.display, url).toBe("none");
+    expect(off.band?.idle, url).toBe(true);
     expect(off.requests, url).toEqual([]);
   }
 });
@@ -558,10 +571,14 @@ test("TC-106b: after idle, exactly one request for the other theme, issued after
     const watched = watchHeritage(page);
     await openHome(page);
     await page.waitForFunction(() => document.querySelector("[data-heritage][data-idle]") !== null);
-    await page.waitForTimeout(1000);
+    // R-3: a fixed 1 s after data-idle could read before the preload request
+    // existed. Settled = the other theme's request seen and answered.
+    const isOpposite = (r: Request) => new URL(r.url()).pathname.includes(`heritage-${other(theme)}-`);
+    await expect.poll(() => watched.filter(isOpposite).length, `${label} preload request`).toBeGreaterThan(0);
+    await Promise.all(watched.filter(isOpposite).map((r) => r.response()));
     const t = await heritageTimeline(page, watched);
     await context.close();
-    const opposite = watched.map((r) => new URL(r.url()).pathname).filter((p) => p.includes(`heritage-${other(theme)}-`));
+    const opposite = watched.filter(isOpposite).map((r) => new URL(r.url()).pathname);
 
     expect(opposite, label).toHaveLength(1);
     expect(opposite[0], label).toMatch(new RegExp(`^/heritage/heritage-${other(theme)}-${size}\\.v\\d+\\.(avif|webp)$`));
@@ -569,6 +586,24 @@ test("TC-106b: after idle, exactly one request for the other theme, issued after
     expect(t.beforeIdle.filter((p) => p.includes(`heritage-${other(theme)}-`)), `${label} first paint`).toEqual([]);
     expect(t.afterIdle, `${label} after idle`).toEqual(opposite);
   }
+});
+
+// R-1 scar: the layer stays mounted across client navigations, so `idle` set on
+// a normal route outlived a move to an `off` one and kept data-idle (and with it
+// the preload rule) on a layer that must be inert. history.pushState goes
+// through the Next router (usePathname follows it) and needs no link to the
+// harness route.
+test("TC-103b: moving to a route at level off drops data-idle from the layer (R-1)", async ({ browser, baseURL }, info) => {
+  const context = await browser.newContext({ baseURL, colorScheme: schemeOf(info), serviceWorkers: "block", viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await openHome(page);
+  const band = page.locator("[data-heritage]");
+  await expect(band).toHaveAttribute("data-idle", "", { timeout: 10_000 });
+  await page.evaluate(() => window.history.pushState(null, "", "/e2e-harness"));
+  await expect(band).toHaveAttribute("data-level", "off");
+  const state = await band.evaluate((el) => ({ idle: el.hasAttribute("data-idle"), display: getComputedStyle(el).display }));
+  await context.close();
+  expect(state).toEqual({ idle: false, display: "none" });
 });
 
 test("TC-107b: Save-Data skips the preload: no other-theme request and no data-idle within 5 s", async ({ browser, baseURL }, info) => {
