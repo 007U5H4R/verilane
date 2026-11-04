@@ -488,8 +488,12 @@ test.describe("TC-155: the Skip intro button", () => {
 // EXE83: an SVG <image> loads even inside the display:none overlay, so the
 // sheen mask gets its href only when the splash shows. The app's own logo goes
 // through /_next/image, so a raw request for the file is the splash's alone.
-test("EXE83: the splash logo is not fetched on a load where the splash does not show", async ({ browser, baseURL }) => {
+// R-8 (review-45.9, TASK-45.10): the same holds for the sky and cloud rasters.
+// They are CSS backgrounds of the display:none overlay, so they load only when
+// it shows; the control proves the filter sees them when it does.
+test("EXE83: the splash logo and art are not fetched on a load where the splash does not show", async ({ browser, baseURL }) => {
   const LOGO = "/brand/verilane-logo-light.png";
+  const ART = /\/_next\/static\/media\/(sky|clouds-(fg|bg))\./;
   async function load(show: boolean) {
     const ctx = await browser.newContext({ baseURL, viewport: { width: 1440, height: 900 } });
     await ctx.addInitScript((seen) => {
@@ -506,8 +510,11 @@ test("EXE83: the splash logo is not fetched on a load where the splash does not 
     }, !show);
     const page = await ctx.newPage();
     const hits: string[] = [];
+    const art: string[] = [];
     page.on("request", (r) => {
-      if (new URL(r.url()).pathname === LOGO) hits.push(r.url());
+      const path = new URL(r.url()).pathname;
+      if (path === LOGO) hits.push(r.url());
+      if (ART.test(path)) art.push(path);
     });
     await page.goto(show ? `/queue${FORCE}` : "/queue", { waitUntil: "load" });
     await page.waitForTimeout(800);
@@ -516,17 +523,19 @@ test("EXE83: the splash logo is not fetched on a load where the splash does not 
       href: document.querySelector("#verilane-splash .splash-sheen image")?.getAttribute("href") ?? null,
     }));
     await ctx.close();
-    return { hits, ...state };
+    return { hits, art, ...state };
   }
   const off = await load(false);
   expect(off.splash, "the splash does not show").toMatch(/^(none|done)$/);
   expect(off.href, "no href on the hidden sheen").toBeNull();
   expect(off.hits, "no logo request").toEqual([]);
+  expect(off.art, "no sky or cloud request").toEqual([]);
   // control: the same check sees the request when the splash shows
   const on = await load(true);
   expect(on.splash).toMatch(/^(on|hold|exit|done)$/);
   expect(on.href).toBe(LOGO);
   expect(on.hits.length, "the logo is fetched when the splash shows").toBeGreaterThan(0);
+  expect(on.art.length, "the art is fetched when the splash shows").toBeGreaterThanOrEqual(1);
 });
 
 // TC-156: frame captures for the human look-check. They write to the
