@@ -218,7 +218,10 @@ describe("scanChunks", () => {
       "Verilane. Workspace ready",
       "Verilane. Workspace opened",
       "Skip intro",
+      "data-splash-bar",
       "data-splash-status",
+      "data-splash-msg",
+      "data-splash-sub",
       "data-splash-skip",
     ]);
     expect(splashMarkers()).not.toContain("verilane:splash");
