@@ -2,7 +2,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { encodeHeritage } from "./encode-heritage";
 import { EXPECTED } from "./image-budget";
@@ -41,7 +41,7 @@ beforeAll(async () => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** One pixel as [r, g, b] after any colour conversion sharp applies on read. */
-async function pixel(img: sharp.Sharp, x: number, y: number): Promise<number[]> {
+async function pixel(img: Sharp, x: number, y: number): Promise<number[]> {
   return [...(await img.extract({ left: x, top: y, width: 1, height: 1 }).removeAlpha().raw().toBuffer())];
 }
 
@@ -74,7 +74,7 @@ async function check(files: string[], theme: "light" | "dark", deskW: number, de
   const want = await pixel(sharp(master).toColourspace("srgb"), Math.round((dx * mw) / deskW), Math.round((dy * mh) / deskH));
   for (const f of files.filter((f) => /-desk\./.test(f))) {
     const got = await pixel(sharp(f), dx, dy);
-    for (let c = 0; c < 3; c++) expect(Math.abs(got[c] - want[c]), `${f} channel ${c}: ${got} vs ${want}`).toBeLessThanOrEqual(8);
+    for (let c = 0; c < 3; c++) expect(Math.abs(got[c]! - want[c]!), `${f} channel ${c}: ${got} vs ${want}`).toBeLessThanOrEqual(8);
   }
 }
 
