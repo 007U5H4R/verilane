@@ -155,15 +155,15 @@ There is no runtime telemetry in this app (local-first demo). Observability is t
 
 ### A10. Draft technical decisions (`TP-46.a…`)
 
-Appended to `decisions.md` on `task/46-heritage-bg` in TKT-46.01's decisions commit, right after S25–S32, numbered **TP9, TP10, …** at append time (TP8 is last today; renumber if TASK-45 claims TP9+ first, never reorder). Format `## TPn · title — approved`.
+Appended to `decisions.md` on `task/46-heritage-bg` in TKT-46.01's decisions commit, right after S25–S32, numbered **TP9, TP10, …** at append time (TP8 is last today; renumber if TASK-45 claims TP9+ first, never reorder). Format `## TPn · title — approved`. **Appended in TASK-46.1 as TP9–TP15 (a→TP9 … g→TP15), no renumbering needed; see EXE54.**
 
-- **TP-46.a · `heritageLevelFor` + `HERITAGE_ENABLED` in `src/lib/heritage.ts` is the only level source and the switch-off.** Pure, unit-tested; the component and CSS never decide levels.
-- **TP-46.b · Idle scheduling is a pure `scheduleIdleOnce(host, cb)` helper**, unit-tested with fake timers in the node `unit` project (the repo has no DOM test environment); the component only wires it in one `useEffect`.
-- **TP-46.c · `data-home` attribute carries the mobile Home rule into CSS.** No second route function.
-- **TP-46.d · L\*/contrast helpers live in `src/test/lstar.ts`** (unit-tested in `src/test/lstar.test.ts`, precedent `src/test/tokens.test.ts`), decode screenshots with sharp, and are imported by the Playwright spec.
-- **TP-46.e · The contrast/prominence spec runs in one Playwright project** (`chromium-light`) and sets each theme itself (`emulateMedia` + `verilane-theme`), so both themes are covered once, not twice (sign-off item 5).
-- **TP-46.f · SW compatibility is asserted, not assumed:** an e2e check runs `sw.js`'s own `STATIC_REF` against the heritage URLs in the served CSS (TC-094).
-- **TP-46.g · Asset path A by default; path B only on a failed TKT-46.02 R5 check.** The verdict itself is an `EXE#` decision recorded in TKT-46.02.
+- **TP-46.a (= TP9) · `heritageLevelFor` + `HERITAGE_ENABLED` in `src/lib/heritage.ts` is the only level source and the switch-off.** Pure, unit-tested; the component and CSS never decide levels.
+- **TP-46.b (= TP10) · Idle scheduling is a pure `scheduleIdleOnce(host, cb)` helper**, unit-tested with fake timers in the node `unit` project (the repo has no DOM test environment); the component only wires it in one `useEffect`.
+- **TP-46.c (= TP11) · `data-home` attribute carries the mobile Home rule into CSS.** No second route function.
+- **TP-46.d (= TP12) · L\*/contrast helpers live in `src/test/lstar.ts`** (unit-tested in `src/test/lstar.test.ts`, precedent `src/test/tokens.test.ts`), decode screenshots with sharp, and are imported by the Playwright spec.
+- **TP-46.e (= TP13) · The contrast/prominence spec runs in one Playwright project** (`chromium-light`) and sets each theme itself (`emulateMedia` + `verilane-theme`), so both themes are covered once, not twice (sign-off item 5).
+- **TP-46.f (= TP14) · SW compatibility is asserted, not assumed:** an e2e check runs `sw.js`'s own `STATIC_REF` against the heritage URLs in the served CSS (TC-094).
+- **TP-46.g (= TP15) · Asset path A by default; path B only on a failed TKT-46.02 R5 check.** The verdict itself is an `EXE#` decision recorded in TKT-46.02.
 
 ### A11. Test architecture (5.5)
 

@@ -426,3 +426,97 @@
 - **Root cause:** the sub-line `<span>` had a `truncate` class. At 375px each card's text column is only ~80px wide (2-col grid, `size-10` icon, `p-4` padding), so content that should have wrapped onto a second line was clipped instead.
 - **Fix:** `QueueKpis.tsx` — the sub-line span's class changed from `truncate` to `break-words`, and `max-w-full` was added to the `Chip` component's span, so chip/amount text wraps within the card instead of clipping.
 - **Regression test:** TC-173 (`tests/e2e/responsive.spec.ts`) checks, for every element inside `[data-testid="queue-kpis"]`, that `scrollWidth <= clientWidth + 1`, as a stored guest at 375px. Confirmed RED before the fix (4 elements clipped: `queue-kpi-total`, `queue-kpi-high`, `queue-kpi-needs_review`, `queue-kpi-disputed`), confirmed GREEN after, in both the chromium-light and chromium-dark projects.
+
+## S25 · Heritage art is a CSS background via image-set(), theme chosen by [data-theme] selectors — approved
+Context: TASK-46. One decorative layer whose theme must be correct on the first fetch with no JS swap.
+Decision: background-image: image-set(AVIF, WebP) on [data-heritage]; light by default, dark under
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) …} and :root[data-theme="dark"] ….
+Rejected: <img>/<picture> (media can't see data-theme; both download), next/image (same + optimizer JS),
+inline SVG (no texture, tens of KB in payload), fixed viewport backdrop (Q5).
+Source: Solution-PRD-TASK-46 §2, §5 (S46-a).
+
+## S26 · Mount in the AppShell content column (relative isolate, art at -z-10), scrolling with the page — approved
+Decision: IndianHeritageBackground is the first child of AppShell's content column; the column gains
+`relative isolate`; nothing else in AppShell changes. Not in RootLayout/body (sidebar width, auth routes).
+Source: PRD §2, §3 (S46-b). Risks: R6, R7.
+
+## S27 · Three levels from measured exposure; heritageLevelFor() is the only control; unmapped routes default to reduced — approved
+Decision: normal = Home, Queue, Disputes, Invoices, Payments; reduced = Emails, Settings, Drafts, Audit,
+detail routes and any unmapped route; off = /e2e-harness. Mobile (<768) shows the strip on Home only.
+Switch-off for the whole feature = one line in src/lib/heritage.ts (SC9).
+Source: PRD §4, §8 (S46-c).
+
+## S28 · Light text zone L* ≥ 92.1 ("mist behind text"); dark normal peak L* 13–19.5 — approved
+Decision: in the page-header text zone (left ~55% of the content column, top-bar bottom to ~160px below)
+light art stays at L* ≥ 92.1 so every text pixel keeps ≥ 4.5:1; darker linework (L* 85–91) only outside it.
+Dark normal band L* 13–19.5, reduced 9.5–13. Enforced by screenshot measurement, not assumed (SC1/SC2).
+Source: PRD §6.2, §9.4 (S46-d); calibration Design-TASK-46 §6.1.
+
+## S29 · 21:9 master, eight landmarks with mist breaks, three variations per theme, user as cultural reviewer, three-round stop rule — approved
+Decision: 3360×1440 master; India Gate, Qutub Minar, Taj Mahal, Hawa Mahal, Amber-style fort,
+Meenakshi-style gopuram (not a shikhara), Hampi chariot drawn by elephants, Mysore Palace; no birds,
+people, text or flags. Rubric order: accuracy → composition → tone → bytes → taste. ≤ 3 rounds, then escalate.
+Source: PRD §6.1, §6.3 (S46-e); prompt spec Design-TASK-46 §6.2.
+
+## S30 · Image budget ≤ 60 KB desktop and ≤ 25 KB strip, AVIF/WebP, enforced by scripts/image-budget.ts in test:all — approved
+Decision: route-budget counts only JS, so a separate gate runs right after route-budget in test:all.
+Cut resolution (2400 → 2000) before quality if over budget.
+Source: PRD §6.4, §7 (S46-f).
+
+## S31 · Instant theme swap plus a single-shot idle preload of the other theme; no coupling to TASK-45 — approved
+Decision: no crossfade; requestIdleCallback(cb,{timeout:4000}) falling back to setTimeout(2500), once,
+cancelled on unmount, skipped when navigator.connection.saveData. The component never reads data-splash.
+Source: PRD §5.2, §5.3, §10 (S46-g).
+
+## S32 · Design.md gets R2 (retroactive, TASK-38) then R3 (heritage background, with binding switch-off) — approved
+Decision: append PRD §11.1 then §11.2 verbatim after Revision R1, as the first commit on task/46-heritage-bg.
+Source: PRD §9.12, §11 (S46-h). Risk: R9.
+
+## TP9 · heritageLevelFor() + HERITAGE_ENABLED in src/lib/heritage.ts is the only level source and the switch-off — approved
+Decision: one pure, unit-tested module decides the level per route and holds the feature switch; the component and the CSS never decide levels.
+Source: technical-plan-TASK-46 §A10 (TP-46.a). Relates: S27, Design.md R3 switch-off rule.
+
+## TP10 · Idle scheduling is a pure scheduleIdleOnce(host, cb) helper — approved
+Decision: unit-tested with fake timers in the node `unit` project (the repo has no DOM test environment); the component only wires it in one useEffect.
+Source: technical-plan-TASK-46 §A10 (TP-46.b). Relates: S31.
+
+## TP11 · A data-home attribute carries the mobile Home rule into CSS — approved
+Decision: the mobile strip's Home-only rule is expressed as `data-home` on the art element; no second route function.
+Source: technical-plan-TASK-46 §A10 (TP-46.c). Relates: S27.
+
+## TP12 · L*/contrast helpers live in src/test/lstar.ts — approved
+Decision: unit-tested in src/test/lstar.test.ts (precedent src/test/tokens.test.ts), decode screenshots with sharp, and are imported by the Playwright contrast spec.
+Source: technical-plan-TASK-46 §A10 (TP-46.d). Relates: S28.
+
+## TP13 · The contrast/prominence spec runs in one Playwright project (chromium-light) and sets each theme itself — approved
+Decision: the spec sets each theme with emulateMedia + `verilane-theme`, so both themes are covered once, not twice (Stage 5 sign-off item 5).
+Source: technical-plan-TASK-46 §A10 (TP-46.e).
+
+## TP14 · Service-worker compatibility is asserted, not assumed — approved
+Decision: an e2e check runs sw.js's own STATIC_REF against the heritage URLs in the served CSS (TC-094).
+Source: technical-plan-TASK-46 §A10 (TP-46.f).
+
+## TP15 · Asset path A by default; path B only on a failed TKT-46.02 R5 check — approved
+Decision: hashed assets in src/assets/heritage/ (path A); path B (public/heritage/*.v1.* plus an immutable headers() rule) only if R5 fails. The verdict is an EXE# decision recorded in TASK-46.2.
+Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
+
+## EXE50 · TASK-46 branch base is main d7144cb, not the task/38 tip (TASK-46.1) — accepted
+- Plan §A8 / Stage 5 sign-off item 1 said cut task/46-heritage-bg from the task/38-emerald-redesign tip after TASK-47/48 merge, or from f493a7b. That tip (TASK-38 incl. TASK-47/48) is now merged into main, so the branch was cut from main `d7144cb`. Supersedes §A8's "branching from main is not an option" (true only for the old main 6e53103).
+- Known reds on the base (frozen baseline for N6 "no worse than this"): e2e TC-081 (flaky control-sweep click timeout, TASK-67), e2e TC-085 (Queue sort perf, TASK-66), and `pnpm eval` held-out gates 8/43 failing (TC-066, known limitation accepted in EXE23).
+- The full `test:all` baseline on d7144cb is taken once, by the TASK-45 implementer in the sibling worktree, not repeated here. The base SHA and known reds are carried in the TASK-46.1 report for the orchestrator to write into HANDOFF (HANDOFF is orchestrator-owned; plan step 46.1.1 said to write it there).
+
+## EXE51 · Home LCP baseline for N4 is provisional (TASK-46.1) — accepted
+- Taken on base d7144cb with `pnpm build:e2e` then `E2E_PORT=3146 pnpm exec playwright test perf.spec.ts -g TC-083 --project chromium-light`: Home `lcpMs` 2252 (budget 2500; /queue 516 in the same run). Stored at `/Volumes/E Drive/Dev/.scratch/task46/baseline/lcp-home-provisional.json`.
+- Build type: `build:e2e` (production build with NEXT_PUBLIC_E2E=1), because perf.spec.ts runs against it like the rest of the e2e suite; plan step 46.1.2 wrote `pnpm build`. TASK-46.8 must compare like with like (build:e2e).
+- Single sample under CPU contention (a sibling worktree build/test run was likely concurrent). TASK-46.8 step 46.8.3 must re-take the base number on d7144cb under quiet conditions before applying N4 (±5%); the provisional number is not a comparison point.
+
+## EXE52 · Design.md R2/R3 applied from PRD §11 (TASK-46.1) — accepted
+- PRD §11.1 then §11.2 appended after Revision R1, as the first commit on task/46-heritage-bg (S32). Only the blockquote markers were stripped, and R3's `<date of approval>` placeholder was filled with 2026-11-02, the date PRD §9.12 was approved. Otherwise identical; TC-091 checked by diffing the added block against the PRD lines.
+- TASK-45 appends its R4 after R1 on its own branch; the merge conflict at the end of Design.md is expected and trivial (keep R2, R3, R4 in order).
+
+## EXE53 · Tablet art height is a fixed 300px; PRD §3.5's tablet clamp is superseded (TASK-46.1) — accepted
+- Stage 5 sign-off item 4. PRD §3.5 item 5 says `clamp(320px, 42vw, 620px)` on desktop **and** tablet; Design-TASK-46 §4/§7 says `300px` on tablet (`background-position: 38% top`). Design's 300px wins: it is the later, mockup-measured spec and the Stage 3 exposure numbers assume it. The PRD's clamp stands for desktop only.
+
+## EXE54 · TASK-46 decision IDs appended without renumbering (TASK-46.1) — accepted
+- S25–S32 and TP9–TP15 (from TP-46.a–g) were free on every branch at append time, so no renumbering (Stage 5 sign-off item 3). TASK-45 holds S15–S24, S33–S37, D8–D15, TP16–TP25, EXE32–EXE49; TASK-46 holds EXE50–EXE69.
+- Plan step 46.1.4's grep gate is adapted to the `## <ID> · title` heading format: `grep -cE "^## (S2[5-9]|S3[0-2]|TP9|TP1[0-5]) · " decisions.md` = 15.

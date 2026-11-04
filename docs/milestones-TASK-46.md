@@ -103,6 +103,8 @@ Parallelism after the tracer: {03 → 04, 06} and {05 → 07} are independent la
 
 ## Proposed decision entries (draft only, NOT appended to `decisions.md`)
 
+> **Appended in TASK-46.1** to `decisions.md` on `task/46-heritage-bg` as S25–S32, unchanged and without renumbering (EXE54). `decisions.md` is now authoritative; the block below is the historical draft.
+
 These are the Stage 2 decisions from PRD Appendix A. They are drafted here and get appended to `decisions.md` **on `task/46-heritage-bg`** as part of TKT-46.01, after this gate is approved. Numbering follows the `S#` series (Stage 2 decisions), after TASK-45's claimed **S15–S24**. The PRD text says "after S15–S20", but TASK-45 added S21–S24 at its own sign-off, so S25 is the first free number. The numbers are **provisional until the append**. If another branch claims S25+ first, renumber at append time and update the cross-references in this file. Format matches `decisions.md` (`## <ID> · title — status`, append-only).
 
 ```markdown
