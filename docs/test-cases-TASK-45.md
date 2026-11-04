@@ -320,7 +320,7 @@
 - **Expected:** Composition, colour and timing match. Differences are listed in HANDOFF as DES- candidates. This is re-run on the final art.
 
 ### TC-157 · Reduced motion: zero running animations
-- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.2 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.2 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 8d6a770; re-verify after the 45.5 merge — 45.5's keyframes must also be killed by the rm block) · **Finding:** —
 - **Objective:** A static frame only.
 - **Preconditions:** splash-on; `emulateMedia({reducedMotion:"reduce"})`.
 - **Steps:** Run `document.getAnimations().filter(a => a.playState === "running").length` at 100 ms and at 600 ms.
@@ -328,7 +328,7 @@
 - **Expected:** 0 both times.
 
 ### TC-158 · Reduced motion: D_rm 1 s, ceiling 5 s, instant cut
-- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.1–.3 · S21 · **Type:** e2e (+unit) · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.1–.3 · S21 · **Type:** e2e (+unit) · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 8d6a770) · **Finding:** —
 - **Objective:** The rm timings.
 - **Preconditions:** As TC-157. Run A: ready fast. Run B: ready never.
 - **Steps:** Time `on` → `done`; check that no `exit` attribute with an opacity transition occurs.
@@ -336,7 +336,7 @@
 - **Expected:** A: `done` at 1.0 s ± 150 ms. B: `done` at 5.0 s ± 200 ms. Both are an instant cut with beat 0. The bar is visible from t0.
 
 ### TC-159 · Skip works under reduced motion
-- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.3 · S22 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.3 · S22 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, 8d6a770) · **Finding:** —
 - **Objective:** Same skip contract.
 - **Preconditions:** As TC-157.
 - **Steps:** Press a key at 400 ms.

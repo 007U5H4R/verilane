@@ -21,7 +21,21 @@ async function splashOn(context: BrowserContext) {
   });
 }
 
-const splashState = (page: Page) => page.evaluate(() => document.documentElement.dataset.splash ?? "off");
+// Every value html[data-splash] takes, in order, from the first frame on: "exit"
+// must never appear (instant cut). Init scripts can run before <html> exists
+// (documentElement is null), so the observer watches the document itself:
+// childList catches <html> being inserted, attributes catch every change.
+async function recordSplashAttr(context: BrowserContext) {
+  await context.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __splashSeen: string[] }).__splashSeen = seen;
+    new MutationObserver(() => {
+      const v = document.documentElement?.getAttribute("data-splash") ?? null;
+      if (v !== null && seen[seen.length - 1] !== v) seen.push(v);
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-splash"] });
+  });
+}
+const splashSeen = (page: Page) => page.evaluate(() => (window as unknown as { __splashSeen: string[] }).__splashSeen);
 const waitForSplash = (page: Page, state: string, timeout?: number) =>
   page.waitForFunction((s) => document.documentElement.dataset.splash === s, state, { timeout });
 const sinceT0 = (page: Page) =>
@@ -43,6 +57,7 @@ const appInert = (page: Page) =>
 test.beforeEach(async ({ context, page }) => {
   await context.route("**/seed/manifest.json", () => {});
   await splashOn(context);
+  await recordSplashAttr(context);
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
 
@@ -67,12 +82,21 @@ test("TC-158: run A, readiness fast: done at 1.0 s ± 150 ms, instant cut, bar v
   const barShown = await page.evaluate(() => document.querySelector("#verilane-splash [data-splash-bar]")?.getAttribute("data-splash-bar"));
   expect(barShown).toBe("shown");
   await waitForSplash(page, "done", 5_000);
-  const t = await sinceT0(page);
-  expect(t).toBeGreaterThanOrEqual(1000 - 150);
-  expect(t).toBeLessThanOrEqual(1000 + 150);
-  expect(await markAt(page, "splash:exit")).not.toBeNull();
-  // No opacity-transition fade: the `exit` attribute is never set before `done`.
-  expect(await splashState(page)).toBe("done");
+  // Read the cut time from the marks, as run B does: wall clock after the
+  // waitForFunction poll adds the poll + round-trip lag (seen +231 ms at load ~13).
+  const [t0, exit, done] = await page.evaluate(() =>
+    ["splash:painted", "splash:exit", "splash:done"].map((n) => performance.getEntriesByName(n)[0]?.startTime ?? null),
+  );
+  expect(t0).not.toBeNull();
+  expect(exit).not.toBeNull();
+  expect(done! - t0!).toBeGreaterThanOrEqual(1000 - 150);
+  expect(done! - t0!).toBeLessThanOrEqual(1000 + 150);
+  expect(done! - exit!).toBeLessThanOrEqual(50);
+  // No opacity-transition fade: the `exit` attribute is never set.
+  const seen = await splashSeen(page);
+  expect(seen).toContain("on"); // the recorder is live, so "no exit" is not vacuous
+  expect(seen).not.toContain("exit");
+  expect(seen[seen.length - 1]).toBe("done");
 });
 
 test("TC-158: run B, readiness never arrives: done at 5.0 s ± 200 ms via the ceiling", async ({ page }) => {
@@ -89,6 +113,10 @@ test("TC-158: run B, readiness never arrives: done at 5.0 s ± 200 ms via the ce
   expect(Math.abs(exit! - t0! - 5000)).toBeLessThanOrEqual(200);
   // Instant cut: exit and done land in the same tick, not 300 ms apart.
   expect(done! - exit!).toBeLessThanOrEqual(50);
+  const seen = await splashSeen(page);
+  expect(seen).toContain("on"); // the recorder is live, so "no exit" is not vacuous
+  expect(seen).not.toContain("exit");
+  expect(seen[seen.length - 1]).toBe("done");
 });
 
 test("TC-159: skip still works under reduced motion", async ({ page }) => {
@@ -99,6 +127,12 @@ test("TC-159: skip still works under reduced motion", async ({ page }) => {
   await page.keyboard.press("Escape");
   await waitForSplash(page, "done", 2_000);
   const after = await sinceT0(page);
-  expect(after - before).toBeLessThanOrEqual(50 + 50); // 50 ms budget + measurement slack
+  // The contract, in page time: done within 50 ms of the skip.
+  const [skip, done] = await Promise.all([markAt(page, "splash:skip"), markAt(page, "splash:done")]);
+  expect(skip).not.toBeNull();
+  expect(done).not.toBeNull();
+  expect(done! - skip!).toBeLessThanOrEqual(50);
+  // Loose sanity bound only: wall clock includes the CDP round trips.
+  expect(after - before).toBeLessThanOrEqual(500);
   expect(await appInert(page)).toBe(false);
 });
