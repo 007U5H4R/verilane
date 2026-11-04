@@ -844,6 +844,68 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - **Red proof.** With the `showSplash()` call removed from GatedApp's layout effect, TC-137 fails: the splash never turns on.
 - **Start step.** The spec opens `/onboarding?step=3` instead of clicking through steps 1–2. Steps 1–2 are client-side `?step=` pushes that never mount GatedApp, so they do not change what is measured.
 
+## EXE70 · The error phase completes the bar to 100, like ready (TASK-45.4) — accepted 2026-11-04 (orchestrator, under the user's delegation)
+- **Rule.** `error` is terminal like `ready` (PRD R13, Design §7), so `progress()` maps it to 100 and the exit is at `max(t0 + D, tError + 250)`.
+- **Conflict.** TC-149 says "the bar stays < 100". TC-149 asserts 100 and is marked "Pass with open question". Ruled: the PRD and Design outrank the TC wording, so TC-149's expected result is amended to "completes to 100".
+
+## EXE71 · The splash-bar e2e uses the real clock, timed from `splash:painted` (TASK-45.4) — accepted
+- **Rule.** In-page times are relative to `splash:painted` (t0), and the test waits with `waitPastT0`, not `page.clock`. `page.clock` would freeze the pre-hydration runtime and the provider's IDB work together.
+- TC-143's precondition still names `page.clock`; the spec follows this entry.
+
+## EXE72 · TC-149 forces the error with a seed-manifest abort, not a failing `indexedDB.open` (TASK-45.4) — accepted
+- **Found.** `openDb` falls back to fake-indexeddb when `indexedDB.open` fails, so that never reaches the provider's error path.
+- **Rule.** TC-149 aborts `/seed/manifest.json` on a fresh profile (as TC-141 does). The TC-149 precondition text now says so (review-45.4 R-6).
+
+## EXE73 · Stalls hold the seed manifest, not the loader chunk (TASK-45.4) — accepted
+- **Rule.** TC-146, TC-147 and TC-150 hold `/seed/manifest.json`. On a seeded profile this holds the bar at 65 (provider); on a fresh one at 80 (seeding).
+
+## EXE74 · TC-147 checks "never restarts" without the intro keyframes (TASK-45.4) — accepted
+- **Rule.** The intro keyframes belong to TASK-45.5. Until then TC-147 checks that no animation other than the looping glint starts twice, and that the bar is revealed once. Asserting a non-empty intro set is deferred to 45.5 (review-45.4 R-2).
+
+## EXE75 · Splash-bar timing windows are `want − 30 … want + L + 50`, with L measured in the page (TASK-45.4 fix round 1, review R-3) — accepted
+- **Rule.** The recorder init script sets its own setTimeout at each deadline the runtime schedules: reveal (t0 + 3.2 s), the glint and stall line per phase (+1.5 s, +4 s), D + 1.5 s, the exit (`max(t0 + D, t_ready + 250)`) and done (exit + 300). It stores how late each one ran (L). TC-143's reveal, TC-146's glint and stall line, and TC-147/TC-149's exit assert `want − 30 ≤ observed ≤ want + max(0, L) + 50` (PRD R3). `done − exit` is checked the same way against 300. This replaces the fixed +400 and the "exit − ready ≤ 550" / "≤ want + 300" bounds. The lower bounds are unchanged.
+- **Why.** A loaded machine delays the runtime's timer and the probe's timer by about the same amount, so the window follows the real lag and stays tight on an idle one.
+- **Mutation proof.** Delaying the exit by 250 ms (`task45/45.4-r1/mutation-exit-250ms-late.diff`) turns TC-147 and TC-149 red with "exit ≤ want + lag 0 + 50" (`task45/45.4-r1/red-R3-mutant.log`). The old bounds accepted it.
+- **Ceiling guard.** TC-147 now asserts there is no `splash:ceiling` mark, as TC-146 does, so a starved run that pushes ready past 9.7 s fails with that cause.
+
+## EXE76 · The exit clears the stall glint and the stall line (TASK-45.4 fix round 1, review R-4) — accepted
+- **Rule.** `exit()` emits `stall false` and `sub ""` when either is showing, and resets both in the model. A ceiling or skip exit no longer fades out with "Still working…" and a running glint. An exit with neither showing emits neither effect.
+- **Supersedes** the 45.4 report's note that `data-stalled` stays set after a ceiling exit. Pinned in `runtime.test.ts` (review R-4 cases).
+
+## EXE77 · The bar fill starts at `#3fa97b` (TASK-45.5, TP-45.j, TC-154) — accepted
+- **Rule.** `--sp-fill-start: #3fa97b`; the fill is `linear-gradient(90deg, var(--sp-fill-start), var(--sp-mint))`, with `--sp-mint #8ed7b0` at the end. Same green hue family as the mockup, so this is an EXE and not a Design revision (TP-45.j).
+- **Found.** The mockup's darker start (`#21845f`) is 2.37–3.33:1 against the placeholder hills and the lowest sky band, under the 3:1 non-text minimum (Freeze item 1). `#3fa97b` is the darkest step in the family that clears 3:1 on every one: 3.75:1 on the lightest backdrop, 4.0–5.3:1 on the others (`task45/45.5/contrast.mjs`). The mint end is ≥ 6.5:1.
+- **Re-check.** TC-154 measures the rendered pixels at reveal and at hold; it re-runs on the final art in TASK-45.9.
+
+## EXE78 · Skip intro is a 44 px target with a 36 px pill on fine pointers (TASK-45.5, TC-155) — accepted
+- **Found.** Design §8 says 36 px tall on a pointer device and 44 px on touch; TC-155 asks for a ≥ 44×44 target on both.
+- **Rule.** The `<button>` is 44 px tall (min-width 44 px) and transparent. Its visible pill is a `::before` inset 4 px top and bottom (36 px, the Design look), and inset 0 under `(pointer: coarse)`. The focus ring sits on the pill (`:focus-visible::before`, 2 px mint, offset 3 px). The hint swaps by `(pointer: coarse)`: "or press any key" / "or tap anywhere", both in the markup and both added to the SPLASH_COPY markers.
+
+## EXE79 · Tab moves focus to Skip intro and does not skip (TASK-45.5, TC-155) — decided (orchestrator)
+- **Found.** PRD R11 and Design §8 say any non-repeat `keydown` skips, and the mockup skips on Tab too. Design §8 and TC-155 also say the button is reachable by Tab and the first Tab focuses it with a visible ring. With Tab skipping, the overlay goes inert on that keydown and the focus is blurred, so TC-155 cannot pass.
+- **Rule.** The inline key handler ignores `key === "Tab"` (with or without Shift): no skip, no preventDefault, focus moves as normal. Every other key still skips. Pinned in `script.test.ts` and TC-155.
+- **Shift.** A real Shift+Tab sends a bare `key === "Shift"` keydown before the Tab, so `Shift` is exempt too; otherwise reverse tabbing skipped the splash (review 45.5, fix round 1). Shift+letter still skips on the letter's keydown. Pinned in `script.test.ts` (Shift then Tab stays `on`; Shift then `A` skips) and in TC-155 (a real `Shift+Tab` press leaves the splash up with focus in the overlay or on body, and the next Tab returns to Skip).
+- **Decision.** Ruled by the orchestrator in review 45.5: Tab moves focus to Skip intro and never skips. The alternative (Tab skips, drop "first Tab focuses Skip" from TC-155) is rejected.
+
+## EXE80 · The wordmark sheen is an inline-SVG band under a clip, moved by transform (TASK-45.5, S15) — accepted
+- **Rule.** The mockup's sheen animates `background-position` over a masked gradient. That is not transform/opacity (S15), so the band is a gradient rect in an inline SVG clipped to the logo, animated by `translateX` (`splash-sheen`, 700 ms at 1.6 s, per the Design F04 row; the mockup file runs it at 800 ms). The look is the same sweep.
+- **Also.** The status block uses `splash-up-in` (300 ms at 3.2 s, the bar reveal beat); the intro set that TC-147 now requires is drawn from these keyframes (review-45.4 R-2).
+- **Paint cost.** The band is a transform on an SVG child inside a mask, so the browser repaints the masked layer each frame for the 700 ms sweep rather than compositing it on the GPU. No code change now; re-check the frame cost in TC-156 and on the final art in TASK-45.9 (review 45.5, fix round 1).
+
+## EXE81 · The splash tagline is not a shared-JS marker (TASK-45.5, TC-162) — accepted
+- **Found.** "AR Collections Copilot" also ships in the app Sidebar (`src/components/shell/Sidebar.tsx`), so it is in shared chunks by design and would be a false positive.
+- **Rule.** The SPLASH_COPY marker list gains the 45.4 stall, seeding and error copy plus both hints; the tagline stays out, and `splash-budget.test.ts` pins that it is not a marker.
+
+## EXE82 · Short/landscape phones get a `max-height: 500px` rule to keep the lockup off the bar (TASK-45.5, TC-151) — accepted
+- **Found.** At 812×375 (375 landscape), the §12 `max-width` rules alone left `.splash-brand` overlapping `.splash-progress`/`.splash-track` by ~28 px — both were sized for portrait height, and no rule used the viewport's height.
+- **Rule.** Added `@media (max-height: 500px)`: brand moves to `top: 28vh` and narrows to `clamp(170px, 34vw, 280px)`; tagline/status margins and font sizes shrink; the bar's `bottom` tightens to `max(72px, 9vh)`. Measured clear via the TC-151 e2e overlap check at 812×375 in both themes.
+
+## EXE83 · The sheen mask's logo `href` is set when the splash shows, not in the markup (TASK-45.5 fix round 1, review minor 2) — accepted
+- **Found.** Measured in Chromium (`task45/45.5/logo-repro.cjs`, log `fix1-logo-repro.log`): an SVG `<image href>` inside a `display:none` container fetches its file; `loading="lazy"` does not apply to SVG `<image>`. The lazy `<img>`, an empty `href` and an absent `href` fetch nothing. So the sheen mask pulled the 30 KB logo on every cold load, including the ones where the splash never shows.
+- **Rule.** The markup carries the path as `data-href` on the mask's `<image>` and has no `href`; the runtime copies `data-href` into `href` only while the splash is live: in `start()` (client entry and replays, where the overlay already exists) and at `DOMContentLoaded` (a hard load, where the head script runs before the overlay is parsed; the first e2e run caught this). The path stays in one place (`markup.ts` `LOGO`). The lazy `<img>` layers are unchanged.
+- **Pinned.** `markup.test.ts` (no bare `href` on the `<image>`), `script.test.ts` (no `href` while off, set on show), and an e2e check in `splash-scene.spec.ts`: a load with the splash off makes no request for `/brand/verilane-logo-light.png` (the app's own logo goes through `/_next/image`), and a splash load (the control) does.
+- **Budget.** splash-budget inline total 8576 B / 15360 B after the change (the DOMContentLoaded call adds 34 B over the first gate run, 8542 B); route deltas stay 157 B / 512 B.
+
 ## EXE85 · The E1 route baseline is a constant in `splash-budget.ts`, not a `scripts/fixtures/` file (TASK-45.7, TC-161) — accepted
 - **Found.** TC-161's precondition says the E1 stats snapshot is committed under `scripts/fixtures/`. The TASK-45.7 side-track brief allows only `scripts/splash-budget.ts`, its test, `package.json` and the docs.
 - **Rule.** `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` holds the exact First Load JS gzip bytes for each of the 18 routes. Same data, one file fewer, and the test pins it (18 routes, `/settings` = 301778 B).
@@ -870,3 +932,19 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - **url() rule.** Every `url()` in `src/app/splash.css` is resolved from `src/app/` and must name an existing file under `src/assets/splash/`. If it does not, it fails with "no such file". A ref that resolves outside the folder, or an absolute or remote URL, fails with "outside". A missing or empty folder therefore passes only while the CSS has no such ref. `data:` URIs are skipped, since they are counted in the inline gzip, and so are `#fragment` refs; neither is a network request. A query or hash suffix is ignored when matching the file.
 - **Markers.** EXE88's set, plus `splash:skip`, `splash:ceiling` and the ceiling warn message, plus `SPLASH_COPY` opening/ready/error/skip. `SPLASH_COPY.cont` ("Continue") is left out because app UI ships that word in 3 of the 68 shared chunks, which would be a false positive. All the added strings appear in the 15 prerendered HTML files and in 0 chunks.
 - **Evidence.** Appending `url("../assets/splash/sky.webp")` to splash.css makes the real gate exit 1 with `splash.css url(../assets/splash/sky.webp): no such file in src/assets/splash/`. After the restore it exits 0 (`task45/side-45.7/fix1-negative-url.log`).
+
+## EXE95 · Reduced motion is a third timing track inside the same `step()`, not a parallel machine (TASK-45.6) — accepted
+- **Rule.** `Model.rm` is fixed at `begin()` from `DecideEnv.rm` and never changes mid-run. Two small helpers, `dur()` and `ceiling()`, swap in `cfg.Drm`/`cfg.ceilingRm` for `cfg.D`/`cfg.D + cfg.ceilingExtra` wherever the full-motion path reads them; `beatMs` is skipped (`m.rm ? 0 : cfg.beatMs`) in the `exitAt` calculation, giving beat 0. `begin()` also reveals the bar immediately and skips the 3.2 s reveal timer under rm, per Design §18 ("the bar is visible from t0").
+- **Instant cut.** `exit()` branches on `m.rm`: instead of setting `attr: "exit"` and scheduling the 300 ms fade timer, it emits `mark splash:exit`, `uninert`, `mark splash:done` and `attr: "done"` in the same tick, and the model goes straight to `done`. No `exit` attribute value is ever observed under rm, so there is nothing for the CSS opacity transition to animate even before the TASK-45.6.2 blanket rule applies.
+- **Hard-load reveal.** On a hard load `show()` runs in `<head>`, before the overlay markup is parsed, so the t0 `reveal` effect finds no bar (first e2e run: TC-158 run A read `data-splash-bar="hidden"`). Boot re-applies `reveal` when `#verilane-app` first appears (its MutationObserver) and at `DOMContentLoaded`, if the model is revealed and not done. `#verilane-app` follows the overlay in `layout.tsx`, so the bar exists by then. Regression test: script.test.ts "on a hard load, reveals the bar once the overlay markup is parsed".
+- **Two CSS layers.** `src/app/globals.css:278` (the app-wide `prefers-reduced-motion` rule over `*`) is the primary kill for splash animation and transition. The `splash.css` block is the backstop: it keeps the splash subtree static even if the global rule is later scoped or removed, and it stays next to the splash keyframes TASK-45.5 adds.
+- **Stall sub-line under rm.** "1.5 s past D" is read as past D_rm, so under rm the "Still working" sub-line shows at D_rm + 1.5 s = 2.5 s from t0 (and the bar is stalled from 2.5 s too when no phase has landed). The ceiling cut clears both.
+- **Why not a parallel state machine.** The phase/stall/skip/ceiling logic (progress mapping, `decide()`, skip guard, ceiling detection) is identical in both tracks; duplicating `step()` would double the surface TASK-45.4/45.5 maintain. The three numeric substitutions are the only difference the spec describes.
+
+## EXE96 · `prefers-reduced-motion` is read once, at `show()`, not watched live (TASK-45.6) — accepted
+- **Rule.** `readEnv()` reads `matchMedia("(prefers-reduced-motion: reduce)").matches` inside the same try/catch as the other env reads (any throw, e.g. no `matchMedia`, degrades to `false`: full motion). The result is passed into `begin(t0, cfg, env.rm)` and held in `Model.rm` for the run's lifetime.
+- **Why.** Design §18 describes an on/off path per run, not a live-switching one; the splash is a few seconds long, and TASK-45.2's `decide()` already treats its other env reads (session, seen, force) as a one-time snapshot at `show()`. Matching that keeps one read pattern instead of adding a `change` listener and a mid-run re-decision the spec never asks for.
+
+## EXE97 · `splash-rm.spec.ts` forces each of TC-157–159's three runs with its own manifest mock, reusing `splash.spec.ts`'s helpers (TASK-45.6) — accepted
+- **Rule.** `beforeEach` emulates `reducedMotion: "reduce"` and holds `/seed/manifest.json` indefinitely (the TC-157/158-run-B/159 precondition: readiness never, or not before the probe). TC-158's run A unroutes the mock so a fresh guest's seeding completes well inside D_rm (1 s), proving the fast-ready path; run B keeps the hold and proves the 5 s ceiling path. TC-159 presses Escape past the 250 ms guard and checks `done` within budget plus the same `want + lag + 50` style slack used in `splash-bar.spec.ts` (kept small since rm has no lag probes of its own).
+- **File boundary.** Per the brief, new assertions live only in `tests/e2e/splash-rm.spec.ts`; `markup.ts` and `splash-bar.spec.ts` (TASK-45.5's territory) are untouched.

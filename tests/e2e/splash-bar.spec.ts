@@ -18,11 +18,22 @@ const COPY = {
 };
 
 type Sample = { at: number; what: string; v: string | null };
-type Win = Window & { __bar: Sample[]; __phases: { at: number; phase: string; now: string | null; text: string | null; live: string | null }[] };
+type Lag = { name: string; want: number; L: number };
+type Win = Window & {
+  __bar: Sample[];
+  __phases: { at: number; phase: string; now: string | null; text: string | null; live: string | null }[];
+  __lag: Lag[];
+};
 
 /** splash-on (as in splash.spec.ts) plus an in-page recorder: every phase
  * event (sampled after the runtime's own listener), and every change to the
- * bar, the status and `data-splash`, timed from t0. */
+ * bar, the status and `data-splash`, timed from t0.
+ *
+ * Lag probes (EXE75): for each deadline the runtime schedules (reveal, the
+ * stall glint and line per phase, D + 1.5 s, the exit, done), the recorder
+ * sets its own setTimeout for the same instant and stores how late it ran
+ * (L). A loaded event loop delays the runtime's timer by about the same L,
+ * so windows are `want − 30 … want + L + 50` instead of a fixed allowance. */
 async function splashOnAndRecord(context: BrowserContext) {
   await context.addInitScript(() => {
     try {
@@ -38,9 +49,26 @@ async function splashOnAndRecord(context: BrowserContext) {
     const since = () => performance.now() - (performance.getEntriesByName("splash:painted")[0]?.startTime ?? 0);
     w.__bar = [];
     w.__phases = [];
+    w.__lag = [];
+    const probed = new Set<string>();
+    /** A timer at t0 + want that records its own lateness under `name`. */
+    const probe = (name: string, want: number) => {
+      const t0 = performance.getEntriesByName("splash:painted")[0]?.startTime;
+      if (t0 === undefined || probed.has(name)) return;
+      probed.add(name);
+      const due = t0 + want;
+      setTimeout(() => w.__lag.push({ name, want, L: performance.now() - due }), Math.max(0, due - performance.now()));
+    };
     const pb = () => document.querySelector("#verilane-splash [role=progressbar]");
     window.addEventListener("verilane:splash", (e) => {
       const phase = (e as CustomEvent).detail.phase as string;
+      // Same deadlines as the runtime's step(): this listener runs just before its one.
+      const at = since();
+      if (phase === "ready" || phase === "error") probe("exit", Math.max(5700, at + 250));
+      else if (!probed.has("exit")) {
+        probe(`stall:${phase}`, at + 1500);
+        probe(`sub:${phase}`, at + 4000);
+      }
       // The runtime's listener is added after this one; read once it has run.
       queueMicrotask(() =>
         w.__phases.push({
@@ -56,7 +84,13 @@ async function splashOnAndRecord(context: BrowserContext) {
       const o = document.getElementById("verilane-splash");
       const rec = (what: string, v: string | null) => w.__bar.push({ at: since(), what, v });
       rec("splash", document.documentElement.dataset.splash ?? null);
-      new MutationObserver(() => rec("splash", document.documentElement.dataset.splash ?? null)).observe(
+      probe("reveal", 3200);
+      probe("subD", 5700 + 1500);
+      new MutationObserver(() => {
+        const v = document.documentElement.dataset.splash ?? null;
+        if (v === "exit") probe("done", since() + 300);
+        rec("splash", v);
+      }).observe(
         document.documentElement,
         { attributes: true, attributeFilter: ["data-splash"] },
       );
@@ -105,6 +139,16 @@ const marks = (page: Page, ...names: string[]) =>
   }, names);
 const bar = (page: Page) => page.evaluate(() => (window as unknown as Win).__bar);
 const phaseLog = (page: Page) => page.evaluate(() => (window as unknown as Win).__phases);
+/** The lag probe for one deadline; fails if it never fired. */
+async function lag(page: Page, name: string): Promise<Lag> {
+  await expect.poll(() => page.evaluate((n) => (window as unknown as Win).__lag.some((x) => x.name === n), name), { message: `lag probe ${name}` }).toBe(true);
+  return page.evaluate((n) => (window as unknown as Win).__lag.find((x) => x.name === n)!, name);
+}
+/** PRD R3 window: never early, and at most 50 ms past the measured lag. */
+function within(observed: number, want: number, L: number, what: string) {
+  expect(observed, `${what} not early (want ${want.toFixed(0)})`).toBeGreaterThanOrEqual(want - 30);
+  expect(observed, `${what} ≤ want + lag ${L.toFixed(0)} + 50`).toBeLessThanOrEqual(want + Math.max(0, L) + 50);
+}
 const valueNow = (page: Page) =>
   page.evaluate(() => document.querySelector("#verilane-splash [role=progressbar]")?.getAttribute("aria-valuenow"));
 const appInert = (page: Page) => page.evaluate(() => document.getElementById("verilane-app")?.hasAttribute("inert"));
@@ -159,7 +203,8 @@ test("TC-143: the bar is revealed at 3.2 s and is absent from the a11y tree befo
   const reveal = (await bar(page)).find((s) => s.what === "bar" && s.v === "shown");
   expect(reveal).toBeDefined();
   expect(reveal!.at).toBeGreaterThanOrEqual(3200 - 20);
-  expect(reveal!.at).toBeLessThanOrEqual(3200 + 400);
+  const rl = await lag(page, "reveal");
+  expect(reveal!.at, `reveal ≤ 3200 + lag ${rl.L.toFixed(0)} + 50`).toBeLessThanOrEqual(3200 + Math.max(0, rl.L) + 50);
 });
 
 test("TC-144: progressbar aria values track the phases", async ({ page }) => {
@@ -223,7 +268,7 @@ test("TC-146: a stall shows the glint, then the 'Still working' line, without mo
   const last = before.at(-1)!;
   expect(last.phase).toBe("seeding");
   // the runtime took ready before the 9.7 s ceiling (a starved CPU can push
-  // the held load past it; the overlay then exits without clearing the stall)
+  // the held load past it; the stall is then cleared by the exit, R-4)
   const [ceiling] = await marks(page, "splash:ceiling");
   expect(ceiling, "ready landed before the ceiling").toBeNull();
   const samples = await bar(page);
@@ -231,15 +276,14 @@ test("TC-146: a stall shows the glint, then the 'Still working' line, without mo
   const stallOn = samples.find((s) => s.what === "stalled" && s.v === "1");
   expect(stallOn, "the glint started").toBeDefined();
   // no glint before the reveal; after it, 1.5 s with no event
-  const wantStall = Math.max(3200, last.at + 1500);
-  expect(stallOn!.at).toBeGreaterThanOrEqual(wantStall - 30);
-  expect(stallOn!.at).toBeLessThanOrEqual(wantStall + 400);
+  const sl = await lag(page, last.at + 1500 > 3200 ? `stall:${last.phase}` : "reveal");
+  const wantStall = Math.max(3200, sl.want);
+  within(stallOn!.at, wantStall, sl.L, "glint");
 
   const subOn = samples.find((s) => s.what === "sub" && s.v === COPY.stall);
   expect(subOn, "the stall line appeared").toBeDefined();
-  const wantSub = Math.min(last.at + 4000, D + 1500);
-  expect(subOn!.at).toBeGreaterThanOrEqual(wantSub - 30);
-  expect(subOn!.at).toBeLessThanOrEqual(wantSub + 400);
+  const ll = await lag(page, last.at + 4000 < D + 1500 ? `sub:${last.phase}` : "subD");
+  within(subOn!.at, ll.want, ll.L, "stall line");
   expect(subOn!.at).toBeLessThan(ready.at);
 
   // the value never moved during the stall
@@ -265,16 +309,29 @@ test("TC-147: a slow load holds after D and never restarts the cinematic", async
   await waitForSplash(page, "done", 25_000);
   expect(at5).toBe("on");
   expect(at6).toBe("hold");
-  const [ready, exit] = await marks(page, "splash:ready", "splash:exit");
+  const [ready, exit, done, ceiling] = await marks(page, "splash:ready", "splash:exit", "splash:done", "splash:ceiling");
   expect(ready, "ready landed after D").toBeGreaterThan(D);
+  // a starved CPU can push the held load past 9.7 s; name that, not the window
+  expect(ceiling, "ready landed before the ceiling").toBeNull();
   const states = (await bar(page)).filter((s) => s.what === "splash").map((s) => s.v);
   expect(states.filter((v, i) => v !== states[i - 1])).toEqual(["on", "hold", "exit", "done"]);
-  // exit comes within the 250 ms beat plus the 300 ms fade of ready
-  expect(exit! - ready!).toBeLessThanOrEqual(250 + 300);
-  // EXE74: the intro keyframes are TASK-45.5; until then, no animation other
-  // than the looping stall glint may start twice (nothing replays at hold).
+  // PRD R3: the exit starts at max(t0 + D, ready + 250), within 50 ms past
+  // the measured lag; done follows 300 ms later (EXE75)
+  const el = await lag(page, "exit");
+  expect(Math.abs(el.want - Math.max(D, ready! + 250)), "probe deadline matches ready").toBeLessThanOrEqual(10);
+  within(exit!, el.want, el.L, "exit");
+  const dl = await lag(page, "done");
+  within(done! - exit!, 300, dl.L, "done − exit");
+  // EXE74 + R-2 (TASK-45.5): the intro played, and no animation other than
+  // the looping stall glint started twice (nothing replays at hold). The
+  // recorder attaches at DOMContentLoaded, so only the later-starting intro
+  // beats (the wordmark at 2 s, the tagline/status rise) are asserted.
   const anims = (await bar(page)).filter((s) => s.what === "anim" && s.v !== "splash-glint").map((s) => s.v!);
-  for (const name of new Set(anims)) expect(anims.filter((a) => a === name), name).toHaveLength(1);
+  expect(anims, "intro animations started").toEqual(expect.arrayContaining(["splash-word-in", "splash-up-in"]));
+  const once = anims.filter((a) => a !== "splash-up-in");
+  for (const name of new Set(once)) expect(once.filter((a) => a === name), name).toHaveLength(1);
+  // splash-up-in runs on two layers (tagline and status), once each
+  expect(anims.filter((a) => a === "splash-up-in").length, "splash-up-in").toBeLessThanOrEqual(2);
   // the bar was revealed once
   expect((await bar(page)).filter((s) => s.what === "bar" && s.v === "shown")).toHaveLength(1);
 });
@@ -329,10 +386,12 @@ test("TC-149: the DataProvider error path exits promptly and reveals the error r
   expect(log.map((p) => p.phase)).not.toContain("ready");
   const msgs = (await bar(page)).filter((s) => s.what === "msg").map((s) => s.v);
   expect(msgs).toContain(COPY.error);
-  const [exit] = await marks(page, "splash:exit");
-  const want = Math.max(D, err!.at + 250);
-  expect(exit!).toBeGreaterThanOrEqual(want - 30);
-  expect(exit!).toBeLessThanOrEqual(want + 300);
+  const [exit, done] = await marks(page, "splash:exit", "splash:done");
+  const el = await lag(page, "exit");
+  expect(Math.abs(el.want - Math.max(D, err!.at + 250)), "probe deadline matches error").toBeLessThanOrEqual(10);
+  within(exit!, el.want, el.L, "exit");
+  const dl = await lag(page, "done");
+  within(done! - exit!, 300, dl.L, "done − exit");
   // EXE70: error is terminal like ready, so the bar completes (PRD R13, Design §7)
   expect(err!.now).toBe("100");
   expect(logged.some((t) => t.includes("[verilane] failed to open database"))).toBe(true);

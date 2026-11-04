@@ -206,7 +206,7 @@ describe("scanChunks", () => {
   });
 
   it("derives its markers from the runtime config, copy, runtime literals and markup (R-4, R-9)", () => {
-    // "Continue" (SPLASH_COPY.cont) is left out: app UI ships it in shared chunks (EXE89).
+    // "Continue" (SPLASH_COPY.cont) and the tagline are left out: app UI ships them in shared chunks (EXE89, TASK-45.5).
     expect(splashMarkers()).toEqual([
       "verilane-splash-seen",
       "verilane-splash-force",
@@ -215,9 +215,13 @@ describe("scanChunks", () => {
       "splash:ceiling",
       "[verilane] splash ceiling reached before the app was ready",
       "Verilane. Opening workspace…",
+      "Verilane. Preparing demo data…",
       "Verilane. Workspace ready",
       "Verilane. Workspace opened",
       "Skip intro",
+      "Still working — first visits can take a few seconds.",
+      "or press any key",
+      "or tap anywhere",
       "data-splash-bar",
       "data-splash-status",
       "data-splash-msg",
@@ -226,6 +230,7 @@ describe("scanChunks", () => {
     ]);
     expect(splashMarkers()).not.toContain("verilane:splash");
     expect(splashMarkers()).not.toContain("splash:ready");
+    expect(splashMarkers()).not.toContain("AR Collections Copilot");
   });
 });
 

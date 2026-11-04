@@ -430,3 +430,94 @@ describe("splashConfig", () => {
     expect(cfg.authRoutes).toBe(AUTH_ROUTES);
   });
 });
+
+// TASK-45.6 · 45.6.1 · TC-158 (unit): the reduced-motion branch (Design §18):
+// D_rm 1 s, ceiling 5 s, beat 0, the bar shown from t0, and an instant cut
+// (straight to done, no "exit" fade).
+describe("step · reduced motion", () => {
+  function runRm(events: Ev[]): { m: Model; fx: Effect[] } {
+    const start = begin(0, cfg, true);
+    let m = start.m;
+    const fx: Effect[] = [...start.fx];
+    for (const ev of events) {
+      const r = step(m, ev, cfg);
+      m = r.m;
+      fx.push(...r.fx);
+    }
+    return { m, fx };
+  }
+
+  it("uses the frozen reduced-motion timings", () => {
+    expect(cfg).toMatchObject({ Drm: 1000, ceilingRm: 5000 });
+  });
+
+  it("begin reveals the bar at t0 and schedules D_rm and the 5 s ceiling only", () => {
+    const { m, fx } = begin(0, cfg, true);
+    expect(m.rm).toBe(true);
+    expect(m.revealed).toBe(true);
+    expect(fx.filter((f) => f.k === "reveal")).toHaveLength(1);
+    expect(timers(fx)).toEqual(expect.arrayContaining([1000, 5000]));
+    expect(timers(fx)).not.toContain(3200);
+    expect(timers(fx)).not.toContain(5700);
+    expect(timers(fx)).not.toContain(9700);
+    expect(begin(0, cfg).m.rm).toBe(false);
+  });
+
+  it("a ceiling cut clears the stall glint and the sub-line before done, like the fade path", () => {
+    const { m, fx } = runRm([tick(1000), tick(2500), tick(5000)]);
+    expect(m.attr).toBe("done");
+    // stalled and long-stalled at 2.5 s (D_rm + 1.5 s), cleared by the 5 s cut
+    expect(fx).toContainEqual({ k: "stall", v: true });
+    expect(fx).toContainEqual({ k: "sub", v: cfg.copy.stall });
+    const doneAt = fx.findIndex((f) => f.k === "attr" && f.v === "done");
+    const afterExit = fx.slice(fx.findIndex((f) => f.k === "mark" && f.v === "splash:exit"));
+    expect(afterExit).toContainEqual({ k: "stall", v: false });
+    expect(afterExit).toContainEqual({ k: "sub", v: "" });
+    expect(fx.findIndex((f) => f.k === "sub" && f.v === "")).toBeLessThan(doneAt);
+    expect(fx.findIndex((f) => f.k === "stall" && f.v === false)).toBeLessThan(doneAt);
+  });
+
+  it("ready at 300 ms cuts straight to done at 1 s, with no exit fade", () => {
+    expect(runRm([phase("ready", 300), tick(999)]).m.attr).toBe("on");
+    const { m, fx } = runRm([phase("ready", 300), tick(1000)]);
+    expect(m.attr).toBe("done");
+    expect(attrs(fx)).toEqual(["on", "done"]);
+    expect(marks(fx)).toEqual(expect.arrayContaining(["splash:exit", "splash:done"]));
+    expect(fx).toContainEqual({ k: "uninert" });
+    expect(timers(runRm([phase("ready", 300)]).fx)).toContain(1000);
+  });
+
+  it("ready after D_rm cuts at once: beat 0", () => {
+    const held = runRm([tick(1000)]);
+    expect(held.m.attr).toBe("hold");
+    const r = runRm([tick(1000), phase("ready", 2000)]);
+    expect(timers(r.fx)).toContain(2000);
+    const { m, fx } = runRm([tick(1000), phase("ready", 2000), tick(2000)]);
+    expect(m.attr).toBe("done");
+    expect(attrs(fx)).not.toContain("exit");
+  });
+
+  it("never ready: holds from 1 s and cuts at the 5 s ceiling", () => {
+    expect(runRm([tick(1000), tick(4999)]).m.attr).toBe("hold");
+    const { m, fx } = runRm([tick(1000), tick(5000)]);
+    expect(m.attr).toBe("done");
+    expect(marks(fx)).toEqual(expect.arrayContaining(["splash:ceiling", "splash:exit", "splash:done"]));
+    expect(attrs(fx)).not.toContain("exit");
+  });
+
+  it("a skip after the guard cuts to done at once; inside the guard it is ignored", () => {
+    expect(runRm([key(200)]).m.attr).toBe("on");
+    const { m, fx } = runRm([key(400)]);
+    expect(m.attr).toBe("done");
+    expect(m.skipped).toBe(true);
+    expect(marks(fx)).toEqual(expect.arrayContaining(["splash:skip", "splash:exit", "splash:done"]));
+    expect(attrs(fx)).toEqual(["on", "done"]);
+  });
+
+  it("shows the stall line 1.5 s past D_rm", () => {
+    const subs = (fx: Effect[]) => fx.filter((f) => f.k === "sub").map((f) => f.v);
+    expect(timers(begin(0, cfg, true).fx)).toContain(2500);
+    expect(subs(runRm([tick(1000), tick(2499)]).fx)).toEqual([]);
+    expect(subs(runRm([tick(1000), tick(2500)]).fx)).toEqual([cfg.copy.stall]);
+  });
+});

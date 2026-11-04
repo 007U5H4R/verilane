@@ -196,12 +196,12 @@
   - Time-only events never change the value.
 
 ### TC-143 · The bar is revealed at 3.2 s and is absent from the a11y tree before that
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE71) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE71, EXE75) · **Finding:** —
 - **Objective:** The reveal timing and the a11y tree agree.
 - **Preconditions:** splash-on; `page.clock`.
-- **Steps:** Take an `accessibility.snapshot()` at 3.0 s and at 3.4 s.
+- **Steps:** Take an `accessibility.snapshot()` at 2.7 s and at 3.4 s.
 - **Data:** —
-- **Expected:** At 3.0 s: no progressbar node, `visibility:hidden`. At 3.4 s: a progressbar is present.
+- **Expected:** At 2.7 s: no progressbar node, `visibility:hidden`. At 3.4 s: a progressbar is present.
 
 ### TC-144 · Progressbar aria values track the phases
 - **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
@@ -226,7 +226,7 @@
   - The copy matches Design §18 strings.
 
 ### TC-146 · A stall shows the glint, then the "Still working…" line, without moving the value
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE73, EXE75) · **Finding:** —
 - **Objective:** The stall UI is visual only.
 - **Preconditions:** splash-on; the loader chunk is delayed by 6 s; `test.slow()`.
 - **Steps:** Sample `data-stalled`, the sub-line visibility and `aria-valuenow`.
@@ -237,7 +237,7 @@
   - The value is unchanged during the stall.
 
 ### TC-147 · A slow load holds after D and never restarts the cinematic
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73, EXE74) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE73, EXE74, EXE75) · **Finding:** —
 - **Objective:** Hold is a calm loop, not a replay.
 - **Preconditions:** splash-on; ready is delayed until 8 s; `test.slow()`.
 - **Steps:** Read `data-splash` at 5.0, 6.0 and 8.5 s; count the `animationstart` events for the intro keyframes.
@@ -253,12 +253,12 @@
 - **Expected:** Exit at the ceiling; the last `aria-valuenow` is < 100; the app's own failure UI is reachable and not `inert`.
 
 ### TC-149 · The DataProvider error path exits promptly and reveals the error
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass with open question (2026-11-04, b39be35, EXE70, EXE72): the bar reaches 100 on error per PRD R13 / Design §7, not < 100 as written · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE70, EXE72, EXE75) · **Finding:** —
 - **Objective:** `error` is a terminal phase like `ready`.
-- **Preconditions:** splash-on; an init script makes `indexedDB.open` fail.
+- **Preconditions:** splash-on; a fresh profile whose `/seed/manifest.json` request is aborted (EXE72), which drives the provider's error path.
 - **Steps:** Wait for `done`.
 - **Data:** —
-- **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar stays < 100; the existing error render is visible.
+- **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar completes to 100, since `error` is terminal like `ready` (PRD R13, Design §7, EXE70); the existing error render is visible.
 
 ### TC-150 · A skip at 65 % does not complete the bar
 - **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
@@ -269,7 +269,7 @@
 - **Expected:** The exit fade starts with the value still at 65 (no jump to 100).
 
 ### TC-151 · The scene fits at 375 / 768 / 1440 without horizontal scroll
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · Design §18, web-deliverables · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · Design §18, web-deliverables · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a, EXE82; 812×375 landscape needed the max-height rule) · **Finding:** —
 - **Objective:** Responsive layout.
 - **Preconditions:** splash-on at each viewport, portrait and landscape at 375.
 - **Steps:** Check `scrollWidth` against `innerWidth`, and the bounding boxes of the wordmark, the lighthouse, the bar and the skip button.
@@ -277,7 +277,7 @@
 - **Expected:** No overflow. The bar is centred within ±2 px. The skip button does not overlap the bar or the wordmark.
 
 ### TC-152 · Cloud parallax: the foreground moves faster than the background
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · S24 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · S24 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a) · **Finding:** —
 - **Objective:** Parallax ratio as frozen.
 - **Preconditions:** splash-on; animations are paused at t0+5 s via `getAnimations()` currentTime.
 - **Steps:** Read the computed `translateX` of each cloud layer.
@@ -285,7 +285,7 @@
 - **Expected:** Foreground ≈ 5vw and background ≈ 2.5vw at half the 10 s cycle (ratio 2 ± 0.1).
 
 ### TC-153 · The splash is always dark in both themes and exits cleanly into either theme
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a) · **Finding:** —
 - **Objective:** Theme independence.
 - **Preconditions:** splash-on in `chromium-light` and `chromium-dark`.
 - **Steps:** Compare the overlay background pixels; screenshot the first frame after `done`.
@@ -293,7 +293,7 @@
 - **Expected:** The overlay pixels are identical across themes. After the exit, the app shows its theme with no white flash.
 
 ### TC-154 · Bar fill ≥ 3:1 and text ≥ 4.5:1 against the scene
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass on placeholder art (2026-11-04, 5c9c72a, EXE77; re-run on final art in TASK-45.9) · **Finding:** —
 - **Objective:** WCAG non-text and text contrast.
 - **Preconditions:** splash-on; frames paused at reveal and at hold. Re-run on the final art in TASK-45.9.
 - **Steps:** Sample pixels at the fill start, the fill end, the status text and the skip label against the pixels behind them.
@@ -301,7 +301,7 @@
 - **Expected:** Fill ≥ 3:1 at both ends; text ≥ 4.5:1. The chosen colour is recorded as the TP-45.j EXE decision.
 
 ### TC-155 · Skip intro button: size, placement, label swap, no autofocus
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.4 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.4 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a, EXE78; Tab behaviour per EXE79, open) · **Finding:** —
 - **Objective:** A real, accessible control.
 - **Preconditions:** splash-on; fine and coarse pointers.
 - **Steps:** Measure the button; read `document.activeElement` at load; Tab once; check the key-hint text on touch and on desktop.
@@ -312,7 +312,7 @@
   - The label swaps per pointer type (Design §18).
 
 ### TC-156 · Frame screenshots match the frozen design beats
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (captured 2026-11-04 at 5c9c72a; pairs listed in the TASK-45.5 report) · **Finding:** —
 - **Objective:** The implementation matches the approved mockup.
 - **Preconditions:** splash-on; `page.clock` at each beat; 1440 / 768 / 375.
 - **Steps:** Capture each beat; review side by side with `.design/exploration/task-45/shots/`.
@@ -320,7 +320,7 @@
 - **Expected:** Composition, colour and timing match. Differences are listed in HANDOFF as DES- candidates. This is re-run on the final art.
 
 ### TC-157 · Reduced motion: zero running animations
-- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.2 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.2 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 8d6a770; re-verify after the 45.5 merge — 45.5's keyframes must also be killed by the rm block) · **Finding:** —
 - **Objective:** A static frame only.
 - **Preconditions:** splash-on; `emulateMedia({reducedMotion:"reduce"})`.
 - **Steps:** Run `document.getAnimations().filter(a => a.playState === "running").length` at 100 ms and at 600 ms.
@@ -328,7 +328,7 @@
 - **Expected:** 0 both times.
 
 ### TC-158 · Reduced motion: D_rm 1 s, ceiling 5 s, instant cut
-- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.1–.3 · S21 · **Type:** e2e (+unit) · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.1–.3 · S21 · **Type:** e2e (+unit) · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 8d6a770) · **Finding:** —
 - **Objective:** The rm timings.
 - **Preconditions:** As TC-157. Run A: ready fast. Run B: ready never.
 - **Steps:** Time `on` → `done`; check that no `exit` attribute with an opacity transition occurs.
@@ -336,7 +336,7 @@
 - **Expected:** A: `done` at 1.0 s ± 150 ms. B: `done` at 5.0 s ± 200 ms. Both are an instant cut with beat 0. The bar is visible from t0.
 
 ### TC-159 · Skip works under reduced motion
-- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.3 · S22 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.06 · TASK-45.6 · 45.6.3 · S22 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, 8d6a770) · **Finding:** —
 - **Objective:** Same skip contract.
 - **Preconditions:** As TC-157.
 - **Steps:** Press a key at 400 ms.
