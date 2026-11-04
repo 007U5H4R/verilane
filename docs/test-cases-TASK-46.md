@@ -34,7 +34,7 @@
 - **Expected:** Only additions after "Revision R1"; text identical to §11.1 then §11.2; no other Design.md line changes.
 
 ### TC-092 · Emitted CSS carries hashed heritage URLs in both image-set entries
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · R5 · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · R5 · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** Kill R5: Next/Turbopack rewrites `url()` inside `image-set()` and keeps the `type()` hints.
 - **Preconditions:** `pnpm build:e2e`; server on `E2E_PORT`.
 - **Steps:** Load `/`; collect `link[rel=stylesheet]` hrefs; fetch each; find rules with `heritage-`.
@@ -42,7 +42,7 @@
 - **Expected:** Path A: both light and dark desk rules contain `/_next/static/media/heritage-…<hash>.avif` with `type("image/avif")` and `….webp` with `type("image/webp")`; every URL returns 200. Path B: `/heritage/…v1.*`, same checks.
 
 ### TC-093 · Heritage asset is served immutable
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · N1 · **Type:** integration · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · N1 · **Type:** integration · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** Repeat visits cost no heritage bytes.
 - **Preconditions:** As TC-092.
 - **Steps:** `request.get(<heritage url from TC-092>)`; read `cache-control`.
@@ -50,15 +50,16 @@
 - **Expected:** Contains `max-age=31536000` and `immutable`.
 
 ### TC-094 · Service worker keeps the heritage asset referenced (STATIC_REF matches)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.6 · R5b · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.6 · R5b · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** `pruneStatics` in `public/sw.js` does not drop the art, because a cached CSS chunk's reference to it matches `STATIC_REF`.
 - **Preconditions:** As TC-092.
 - **Steps:** Fetch `/sw.js` text; extract the `STATIC_REF` regex literal; fetch the CSS chunk(s); run the regex over the CSS text.
 - **Data:** Emitted CSS (absolute `/_next/static/media/…` or relative `../media/…`).
 - **Expected:** Every heritage URL in the CSS is matched by `STATIC_REF`. On failure: stop and raise the regex widening for approval (plan sign-off item 6); `sw.js` is not edited without it.
+- **Note:** Adapted per EXE56 (path B): the art is served from `/heritage/…`, outside `/_next/static/`, the only key space `pruneStatics()` manages, so the test asserts that instead of a `STATIC_REF` match.
 
 ### TC-095 · First heritage request matches the theme in light, dark and system-dark (SC4)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · SC4 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · SC4 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** No wrong-theme flash or wasted request.
 - **Preconditions:** Fresh context per mode.
 - **Steps:** Mode 1 `colorScheme: light`, no storage; mode 2 `verilane-theme=dark` via `addInitScript`; mode 3 `colorScheme: dark`, no storage. Record `page.on("request")` matching `/heritage-/` while loading `/`.
@@ -66,7 +67,7 @@
 - **Expected:** First match contains `heritage-light-` (mode 1) or `heritage-dark-` (modes 2, 3); no request for the other theme before `data-idle` is set.
 
 ### TC-096 · Theme toggle swaps art in the same frame, no transition
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · F3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · F3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** The art follows the theme instantly.
 - **Preconditions:** `/` loaded in light.
 - **Steps:** In one `page.evaluate`: click ThemeToggle, then in `requestAnimationFrame` read `getComputedStyle([data-heritage]).backgroundImage` and `transitionDuration`.
@@ -74,7 +75,7 @@
 - **Expected:** `backgroundImage` contains `heritage-dark-`; `transitionDuration` is `0s`.
 
 ### TC-097 · Overlays stay above the art (R7)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** `isolate`/`-z-10` do not trap menus, dialogs or tooltips under the band.
 - **Preconditions:** `/` and `/settings` at 1440×900.
 - **Steps:** Open AccountMenu, a Settings AlertDialog, and a Tooltip over the band; `document.elementFromPoint` at each overlay's centre.
@@ -82,7 +83,7 @@
 - **Expected:** Each hit is inside its overlay element.
 
 ### TC-098 · Clicks pass through the art (SC3)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · SC3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · SC3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** The decorative layer never intercepts input.
 - **Preconditions:** `/` at 1440×900.
 - **Steps:** Pick a control inside the band area; `elementFromPoint` at its centre; click it.
