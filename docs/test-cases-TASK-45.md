@@ -147,7 +147,7 @@
 ### TC-137 · Client entry from onboarding shows the splash before any skeleton frame; a double click shows one
 - **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.3 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170, EXE49) · **Finding:** —
 - **Objective:** No skeleton flash between Finish and the splash.
-- **Preconditions:** splash-on started at `/onboarding` with no session; a rAF probe records the first frame in which `[data-skeleton]` and `data-splash` exist.
+- **Preconditions:** splash-on started at `/onboarding?step=3` with no session; a rAF probe records the first frame in which `[data-state="loading"]` and `data-splash` exist (EXE49).
 - **Steps:** Complete onboarding; double-click Finish.
 - **Data:** —
 - **Expected:** `data-splash=on` is set in or before the first frame where the skeleton exists. `show()` runs once (one `splash:painted` mark).
