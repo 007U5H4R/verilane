@@ -44,7 +44,7 @@
 - **Expected:** Only `docs/`, `.design/exploration/task-45/`, `decisions.md` and `Design.md` change. Both files show additions only. R4 sits after the last existing revision.
 
 ### TC-127 · Runtime state machine and built script behave in isolation
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.1–.3 · S21, S22 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.1–.3 · S21, S22 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** `step()` implements on → hold → exit → done with `exitAt = max(t0+D, tReady+250)`, and `buildSplashScript` runs with no bundler residue.
 - **Preconditions:** vitest `unit`; fake timestamps.
 - **Steps:** Feed event sequences into `step()`: ready at 1 s, ready at 7 s, no ready, skip at 100 ms, skip at 300 ms. Run the built string in `node:vm` with a stub `window`/`document`. Scan the string.
@@ -56,7 +56,7 @@
   - The string has no `require(`, `__webpack` or `import(`, and the non-e2e string has no `__splash`.
 
 ### TC-128 · Zero hydration warnings with the splash on
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Pre-hydration `data-splash`/`inert` mutations cause no React hydration mismatch.
 - **Preconditions:** splash-on.
 - **Steps:** Collect `console` and `pageerror` from navigation until `data-splash=done` (skip via keypress after 300 ms).
@@ -64,7 +64,7 @@
 - **Expected:** No message matching `/hydrat|did not match|mismatch/i`; no `pageerror`. If this fails, apply the TP-45.b fallback and re-run.
 
 ### TC-129 · Overlay node identity is stable across ShellGate swaps
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Skeleton → loader → AppShell never remounts `#verilane-splash`.
 - **Preconditions:** splash-on; the loader chunk is delayed by 1.5 s via `page.route` so the swap happens under the overlay.
 - **Steps:** Take an element handle on `#verilane-splash` at DOMContentLoaded. Wait for the AppShell landmark. Check `isConnected` and `===` against a fresh query.
@@ -83,7 +83,7 @@
 - **Expected:** The median Δ is ≤ 50 ms. A larger Δ is a no-go, which reopens Stage 2. Record the numbers in HANDOFF.
 
 ### TC-131 · Skip exits within 50 ms and the app is interactive afterwards
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Any key, click or tap skips promptly and removes `inert`.
 - **Preconditions:** splash-on.
 - **Steps:** Wait 400 ms; press Escape; read the gap between the `splash:skip` and `splash:exit` marks; wait for `done`; click a queue row.
@@ -91,7 +91,7 @@
 - **Expected:** The gap is ≤ 50 ms; `#verilane-app` has no `inert`; the row click works.
 
 ### TC-132 · The skipping input is swallowed and shortcuts still work
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** A skip never acts on the app, and the browser keeps its shortcuts.
 - **Preconditions:** splash-on; a test listener on `document` counts click and keydown events reaching the app.
 - **Steps:** Skip by clicking where a link sits underneath, then skip with Enter. Separately press Meta/Ctrl+L.
@@ -101,7 +101,7 @@
   - The modifier shortcut is not `preventDefault`-ed: `defaultPrevented` is false and the splash does not skip.
 
 ### TC-133 · 250 ms start guard and auto-repeat keys are ignored
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Accidental input at load or a held key does not skip.
 - **Preconditions:** splash-on.
 - **Steps:** Press a key at 100 ms; dispatch a `keydown` with `repeat:true` at 400 ms; press a fresh key at 500 ms.
@@ -109,7 +109,7 @@
 - **Expected:** Still `on` after the first two; exit after the third.
 
 ### TC-134 · The ceiling exits with a mark and a warning
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** A load that never becomes ready cannot trap the user.
 - **Preconditions:** splash-on; the DataProvider chunk route never resolves; `test.slow()`.
 - **Steps:** Wait for `done`.
@@ -120,7 +120,7 @@
   - `inert` is removed.
 
 ### TC-135 · Off by default in e2e builds; `?__splash=1` forces it and survives client navigation
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · TP-45.f · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · TP-45.f · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Steps 1–2 Pass (2026-11-04, 694f703); step 3 deferred to TASK-45.3 · **Finding:** —
 - **Objective:** The existing 185 specs never see the splash; the force param works.
 - **Preconditions:** `pnpm build:e2e`; guest session.
 - **Steps:**
