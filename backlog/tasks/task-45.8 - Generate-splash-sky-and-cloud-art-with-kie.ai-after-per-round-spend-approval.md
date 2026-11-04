@@ -1,10 +1,10 @@
 ---
 id: TASK-45.8
 title: Generate splash sky and cloud art with kie.ai after per-round spend approval
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-02 17:20'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 12:25'
 labels:
   - P1
 dependencies:

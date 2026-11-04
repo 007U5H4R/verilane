@@ -1,10 +1,10 @@
 ---
 id: TASK-46.7
 title: Generate and select heritage panoramas with kie.ai after spend approval
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-02 16:53'
+updated_date: '2026-11-04 12:25'
 labels:
   - P1
 dependencies:

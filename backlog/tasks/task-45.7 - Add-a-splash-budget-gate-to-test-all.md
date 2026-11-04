@@ -1,10 +1,10 @@
 ---
 id: TASK-45.7
 title: 'Add a splash-budget gate to test:all'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 17:19'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 10:00'
 labels:
   - P1
 dependencies:

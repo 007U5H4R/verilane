@@ -3,10 +3,10 @@ id: TASK-45.3
 title: >-
   Add once-per-tab splash trigger with client entry and observe-only pinning
   tests
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 17:19'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 08:26'
 labels:
   - P1
 dependencies:

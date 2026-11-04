@@ -1,10 +1,10 @@
 ---
 id: TASK-46.6
 title: Add contrast and prominence screenshot gate for heritage art
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-02 16:53'
+updated_date: '2026-11-04 17:42'
 labels:
   - P1
 dependencies:
