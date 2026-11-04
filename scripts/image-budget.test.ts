@@ -31,11 +31,12 @@ describe("checkBudget", () => {
 
   it("TC-109: fails a desk asset over 60 KB, naming the file, its size and the limit", () => {
     for (const name of ["heritage-light-desk.v1.avif", "heritage-light-desk.v1.webp"]) {
-      const res = checkBudget(withSize(name, 61_440), EXPECTED);
+      // 61 KB = 62 464 bytes. TC-109's "61 440" is exactly 60 KB, which is within budget (EXE91).
+      const res = checkBudget(withSize(name, 61 * KB), EXPECTED);
       expect(res.ok).toBe(false);
       expect(res.errors).toHaveLength(1);
       expect(res.errors[0]).toContain(name);
-      expect(res.errors[0]).toContain("61440");
+      expect(res.errors[0]).toContain("62464");
       expect(res.errors[0]).toContain("60 KB");
     }
     // Exactly at the limit is within budget.
