@@ -184,6 +184,10 @@ test("TC-097: menus, dialogs and tooltips stay above the art (R7)", async ({ pag
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  // F-1: the grid column eases 272px → 72px over 200ms. Hovering mid-transition
+  // measured the band while its left edge was still past the tooltip, so wait
+  // for the collapsed rail width before measuring anything.
+  await expect.poll(() => page.locator("[data-heritage]").evaluate((el) => el.getBoundingClientRect().left)).toBe(72);
   await page.locator('a[href="/disputes"][aria-label]').first().hover();
   const tip = page.getByRole("tooltip");
   await expect(tip).toContainText("Disputes");
