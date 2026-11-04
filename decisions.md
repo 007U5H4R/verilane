@@ -978,3 +978,33 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
   - At each of those times it samples four sky-band pixels, which must be dark (relative luminance < 0.08) and green-led, i.e. the placeholder gradient and not a blank or light frame.
   - It then requires a fast `splash:ready` (< D − 250) and `splash:done` within 6000 ± 200 ms of `splash:painted`.
 - **Art wait.** `openSplash()` now also awaits `artLoaded()`. For each displayed scene layer it takes the first `url()` of the computed `background-image`, decodes it with `new Image().decode()`, then waits two frames. So TC-154's contrast and TC-156's captures measure the real art rather than a gradient frame. TC-165 does not use it.
+
+## EXE108 · TC-170 compares e2e builds of the branch and E1 = cf2c541, with the first invoice row as "ready" (TASK-45.10) — accepted, flagged
+- **Baseline.** E1 is cf2c541, the task/38 tip the TASK-45 branch was cut from. It was extracted with `git archive` into `task45/45.10/e1` on the E Drive, installed from the same lockfile, built with `pnpm build:e2e` and served on :3149. The branch is the e2e build on :3145. Both arms are e2e builds, so the only difference between them is the code.
+- **Confound.** The branch also carries TASK-46 r2 and the main changes merged since cf2c541. So a TC-170 delta is "everything since E1", not "the splash alone". The delta was within budget, so this did not need to be separated out. If TC-170 ever goes red, bisect before blaming the splash.
+- **Ready proxy.** E1 has no `splash:ready` mark. On both sides, "ready" is when a MutationObserver sees the first `main a[href^="/invoices/"]` attached, measured with the seen flag set (no splash). CLS is "unchanged" when the medians differ by less than 0.001.
+- **Result.** Over 11 interleaved pairs (the side that goes first alternates), the median pair Δ was LCP +28 ms, CLS 0 vs 0 and ready +36.9 ms. Pass.
+
+## EXE109 · TC-169 attributes long scripts to the splash by source position, not by document URL (TASK-45.10) — accepted
+- **Problem.** The first cut counted every LoAF script whose `sourceURL` was the document as the splash's. That covers every inline script, including Next's flight payload and the theme script. The first throttled run flagged two cold-start inline scripts (53 and 66 ms) that could not be told apart.
+- **Rule.** The spec fetches the served HTML and finds the inline splash runtime (the script that contains `splash:painted` and not `__next_f`). A long script counts as the splash's only if its `sourceCharPosition` falls inside that range (3080–11724 on this build). Other long inline scripts are recorded as `otherInlineLong` but do not fail the test. If the range cannot be found, every inline long script is attributed to the splash (fail closed).
+- **Result.** Across 6 runs after the change, splash long scripts = 0 and other inline long scripts = 0. The app's own long tasks (51–862 ms at 4×) are hydration, and the spec records them.
+
+## EXE110 · TC-169 skip INP is over 200 ms at 4× CPU; parked as a finding, not fixed here (TASK-45.10) — open
+- **Evidence.** Three runs of three loads each, all under host load averages of 7 to 32 while another agent was building:
+  - The skip INP medians were 256, 248 and 336 ms, against a 200 ms budget. All other TC-169 assertions held: CLS at exit was 0 in 9/9 loads and splash long scripts were 0.
+  - In the third run the slowest event was always the `keydown`: input delay 23–250 ms, processing 43–221 ms, presentation 172–233 ms.
+- **Reading.** Processing (the skip handler) and presentation (the frame after the exit starts, including the style recalculation when the app's `inert` is removed) are both large even when the input delay is small. So this is not only contention, but the host load inflates all three phases. It is not a one-line fix, so per the brief it is reported and not changed.
+- **Next.** Re-run `pnpm e2e:splash-perf -g TC-169` on an idle host. If it is still over 200 ms, profile the skip `keydown` (the `inert` removal and the exit class change) under a follow-up ticket.
+
+## EXE111 · The TC-130 re-check was inconclusive under host load; the 2026-11-04 pass stands but is flagged (TASK-45.10) — open
+- **Evidence.** Two runs at 83bfeee:
+  - Run 1: Δ +108.9 ms, baseline spread 212 ms, 95 % CI −15.8..277.3.
+  - Run 2: Δ +162.7 ms, spread 152 ms, CI 30.7..404.9.
+  - Both used interleaved n ≥ 9, and both CIs straddle the +50 ms budget. The host load average was 7–32, from the parallel TASK-46.8 agent's builds.
+- **Reading.** A spread three to four times the budget means these runs cannot resolve a 50 ms effect, so they neither confirm nor refute the 2026-11-04 Δ of −13.7 ms. This is a P0 case that failed twice, so per the brief it was not looped again.
+- **Next.** Re-run TC-130 on an idle host before release. A clean Δ > 50 ms reopens Stage 2, per the TC.
+
+## EXE112 · R-8 is folded into the EXE83 test as TC-170's request evidence, not a new TC-172 row (TASK-45.10) — accepted
+- **Rule.** The EXE83 test in `splash-scene.spec.ts` now also collects requests matching `/_next/static/media/(sky|clouds-(fg|bg))\./`. It asserts 0 such requests when the splash does not show, and at least 1 in the splash-on control.
+- **Why not TC-172.** TC-172 sits outside TASK-45's reserved block (TC-126 … TC-171) and would mean editing the root `test-cases.md`, which is outside this ticket's touch-list. "Returning tabs pay nothing" is TC-170's objective, so the request check is recorded as that case's evidence.
