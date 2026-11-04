@@ -6,8 +6,11 @@ import { GateSkeleton, ShellGate } from "@/components/onboarding/ShellGate";
 import { PwaRegister } from "@/components/PwaRegister";
 import { Toaster } from "@/components/ui/sonner";
 import { DESCRIPTION, SITE_URL, shareMetadata } from "@/lib/site";
+import { splashMarkup } from "@/lib/splash/markup";
+import { buildSplashScript, splashConfig } from "@/lib/splash/runtime";
 
 import "./globals.css";
+import "./splash.css";
 
 // Design.md R2 (TASK-38): Inter, self-hosted by next/font; exposed as
 // --font-inter so globals.css builds the UI and display stacks from it.
@@ -40,6 +43,12 @@ const THEME_SCRIPT = `
 })();
 `;
 
+// TASK-45.2: the splash runtime, stringified whole into an inline head
+// script so it decides and paints before first paint (EXE34). The e2e build
+// keeps it off unless a spec opts in with ?__splash=1.
+const SPLASH_SCRIPT = buildSplashScript(splashConfig(process.env.NEXT_PUBLIC_E2E === "1"));
+const SPLASH_MARKUP = splashMarkup();
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // suppressHydrationWarning: THEME_SCRIPT sets data-theme before React
@@ -50,16 +59,26 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: SPLASH_SCRIPT }} />
       </head>
       <body className="min-h-full">
-        {/* TASK-39: ShellGate renders auth routes bare and gates the rest on
-            the guest session. Suspense: it reads the pathname, which suspends
-            while prerendering /invoices/[id]. */}
-        <Suspense fallback={<GateSkeleton />}>
-          <ShellGate>{children}</ShellGate>
-        </Suspense>
-        <Toaster />
-        <PwaRegister />
+        {/* TASK-45.2: the splash overlay, server-rendered so it is in the
+            first paint; hidden by CSS unless html[data-splash] is set. Its
+            inner HTML is a string the runtime edits, so React leaves it be. */}
+        <div id="verilane-splash" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: SPLASH_MARKUP }} />
+        {/* TASK-45.2: display:contents keeps layout unchanged; the runtime
+            sets `inert` here while the overlay covers the app, which React
+            never rendered, hence suppressHydrationWarning. */}
+        <div id="verilane-app" style={{ display: "contents" }} suppressHydrationWarning>
+          {/* TASK-39: ShellGate renders auth routes bare and gates the rest on
+              the guest session. Suspense: it reads the pathname, which suspends
+              while prerendering /invoices/[id]. */}
+          <Suspense fallback={<GateSkeleton />}>
+            <ShellGate>{children}</ShellGate>
+          </Suspense>
+          <Toaster />
+          <PwaRegister />
+        </div>
       </body>
     </html>
   );

@@ -9,7 +9,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const STATIC_DIR = join(process.cwd(), ".next/static");
-const HOOKS = ["__state", "__verilane", "__session"];
+const HOOKS = ["__state", "__verilane", "__session", "__splash"];
 
 function walk(dir: string): string[] {
   const files: string[] = [];

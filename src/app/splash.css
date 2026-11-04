@@ -1,0 +1,87 @@
+/*
+ * TASK-45.2: the pre-hydration splash overlay (Design-TASK-45 §10 tokens).
+ * Hidden unless html[data-splash] says otherwise, so a page without the
+ * runtime (or with it decided off) never shows it. Always dark, regardless
+ * of the app theme.
+ */
+#verilane-splash {
+  display: none;
+}
+
+html[data-splash="on"] #verilane-splash,
+html[data-splash="hold"] #verilane-splash,
+html[data-splash="exit"] #verilane-splash {
+  --sp-base: #062f24;
+  --sp-soft: #ddf2e7;
+  --sp-text: #f3f8f5;
+  --sp-muted: #b9d4c5;
+  display: block;
+  position: fixed;
+  inset: 0;
+  /* above sonner's toaster (z-index 999999999) */
+  z-index: 2147483000;
+  background: var(--sp-base);
+  color: var(--sp-muted);
+  opacity: 1;
+  transition: opacity 300ms ease-out;
+}
+
+html[data-splash="exit"] #verilane-splash {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html[data-splash="on"],
+html[data-splash="hold"] {
+  overflow: hidden;
+}
+
+#verilane-splash .splash-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#verilane-splash .splash-status {
+  font-size: 13px;
+  margin: 0;
+}
+
+#verilane-splash .splash-skip-wrap {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+#verilane-splash .splash-skip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgb(221 242 231 / 0.34);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sp-text);
+  font: 500 13px/1 var(--font-inter, system-ui), system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#verilane-splash .splash-skip:focus-visible {
+  outline: 2px solid var(--sp-soft);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  #verilane-splash .splash-skip {
+    min-height: 44px;
+  }
+}
+
+#verilane-splash .splash-hint {
+  margin: 0;
+  font-size: 12px;
+}

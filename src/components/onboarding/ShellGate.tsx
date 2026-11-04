@@ -9,6 +9,7 @@ import { ShellSkeleton } from "@/components/states/ShellSkeleton";
 import { requestTour } from "@/components/tour/tourStore";
 import { readTourLink } from "@/components/tour/tourLink";
 import { isAuthRoute, startGuestSession, useSession } from "@/lib/session";
+import { emitSplash } from "@/lib/splash/events";
 
 /**
  * TASK-39: decides what wraps a route.
@@ -43,6 +44,11 @@ function GatedApp({ children }: { children: ReactNode }) {
     }
     if (session === null) router.replace("/welcome");
   }, [session, router]);
+
+  // TASK-45.2: splash phase — the guest session is known.
+  useEffect(() => {
+    if (session === "guest") emitSplash("session");
+  }, [session]);
 
   if (session !== "guest") return <GateSkeleton />;
   return (

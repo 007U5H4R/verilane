@@ -1,0 +1,395 @@
+/**
+ * TASK-45.2: the splash runtime. It runs as an inline head script before
+ * first paint (the THEME_SCRIPT pattern in app/layout.tsx), so it cannot
+ * import anything and must survive being stringified after server
+ * minification. That is why every piece lives inside the one self-contained
+ * `splashRuntime()` function (EXE34): a minifier may rename its locals but
+ * cannot split it, and `buildSplashScript` serialises it whole.
+ *
+ * State lives only in `html[data-splash]` (on | hold | exit | done). `step()`
+ * is the pure state machine; `boot()` is the thin DOM shell around it.
+ * Rules: no imports, no object spread, no async — nothing that would make the
+ * compiler emit a helper outside this function.
+ */
+
+export type Attr = "on" | "hold" | "exit" | "done";
+
+export interface SplashCopy {
+  opening: string;
+  ready: string;
+  error: string;
+  skip: string;
+  cont: string;
+}
+
+export interface SplashConfig {
+  /** Minimum on-screen time, ms (Design §18). */
+  D: number;
+  exitMs: number;
+  /** Beat between readiness and the exit when readiness lands after D. */
+  beatMs: number;
+  /** Input inside this window after paint is ignored (TC-132). */
+  guardMs: number;
+  /** Hard ceiling = D + ceilingExtra; the overlay exits regardless. */
+  ceilingExtra: number;
+  e2e: boolean;
+  /** URL param that forces the splash on in e2e builds; "" outside e2e. */
+  forceParam: string;
+  forceKey: string;
+  sessionKey: string;
+  copy: SplashCopy;
+}
+
+export interface Model {
+  t0: number;
+  attr: Attr;
+  phases: string[];
+  tReady: number | null;
+  exitAt: number | null;
+  tExit: number | null;
+  skipped: boolean;
+}
+
+export type Effect =
+  | { k: "attr"; v: Attr }
+  | { k: "mark"; v: string }
+  | { k: "warn"; v: string }
+  | { k: "timer"; v: number }
+  | { k: "status"; v: string }
+  | { k: "bar"; v: number }
+  | { k: "uninert" };
+
+export type SplashEvent =
+  | { type: "tick"; t: number }
+  | { type: "phase"; phase: string; t: number }
+  | { type: "input"; t: number; repeat?: boolean; mod?: boolean };
+
+export interface DecideEnv {
+  path: string;
+  session: string | null;
+  seen: boolean;
+  force: boolean;
+  storageOk: boolean;
+  rm: boolean;
+}
+
+export interface SplashApi {
+  show(): void;
+  skip(): void;
+  state(): Attr | "off";
+}
+
+declare global {
+  interface Window {
+    /** TASK-45.2: the splash's public API (state, skip, replay). */
+    verilaneSplash?: SplashApi;
+  }
+}
+
+interface Runtime {
+  decide(env: DecideEnv, cfg: SplashConfig): boolean;
+  progress(phases: string[]): number;
+  begin(t0: number, cfg: SplashConfig): { m: Model; fx: Effect[] };
+  step(m: Model, ev: SplashEvent, cfg: SplashConfig): { m: Model; fx: Effect[] };
+  boot(w: Window, cfg: SplashConfig): void;
+}
+
+export function splashRuntime(): Runtime {
+  const PROGRESS: Record<string, number> = { session: 35, provider: 65, seeding: 80, ready: 100, error: 100 };
+
+  function decide(env: DecideEnv, cfg: SplashConfig): boolean {
+    if (!env.storageOk) return false;
+    // 45.2 minimum. Auth routes, the seen flag and reduced motion are TASK-45.3/45.6.
+    if (cfg.e2e) return env.force;
+    return env.session === "guest";
+  }
+
+  function progress(phases: string[]): number {
+    let p = 10;
+    phases.forEach(function (ph) {
+      const v = PROGRESS[ph];
+      if (v && v > p) p = v;
+    });
+    return p;
+  }
+
+  function with_(m: Model, patch: Partial<Model>): Model {
+    return Object.assign({}, m, patch);
+  }
+
+  function begin(t0: number, cfg: SplashConfig): { m: Model; fx: Effect[] } {
+    const m: Model = { t0: t0, attr: "on", phases: [], tReady: null, exitAt: null, tExit: null, skipped: false };
+    return {
+      m: m,
+      fx: [
+        { k: "attr", v: "on" },
+        { k: "mark", v: "splash:painted" },
+        { k: "timer", v: t0 + cfg.D },
+        { k: "timer", v: t0 + cfg.D + cfg.ceilingExtra },
+      ],
+    };
+  }
+
+  function exit(m: Model, t: number, cfg: SplashConfig, fx: Effect[]): Model {
+    fx.push({ k: "attr", v: "exit" }, { k: "uninert" }, { k: "mark", v: "splash:exit" }, { k: "timer", v: t + cfg.exitMs });
+    return with_(m, { attr: "exit", tExit: t });
+  }
+
+  function live(m: Model): boolean {
+    return m.attr === "on" || m.attr === "hold";
+  }
+
+  function step(m: Model, ev: SplashEvent, cfg: SplashConfig): { m: Model; fx: Effect[] } {
+    const fx: Effect[] = [];
+    if (ev.type === "phase") {
+      if (!live(m) || m.phases.indexOf(ev.phase) >= 0 || !(ev.phase in PROGRESS)) return { m: m, fx: fx };
+      const phases = m.phases.concat([ev.phase]);
+      let n = with_(m, { phases: phases });
+      fx.push({ k: "bar", v: progress(phases) });
+      if ((ev.phase === "ready" || ev.phase === "error") && m.tReady === null) {
+        const exitAt = Math.max(m.t0 + cfg.D, ev.t + cfg.beatMs);
+        n = with_(n, { tReady: ev.t, exitAt: exitAt });
+        fx.push({ k: "status", v: ev.phase === "error" ? cfg.copy.error : cfg.copy.ready }, { k: "timer", v: exitAt });
+      }
+      return { m: n, fx: fx };
+    }
+    if (ev.type === "tick") {
+      const t = ev.t;
+      if (m.attr === "exit") {
+        if (m.tExit !== null && t >= m.tExit + cfg.exitMs) {
+          fx.push({ k: "attr", v: "done" }, { k: "mark", v: "splash:done" });
+          return { m: with_(m, { attr: "done" }), fx: fx };
+        }
+        return { m: m, fx: fx };
+      }
+      if (!live(m)) return { m: m, fx: fx };
+      if (t >= m.t0 + cfg.D + cfg.ceilingExtra) {
+        fx.push({ k: "warn", v: "[verilane] splash ceiling reached before the app was ready" }, { k: "mark", v: "splash:ceiling" });
+        return { m: exit(m, t, cfg, fx), fx: fx };
+      }
+      if (m.exitAt !== null && t >= m.exitAt) return { m: exit(m, t, cfg, fx), fx: fx };
+      if (m.attr === "on" && t >= m.t0 + cfg.D) {
+        fx.push({ k: "attr", v: "hold" });
+        return { m: with_(m, { attr: "hold" }), fx: fx };
+      }
+      return { m: m, fx: fx };
+    }
+    // input
+    if (!live(m) || ev.repeat || ev.mod || ev.t - m.t0 < cfg.guardMs) return { m: m, fx: fx };
+    fx.push({ k: "mark", v: "splash:skip" });
+    return { m: exit(with_(m, { skipped: true }), ev.t, cfg, fx), fx: fx };
+  }
+
+  function boot(w: Window, cfg: SplashConfig): void {
+    const d = w.document;
+    const de = d.documentElement;
+    const perf = w.performance;
+    let m: Model | null = null;
+    let app: HTMLElement | null = null;
+    let mo: MutationObserver | null = null;
+    let swallowUntil = 0;
+    const now = function () {
+      return perf.now();
+    };
+
+    function overlay(): HTMLElement | null {
+      return d.getElementById("verilane-splash");
+    }
+
+    function setInert(on: boolean) {
+      if (!app) app = d.getElementById("verilane-app");
+      if (!app) return;
+      if (on) app.setAttribute("inert", "");
+      else app.removeAttribute("inert");
+    }
+
+    function apply(fx: Effect[]) {
+      fx.forEach(function (f) {
+        try {
+          if (f.k === "attr") de.setAttribute("data-splash", f.v);
+          else if (f.k === "mark") perf.mark(f.v);
+          else if (f.k === "warn") (w as Window & typeof globalThis).console.warn(f.v);
+          else if (f.k === "timer") {
+            // A timer may fire a hair before now() reaches its deadline; tick
+            // at the deadline so that never reads as "not yet" and strands it.
+            const due = f.v;
+            w.setTimeout(function () {
+              run({ type: "tick", t: Math.max(now(), due) });
+            }, Math.max(0, due - now()));
+          }
+          else if (f.k === "uninert") {
+            setInert(false);
+            const o = overlay();
+            const a = d.activeElement as HTMLElement | null;
+            if (o && a && o.contains(a) && a.blur) a.blur();
+          } else if (f.k === "status") {
+            const o2 = overlay();
+            const s = o2 && o2.querySelector("[data-splash-status]");
+            if (s) s.textContent = f.v;
+            const b = o2 && o2.querySelector("[data-splash-skip]");
+            if (b) b.textContent = cfg.copy.cont;
+          } else if (f.k === "bar") {
+            const o3 = overlay();
+            if (o3) o3.style.setProperty("--splash-p", String(f.v / 100));
+          }
+        } catch {
+          /* one failed effect must not strand the overlay */
+        }
+      });
+      if (m && m.attr === "done") stop();
+    }
+
+    function run(ev: SplashEvent) {
+      if (!m) return;
+      const r = step(m, ev, cfg);
+      m = r.m;
+      apply(r.fx);
+    }
+
+    function onPhase(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail.phase === "string") run({ type: "phase", phase: detail.phase, t: now() });
+    }
+
+    function onKey(e: KeyboardEvent) {
+      if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
+      const before = m.attr;
+      run({ type: "input", t: now(), repeat: e.repeat, mod: e.ctrlKey || e.metaKey || e.altKey });
+      // The skipping key reaches nothing behind the overlay; default is left alone.
+      if (m.attr !== before) e.stopImmediatePropagation();
+    }
+
+    function onPointer(e: PointerEvent) {
+      if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
+      const before = m.attr;
+      run({ type: "input", t: now() });
+      if (m.attr !== before) {
+        e.stopImmediatePropagation();
+        swallowUntil = now() + 500;
+      }
+    }
+
+    function onClick(e: MouseEvent) {
+      if (swallowUntil && now() <= swallowUntil) {
+        swallowUntil = 0;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }
+
+    function watchApp() {
+      if (d.getElementById("verilane-app")) {
+        setInert(true);
+        return;
+      }
+      const MO = (w as Window & typeof globalThis).MutationObserver;
+      if (typeof MO !== "function") return;
+      const obs = new MO(function () {
+        if (d.getElementById("verilane-app")) {
+          if (m && (m.attr === "on" || m.attr === "hold")) setInert(true);
+          if (mo) mo.disconnect();
+          mo = null;
+        }
+      });
+      mo = obs;
+      obs.observe(de, { childList: true, subtree: true });
+      d.addEventListener("DOMContentLoaded", function () {
+        if (mo) mo.disconnect();
+        mo = null;
+        if (m && (m.attr === "on" || m.attr === "hold")) setInert(true);
+      });
+    }
+
+    function stop() {
+      w.removeEventListener("keydown", onKey, true);
+      w.removeEventListener("pointerdown", onPointer, true);
+      w.removeEventListener("verilane:splash", onPhase);
+      // the click swallow stays until it has fired or expired
+      w.setTimeout(function () {
+        w.removeEventListener("click", onClick, true);
+      }, 600);
+    }
+
+    function start() {
+      if (m && m.attr !== "done") return;
+      const r = begin(now(), cfg);
+      m = r.m;
+      w.addEventListener("keydown", onKey, true);
+      w.addEventListener("pointerdown", onPointer, true);
+      w.addEventListener("click", onClick, true);
+      w.addEventListener("verilane:splash", onPhase);
+      apply(r.fx);
+      watchApp();
+    }
+
+    const api: SplashApi = {
+      show: start,
+      skip: function () {
+        if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
+        // the guard protects against stray input, not an explicit call
+        const t = Math.max(now(), m.t0 + cfg.guardMs);
+        run({ type: "input", t: t });
+      },
+      state: function () {
+        return m ? m.attr : "off";
+      },
+    };
+    w.verilaneSplash = api;
+
+    let storageOk = true;
+    let session: string | null = null;
+    let force = false;
+    try {
+      session = w.localStorage.getItem(cfg.sessionKey);
+      const ss = w.sessionStorage;
+      if (cfg.forceParam) {
+        if (new URLSearchParams(w.location.search).get(cfg.forceParam) === "1") ss.setItem(cfg.forceKey, "1");
+        force = ss.getItem(cfg.forceKey) === "1";
+      }
+    } catch {
+      storageOk = false;
+    }
+    const env: DecideEnv = { path: w.location.pathname, session: session, seen: false, force: force, storageOk: storageOk, rm: false };
+    if (!decide(env, cfg)) return;
+    start();
+    // The skip button is server-rendered after this script; bind it once it exists.
+    d.addEventListener("DOMContentLoaded", function () {
+      const b = overlay() && overlay()!.querySelector("[data-splash-skip]");
+      if (b) b.addEventListener("click", function () {
+        api.skip();
+      });
+    });
+  }
+
+  return { decide: decide, progress: progress, begin: begin, step: step, boot: boot };
+}
+
+export const { decide, progress, begin, step, boot } = splashRuntime();
+
+export const SPLASH_COPY: SplashCopy = {
+  opening: "Verilane. Opening workspace…",
+  ready: "Verilane. Workspace ready",
+  error: "Verilane. Workspace opened",
+  skip: "Skip intro",
+  cont: "Continue",
+};
+
+export function splashConfig(e2e: boolean): SplashConfig {
+  return {
+    D: 5700,
+    exitMs: 300,
+    beatMs: 250,
+    guardMs: 250,
+    ceilingExtra: 4000,
+    e2e: e2e,
+    forceParam: e2e ? "__splash" : "",
+    forceKey: "verilane-splash-force",
+    sessionKey: "verilane-session",
+    copy: SPLASH_COPY,
+  };
+}
+
+/** The inline head script: the whole runtime, booted against `window`, never throwing. */
+export function buildSplashScript(cfg: SplashConfig): string {
+  return "try{(" + splashRuntime.toString() + ")().boot(window," + JSON.stringify(cfg) + ")}catch(e){}";
+}
