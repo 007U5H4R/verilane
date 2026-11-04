@@ -358,9 +358,14 @@ for (const beat of [
 // TC-165 (S21): the art never gates a phase. The splash rasters are held
 // 10 s; done still lands at D + 300 ms, and every sampled frame meanwhile
 // shows the dark placeholder gradient (never a blank or light frame).
+// The last sample sits at 4800 ms, 900 ms clear of exit at D = 5700, and the
+// phase is re-read after each screenshot so a slow capture cannot pass or fail
+// on an exit frame.
 test("TC-165: a 10 s delay on the splash art does not move done or blank the scene", async ({ page }) => {
   test.slow();
   await page.setViewportSize({ width: 1440, height: 900 });
+  // the default 250-entry buffer could drop the late raster entries this test reads
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(1000));
   const held: string[] = [];
   let released = 0;
   await page.route(/\/_next\/static\/media\/(sky|clouds-(fg|bg))\.[^/]+\.(avif|webp)$/, async (route) => {
@@ -372,11 +377,12 @@ test("TC-165: a 10 s delay on the splash art does not move done or blank the sce
   await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
   await waitPastT0(page, 0);
   const samples: string[] = [];
-  for (const at of [200, 1500, 3500, 5200]) {
+  for (const at of [200, 1500, 3500, 4800]) {
     await waitPastT0(page, at);
     expect(released, `art still held at ${at} ms`).toBe(0);
     expect(await page.evaluate(() => document.documentElement.dataset.splash), `phase at ${at} ms`).toBe("on");
     const shot = await pixels(page);
+    expect(await page.evaluate(() => document.documentElement.dataset.splash), `phase still "on" after the ${at} ms capture`).toBe("on");
     // the sky band, clear of the lockup, tower and hills
     for (const [x, y] of [[40, 40], [720, 60], [1400, 120], [200, 400]] as const) {
       const p = shot.px(x, y);
@@ -397,8 +403,24 @@ test("TC-165: a 10 s delay on the splash art does not move done or blank the sce
     type: "TC-165",
     description: `held ${held.length} (${[...new Set(held)].join(", ")}) · released before done ${released} · ready ${ready?.toFixed(0)} · done ${done?.toFixed(0)} ms · ${samples.join(" · ")}`,
   });
-  expect(held.length, "the splash art was requested and held").toBeGreaterThan(0);
+  // at 1440 the page requests exactly the AVIF sky and both AVIF clouds
+  expect(
+    [...new Set(held)].map((p) => p.replace(/^.*\/media\/([a-z-]+)\.[^.]+\.(avif|webp)$/, "$1.$2")).sort(),
+    "held exactly the three AVIF rasters",
+  ).toEqual(["clouds-bg.avif", "clouds-fg.avif", "sky.avif"]);
   expect(released, "no raster was released before done").toBe(0);
+  // page time: once released, every raster's responseEnd is after the splash:done mark
+  await expect.poll(() => released, { timeout: 20_000, message: "held rasters released" }).toBe(held.length);
+  const late = await page.waitForFunction(() => {
+    const done = performance.getEntriesByName("splash:done")[0]!.startTime;
+    const art = performance
+      .getEntriesByType("resource")
+      .filter((e) => /\/_next\/static\/media\/(sky|clouds-(fg|bg))\.[^/]+\.(avif|webp)$/.test(e.name)) as PerformanceResourceTiming[];
+    return art.length === 3 ? art.map((e) => ({ name: e.name.replace(/^.*\/media\//, ""), afterDone: e.responseEnd - done })) : null;
+  }, null, { timeout: 10_000 });
+  for (const e of (await late.jsonValue())!) {
+    expect(e.afterDone, `${e.name} finished ${e.afterDone.toFixed(0)} ms after splash:done`).toBeGreaterThan(0);
+  }
   expect(ready, "ready landed before D − 250 (fast ready)").not.toBeNull();
   expect(ready!).toBeLessThan(5700 - 250);
   expect(Math.abs(done! - 6000), `done ${done!.toFixed(0)} ms vs D + 300`).toBeLessThanOrEqual(200);
