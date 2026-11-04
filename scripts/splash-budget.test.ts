@@ -8,6 +8,7 @@ import {
   BUDGETS,
   E1_ROUTE_GZIP,
   checkInline,
+  checkBuiltRefs,
   checkRasterRefs,
   checkRasters,
   listRasterFiles,
@@ -273,5 +274,34 @@ describe("report", () => {
     expect(r.code).toBe(1);
     expect(r.lines.join("\n")).toMatch(/OVER +62464 B .*raster sky\.webp/);
     expect(r.lines.at(-1)).toMatch(/1 item\(s\) over budget: raster sky\.webp \(62464 B\)/);
+  });
+});
+
+describe("checkBuiltRefs (TASK-45.9: the build hashed every splash raster)", () => {
+  const files = ["sky.avif", "sky.webp", "clouds-fg.avif"];
+  const good =
+    '#verilane-splash .splash-sky{background:image-set(url(../media/sky.238e-cvcczsaz.avif) type("image/avif"), url(../media/sky.1l_v5iwf51lrn.webp) type("image/webp")) 62% 70%/cover no-repeat}' +
+    "#verilane-splash .splash-cloud-fg{background:url(../media/clouds-fg.36uox7uoktvrl.avif) 0 0/100% 100% no-repeat}";
+
+  it("passes when each raster is referenced by a content-hashed media URL, naming the URL", () => {
+    expect(checkBuiltRefs(good, files)).toEqual([
+      { item: "built CSS sky.avif -> ../media/sky.238e-cvcczsaz.avif", bytes: 0, limit: 0, over: false },
+      { item: "built CSS sky.webp -> ../media/sky.1l_v5iwf51lrn.webp", bytes: 0, limit: 0, over: false },
+      { item: "built CSS clouds-fg.avif -> ../media/clouds-fg.36uox7uoktvrl.avif", bytes: 0, limit: 0, over: false },
+    ]);
+  });
+
+  it("fails a raster the built CSS never references through a hashed URL", () => {
+    const css = good.replace(/url\(\.\.\/media\/clouds-fg[^)]*\)/, "none");
+    expect(checkBuiltRefs(css, files)).toContainEqual({ item: "built CSS clouds-fg.avif: no hashed media URL", bytes: 0, limit: 0, over: true });
+  });
+
+  it("fails a source path left unresolved in the built CSS (Lightning CSS image-set() string form)", () => {
+    const css = good + '.splash-cloud-bg{background:image-set("../assets/splash/clouds-bg.avif" 1x type("image/avif"))}';
+    expect(checkBuiltRefs(css, files)).toContainEqual({ item: "built CSS: unresolved ../assets/splash/clouds-bg.avif", bytes: 0, limit: 0, over: true });
+  });
+
+  it("fails when no built CSS carries the splash rules", () => {
+    expect(checkBuiltRefs("", files)).toEqual([{ item: "built CSS: no stylesheet contains #verilane-splash", bytes: 0, limit: 0, over: true }]);
   });
 });

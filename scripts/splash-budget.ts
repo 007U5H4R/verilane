@@ -6,6 +6,8 @@
 //   2. rasters in src/assets/splash/ (recursive): sky ≤ 60 KB per format, clouds
 //      ≤ 30 KB across all formats (TASK-45.9); every url() in splash.css must name a file in that folder (EXE89);
 //   3. each route's First Load JS (route-budget's own measure) grows ≤ 512 B over E1;
+//   2b. the built CSS references each of those rasters through a content-hashed
+//      _next/static/media URL and leaves no ../assets/splash/ path unresolved (TASK-45.9);
 //   4. no splash runtime/markup marker in .next/static/chunks/*.js (the runtime
 //      lives in server HTML; only the events.ts dispatch may reach shared JS).
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -134,6 +136,32 @@ export function checkRasterRefs(css: string, files: string[]): Finding[] {
   return out;
 }
 
+/**
+ * TASK-45.9: Turbopack rewrites url() in splash.css to a content-hashed
+ * media URL, but Lightning CSS prints a fully parsed image-set() candidate as a
+ * string and that path is never rewritten (it would 404). So the built CSS is
+ * checked: each raster in src/assets/splash/ appears as ../media/<stem>.<hash><ext>
+ * (or /_next/static/media/...), and no ../assets/splash/ path survives.
+ * `css` is every built stylesheet that carries the splash rules, concatenated.
+ */
+export function checkBuiltRefs(css: string, files: string[]): Finding[] {
+  if (!css.includes("#verilane-splash")) {
+    return [{ item: "built CSS: no stylesheet contains #verilane-splash", bytes: 0, limit: 0, over: true }];
+  }
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const out: Finding[] = [];
+  for (const f of files) {
+    const ext = extname(f);
+    const stem = posix.basename(f, ext);
+    const m = css.match(new RegExp(`url\\(\\s*['"]?((?:\\.\\./|/_next/static/)media/${esc(stem)}\\.[A-Za-z0-9_-]+${esc(ext)})`));
+    out.push(m ? { item: `built CSS ${f} -> ${m[1]}`, bytes: 0, limit: 0, over: false } : { item: `built CSS ${f}: no hashed media URL`, bytes: 0, limit: 0, over: true });
+  }
+  for (const m of css.matchAll(/(?:\.\.\/)*assets\/splash\/[^"')\s]+/g)) {
+    out.push({ item: `built CSS: unresolved ${m[0]}`, bytes: 0, limit: 0, over: true });
+  }
+  return out;
+}
+
 /** Growth of each route's First Load JS over E1. A route with no baseline fails until E1 is re-recorded. */
 export function checkRouteDeltas(
   current: { route: string; gzipBytes: number }[],
@@ -240,6 +268,13 @@ function main(): void {
   const refs = checkRasterRefs(css.toString("utf-8"), rasters.map((r) => r.name));
   console.log(`info  ${rasters.length} file(s) under ${SPLASH_ASSETS} · ${refs.length} url() ref(s) in splash.css`);
   findings.push(...checkRasters(rasters), ...refs);
+
+  const builtCss = walk(join(root, ".next/static/chunks"))
+    .filter((p) => p.endsWith(".css"))
+    .map((p) => readFileSync(p, "utf-8"))
+    .filter((t) => t.includes("#verilane-splash"))
+    .join("\n");
+  findings.push(...checkBuiltRefs(builtCss, rasters.map((r) => r.name)));
 
   findings.push(...checkRouteDeltas(measureRoutes(stats, (p) => readFileSync(join(root, p)))));
 
