@@ -184,6 +184,9 @@ const WIDTHS = (url: string) => (url === "/" ? [1440, 768, 390] : [1440, 768]);
 for (const theme of ["light", "dark"] as const) {
   test(`TC-${theme === "light" ? "113" : "114"}: text over the art meets AA contrast in ${theme} (SC1)`, async ({ browser, baseURL }, info) => {
     test.skip(info.project.name !== "chromium-light", "both themes are forced via localStorage on this one project");
+    // The sweep loads every route at every width in sequence (goto + networkidle
+    // each time); well past the default 30s test timeout, so give it room.
+    test.setTimeout(180_000);
     let sampled = 0;
     for (const { url, level } of ROUTES) {
       for (const width of WIDTHS(url)) {
@@ -221,6 +224,9 @@ for (const theme of ["light", "dark"] as const) {
 for (const theme of ["light", "dark"] as const) {
   test(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
     test.skip(info.project.name !== "chromium-light", "both themes are forced via localStorage on this one project");
+    // Same route × width sweep as TC-113/TC-114, plus per-route screenshotting;
+    // well past the default 30s test timeout, so give it room.
+    test.setTimeout(180_000);
     const peakPercentile = theme === "light" ? 2 : 98;
     for (const { url, level } of ROUTES) {
       for (const width of WIDTHS(url)) {
