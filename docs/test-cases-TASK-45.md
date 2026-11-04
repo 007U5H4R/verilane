@@ -269,7 +269,7 @@
 - **Expected:** The exit fade starts with the value still at 65 (no jump to 100).
 
 ### TC-151 · The scene fits at 375 / 768 / 1440 without horizontal scroll
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · Design §18, web-deliverables · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · Design §18, web-deliverables · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a, EXE82; 812×375 landscape needed the max-height rule) · **Finding:** —
 - **Objective:** Responsive layout.
 - **Preconditions:** splash-on at each viewport, portrait and landscape at 375.
 - **Steps:** Check `scrollWidth` against `innerWidth`, and the bounding boxes of the wordmark, the lighthouse, the bar and the skip button.
@@ -277,7 +277,7 @@
 - **Expected:** No overflow. The bar is centred within ±2 px. The skip button does not overlap the bar or the wordmark.
 
 ### TC-152 · Cloud parallax: the foreground moves faster than the background
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · S24 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.2 · S24 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a) · **Finding:** —
 - **Objective:** Parallax ratio as frozen.
 - **Preconditions:** splash-on; animations are paused at t0+5 s via `getAnimations()` currentTime.
 - **Steps:** Read the computed `translateX` of each cloud layer.
@@ -285,7 +285,7 @@
 - **Expected:** Foreground ≈ 5vw and background ≈ 2.5vw at half the 10 s cycle (ratio 2 ± 0.1).
 
 ### TC-153 · The splash is always dark in both themes and exits cleanly into either theme
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a) · **Finding:** —
 - **Objective:** Theme independence.
 - **Preconditions:** splash-on in `chromium-light` and `chromium-dark`.
 - **Steps:** Compare the overlay background pixels; screenshot the first frame after `done`.
@@ -293,7 +293,7 @@
 - **Expected:** The overlay pixels are identical across themes. After the exit, the app shows its theme with no white flash.
 
 ### TC-154 · Bar fill ≥ 3:1 and text ≥ 4.5:1 against the scene
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass on placeholder art (2026-11-04, 5c9c72a, EXE77; re-run on final art in TASK-45.9) · **Finding:** —
 - **Objective:** WCAG non-text and text contrast.
 - **Preconditions:** splash-on; frames paused at reveal and at hold. Re-run on the final art in TASK-45.9.
 - **Steps:** Sample pixels at the fill start, the fill end, the status text and the skip label against the pixels behind them.
@@ -301,7 +301,7 @@
 - **Expected:** Fill ≥ 3:1 at both ends; text ≥ 4.5:1. The chosen colour is recorded as the TP-45.j EXE decision.
 
 ### TC-155 · Skip intro button: size, placement, label swap, no autofocus
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.4 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.4 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 5c9c72a, EXE78; Tab behaviour per EXE79, open) · **Finding:** —
 - **Objective:** A real, accessible control.
 - **Preconditions:** splash-on; fine and coarse pointers.
 - **Steps:** Measure the button; read `document.activeElement` at load; Tab once; check the key-hint text on touch and on desktop.
@@ -312,7 +312,7 @@
   - The label swaps per pointer type (Design §18).
 
 ### TC-156 · Frame screenshots match the frozen design beats
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (captured 2026-11-04 at 5c9c72a; pairs listed in the TASK-45.5 report) · **Finding:** —
 - **Objective:** The implementation matches the approved mockup.
 - **Preconditions:** splash-on; `page.clock` at each beat; 1440 / 768 / 375.
 - **Steps:** Capture each beat; review side by side with `.design/exploration/task-45/shots/`.
