@@ -390,13 +390,13 @@ async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light"
   if (load.settleMs) await page.waitForTimeout(load.settleMs);
   if (load.untilIdle) {
     // R-3: networkidle can come before idle, so "fetches nothing" was read
-    // before the preload had its chance. Settled = data-idle set and the
-    // preload span's computed style carrying an image, two frames on.
-    await page.waitForFunction(() => {
-      const span = document.querySelector("[data-heritage][data-idle] [data-heritage-preload]");
-      return !!span && getComputedStyle(span).backgroundImage.includes("heritage-");
-    });
+    // before the preload had its chance. Settled = data-idle set, two frames
+    // on (any preload image is requested by then), then the network quiet.
+    // Don't wait for the preload's image itself: forced colors and print
+    // never apply it, which is exactly what TC-102 asserts.
+    await page.waitForSelector("[data-heritage][data-idle] [data-heritage-preload]", { state: "attached" });
     await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+    await page.waitForLoadState("networkidle");
   }
   const timeline = await heritageTimeline(page, watched);
   const requests = watched.map((r) => new URL(r.url()).pathname);
@@ -452,10 +452,11 @@ test("TC-102: forced colors and print hide the art and fetch nothing (F6)", asyn
   ]) {
     for (const media of [{ forcedColors: "active" }, { media: "print" }] as const) {
       const label = `${viewport.width} ${JSON.stringify(media)}`;
-      const r = await loadFresh(browser, baseURL!, theme, { url: "/", viewport, media });
+      const r = await loadFresh(browser, baseURL!, theme, { url: "/", viewport, media, untilIdle: true });
       // Soft, so one run reports every viewport × media pair that fails.
       expect.soft(r.band?.level, label).toBe("normal");
       expect.soft(r.band?.display, label).toBe("none");
+      expect.soft(r.band?.idle, label).toBe(true);
       expect.soft(r.requests, label).toEqual([]);
     }
   }
@@ -576,6 +577,9 @@ test("TC-106b: after idle, exactly one request for the other theme, issued after
     const isOpposite = (r: Request) => new URL(r.url()).pathname.includes(`heritage-${other(theme)}-`);
     await expect.poll(() => watched.filter(isOpposite).length, `${label} preload request`).toBeGreaterThan(0);
     await Promise.all(watched.filter(isOpposite).map((r) => r.response()));
+    // A late duplicate would still be in flight here; give it a chance to land
+    // before counting (R-3 finding 2).
+    await page.waitForLoadState("networkidle");
     const t = await heritageTimeline(page, watched);
     await context.close();
     const opposite = watched.filter(isOpposite).map((r) => new URL(r.url()).pathname);
