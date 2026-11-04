@@ -6,7 +6,8 @@
  *   heritage-{theme}-strip.v1.{avif,webp}  1200×480, the master's 15–55%
  *                                          height band, centred horizontally
  * AVIF q45 effort 9 4:2:0; WebP q70 smart subsample; converted to sRGB with
- * every ICC/EXIF/XMP block stripped. Check the result with `pnpm image-budget`.
+ * every ICC/EXIF/XMP block stripped. Throws on a master outside 2.2–2.5 aspect
+ * or narrower than the desk width. Check the result with `pnpm image-budget`.
  *
  *   tsx scripts/encode-heritage.ts <master.png> --theme light|dark [--out dir] [--width 2000]
  *
@@ -22,6 +23,8 @@ export const DESK_WIDTH = 2400;
 export const STRIP = { width: 1200, height: 480 };
 /** The skyline band of the master (PRD §6.2: 15–55% of frame height). */
 export const STRIP_BAND = { top: 0.15, bottom: 0.55 };
+/** Accepted master width:height. 21:9 is 2.33; outside this the strip would stretch. */
+export const MASTER_ASPECT = { min: 2.2, max: 2.5 };
 
 const AVIF = { quality: 45, effort: 9, chromaSubsampling: "4:2:0" } as const;
 const WEBP = { quality: 70, smartSubsample: true } as const;
@@ -34,6 +37,16 @@ export async function encodeHeritage(
 ): Promise<string[]> {
   const { width: mw, height: mh } = await sharp(master).metadata();
   if (!mw || !mh) throw new Error(`encode-heritage: cannot read dimensions of ${master}`);
+  const aspect = mw / mh;
+  if (aspect < MASTER_ASPECT.min || aspect > MASTER_ASPECT.max) {
+    throw new Error(
+      `encode-heritage: ${master} is ${mw}×${mh} (aspect ratio ${aspect.toFixed(2)}); expected ${MASTER_ASPECT.min}–${MASTER_ASPECT.max} (21:9 ≈ 2.33)`,
+    );
+  }
+  const deskWidth = opts.width ?? DESK_WIDTH;
+  if (mw < deskWidth) {
+    throw new Error(`encode-heritage: ${master} is ${mw} px wide, narrower than the ${deskWidth} px desk width; refusing to upscale`);
+  }
 
   // Strip crop: the 15–55% height band, widened to the strip's aspect ratio
   // and centred horizontally (clamped to the master's width).
@@ -43,7 +56,7 @@ export async function encodeHeritage(
   const crop = { left: Math.round((mw - bandWidth) / 2), top: bandTop, width: bandWidth, height: bandHeight };
 
   const variants = [
-    { size: "desk", img: () => sharp(master).resize({ width: opts.width ?? DESK_WIDTH }) },
+    { size: "desk", img: () => sharp(master).resize({ width: deskWidth }) },
     { size: "strip", img: () => sharp(master).extract(crop).resize(STRIP.width, STRIP.height, { fit: "fill" }) },
   ] as const;
 
