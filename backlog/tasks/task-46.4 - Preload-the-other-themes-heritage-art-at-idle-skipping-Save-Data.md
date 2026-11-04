@@ -1,10 +1,10 @@
 ---
 id: TASK-46.4
 title: 'Preload the other theme''s heritage art at idle, skipping Save-Data'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-04 10:01'
+updated_date: '2026-11-04 15:45'
 labels:
   - P2
 dependencies:
