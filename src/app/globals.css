@@ -197,6 +197,63 @@
   opacity: 0;
   pointer-events: none;
 }
+/* Levels (PRD §4, src/lib/heritage.ts). `reduced` is the same asset, quieter:
+   0.6 is the provisional strength from the Design §6.1 calibration (EXE59),
+   re-tuned against the contrast gate in TASK-46.6. `off` never fetches. */
+[data-heritage][data-level="reduced"] {
+  opacity: 0.6;
+}
+[data-heritage][data-level="off"] {
+  display: none;
+}
+/* Tablet: the desktop asset beside the 72px rail, shifted so the gopuram and
+   Taj stay in view, in a fixed 300px box (EXE53). */
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-heritage] {
+    height: 300px;
+    background-position: 38% top;
+  }
+}
+/* Mobile: Home only, as a short strip. Every other route renders the box
+   display:none, so it fetches nothing (F5). */
+@media (max-width: 767px) {
+  [data-heritage] {
+    display: none;
+  }
+  [data-heritage][data-level="normal"][data-home] {
+    display: block;
+    height: clamp(160px, 44vw, 240px);
+    background-image: image-set(
+      url("/heritage/heritage-light-strip.v1.avif") type("image/avif"),
+      url("/heritage/heritage-light-strip.v1.webp") type("image/webp")
+    );
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) [data-heritage][data-home] {
+      background-image: image-set(
+        url("/heritage/heritage-dark-strip.v1.avif") type("image/avif"),
+        url("/heritage/heritage-dark-strip.v1.webp") type("image/webp")
+      );
+    }
+  }
+  :root[data-theme="dark"] [data-heritage][data-home] {
+    background-image: image-set(
+      url("/heritage/heritage-dark-strip.v1.avif") type("image/avif"),
+      url("/heritage/heritage-dark-strip.v1.webp") type("image/webp")
+    );
+  }
+}
+/* System overrides beat the mobile Home rule above, hence !important (F6). */
+@media (forced-colors: active) {
+  [data-heritage] {
+    display: none !important;
+  }
+}
+@media print {
+  [data-heritage] {
+    display: none !important;
+  }
+}
 /* TASK-46 heritage — end */
 
 @theme inline {
