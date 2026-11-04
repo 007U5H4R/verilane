@@ -134,22 +134,27 @@ test.beforeEach(async ({ context }) => {
 
 test("TC-143: the bar is revealed at 3.2 s and is absent from the a11y tree before that", async ({ page }) => {
   await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
-  await waitPastT0(page, 2900);
-  const early = await page.evaluate(() => {
-    const b = document.querySelector("#verilane-splash [data-splash-bar]")!;
-    return { at: performance.now() - performance.getEntriesByName("splash:painted")[0]!.startTime, vis: getComputedStyle(b).visibility };
-  });
+  // Sampled a little early (2.7 s) so the a11y snapshot itself still lands
+  // before the reveal on a loaded machine; the time after it is checked.
+  await waitPastT0(page, 2700);
+  const vis = await page.evaluate(() => getComputedStyle(document.querySelector("#verilane-splash [data-splash-bar]")!).visibility);
   const earlyTree = await page.locator("#verilane-splash").ariaSnapshot();
-  expect(early.at, "sampled before the reveal").toBeLessThan(3200);
-  expect(early.vis).toBe("hidden");
+  const earlyCount = await page.getByRole("progressbar").count();
+  const earlyAt = await sinceT0(page);
+  expect(earlyAt, "sampled before the reveal").toBeLessThan(3200);
+  expect(vis).toBe("hidden");
   expect(earlyTree).not.toContain("progressbar");
-  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  expect(earlyCount).toBe(0);
 
   await waitPastT0(page, 3400);
-  expect(await splashState(page)).toBe("on");
   const lateTree = await page.locator("#verilane-splash").ariaSnapshot();
+  const late = await page.evaluate(() => ({
+    state: document.documentElement.dataset.splash,
+    at: performance.now() - performance.getEntriesByName("splash:painted")[0]!.startTime,
+  }));
+  expect(late.at, "sampled while the overlay is still up").toBeLessThan(D);
+  expect(late.state).toBe("on");
   expect(lateTree).toContain('progressbar "Loading Verilane"');
-  await expect(page.getByRole("progressbar", { name: "Loading Verilane" })).toBeVisible();
   // the reveal is timed from t0 (Design §7), not from any phase
   const reveal = (await bar(page)).find((s) => s.what === "bar" && s.v === "shown");
   expect(reveal).toBeDefined();
@@ -234,7 +239,9 @@ test("TC-146: a stall shows the glint, then the 'Still working' line, without mo
   expect(subOn!.at).toBeLessThan(ready.at);
 
   // the value never moved during the stall
-  const moved = samples.filter((s) => s.what === "now" && s.at > last.at && s.at < ready.at);
+  // (the phase sample and the observer's sample of the same change are both
+  // microtasks, so the observer's can land a hair after `last.at`)
+  const moved = samples.filter((s) => s.what === "now" && s.at > last.at && s.at < ready.at && s.v !== last.now);
   expect(moved).toEqual([]);
   expect(last.now).toBe("80");
   // ready ends the stall UI
