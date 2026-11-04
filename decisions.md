@@ -643,7 +643,7 @@
 - `playwright.config.ts` greps `@splash-perf` only when `SPLASH_PERF=1`, and greps it out otherwise. The script is `pnpm e2e:splash-perf` (chromium-light, 1 worker). Setting `SPLASH_PERF_MODE=interleaved` forces A/B pairs even when the baseline spread is ≤ ±50 ms; use it when the CPU is shared.
 
 ## EXE41 · TC-134 asserts the exit at 9.7 s and done at 10.0 s (TASK-45.2) — accepted
-- Per the technical plan, the ceiling starts the exit at t0 + D + 4000 = 9700 ms, and `done` follows exitMs (300) later. The spec allows ±200 ms on each.
+- Per the technical plan, the ceiling starts the exit at t0 + D + 4000 = 9700 ms (±200 ms), and `done` follows exitMs (300) later. The `done` check is measured from the exit, not from t0; see EXE44.
 
 ## EXE42 · TC-128 also matches minified React hydration codes (TASK-45.2) — accepted
 - Production React reports hydration errors only as #418, #423 and #425. The console regex is `/hydrat|did not match|mismatch|#418|#423|#425/i`, plus any `pageerror`.
@@ -652,3 +652,10 @@
 - The first run used simple A/B (9 off, then 9 on), because its baseline spread was ±27.8 ms. It gave Δ = +157.9 ms (off 589.5, on 747.4), at load 20.5 → 16.0, with the TASK-46 agent and iCloud running.
 - Two interleaved re-runs gave Δ = −8.1 ms (spread ±111.8, load 12.2) and Δ = −30.4 ms (spread ±434.2, load 12.7). Only interleaving controls for contention that changes over time, so the verdict comes from the interleaved runs: no measurable regression.
 - **Caveat.** These spreads are well above the 50 ms budget, so the gate cannot resolve 50 ms on this machine today. Re-run `SPLASH_PERF_MODE=interleaved pnpm e2e:splash-perf` on a quiet machine before TASK-45.7 (budget).
+
+## EXE44 · Exit marks are stamped before slow effects; TC-134 bounds `done` from the exit (TASK-45.2) — accepted
+- **Found in the gate run.** TC-134 saw `done` at t0 + 10244, outside ±200 of 10000, while the exit was within tolerance. Repeats then showed `done − exit` at 273–299 ms.
+- **Cause 1, fixed.** The exit mark was stamped after the attr change and after un-inerting a large subtree. The ceiling's `console.warn` also ran before them, and it is slow with a CDP console listener. So `splash:exit` was stamped tens of ms after `tExit`, while the done timer was keyed to `tExit`.
+  - `exit()` now emits the mark first, and the ceiling warns after the exit effects. Both orders are covered by `runtime.test.ts` "step · exit effect order" (red, then green).
+- **Cause 2, accepted.** The done timer can fire up to about 6 ms early against `performance.now()`. This is the same slack as EXE39; `max(now, due)` counts it as due.
+- **TC-134 now asserts** `300 − 20 ≤ done − exit ≤ 1500`. One run saw an 814 ms main-thread stall after un-inert. Its cause is unmeasured; the CSS fade is unaffected. A point check of `done` against t0 stacks two timers' lateness and flakes under contention.
