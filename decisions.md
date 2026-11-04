@@ -694,6 +694,34 @@
 - **Red proof.** With the `showSplash()` call removed from GatedApp's layout effect, TC-137 fails: the splash never turns on.
 - **Start step.** The spec opens `/onboarding?step=3` instead of clicking through steps 1–2. Steps 1–2 are client-side `?step=` pushes that never mount GatedApp, so they do not change what is measured.
 
+## EXE70 · The error phase completes the bar to 100, like ready (TASK-45.4) — open for the orchestrator
+- **Rule.** `error` is terminal like `ready` (PRD R13, Design §7), so `progress()` maps it to 100 and the exit is at `max(t0 + D, tError + 250)`.
+- **Conflict.** TC-149 says "the bar stays < 100". TC-149 asserts 100 and is marked "Pass with open question". The TC expectation is unchanged until the user rules.
+
+## EXE71 · The splash-bar e2e uses the real clock, timed from `splash:painted` (TASK-45.4) — accepted
+- **Rule.** In-page times are relative to `splash:painted` (t0), and the test waits with `waitPastT0`, not `page.clock`. `page.clock` would freeze the pre-hydration runtime and the provider's IDB work together.
+- TC-143's precondition still names `page.clock`; the spec follows this entry.
+
+## EXE72 · TC-149 forces the error with a seed-manifest abort, not a failing `indexedDB.open` (TASK-45.4) — accepted
+- **Found.** `openDb` falls back to fake-indexeddb when `indexedDB.open` fails, so that never reaches the provider's error path.
+- **Rule.** TC-149 aborts `/seed/manifest.json` on a fresh profile (as TC-141 does). The TC-149 precondition text now says so (review-45.4 R-6).
+
+## EXE73 · Stalls hold the seed manifest, not the loader chunk (TASK-45.4) — accepted
+- **Rule.** TC-146, TC-147 and TC-150 hold `/seed/manifest.json`. On a seeded profile this holds the bar at 65 (provider); on a fresh one at 80 (seeding).
+
+## EXE74 · TC-147 checks "never restarts" without the intro keyframes (TASK-45.4) — accepted
+- **Rule.** The intro keyframes belong to TASK-45.5. Until then TC-147 checks that no animation other than the looping glint starts twice, and that the bar is revealed once. Asserting a non-empty intro set is deferred to 45.5 (review-45.4 R-2).
+
+## EXE75 · Splash-bar timing windows are `want − 30 … want + L + 50`, with L measured in the page (TASK-45.4 fix round 1, review R-3) — accepted
+- **Rule.** The recorder init script sets its own setTimeout at each deadline the runtime schedules: reveal (t0 + 3.2 s), the glint and stall line per phase (+1.5 s, +4 s), D + 1.5 s, the exit (`max(t0 + D, t_ready + 250)`) and done (exit + 300). It stores how late each one ran (L). TC-143's reveal, TC-146's glint and stall line, and TC-147/TC-149's exit assert `want − 30 ≤ observed ≤ want + max(0, L) + 50` (PRD R3). `done − exit` is checked the same way against 300. This replaces the fixed +400 and the "exit − ready ≤ 550" / "≤ want + 300" bounds. The lower bounds are unchanged.
+- **Why.** A loaded machine delays the runtime's timer and the probe's timer by about the same amount, so the window follows the real lag and stays tight on an idle one.
+- **Mutation proof.** Delaying the exit by 250 ms (`task45/45.4-r1/mutation-exit-250ms-late.diff`) turns TC-147 and TC-149 red with "exit ≤ want + lag 0 + 50" (`task45/45.4-r1/red-R3-mutant.log`). The old bounds accepted it.
+- **Ceiling guard.** TC-147 now asserts there is no `splash:ceiling` mark, as TC-146 does, so a starved run that pushes ready past 9.7 s fails with that cause.
+
+## EXE76 · The exit clears the stall glint and the stall line (TASK-45.4 fix round 1, review R-4) — accepted
+- **Rule.** `exit()` emits `stall false` and `sub ""` when either is showing, and resets both in the model. A ceiling or skip exit no longer fades out with "Still working…" and a running glint. An exit with neither showing emits neither effect.
+- **Supersedes** the 45.4 report's note that `data-stalled` stays set after a ceiling exit. Pinned in `runtime.test.ts` (review R-4 cases).
+
 ## EXE85 · The E1 route baseline is a constant in `splash-budget.ts`, not a `scripts/fixtures/` file (TASK-45.7, TC-161) — accepted
 - **Found.** TC-161's precondition says the E1 stats snapshot is committed under `scripts/fixtures/`. The TASK-45.7 side-track brief allows only `scripts/splash-budget.ts`, its test, `package.json` and the docs.
 - **Rule.** `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` holds the exact First Load JS gzip bytes for each of the 18 routes. Same data, one file fewer, and the test pins it (18 routes, `/settings` = 301778 B).

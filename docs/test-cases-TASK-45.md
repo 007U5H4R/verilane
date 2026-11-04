@@ -196,12 +196,12 @@
   - Time-only events never change the value.
 
 ### TC-143 · The bar is revealed at 3.2 s and is absent from the a11y tree before that
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE71) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE71, EXE75) · **Finding:** —
 - **Objective:** The reveal timing and the a11y tree agree.
 - **Preconditions:** splash-on; `page.clock`.
-- **Steps:** Take an `accessibility.snapshot()` at 3.0 s and at 3.4 s.
+- **Steps:** Take an `accessibility.snapshot()` at 2.7 s and at 3.4 s.
 - **Data:** —
-- **Expected:** At 3.0 s: no progressbar node, `visibility:hidden`. At 3.4 s: a progressbar is present.
+- **Expected:** At 2.7 s: no progressbar node, `visibility:hidden`. At 3.4 s: a progressbar is present.
 
 ### TC-144 · Progressbar aria values track the phases
 - **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
@@ -226,7 +226,7 @@
   - The copy matches Design §18 strings.
 
 ### TC-146 · A stall shows the glint, then the "Still working…" line, without moving the value
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE73, EXE75) · **Finding:** —
 - **Objective:** The stall UI is visual only.
 - **Preconditions:** splash-on; the loader chunk is delayed by 6 s; `test.slow()`.
 - **Steps:** Sample `data-stalled`, the sub-line visibility and `aria-valuenow`.
@@ -237,7 +237,7 @@
   - The value is unchanged during the stall.
 
 ### TC-147 · A slow load holds after D and never restarts the cinematic
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73, EXE74) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE73, EXE74, EXE75) · **Finding:** —
 - **Objective:** Hold is a calm loop, not a replay.
 - **Preconditions:** splash-on; ready is delayed until 8 s; `test.slow()`.
 - **Steps:** Read `data-splash` at 5.0, 6.0 and 8.5 s; count the `animationstart` events for the intro keyframes.
@@ -253,9 +253,9 @@
 - **Expected:** Exit at the ceiling; the last `aria-valuenow` is < 100; the app's own failure UI is reachable and not `inert`.
 
 ### TC-149 · The DataProvider error path exits promptly and reveals the error
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass with open question (2026-11-04, b39be35, EXE70, EXE72): the bar reaches 100 on error per PRD R13 / Design §7, not < 100 as written · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass with open question (2026-11-04, 3c0bd57, EXE70, EXE72, EXE75): the bar reaches 100 on error per PRD R13 / Design §7, not < 100 as written · **Finding:** —
 - **Objective:** `error` is a terminal phase like `ready`.
-- **Preconditions:** splash-on; an init script makes `indexedDB.open` fail.
+- **Preconditions:** splash-on; a fresh profile whose `/seed/manifest.json` request is aborted (EXE72), which drives the provider's error path.
 - **Steps:** Wait for `done`.
 - **Data:** —
 - **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar stays < 100; the existing error render is visible.
