@@ -70,8 +70,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AutopilotGate />
         <TourGate />
         <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+        {/* Inside the isolated column (EXE57): outside it, the fixed z-40 tabs
+            painted over every overlay the column caps (side panels, drawers,
+            the tour backdrop). */}
+        <BottomTabs activeHref={activeHref} />
       </div>
-      <BottomTabs activeHref={activeHref} />
     </div>
   );
 }
