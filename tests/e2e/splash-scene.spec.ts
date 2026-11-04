@@ -42,13 +42,36 @@ async function waitPastT0(page: Page, ms: number) {
 const waitForSplash = (page: Page, state: string, timeout?: number) =>
   page.waitForFunction((s) => document.documentElement.dataset.splash === s, state, { timeout });
 
-/** Open the splash and wait until its logo layers have decoded. */
+/** TASK-45.9: wait until the scene's raster art (the sky plate and each
+ * shown cloud strip) has decoded, so a measurement or capture is on the real
+ * art, not the placeholder gradient. Each layer's first URL is the one the
+ * browser picks here (AVIF); decode() resolves from the same cache entry. */
+async function artLoaded(page: Page) {
+  await page.evaluate(async () => {
+    const layers = ["sky", "cloud-bg", "cloud-fg"]
+      .map((n) => document.querySelector<HTMLElement>(`#verilane-splash .splash-${n}`)!)
+      .filter((el) => getComputedStyle(el).display !== "none");
+    await Promise.all(
+      layers.map((el) => {
+        const url = getComputedStyle(el).backgroundImage.match(/url\("?([^")]+)"?\)/)?.[1];
+        if (!url) throw new Error(`no raster on ${el.className}`);
+        const img = new Image();
+        img.src = url;
+        return img.decode();
+      }),
+    );
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
+}
+
+/** Open the splash and wait until its logo layers and scene art have decoded. */
 async function openSplash(page: Page) {
   await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
   await waitPastT0(page, 0);
   await page.waitForFunction(() =>
     [...document.querySelectorAll<HTMLImageElement>("#verilane-splash img")].every((i) => i.complete && i.naturalWidth > 0),
   );
+  await artLoaded(page);
 }
 
 /** Pause every CSS animation in the overlay; with `at`, seek each to that
@@ -331,6 +354,56 @@ for (const beat of [
     expect(res.hint, "key hint").toBeGreaterThanOrEqual(4.5);
   });
 }
+
+// TC-165 (S21): the art never gates a phase. The splash rasters are held
+// 10 s; done still lands at D + 300 ms, and every sampled frame meanwhile
+// shows the dark placeholder gradient (never a blank or light frame).
+test("TC-165: a 10 s delay on the splash art does not move done or blank the scene", async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const held: string[] = [];
+  let released = 0;
+  await page.route(/\/_next\/static\/media\/(sky|clouds-(fg|bg))\.[^/]+\.(avif|webp)$/, async (route) => {
+    held.push(new URL(route.request().url()).pathname);
+    await new Promise((r) => setTimeout(r, 10_000));
+    released++;
+    await route.continue().catch(() => {});
+  });
+  await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
+  await waitPastT0(page, 0);
+  const samples: string[] = [];
+  for (const at of [200, 1500, 3500, 5200]) {
+    await waitPastT0(page, at);
+    expect(released, `art still held at ${at} ms`).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.dataset.splash), `phase at ${at} ms`).toBe("on");
+    const shot = await pixels(page);
+    // the sky band, clear of the lockup, tower and hills
+    for (const [x, y] of [[40, 40], [720, 60], [1400, 120], [200, 400]] as const) {
+      const p = shot.px(x, y);
+      samples.push(`${at}@${x},${y} ${hex(p)}`);
+      expect(lum(p), `${at} ms (${x},${y}) ${hex(p)} is the dark scene, not blank`).toBeLessThan(0.08);
+      expect(p[1], `${at} ms (${x},${y}) ${hex(p)} is green-led`).toBeGreaterThanOrEqual(Math.max(p[0], p[2]));
+    }
+  }
+  await waitForSplash(page, "done", 15_000);
+  const [ready, done] = await page.evaluate(() => {
+    const t0 = performance.getEntriesByName("splash:painted")[0]!.startTime;
+    return ["splash:ready", "splash:done"].map((n) => {
+      const e = performance.getEntriesByName(n)[0];
+      return e ? e.startTime - t0 : null;
+    });
+  });
+  test.info().annotations.push({
+    type: "TC-165",
+    description: `held ${held.length} (${[...new Set(held)].join(", ")}) · released before done ${released} · ready ${ready?.toFixed(0)} · done ${done?.toFixed(0)} ms · ${samples.join(" · ")}`,
+  });
+  expect(held.length, "the splash art was requested and held").toBeGreaterThan(0);
+  expect(released, "no raster was released before done").toBe(0);
+  expect(ready, "ready landed before D − 250 (fast ready)").not.toBeNull();
+  expect(ready!).toBeLessThan(5700 - 250);
+  expect(Math.abs(done! - 6000), `done ${done!.toFixed(0)} ms vs D + 300`).toBeLessThanOrEqual(200);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
 
 test.describe("TC-155: the Skip intro button", () => {
   async function check(page: Page, coarse: boolean) {
