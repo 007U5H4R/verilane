@@ -654,6 +654,38 @@ test.describe("TC-141: readiness hooks are observe-only with the splash off (R7)
     expect(errors).toEqual([]);
   });
 
+  test("TC-141: without the runtime, Home's main renders the same tree in about the same time (snapshot + timing)", async ({
+    context,
+  }) => {
+    /** Loads Home as a guest; returns main's aria snapshot and ms to splash:ready. */
+    async function load(runtime: boolean) {
+      const page = await context.newPage();
+      await page.goto("/");
+      await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible({ timeout: 15_000 });
+      await expect.poll(() => markAt(page, "splash:ready"), { timeout: 15_000 }).not.toBeNull();
+      const ready = (await markAt(page, "splash:ready"))!;
+      // Home's two charts are next/dynamic chunks that land after ready.
+      await expect(page.getByRole("region", { name: "Where is the money stuck?" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Priority mix of the queue" })).toBeVisible();
+      const tree = await page.locator("main").ariaSnapshot();
+      expect(await splashState(page)).toBe("off");
+      expect(await page.evaluate(() => typeof window.verilaneSplash)).toBe(runtime ? "object" : "undefined");
+      await page.close();
+      return { ready, tree };
+    }
+    await load(true); // warm-up: seed the database and the caches, so both runs below are warm
+    const withRuntime = await load(true);
+    await noRuntime(context);
+    const without = await load(false);
+
+    expect(without.tree).toBe(withRuntime.tree);
+    // Loose on purpose: catches a hook that blocks or stalls, not jitter.
+    expect(without.ready, `ready ${without.ready.toFixed(0)} ms vs ${withRuntime.ready.toFixed(0)} ms`).toBeLessThanOrEqual(
+      withRuntime.ready * 2 + 500,
+    );
+    expect(withRuntime.ready).toBeLessThanOrEqual(without.ready * 2 + 500);
+  });
+
   test("TC-141: a DataProvider error still renders the app bare and reports error", async ({ page, context }) => {
     const logged: string[] = [];
     page.on("console", (msg) => {
