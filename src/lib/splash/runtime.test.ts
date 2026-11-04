@@ -157,6 +157,20 @@ describe("step · skip", () => {
     const twice = run([key(300), key(400)]);
     expect(marks(twice.fx).filter((x) => x === "splash:skip")).toHaveLength(1);
   });
+
+  // TASK-45.2 R-7: a skip and ready landing in the same frame, in either order,
+  // exit once and finish on the skip's clock; the timers they leave are no-ops.
+  it.each([
+    ["skip then ready", [key(300), phase("ready", 300)]],
+    ["ready then skip", [phase("ready", 300), key(300)]],
+  ])("%s in one frame exits once", (_name, same) => {
+    const { m, fx } = run([...same, tick(600), tick(5700), tick(9700)]);
+    expect(m.attr).toBe("done");
+    expect(marks(fx).filter((x) => x === "splash:exit")).toHaveLength(1);
+    expect(marks(fx).filter((x) => x === "splash:skip")).toHaveLength(1);
+    expect(attrs(fx)).toEqual(["on", "exit", "done"]);
+    expect(fx.filter((f) => f.k === "uninert")).toHaveLength(1);
+  });
 });
 
 describe("progress (minimal)", () => {

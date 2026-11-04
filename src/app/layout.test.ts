@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/font/google", () => ({ Inter: () => ({ variable: "inter-var" }) }));
 
+vi.stubEnv("NEXT_PUBLIC_E2E", undefined);
+const E2E_AT_IMPORT = process.env.NEXT_PUBLIC_E2E;
 const { default: RootLayout } = await import("./layout");
 
 // TASK-38 scar: THEME_SCRIPT sets data-theme on <html> before React hydrates,
@@ -45,6 +47,18 @@ describe("RootLayout", () => {
     expect(app?.props.suppressHydrationWarning).toBe(true);
     expect(app?.props.style).toEqual({ display: "contents" });
     expect(kids.indexOf(overlay!)).toBeLessThan(kids.indexOf(app!));
+  });
+
+  // TASK-45.2 R-8: the e2e force hook (?__splash=1) must never reach a
+  // non-e2e build's HTML. This module was imported with NEXT_PUBLIC_E2E unset.
+  it("ships no __splash force hook when NEXT_PUBLIC_E2E is unset", () => {
+    expect(E2E_AT_IMPORT).toBeUndefined();
+    const el = RootLayout({ children: null, params: Promise.resolve({}) } as never) as ReactElement<{
+      children: ReactElement<{ children: ReactNode }>[];
+    }>;
+    const splash = scripts(el.props.children[0])[1];
+    expect(splash).toContain("verilaneSplash");
+    expect(splash).not.toContain("__splash");
   });
 });
 
