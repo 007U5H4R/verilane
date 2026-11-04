@@ -101,7 +101,7 @@
 ## M-46.2 · Contract and gates
 
 ### TC-099 · heritageLevelFor maps every PRD §4 route
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03) · **Finding:** —
 - **Objective:** One table, exact levels.
 - **Preconditions:** —
 - **Steps:** `it.each` over the table, plus trailing-slash and `?q`/`#h` variants.
@@ -109,7 +109,7 @@
 - **Expected:** Each returns its level.
 
 ### TC-100 · Unmapped routes default to reduced
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03) · **Finding:** —
 - **Objective:** A new route never gets full-strength art by accident.
 - **Preconditions:** —
 - **Steps:** `heritageLevelFor("/something-new")`, `heritageLevelFor("/a/b/c")`.
@@ -117,7 +117,7 @@
 - **Expected:** `"reduced"`.
 
 ### TC-101 · Mobile fetches heritage art only on Home (F5)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** No mobile bytes off Home.
 - **Preconditions:** Viewport 390×844.
 - **Steps:** Load `/`, `/queue`, `/drafts` in fresh pages; record heritage requests.
@@ -125,7 +125,7 @@
 - **Expected:** `/` requests the theme's `-strip` asset only; `/queue` and `/drafts` request none; `[data-heritage]` is `display:none` there.
 
 ### TC-102 · Forced colors and print fetch nothing (F6)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F6 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F6 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** The art disappears where it would harm legibility.
 - **Preconditions:** `emulateMedia({ forcedColors: "active" })`, then separately `emulateMedia({ media: "print" })`, before navigation.
 - **Steps:** Load `/`; record heritage requests; read computed `display`.
@@ -133,7 +133,7 @@
 - **Expected:** Zero heritage requests; `display` is `none`.
 
 ### TC-103 · Switch-off renders an inert layer and fetches nothing (SC9)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1/46.3.5 · SC9 · **Type:** unit + e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1/46.3.5 · SC9 · **Type:** unit + e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** The one-line switch-off works.
 - **Preconditions:** —
 - **Steps:** Unit: `heritageLevelFor(route, false)` for every table route and an unmapped one. e2e: load `/e2e-harness` (level `off` by the table).
@@ -141,7 +141,7 @@
 - **Expected:** Unit: all `"off"`. e2e: `[data-level="off"]`, `display:none`, zero heritage requests, no `data-idle` ever set.
 
 ### TC-104 · Auth routes do not mount the layer (F1)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** ShellGate's bare auth routes stay bare.
 - **Preconditions:** Signed-out session state where needed.
 - **Steps:** Load `/welcome`, `/sign-in`, `/sign-up`, `/onboarding`.
@@ -149,7 +149,7 @@
 - **Expected:** `[data-heritage]` count 0; zero heritage requests.
 
 ### TC-105 · Route budgets hold with the heritage code (N2)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.6 (re-run 46.8.3) · N2 · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.6 (re-run 46.8.3) · N2 · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03; +301 B every route vs d7144cb, /settings 295.0 KB) · **Finding:** —
 - **Objective:** The component and CSS cost ≤ 1.5 KB gzip per shell route.
 - **Preconditions:** `pnpm build`; base route-budget numbers from A8.
 - **Steps:** `pnpm route-budget`; diff per route against base.
