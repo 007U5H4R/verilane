@@ -141,7 +141,7 @@
 - **Steps:** Unit: `heritageLevelFor(route, false)` for every table route and an unmapped one. e2e: load `/e2e-harness` (level `off` by the table).
 - **Data:** —
 - **Expected:** Unit: all `"off"`. e2e: `[data-level="off"]`, `display:none`, zero heritage requests, no `data-idle` ever set.
-- **Note (R-3):** the `data-idle` clause cannot fail until TASK-46.4 adds the idle preload. From then on it needs a MutationObserver or a wait past the rIC timeout to mean anything.
+- **Note (R-3):** the `data-idle` clause cannot fail until TASK-46.4 adds the idle preload. From then on it needs a MutationObserver or a wait past the rIC timeout to mean anything. **Done in 46.4 (5801e30, EXE61):** both the observer and a 4.5 s settle; passes in both projects.
 
 ### TC-104 · Auth routes do not mount the layer (F1)
 - **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
@@ -160,7 +160,7 @@
 - **Expected:** Exit 0; each shell route delta ≤ +1.5 KB; `/settings` ≤ 300 KB.
 
 ### TC-106 · Exactly one other-theme request after idle (F4)
-- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, unit 540c696, e2e 5801e30; e2e TC-106b runs in both projects at 1440 (desk) and 390 (strip), with "after `data-idle`" by network start time, EXE61) · **Finding:** —
 - **Objective:** Toggling is instant without double-fetching on first paint.
 - **Preconditions:** Unit: fake timers. e2e: `/` in light.
 - **Steps:** Unit: `scheduleIdleOnce` with rIC host (called once, `{timeout:4000}`) and without rIC (`setTimeout` 2500); cb runs once. e2e: wait for `[data-idle]`, wait 1 s, count requests for `heritage-dark-`.
@@ -168,7 +168,7 @@
 - **Expected:** Unit as stated; e2e exactly 1 opposite-theme request, issued after `data-idle`.
 
 ### TC-107 · Save-Data skips the preload
-- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, unit 540c696, e2e 5801e30 TC-107b) · **Finding:** —
 - **Objective:** Respect data-saver users.
 - **Preconditions:** e2e: `addInitScript` defines `navigator.connection = { saveData: true }`.
 - **Steps:** Unit: host with `saveData: true`. e2e: load `/`, wait 5 s.
@@ -176,7 +176,7 @@
 - **Expected:** Nothing scheduled; zero opposite-theme requests; no `data-idle`.
 
 ### TC-108 · Unmount before idle leaves no request and no error
-- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1 · **Type:** unit · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1 · **Type:** unit · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, 540c696) · **Finding:** —
 - **Objective:** The effect cleans up.
 - **Preconditions:** Fake timers.
 - **Steps:** `const cancel = scheduleIdleOnce(host, cb); cancel(); vi.runAllTimers(); cancel();`
