@@ -13,6 +13,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { AUTH_ROUTES } from "./auth-routes";
+
 export const SESSION_KEY = "verilane-session";
 const CHANGE_EVENT = "verilane-session-change";
 /** E2E-only: set by `?__session=none` so a spec can opt out of the default guest session. */
@@ -20,8 +22,7 @@ const E2E_OPT_OUT_KEY = "verilane-e2e-no-session";
 
 export type Session = "guest" | null;
 
-/** Routes that render without the app shell and need no session. */
-export const AUTH_ROUTES = ["/welcome", "/sign-in", "/sign-up", "/onboarding"] as const;
+export { AUTH_ROUTES };
 
 export function isAuthRoute(pathname: string | null): boolean {
   if (!pathname) return false;

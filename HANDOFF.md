@@ -156,6 +156,17 @@ Stages 1–9: DONE. Release gate is `QA-report.md` (READY WITH ACCEPTED RISKS, a
   - **Campfire:** TASK-46.1–46.8 gained refs to both docs and a plan pointer. `tickets-TASK-46.md` now records TKT→TASK-46.N and TC-46.nn→TC-### mappings.
   - **Open user calls in Part E:** tablet height (Design 300px vs PRD clamp; rec. 300px), R5b `sw.js` regex widening needs separate approval if TC-094 fails, SC9 e2e via `/e2e-harness` (no new hook).
   - **Not done:** no branch, no code, no commits, no `decisions.md` append (TP-46.a–g go in as TP9+ on the branch in TASK-46.1), no image generation.
+- **Stage 6 · TASK-46.2 (tracer): path verdict — path B** (EXE55, user-accepted EXE56 on 2026-11-04). On path A, Turbopack does not rewrite `url()` inside `image-set()`, so the art 404s. The art ships from `public/heritage/…v1.*` with an immutable `headers()` rule; TC-094 is adapted to match. The R-1 fix (BottomTabs moved inside the isolated column) is recorded in EXE57.
+  - **Exposure at 1440×900 light** (share of the art left visible — whole viewport / top 40% / content column):
+
+    | Route | Whole | Top 40% | Content column |
+    |---|---|---|---|
+    | /invoices/[id] | 0.25 | 0.39 | 0.31 |
+    | /disputes/[id] | 0.23 | 0.40 | 0.29 |
+    | /settings/eval | 0.53 | 0.61 | 0.65 |
+
+    This exposure method differs from the Stage 1 one, so only the ranking is meaningful, not the absolute values.
+  - **Open item for TASK-46.8 (do not implement before then):** the `sw.js` offline proposal (EXE55: add `/heritage/` to the cacheFirst allowlist) must also add `!pathname.startsWith("/heritage/")` to `isPage()`. Otherwise the cached art counts as a page and gets evicted under `PAGE_CAP`.
 - **Next step:** after Stage 5 sign-off, Stage 6 Execution in a fresh session (`/clear`), starting at TASK-46.1 step 46.1.1.
 
 ---

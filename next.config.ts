@@ -62,6 +62,11 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
         ],
       },
+      {
+        // TASK-46 path B (EXE55): heritage art lives in public/ under a .vN name.
+        source: "/heritage/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
     ];
   },
 };

@@ -426,3 +426,447 @@
 - **Root cause:** the sub-line `<span>` had a `truncate` class. At 375px each card's text column is only ~80px wide (2-col grid, `size-10` icon, `p-4` padding), so content that should have wrapped onto a second line was clipped instead.
 - **Fix:** `QueueKpis.tsx` — the sub-line span's class changed from `truncate` to `break-words`, and `max-w-full` was added to the `Chip` component's span, so chip/amount text wraps within the card instead of clipping.
 - **Regression test:** TC-173 (`tests/e2e/responsive.spec.ts`) checks, for every element inside `[data-testid="queue-kpis"]`, that `scrollWidth <= clientWidth + 1`, as a stored guest at 375px. Confirmed RED before the fix (4 elements clipped: `queue-kpi-total`, `queue-kpi-high`, `queue-kpi-needs_review`, `queue-kpi-disputed`), confirmed GREEN after, in both the chromium-light and chromium-dark projects.
+
+## S25 · Heritage art is a CSS background via image-set(), theme chosen by [data-theme] selectors — approved
+Context: TASK-46. One decorative layer whose theme must be correct on the first fetch with no JS swap.
+Decision: background-image: image-set(AVIF, WebP) on [data-heritage]; light by default, dark under
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) …} and :root[data-theme="dark"] ….
+Rejected: <img>/<picture> (media can't see data-theme; both download), next/image (same + optimizer JS),
+inline SVG (no texture, tens of KB in payload), fixed viewport backdrop (Q5).
+Source: Solution-PRD-TASK-46 §2, §5 (S46-a).
+
+## S26 · Mount in the AppShell content column (relative isolate, art at -z-10), scrolling with the page — approved
+Decision: IndianHeritageBackground is the first child of AppShell's content column; the column gains
+`relative isolate`; nothing else in AppShell changes. Not in RootLayout/body (sidebar width, auth routes).
+Source: PRD §2, §3 (S46-b). Risks: R6, R7.
+
+## S27 · Three levels from measured exposure; heritageLevelFor() is the only control; unmapped routes default to reduced — approved
+Decision: normal = Home, Queue, Disputes, Invoices, Payments; reduced = Emails, Settings, Drafts, Audit,
+detail routes and any unmapped route; off = /e2e-harness. Mobile (<768) shows the strip on Home only.
+Switch-off for the whole feature = one line in src/lib/heritage.ts (SC9).
+Source: PRD §4, §8 (S46-c).
+
+## S28 · Light text zone L* ≥ 92.1 ("mist behind text"); dark normal peak L* 13–19.5 — approved
+Decision: in the page-header text zone (left ~55% of the content column, top-bar bottom to ~160px below)
+light art stays at L* ≥ 92.1 so every text pixel keeps ≥ 4.5:1; darker linework (L* 85–91) only outside it.
+Dark normal band L* 13–19.5, reduced 9.5–13. Enforced by screenshot measurement, not assumed (SC1/SC2).
+Source: PRD §6.2, §9.4 (S46-d); calibration Design-TASK-46 §6.1.
+
+## S29 · 21:9 master, eight landmarks with mist breaks, three variations per theme, user as cultural reviewer, three-round stop rule — approved
+Decision: 3360×1440 master; India Gate, Qutub Minar, Taj Mahal, Hawa Mahal, Amber-style fort,
+Meenakshi-style gopuram (not a shikhara), Hampi chariot drawn by elephants, Mysore Palace; no birds,
+people, text or flags. Rubric order: accuracy → composition → tone → bytes → taste. ≤ 3 rounds, then escalate.
+Source: PRD §6.1, §6.3 (S46-e); prompt spec Design-TASK-46 §6.2.
+
+## S30 · Image budget ≤ 60 KB desktop and ≤ 25 KB strip, AVIF/WebP, enforced by scripts/image-budget.ts in test:all — approved
+Decision: route-budget counts only JS, so a separate gate runs right after route-budget in test:all.
+Cut resolution (2400 → 2000) before quality if over budget.
+Source: PRD §6.4, §7 (S46-f).
+
+## S31 · Instant theme swap plus a single-shot idle preload of the other theme; no coupling to TASK-45 — approved
+Decision: no crossfade; requestIdleCallback(cb,{timeout:4000}) falling back to setTimeout(2500), once,
+cancelled on unmount, skipped when navigator.connection.saveData. The component never reads data-splash.
+Source: PRD §5.2, §5.3, §10 (S46-g).
+
+## S32 · Design.md gets R2 (retroactive, TASK-38) then R3 (heritage background, with binding switch-off) — approved
+Decision: append PRD §11.1 then §11.2 verbatim after Revision R1, as the first commit on task/46-heritage-bg.
+Source: PRD §9.12, §11 (S46-h). Risk: R9.
+
+## TP9 · heritageLevelFor() + HERITAGE_ENABLED in src/lib/heritage.ts is the only level source and the switch-off — approved
+Decision: one pure, unit-tested module decides the level per route and holds the feature switch; the component and the CSS never decide levels.
+Source: technical-plan-TASK-46 §A10 (TP-46.a). Relates: S27, Design.md R3 switch-off rule.
+
+## TP10 · Idle scheduling is a pure scheduleIdleOnce(host, cb) helper — approved
+Decision: unit-tested with fake timers in the node `unit` project (the repo has no DOM test environment); the component only wires it in one useEffect.
+Source: technical-plan-TASK-46 §A10 (TP-46.b). Relates: S31.
+
+## TP11 · A data-home attribute carries the mobile Home rule into CSS — approved
+Decision: the mobile strip's Home-only rule is expressed as `data-home` on the art element; no second route function.
+Source: technical-plan-TASK-46 §A10 (TP-46.c). Relates: S27.
+
+## TP12 · L*/contrast helpers live in src/test/lstar.ts — approved
+Decision: unit-tested in src/test/lstar.test.ts (precedent src/test/tokens.test.ts), decode screenshots with sharp, and are imported by the Playwright contrast spec.
+Source: technical-plan-TASK-46 §A10 (TP-46.d). Relates: S28.
+
+## TP13 · The contrast/prominence spec runs in one Playwright project (chromium-light) and sets each theme itself — approved
+Decision: the spec sets each theme with emulateMedia + `verilane-theme`, so both themes are covered once, not twice (Stage 5 sign-off item 5).
+Source: technical-plan-TASK-46 §A10 (TP-46.e).
+
+## TP14 · Service-worker compatibility is asserted, not assumed — approved
+Decision: an e2e check runs sw.js's own STATIC_REF against the heritage URLs in the served CSS (TC-094).
+Source: technical-plan-TASK-46 §A10 (TP-46.f).
+
+## TP15 · Asset path A by default; path B only on a failed TKT-46.02 R5 check — approved
+Decision: hashed assets in src/assets/heritage/ (path A); path B (public/heritage/*.v1.* plus an immutable headers() rule) only if R5 fails. The verdict is an EXE# decision recorded in TASK-46.2.
+Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
+
+## EXE50 · TASK-46 branch base is main d7144cb, not the task/38 tip (TASK-46.1) — accepted
+- Plan §A8 / Stage 5 sign-off item 1 said cut task/46-heritage-bg from the task/38-emerald-redesign tip after TASK-47/48 merge, or from f493a7b. That tip (TASK-38 incl. TASK-47/48) is now merged into main, so the branch was cut from main `d7144cb`. Supersedes §A8's "branching from main is not an option" (true only for the old main 6e53103).
+- Known reds on the base (frozen baseline for N6 "no worse than this"): e2e TC-081 (flaky control-sweep click timeout, TASK-67), e2e TC-085 (Queue sort perf, TASK-66), and `pnpm eval` held-out gates 8/43 failing (TC-066, known limitation accepted in EXE23).
+- The full `test:all` baseline on d7144cb is taken once, by the TASK-45 implementer in the sibling worktree, not repeated here. The base SHA and known reds are carried in the TASK-46.1 report for the orchestrator to write into HANDOFF (HANDOFF is orchestrator-owned; plan step 46.1.1 said to write it there).
+
+## EXE51 · Home LCP baseline for N4 is provisional (TASK-46.1) — accepted
+- Taken on base d7144cb with `pnpm build:e2e` then `E2E_PORT=3146 pnpm exec playwright test perf.spec.ts -g TC-083 --project chromium-light`: Home `lcpMs` 2252 (budget 2500; /queue 516 in the same run). Stored at `/Volumes/E Drive/Dev/.scratch/task46/baseline/lcp-home-provisional.json`.
+- Build type: `build:e2e` (production build with NEXT_PUBLIC_E2E=1), because perf.spec.ts runs against it like the rest of the e2e suite; plan step 46.1.2 wrote `pnpm build`. TASK-46.8 must compare like with like (build:e2e).
+- Single sample under CPU contention (a sibling worktree build/test run was likely concurrent). TASK-46.8 step 46.8.3 must re-take the base number on d7144cb under quiet conditions before applying N4 (±5%); the provisional number is not a comparison point.
+
+## EXE52 · Design.md R2/R3 applied from PRD §11 (TASK-46.1) — accepted
+- PRD §11.1 then §11.2 appended after Revision R1, as the first commit on task/46-heritage-bg (S32). Only the blockquote markers were stripped, and R3's `<date of approval>` placeholder was filled with 2026-11-02, the date PRD §9.12 was approved. Otherwise identical; TC-091 checked by diffing the added block against the PRD lines.
+- TASK-45 appends its R4 after R1 on its own branch; the merge conflict at the end of Design.md is expected and trivial (keep R2, R3, R4 in order).
+
+## EXE53 · Tablet art height is a fixed 300px; PRD §3.5's tablet clamp is superseded (TASK-46.1) — accepted
+- Stage 5 sign-off item 4. PRD §3.5 item 5 says `clamp(320px, 42vw, 620px)` on desktop **and** tablet; Design-TASK-46 §4/§7 says `300px` on tablet (`background-position: 38% top`). Design's 300px wins: it is the later, mockup-measured spec and the Stage 3 exposure numbers assume it. The PRD's clamp stands for desktop only.
+
+## EXE54 · TASK-46 decision IDs appended without renumbering (TASK-46.1) — accepted
+- S25–S32 and TP9–TP15 (from TP-46.a–g) were free on every branch at append time, so no renumbering (Stage 5 sign-off item 3). TASK-45 holds S15–S24, S33–S37, D8–D15, TP16–TP25, EXE32–EXE49; TASK-46 holds EXE50–EXE69.
+- Plan step 46.1.4's grep gate is adapted to the `## <ID> · title` heading format: `grep -cE "^## (S2[5-9]|S3[0-2]|TP9|TP1[0-5]) · " decisions.md` = 15.
+
+## EXE55 · Heritage art ships on path B; R5b is not applicable under it (TASK-46.2) — accepted
+- R5 failed on path A in both `next dev` and `pnpm build`/`build:e2e` (Next 16.4.3, Turbopack, Lightning CSS). Inside `image-set()` the `url()` entries are not rewritten: the served CSS keeps `image-set("../assets/heritage/heritage-light-desk.avif" 1x type("image/avif"), …)` (plus a `-webkit-image-set(url(../assets/…))` fallback), which resolves to `/_next/static/assets/heritage/…` and 404s, served `private, no-store`. The hashed files are emitted to `.next/static/media/` but nothing references them. A plain `url()` outside `image-set()` *is* rewritten, to the relative form `../media/heritage-light-strip.<hash>.webp`.
+- So path B (TP15, plan 46.2.7): `public/heritage/heritage-{theme}-{desk|strip}.v1.{avif,webp}`, absolute `url("/heritage/…v1.*")` in the globals.css heritage block, and a `/heritage/:path*` → `public, max-age=31536000, immutable` rule beside `/sw.js` in `next.config.ts` headers(). Each art change bumps `.v1` → `.v2` by hand. Emitted form in the served CSS: `image-set("/heritage/heritage-light-desk.v1.avif" 1x type("image/avif"), "/heritage/heritage-light-desk.v1.webp" 1x type("image/webp"))`; `type()` hints survive, `1x` is added.
+- R5b (TC-094): `/heritage/…` is outside `/_next/static/`, the only key space `pruneStatics()` manages, so the prune can never drop the art and `STATIC_REF` need not match it; TC-094 asserts that instead of a STATIC_REF match (TP14's literal check is path-A-only). `sw.js` is untouched. Consequence for TASK-46.8: the SW fetch handler's cacheFirst allowlist (`/_next/static/`, `/seed/`, `/icons/`, `/brand/`, manifest) does not include `/heritage/`, so the art is not available offline; per plan 46.8.4 that gap goes to the user, not patched. The one-line fix if approved: add `url.pathname.startsWith("/heritage/") ||` to that allowlist.
+
+## EXE56 · User accepts path B and the adapted TC-094; tracer look-check passed (TASK-46.2) — accepted
+- User ruling 2026-11-04 (Stage 6 human checkpoint): path B as recorded in EXE55 is accepted, including the manual `.vN` filename bump on art changes. TC-094 keeps the adapted assertion (`pruneStatics()` covers only `/_next/static/`; the `/heritage/` URLs fall outside it) in place of the path-A `STATIC_REF` match.
+- Look-check of the placeholder-art tracer (light and dark, 1440px home) passed: "Looks fine, continue."
+- Still open and carried forward: the `/heritage/` offline gap (TASK-46.8 user stop point), and Safari/Firefox `image-set()` `type()` handling (untested).
+
+## EXE57 · BottomTabs move inside the isolated content column (TASK-46.2) — accepted
+- User ruling 2026-11-04: move `<BottomTabs>` to the last child of the `relative isolate` content column in `AppShell.tsx`. This is approved past the R6 diff budget for AppShell.
+- Root cause (review R-1): the heritage tracer added `isolate` to the content column. That creates a stacking context, so every fixed overlay rendered inside it is capped at the column's level: side panels (z-[45]), the audit drawer (z-50) and the tour backdrop/CenterCard (z-[70]). The bottom tabs (`fixed z-40`) were a sibling after the column, so below 768px they painted over those overlays and took the taps meant for them. Overlays opened with `<dialog>.showModal()` (MoreSheet, the mobile menu sheet) render in the top layer and were never affected.
+- Test: `heritage.spec.ts` "TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)". It probes `elementFromPoint` at the tab row with nothing open, with the disputes Filter side panel open, with the audit drawer open and with the tour confirm backdrop open. It failed on a36a3b1 (the tabs were hit under all three overlays in both projects) and passes after the move. The tour is checked at its confirm backdrop, not the running spotlight: the spotlight is `pointer-events: none` by design and must leave the ringed More tab tappable (demo-tour.spec). Desktop and the 375 tab position are unchanged (identical layout metrics before and after).
+- For TASK-46.8 (R-3): the `/heritage/` offline proposal in EXE55 must also add `!pathname.startsWith("/heritage/")` to `isPage()` in `sw.js`. Otherwise the art is classified as a page and evicted under `PAGE_CAP`. `sw.js` is untouched here.
+
+## EXE58 · Detail routes and /settings/eval are `reduced` (TASK-46.3) — accepted
+- Carry-in 1 of the 46.3 brief. PRD §4 assigns `/invoices/[id]`, `/disputes/[id]` and `/settings/eval` to `reduced`, and the TASK-46.2.10 exposure at 1440×900 agrees. Measured as whole / top 40% / column: 0.25/0.39/0.31, 0.23/0.40/0.29 and 0.53/0.61/0.65. /settings/eval's numbers match the drafts/audit band, which is `reduced`. There is no conflict, so no stop.
+- `src/lib/heritage.ts` names these routes explicitly. It does not rely on the unmapped default, which is also `reduced` (TC-100). One dynamic segment `/x/<id>` maps to the `/x/[id]` key. Deeper nesting falls back to the default.
+
+## EXE59 · `reduced` is opacity 0.6 on the band, provisional (TASK-46.3) — accepted pending 46.6
+- The plan's 46.3.2 needs a visible difference between `normal` and `reduced`. The calibration in Design-TASK-46 §6.1 suggests about 0.6. The light-theme P is 6.2% against 9.9%, about 0.63; dark is about 0.54. One value is used for both themes: `[data-heritage][data-level="reduced"]{opacity:0.6}`.
+- This is a placeholder until the contrast gate (46.5) and the final calibration (46.6) re-tune it per theme. Opacity applies to the whole band and does not change the asset, so no extra request is made.
+- TC-105 baseline: no A8 baseline JSON existed on the branch. The baseline is main d7144cb (the branch base, EXE50), built from a clean `git archive` copy with `pnpm build && pnpm route-budget`. The numbers are kept at `/Volumes/E Drive/Dev/.scratch/task46/logs-46.3/budget-base-d7144cb.json`.
+
+## EXE60 · `IdleHost.navigator` is typed `object`, read as a Save-Data hint (TASK-46.4) — accepted
+- The plan's A2 interface gives `IdleHost` a `navigator` with `connection?.saveData`. TypeScript's DOM `Navigator` has no `connection`, because the Network Information API is not in lib.dom. That makes the A2 shape a weak type with no overlap, so `scheduleIdleOnce(window, …)` fails with TS2345.
+- `navigator?: object` keeps `window` assignable with no cast at the call site. `scheduleIdleOnce` narrows it to `{ connection?: { saveData?: boolean } }` at the one place it reads it. Behaviour matches A2; only the declared type changed.
+- rIC, cIC, setTimeout and clearTimeout are called via `.call(host, …)`. Invoking `window`'s methods detached throws Illegal invocation.
+
+## EXE61 · e2e splits first paint from the idle preload by network start time, not Resource Timing (TASK-46.4) — accepted
+- Since 46.4, Home makes a second, other-theme request once idle. TC-095, TC-101 and TC-106b need "before `data-idle`" separated from "after". An init-script MutationObserver stamps the first `[data-heritage][data-idle]` in epoch ms (`performance.timeOrigin + performance.now()`). Each request's start is Playwright's `request.timing().startTime`, also in epoch ms from the browser. A request with an unknown start counts as first paint, so it can only fail the "nothing extra on first paint" checks, never pass them.
+- Resource Timing was tried first and rejected on evidence. Logged in a debug spec, AppShell removes and re-adds `[data-heritage]` twice after the splash (about 300 ms and 400 ms after first mount). Chromium then dropped Resource Timing entries for the art at random: 9 of 12 TC-095/TC-106b runs failed, while network events showed every request. AppShell is out of scope for 46.4, so the remount is recorded here, not changed.
+- What the remount does to the feature: each remount resets `idle` and reschedules, and cleanup cancels the previous schedule. The repeat `data-idle` hits the memory cache, so the network still sees exactly one other-theme request (TC-106b).
+- TC-103 waits 4.5 s past networkidle, which is beyond the 4 s rIC timeout. With the observer, its "no `data-idle` ever" clause now means something (R-3).
+
+## EXE90 · image-budget and encode-heritage target the path-B asset dir (TASK-46.5) — accepted
+- Plan §A4 and step 46.5.3 assumed path A (`src/assets/heritage/`, no version, encoder `--out` defaulting to path A). The TKT-46.02 verdict is path B (EXE55/EXE56), so both scripts use `public/heritage/` and the `.v1` filename. `EXPECTED` is the 8 names `heritage-{light|dark}-{desk|strip}.v1.{avif,webp}`, and the encoder writes the same names. `ASSET_DIR` and `ASSET_VERSION` live once in `scripts/image-budget.ts`, and `encode-heritage.ts` imports them. A `.v1` → `.v2` bump is a one-constant change that moves the gate and the encoder together. It also needs the globals.css URLs bumped by hand, as EXE55 says.
+- The brief named `docs/decisions.md`. The decisions log is the repo-root `decisions.md`, so these entries are appended there.
+
+## EXE91 · TC-109's oversized desk fixture is 62 464 bytes (61 KB), not 61 440 (TASK-46.5) — accepted
+- TC-109's data says "61 440 bytes", but that is exactly 60 × 1024, the limit itself. The plan (46.5.1 "desk 61 KB fails") and N1 ("≤ 60 KB") both make the limit inclusive. So the unit test uses 61 KB = 62 464 bytes and also asserts that exactly 60 KB passes. TC-110's 26 624 (26 KB) fail and 25 600 (25 KB) pass already match an inclusive limit and are used as written. The TC-109 text in test-cases-TASK-46.md is left for the orchestrator to correct; only its status line is touched here.
+
+## EXE92 · The gate checks every heritage desk/strip file present; the strip crop is centred (TASK-46.5) — accepted
+- `checkBudget` holds every `heritage-<theme>-{desk|strip}.*` file in the directory to its limit, not only the 8 expected names. A stale `.v2` beside the `.v1` set is budgeted too. Missing expected names are reported separately, so an empty or absent directory fails with all 8 listed (TC-111).
+- Strip crop: the master's 15–55% height band (PRD §6.2; 576 px on a 1440 px master), widened to the strip's 2.5:1 aspect (1440 px of 3360) and **centred horizontally**, then resized to 1200×480. The PRD calls this both "a cropped centre band" (§3.5) and "around the Taj and gopuram" (§6.4). The final art places that cluster right of centre (Design §8), so the horizontal offset is provisional. If the real master needs a shift, TASK-46.7/46.8 change `STRIP_BAND` or the `left` calculation in `encode-heritage.ts`. Desk height follows the aspect: 2400 → 1029 and 2000 → 857 (TC-112).
+
+## EXE93 · No new dependency; the encoder test gets a 120 s cap (TASK-46.5) — accepted
+- sharp 0.35.5 was already a direct devDependency (the `make-icons.ts` precedent), so `package.json` gained only the `image-budget` script and its `test:all` step after `route-budget`. `pnpm-lock.yaml` is unchanged.
+- TC-112 encodes with the real settings (AVIF q45 effort 9 4:2:0, WebP q70 smart subsample). That takes about 8 s per test with the machine idle. Its two tests carry an explicit 120 s timeout, not the suite's 30 s, so a sibling worktree build can't turn it into a false red. The cap is still finite.
+
+## EXE94 · The splash-budget route baseline moves from E1 (d7144cb) to main + TASK-46 (d20558e); the 512 B limit stays (release TASK-45 + TASK-46) — accepted, user ruling 2026-11-04
+- Merging TASK-45 and TASK-46 together made every route fail the splash-budget delta: 633–635 B against 512 B. TASK-46 adds about 478 B of shared JS to every route (the heritage layer). That is not splash code, but the EXE85 E1 snapshot predates it.
+- User ruling: measure splash against main + TASK-46 and keep the 512 B limit. `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` is regenerated from a clean `pnpm build` of d20558e (main + TASK-46 + TASK-46.5) with route-budget's `measureRoutes`. The splash delta is now about 157 B per route, as it was on the TASK-45 branch alone.
+- The constant keeps its name so the code and tests stay put. Its doc comment names d20558e and this entry.
+
+## S15 · TASK-45 splash: CSS-only motion, no animation library — approved 2026-11-02
+**Context.** ≤15 KB gzip budget; the splash must paint before hydration; no motion library is installed.
+**Decision.** CSS keyframes on transform/opacity only; static clip-paths; no animated filters or blend modes; one `--splash-d` property drives the cinematic length.
+**Rejected.** framer-motion, gsap and Lottie (each blows the budget and needs hydration); video; canvas/WebGL; WAAPI (not needed).
+
+## S16 · TASK-45 splash: pre-hydration static overlay in RootLayout plus an inline runtime — approved 2026-11-02
+**Context.** The fallback chain swaps three times, so a splash inside it would restart; it must paint in the first frame; the route budget is already failing.
+**Decision.** A server-rendered overlay sibling to `<Suspense><ShellGate/>`, with CSS visibility via `html[data-splash]`, set by a typed, tested, stringified inline runtime (the THEME_SCRIPT pattern). The app subtree goes in a `display:contents` wrapper, made `inert` while covered.
+**Rejected.** A splash inside `GateSkeleton`/`ShellLoading` (it restarts and paints late); a React overlay in `GatedApp` (post-hydration, shared JS, mismatch risk).
+
+## S17 · TASK-45 splash: trigger is the first gated-app entry per tab, including client entry from onboarding — approved 2026-11-02
+**Context.** First-time visitors enter through `router.push("/")` from `/welcome`; Q1 (once per tab), Q3 (never on auth routes).
+**Decision.** `sessionStorage` seen-flag, set on show; hard load decided pre-paint; client entry through `show()` in a layout effect; refresh does not replay; e2e is off unless `?__splash=1`.
+**Rejected.** Hard-load only (the primary audience never sees it on visit one); localStorage once-per-day (not asked for; see the new-tab risk in the PRD §8).
+
+## S18 · TASK-45 splash: real readiness via observe-only events; truthful status; hold and ceiling — approved 2026-11-02 (timing amended by S21, indicator amended by S23)
+**Context.** "Never fake progress" (brief, DoD #1); no stop rule existed.
+**Decision.**
+- Events `painted/session/provider/seeding/ready/error`.
+- Truthful phase text that switches to a ready state at `ready`, with the loading bar of S23.
+- Exit at `max(t₀ + D, ready + fill)`, per S21 and S23.
+- Hold on a calm loop if the load outlasts *D*.
+- A ceiling at *t₀* + *D* + 4 s yields to the skeleton with a mark and a warning.
+
+**Rejected.**
+- A "loading" state that continues after the app is ready (fake progress).
+- The draft's 8 s ceiling (it would leave only 2 s of load margin after a 6 s cinematic).
+- *(The draft's rejection of any percentage or bar is superseded by S23.)*
+
+## S19 · TASK-45 splash: generated atmosphere only; lighthouse, beam, logo and text in code — approved 2026-11-02
+**Context.** The brief's rule against baking in the logo, text or beam; beam-to-lantern alignment across aspect ratios; budget.
+**Decision.** G1 plate plus two G2 cloud layers (foreground faster than background, S24) generated in Stage 3; SVG lighthouse; CSS beam and glow; official logo PNG layers; live text. Rasters are CSS backgrounds gated on `html[data-splash]` (0 bytes when not shown), AVIF/WebP, ≤60/30 KB.
+**Rejected.** A generated lighthouse (fragile alignment; Stage 3 may revisit with evidence); a single baked hero image (violates the brief).
+
+## S20 · TASK-45 branch strategy: own branch cut from task/38, not main — approved 2026-11-02
+**Context.** `main` has no app code; the composed render tree exists only on `task/38-emerald-redesign`.
+**Decision.** A new `task/45-splash` branch in its own worktree, cut from a commit on `task/38-emerald-redesign` where all checks pass; no commits to `task/38`; merged by the lead after TASK-38/39 settle. If the only failing check at every candidate base is the pre-existing route-budget overage, ask the user before cutting.
+**Rejected.** `main` (impossible); `build/verilane-v1` (lacks ShellGate, session and the light logo, so merges would conflict heavily).
+
+## S21 · TASK-45 splash: guaranteed full cinematic once per tab — USER-APPROVED REVERSAL, 2026-11-02
+**Context.** Discovery Q5 (a ~400 ms floor), DoD #1 ("no added perceived latency") and the brief's "must not artificially delay entry to complete the animation" together meant the splash would last only as long as the real load, roughly 0.4 s on a warm load. That would show the primary first-time/demo audience (Q2) a fraction of the ~6 s storyboard the feature was commissioned for (PRD §0.1). The user was shown that tradeoff at the Stage 2 gate.
+**Decision.** Reverses Q5, DoD #1 and that brief line. The full ~6 s cinematic plays once per tab session even when the app is ready. Exit is at `max(t₀ + D, ready)`, with *D_rm* = 1 s under reduced motion. A same-tab refresh does not replay; a new tab does. Bounded by: skip on any input (S22), truthful status that shows "ready" rather than fake loading (S18), and unchanged real time-to-ready (PRD §5.1). DoD #1 and DoD #5 are restated in PRD §5.
+**Rejected.** Compressed honest timing (the draft recommendation; it hides the storyboard); a cinematic with no skip (a forced 6 s wait, and it fails WCAG 2.2.2).
+**Reason recorded.** The user's sign-off decision on 2026-11-02, choosing the brand reveal for first-time and demo visitors over sub-second entry, with skip as the escape hatch.
+
+## S22 · TASK-45 splash: skip on any click, tap or key; skippable-overlay a11y — USER-APPROVED REVERSAL, 2026-11-02
+**Context.** The draft's "no skip button" was justified by honest timing, where there was nothing to skip to. S21 removes that premise, and a more-than-5-s auto-playing animation needs a stop/hide mechanism (WCAG 2.2.2).
+**Decision.** Any `pointerdown` or `keydown` (including Esc), handled in the inline runtime from the first frame, starts the ≤ 300 ms exit within 50 ms. A 250 ms start guard and `event.repeat` filtering prevent accidental skips, and the skipping click/key is never forwarded to the app. Affordance: one small, unobtrusive, not-auto-focused real "Skip intro"/"Continue" button plus a key hint. The overlay root is no longer `aria-hidden`: the decorative layers are, and one `role="status"` carries the truthful phase while the app is `inert`. Pointer events are on while showing and off at exit start. Focus is never left on a hidden element.
+**Rejected.** No affordance at all (undiscoverable, and unreachable for screen-reader browse mode); a prominent skip button (competes with the logo); `role="dialog"` with a focus trap (the brief forbids a focus trap); keeping the whole overlay `aria-hidden` (the inert app's own status would be hidden too, leaving about 6 s of silence).
+
+## S23 · TASK-45 splash: real-progress loading bar — USER-APPROVED REVERSAL, 2026-11-02
+**Context.** The draft rejected any percentage or determinate bar, because few, unequal phases make a bar jump or stall, and under a guaranteed 6 s cinematic a smooth bar would have to be a scripted timer, which is fake progress. The storyboard (`docs/TASK-45-storyboard.md`, frame 07) shows a bottom-centre emerald pill easing from 0 to about 90 %. The user decided to keep it, on the condition that it is tied to real loading.
+**Decision.** This reverses the draft's "no percentage" rule. The bar works as follows:
+- Its fill is a monotonic function of the latest real phase only: `painted` 10 %, `session` 35 %, `provider` 65 %, `seeding` 80 % (only if seeding is real), `ready`/`error` 100 %.
+- It stays ≤ 90 % before `ready`. No timer changes it and nothing creeps between events, so it may jump or stall.
+- It is revealed at *t₀* + 4.0 s, or at *t₀* under reduced motion. If the app is already ready at that point, it fills to 100 % in ≤ 600 ms.
+- If the app becomes ready after *D*, the exit follows a ≤ 250 ms completion beat.
+- A skip or the ceiling exits with the bar incomplete, and the skeleton takes over. The bar is never faked to 100 %.
+- Accessibility: it is a non-live `role="progressbar"` whose `aria-valuenow`/`aria-valuetext` equal its real target. The overlay's `role="status"` stays the single announcer.
+
+**Rejected.**
+- A storyboard-timed ease from 0 to 90 to 100 % (a scripted timer, so fake progress).
+- Creeping between events (it implies progress that is not happening).
+- An `aria-hidden` bar (it now carries real information, so hiding it would break WCAG 1.3.1).
+- A live progressbar (double announcements next to the status).
+
+## S24 · TASK-45 splash: cloud parallax corrected — user decision, 2026-11-02
+**Context.** The storyboard lists the foreground cloud as slower (10–15 px over 6 s) than the background cloud (20–30 px), which inverts normal depth cues.
+**Decision.** The foreground cloud drifts faster than the background cloud; the storyboard's speeds are swapped. The drift is rightward and one-way over the splash's longest life (≈ 10 s). Stage 3 sets the absolute distances (storyboard inconsistency 3).
+**Rejected.** The storyboard's literal speeds (they read as wrong depth).
+
+## D8 · TASK-45 splash: loading bar revealed at t₀ + 3.2 s (amends R13's 4.0 s) — approved 2026-11-02
+**Context.** At 4.0 s a 0.8 s dead beat follows the tagline.
+**Decision.** Reveal as a 300 ms rise at 3.2 s (F06 end); t₀ under reduced motion.
+**Rejected.** 4.0 s.
+
+## D9 · TASK-45 splash: D = 5.7 s, 300 ms exit, ceiling 9.7 s; D_rm = 1 s, ceiling 5 s — approved 2026-11-02
+**Context.** Choreography ends at 3.2 s; 2.5 s of hold lets a warm bar fill and read "Workspace ready".
+**Rejected.** 6.0 s / 10 s ceiling.
+
+## D10 · TASK-45 splash: width-relative cloud drift (fg 10 vw, bg 5 vw, one way over 10 s; bg hidden ≤ 600 px) — approved 2026-11-02
+**Context.** Fixed px reads frantic at 375 and static at 1440.
+**Rejected.** px distances; looping drift.
+
+## D11 · TASK-45 splash: static beam at −6°, breathing 1 → .78 over 5 s, one sheen at 1.6 s, never sweeps — approved 2026-11-02
+**Context.** A sweep pulls the eye off logo and bar and adds a 2.2.2 concern.
+**Rejected.** ±4° sweep ≥ 6 s period in hold.
+
+## D12 · TASK-45 splash: error copy "Workspace opened"; the app banner owns the error — approved 2026-11-02
+
+## D13 · TASK-45 splash: stall glint inside the fill only + sub-line "Still working — first visits can take a few seconds." after a 4 s stall or 1.5 s past D — approved 2026-11-02
+**Context.** An honest bar stalls; the stall must read as working, not frozen. The glint never changes the value.
+
+## D14 · TASK-45 splash: skip button bottom-right, "Skip intro" → "Continue" at ready, 36 px (44 px touch), no autofocus — approved 2026-11-02
+
+## D15 · TASK-45 splash: always dark, independent of app theme; exit fade reveals the active theme — approved 2026-11-02
+
+## S33 · TASK-45 build order: tracer first on a bare overlay — approved 2026-11-02 (Stage 4 gate)
+**Context.** Only the overlay/runtime/event path touches the shared render tree, hydration and time-to-ready.
+**Decision.** TKT-45.02 ships the real runtime state machine, events, skip and inert on a flat overlay, and must pass ±50 ms ready, skip→input ≤ 350 ms, zero hydration warnings and node identity before any bar, scene or art work starts. A fail reopens Stage 2 (S16).
+**Rejected.** Scene-first (polishes the cheap part while the expensive risk is unknown).
+
+## S34 · TASK-45 perf measurement protocol — approved 2026-11-02 (Stage 4 gate)
+**Context.** §5.1's ±50 ms gate on a 5-run median may sit inside lab noise under Fast-4G + 4× CPU.
+**Decision.** Production build on its own port; measure the no-splash baseline spread first; if the 5-run spread exceeds ±50 ms, run interleaved A/B (splash on/off alternating) with n ≥ 9 and compare medians. Record both raw series in the evidence pack.
+**Rejected.** A single 5-run comparison regardless of noise (could pass or fail on noise).
+
+## S35 · TASK-45 budget gate is a separate `scripts/splash-budget.ts` in `test:all`, landed before the scene — approved 2026-11-02 (Stage 4 gate)
+**Context.** §7 requires a mechanical gate; `route-budget` measures route JS chunks, while the splash's weight is inline HTML/CSS plus rasters.
+**Decision.** New script, own unit test, beside `route-budget` in `test:all`; it measures the inline runtime (≤ 2 KB), splash CSS (≤ 7 KB), markup + SVG (≤ 4 KB), total ≤ 15 KB gzip, and splash rasters (≤ 60 / 30 KB); `route-budget` is unchanged and its per-route 300 KB limit still applies (no passing route may flip, shared-JS delta ≤ 0.5 KB). Landed in TKT-45.07 right after the tracer so 04/05/06/09 grow under it.
+**Rejected.** Extending `route-budget` (mixes two different measurements in one owner's script).
+
+## S36 · TASK-45 art spend: per-round user approval, max 3 rounds per asset, placeholder is the fallback — approved 2026-11-02 (Stage 4 gate)
+**Context.** kie.ai generation costs money (KIE_API_KEY); the splash never waits on art (S19).
+**Decision.** Before each round, state the model, the count and the estimated cost and wait for approval; max 3 rounds per asset (G1, G2), then escalate; if nothing passes, ship the CSS-gradient placeholder sky and clouds and record it. Key read from .env.local only, never printed.
+**Rejected.** Open-ended regeneration.
+
+## S37 · Root Design.md scoped exception appended as Revision R4 (TASK-45 splash) — approved 2026-11-02 (Stage 4 gate)
+**Context.** Design-TASK-45 §5; TASK-46 appends R2/R3 on its own branch.
+**Decision.** Append Design-TASK-45 §5 as "Revision R4 — TASK-45 splash scoped exception" after the last revision present on the base, in TKT-45.01, verbatim; renumber if the base already holds an R4. Scope: gradients, glow and a decorative loop only inside #splash while html[data-splash] ≠ done; official logo unmodified; no residue after exit.
+**Rejected.** Editing the root Design.md rules in place.
+
+## TP16 · TASK-45: Runtime as typed source, stringified (TP-45.a) — approved 2026-11-03
+- `src/lib/splash/runtime.ts` has no imports. Its pure functions are `decide`, `progress` and `step`, and `boot` does the DOM wiring.
+- `buildSplashScript` concatenates their `.toString()` and appends `boot(window, <JSON cfg>)`.
+- Rule: no free references to top-level non-function bindings (constants live inside functions).
+- Guarded by a `node:vm` unit test that runs the string against a stub window/document, and by a string scan for `require(`, `__webpack` and `import(`.
+
+## TP17 · TASK-45: Overlay via `dangerouslySetInnerHTML`; the app gets a `display:contents` wrapper (TP-45.b) — approved 2026-11-03
+- React owns only the two containers, both `suppressHydrationWarning`. The runtime mutates inside the overlay freely.
+- Toaster and PwaRegister move inside the wrapper.
+- The tracer must show 0 hydration warnings and the same overlay node across ShellGate swaps.
+- Fallback (recorded as an EXE decision if needed): `inert` on a node React never renders, i.e. a runtime-created `<div>` sibling.
+
+## TP18 · TASK-45: Public API is `window.verilaneSplash`, not `window.__verilaneSplash` (TP-45.c) — approved 2026-11-03
+- `scripts/check-e2e-hooks.ts` scans `.next/static` for the substring `__verilane`. The Stage 4 name would trip it.
+- Add `"__splash"` to HOOKS. The e2e force param `?__splash=1` is captured at boot into sessionStorage (e2e builds only).
+- The non-e2e `buildSplashScript` string must not contain `__splash` (unit-asserted), because it ships in server HTML, which the static scan does not see.
+
+## TP19 · TASK-45: Baseline-comparable readiness mark (TP-45.d) — approved 2026-11-03
+- `emitSplash("ready")` always marks `splash:ready`, with or without a splash, so the S34 A/B measures the same code path. The runtime marks `splash:painted`, `splash:skip`, `splash:exit` and `splash:ceiling`.
+
+## TP20 · TASK-45: Hook placement (observe-only, R7) (TP-45.e) — approved 2026-11-03
+- The phase hooks go where A1 lists them. They have no return values and no state, and no control flow depends on them. Client entry is a `useLayoutEffect` in GatedApp. A pinning test (TC-141) asserts that ShellGate/DataProvider behaviour is unchanged with the splash off.
+
+## TP21 · TASK-45: E2E force and session (TP-45.f) — approved 2026-11-03
+- Under `NEXT_PUBLIC_E2E=1`, `?__splash=1` is persisted to sessionStorage, so client entry after navigation still honours it.
+- Specs store `verilane-session=guest` via `addInitScript`, because the runtime reads localStorage directly while the e2e default guest comes from `resolveSession`.
+- Otherwise e2e builds never show the splash, so the existing 185 specs are untouched.
+
+## TP22 · TASK-45: `splash-budget` measures source, deterministically (TP-45.g) — approved 2026-11-03
+- It is a new `scripts/splash-budget.ts` plus a test, inserted in `test:all` after `route-budget` (and after TASK-46's `image-budget`). It measures:
+- gzip-9 of the built script string, `splash.css` and `splashMarkup()` together, against ≈15 KB;
+- each raster in `src/assets/splash/` against 60 / 30 KB;
+- the per-route shared-JS delta against E1, read from route-budget's stats, at ≤0.5 KB.
+- `route-budget` itself is unchanged.
+
+## TP23 · TASK-45: Perf A/B outside the default e2e run (TP-45.h) — approved 2026-11-03
+- `tests/e2e/splash-perf.spec.ts` is tagged `@perf` and excluded from `pnpm e2e` via `grepInvert`. It runs with `pnpm e2e:splash-perf`.
+- It first measures the baseline spread of `splash:ready`. If the spread is wider than ±50 ms, it runs interleaved A/B with n≥9 (S34). A no-go reopens Stage 2.
+- The functional splash specs run in `test:all`. Specs that need the full D use `test.slow()`; the others skip via a keypress, and `page.clock` is used where timers allow.
+
+## TP24 · TASK-45: Isolation (TP-45.i) — approved 2026-11-03
+- Worktree `.claude/worktrees/task-45-splash`.
+- `E2E_PORT=3145`. Never use 3000/3141/3900/3920; TASK-46 uses 3146.
+- Scratch and temp go to `/Volumes/E Drive/Dev/.scratch/task45/`, with `TMPDIR=E2E_TMPDIR=/Volumes/E Drive/Dev/.scratch/task45/tmp`.
+
+## TP25 · TASK-45: Fill-start contrast (TP-45.j) — approved 2026-11-03
+- The ≥3:1 bar colour is chosen in TASK-45.5 against the placeholder and re-checked on final art in TASK-45.9. It is recorded as an EXE decision, not a Design revision, unless it changes the hue family.
+
+## EXE32 · TASK-45 branch cut from main `d7144cb`, not the task/38 head (TASK-45.1) — accepted
+- The plan (A8, Part E item 1; S20) said to cut `task/45-splash` from the green task/38 head (eb85789+, tip cf2c541). Both commits are now merged into `main`, so the branch is cut from `main` `d7144cb` (merge of PR #4, TASK-64), which contains them. Worktree `.claude/worktrees/task-45-splash`.
+- Steps 45.1.2 (worktree) and 45.1.3 (TASK-45 docs and `.design/exploration/task-45/`) were already satisfied on `main`: the docs are tracked there, so the branch-cut commit carries only `decisions.md` and `Design.md`.
+- Numbering at append time: S15–S24, D8–D15 and S33–S37 were free and are used as drafted. TP-45.a–j become TP16–TP25 (TP9–TP15 are reserved for TASK-46). No cross-reference in the TASK-45 docs changes; they keep the draft `TP-45.x` labels, which each TP entry names in its heading.
+
+## EXE33 · TASK-45 E1 baseline on `d7144cb`: green except the accepted held-out eval gates (TASK-45.1) — accepted
+- **Context.** Step 45.1.1 runs `pnpm test:all` once on E1 (`d7144cb7`, port 3145) before any TASK-45 change. The full log is in the TASK-45 scratch dir (`baseline-test-all.log`), with the CPU shared with the TASK-46 worktree.
+- **Precondition.** A fresh worktree has no `.next/types`, so `typecheck` fails with `TS2304 Cannot find name 'LayoutProps'` until `pnpm exec next typegen` runs. That command writes only to the gitignored `.next/`. Run it once per new worktree, before the first typecheck.
+- **Result.**
+  - typecheck: pass.
+  - lint: pass, 1 warning (`steps.ts:141`, TASK-70).
+  - unit: 97 files / 1226 passed.
+  - perf: 1/1 passed.
+  - eval: 35 passed / 8 failed of 43. The 8 failures are the held-out TC-066 and heldout-v2 gates, the same as the committed `eval/report.md`.
+  - build: pass.
+  - check:secrets and check:e2e-hooks: clean (80 files).
+  - route-budget: all 18 routes ≤ 300 KB gzip (max `/settings` 294.7 KB).
+  - e2e `--workers=1`: 355 passed, 1 skipped, 0 failed (21.5 min), with TC-081 and TC-085 green on this run.
+- **Decision.** The eval failures count as a known red, not a regression, per EXE23 (user, 2026-11-01: TC-066 is a known limitation and the thresholds are unchanged). Because `test:all` is an `&&` chain it stops at `eval`, so the baseline runs in two parts: `typecheck → eval`, then `build → e2e`. TASK-45 regressions are judged against these counts.
+
+## EXE34 · Splash runtime is one self-contained function, stringified into the head (TASK-45.2) — accepted
+- `src/lib/splash/runtime.ts` exports a pure `step()` state machine (unit-tested) and `splashRuntime()`, which embeds its own copy of the machine. `buildSplashScript()` inlines `splashRuntime.toString()` with the config. The script follows the THEME_SCRIPT pattern and is allowed by the static CSP's 'unsafe-inline'. It has no imports, so it adds nothing to client JS (`/settings` stays at 294.8 KB). It adds about 5.1 KB of inline HTML per page.
+- `script.test.ts` runs the exact emitted string in a fresh `node:vm` context. A helper or import leaking out of the function fails there rather than in a browser.
+- Globals are reached through a `(w as Window & typeof globalThis)` cast on the passed window, so the stringified body never references module scope.
+
+## EXE35 · 45.2 `decide()` is the minimum; auth routes, seen flag and TC-135 step 3 go to TASK-45.3 (TASK-45.2) — accepted
+- In 45.2 the splash shows only for a guest session with readable storage. In e2e builds it is off unless forced with `?__splash=1`, which persists in sessionStorage `verilane-splash-force`. `"__splash"` joins HOOKS in `check-e2e-hooks`. The full truth table (auth routes, `verilane-splash-seen`, once per tab) and TC-135 step 3 are TASK-45.3 / TC-137.
+
+## EXE36 · Overlay stacks above the sonner toaster (TASK-45.2) — accepted
+- `#verilane-splash` uses `z-index: 2147483000`, above sonner's toaster (999999999). No toast can paint over the splash while the app below is inert.
+
+## EXE37 · TC-129 and TC-134 hold readiness by routing the seed manifest (TASK-45.2) — accepted
+- The plan delayed the DataProvider chunk. That chunk name is not stable under Turbopack, while a fresh context always fetches `**/seed/manifest.json` to seed. The specs delay that request (TC-129, 1.5 s) or never resolve it (TC-134), so readiness can be controlled without touching the app.
+
+## EXE38 · `layout.test.ts` updated for the splash head script and markup (TASK-45.2) — accepted
+- `<head>` now has two scripts (THEME_SCRIPT, then the splash). The existing theme assertion read the head's single child, so it now finds the theme script by its content. A new test asserts the splash script, the `#verilane-splash` overlay and the `#verilane-app` wrapper (`display: contents`). Both the overlay and the wrapper carry `suppressHydrationWarning`, because the runtime sets attributes on them before hydration.
+
+## EXE39 · Timers tick at `max(now, deadline)` (TASK-45.2) — accepted
+- **Found by TC-134.** Chromium ran the 9700 ms ceiling timer while `performance.now()` still read 9699.x. `step()` saw "not yet" and nothing rescheduled, so the overlay never left (one light-project run hung).
+- **Fix.** The runtime ticks with `Math.max(now(), due)`. The regression test is `script.test.ts` "treats a timer that fires slightly early as having reached its deadline" (red, then green).
+
+## EXE40 · The TC-130 spec is tagged `@splash-perf`, not `@perf` (TASK-45.2) — accepted
+- TP-45.h said `@perf`, but the existing `perf.spec.ts` uses `describe("@perf")` and runs inside `pnpm e2e` (TC-085). A shared tag would either pull the 10-minute TC-130 into `pnpm e2e` or drop TC-085 from it.
+- `playwright.config.ts` greps `@splash-perf` only when `SPLASH_PERF=1`, and greps it out otherwise. The script is `pnpm e2e:splash-perf` (chromium-light, 1 worker). Setting `SPLASH_PERF_MODE=interleaved` forces A/B pairs even when the baseline spread is ≤ ±50 ms; use it when the CPU is shared.
+
+## EXE41 · TC-134 asserts the exit at 9.7 s and done at 10.0 s (TASK-45.2) — accepted
+- Per the technical plan, the ceiling starts the exit at t0 + D + 4000 = 9700 ms (±200 ms), and `done` follows exitMs (300) later. The `done` check is measured from the exit, not from t0; see EXE44.
+
+## EXE42 · TC-128 also matches minified React hydration codes (TASK-45.2) — accepted
+- Production React reports hydration errors only as #418, #423 and #425. The console regex is `/hydrat|did not match|mismatch|#418|#423|#425/i`, plus any `pageerror`.
+
+## EXE43 · RK2 / TC-130 verdict is taken from interleaved A/B under CPU contention (TASK-45.2) — accepted
+- The first run used simple A/B (9 off, then 9 on), because its baseline spread was ±27.8 ms. It gave Δ = +157.9 ms (off 589.5, on 747.4), at load 20.5 → 16.0, with the TASK-46 agent and iCloud running.
+- Two interleaved re-runs gave Δ = −8.1 ms (spread ±111.8, load 12.2) and Δ = −30.4 ms (spread ±434.2, load 12.7). Only interleaving controls for contention that changes over time, so the verdict comes from the interleaved runs: no measurable regression.
+- **Caveat.** These spreads are well above the 50 ms budget, so the gate cannot resolve 50 ms on this machine today. Re-run `SPLASH_PERF_MODE=interleaved pnpm e2e:splash-perf` on a quiet machine before TASK-45.7 (budget).
+
+## EXE44 · Exit marks are stamped before slow effects; TC-134 bounds `done` from the exit (TASK-45.2) — accepted
+- **Found in the gate run.** TC-134 saw `done` at t0 + 10244, outside ±200 of 10000, while the exit was within tolerance. Repeats then showed `done − exit` at 273–299 ms.
+- **Cause 1, fixed.** The exit mark was stamped after the attr change and after un-inerting a large subtree. The ceiling's `console.warn` also ran before them, and it is slow with a CDP console listener. So `splash:exit` was stamped tens of ms after `tExit`, while the done timer was keyed to `tExit`.
+  - `exit()` now emits the mark first, and the ceiling warns after the exit effects. Both orders are covered by `runtime.test.ts` "step · exit effect order" (red, then green).
+- **Cause 2, accepted.** The done timer can fire up to about 6 ms early against `performance.now()`. This is the same slack as EXE39; `max(now, due)` counts it as due.
+- **TC-134 now asserts** `300 − 20 ≤ done − exit ≤ 1500`. One run saw an 814 ms main-thread stall after un-inert. Its cause is unmeasured; the CSS fade is unaffected. A point check of `done` against t0 stacks two timers' lateness and flakes under contention.
+
+## EXE45 · TC-130 interleaved mode judges the median of 21 paired differences (TASK-45.2) — accepted
+- Four earlier runs on bbb8955 gave deltas of +157.9 (simple), −8.1, −30.4 and +74.0 ms (interleaved, 9 pairs). The baseline spread was about 150–160 ms, roughly 3× the 50 ms budget, so a difference of two medians over 9 runs could not tell pass from fail. One stalled "on" run (1148.7 ms) was enough to swing the +74 result.
+- User ruling 2026-11-04: harden the test, then rerun. Interleaved mode now runs `PAIRS = 21`, alternates which side of each pair runs first, and judges `median(on[i] − off[i])`, which cancels drift between pairs and ignores a lone stalled run. Simple mode is unchanged (9 runs, difference of medians). This stays within TC-130 (n ≥ 9, compare medians).
+- Caveat: the paired metric was chosen after the failing run was seen, so only fresh runs count as evidence. Fresh run on bbb8955: delta −13.7 ms. The difference of medians agrees (740.7 vs 738.1 ms), so the verdict does not depend on which estimator is used. Load average 5.7–10 during the run. Raw data: `task45/perf/tc-130-chromium-light-1793764705812.json`.
+- Re-verify TC-130 at the Stage 8 test pass, after 45.3–45.10 add the full scene and bar.
+
+## EXE46 · TC-131 measures each app interaction in its own pass, after the app has mounted (TASK-45.2, review R-6) — accepted
+- **Input clock.** `input` is the skipping event's own `e.timeStamp`, captured by a window capture listener in an init script. That listener is registered before the runtime's own listener. The skip runs `splash:exit − input ≤ 50`.
+- **The skip waits for the first `/invoices/` row to be attached.** The row attaches about 1.1 s after t0. Without this wait, "interactive ≤ 350 ms after input" would time the app's own load, not the splash. So the skip lands after the TC's nominal 400 ms. The skip time itself is unchanged. Separately, the ticket says "~2 s after ready" while TC-131 says 400 ms; the TC text is left alone and the mismatch is raised for review.
+- **One interaction per pass.** Each skip variant runs twice: a keyboard pass and a pointer pass. The measured interaction is the first driver action after the skip. When both were chained in one pass, Playwright round-trips (probe and mark reads, Escape, scroll) added 430–790 ms that the app never spent.
+  - **Keyboard pass.** Ctrl/Cmd+K must focus the shell's search combobox inside `#verilane-app` within 350 ms. Tab cannot be used, because the overlay's skip button comes first in DOM order and stays focusable during the exit (raised for review).
+  - **Pointer pass.** The first row is scrolled to the centre under the overlay before the skip. A raw `mouse.click` at its box (no actionability wait) must reach the row within 350 ms of input.
+- **The probe lives in `sessionStorage`.** A row click opens the invoice as a full document load, with or without the splash (checked with the splash off). An in-page probe would be lost with that page.
+- Evidence: `task45/tc-131-timings.txt`. The worst cases were exit−input 30.1 ms, search−input 311.6 ms and click−input 92.1 ms.
+
+## EXE47 · TC-131 times emulated touch from the first listener, not `e.timeStamp` (TASK-45.2, review R-6) — accepted
+- **Found in R-6.** On touch, `splash:exit − e.timeStamp` was about 163 ms in both projects, while `exit − (first listener's performance.now())` was under 1 ms.
+- **Cause.** Headless Chromium delivers an emulated `touchscreen.tap` 40–220 ms after its timeStamp. This happens with or without the splash: 133–145 ms with the splash on and idle, and 100–123 ms with the splash off. Mouse and keyboard are delivered 4–11 ms after their timeStamp. Evidence: `task45/touch-latency-evidence.txt` and `task45/touch-latency-nosplash.log`.
+- **Rule.** The touch variant passes `clock: "handler"`. It reads input from the init script's first listener, which runs before the runtime's, and asserts the same ≤ 50 and ≤ 350 bounds. Key and mouse keep `e.timeStamp`. Every run annotates both clocks, so the delivery gap stays visible.
+- Real-device touch latency is not measured here; check it on a phone at Stage 8.
+- **Mixed clocks on the touch click (review N-4).** In the pointer pass, `click − input` under `clock: "handler"` subtracts the tap's first-listener `performance.now()` from the row click's `e.timeStamp`. Both are on the same performance timeline, but they are different kinds of reading. Because the handler runs after the tap's late delivery, the number leaves out the emulator's 40–220 ms delivery gap. It does not leave out any of the app's time. The annotation names the clock, so the comparison is visible. Mouse and keyboard compare `e.timeStamp` with `e.timeStamp`.
+
+## EXE48 · The overlay is `inert` while it exits (TASK-45.3, review-45.2 Q2 carry-in) — accepted
+- **Change.** The effect that removes `inert` from `#verilane-app` (on `exit`) also sets `inert` on `#verilane-splash`. The skip button can no longer take focus, or be activated, during the 300 ms fade. Before this, Tab from the page start landed on a button that was fading out (noted in EXE46).
+- **Scope.** The runtime only. GatedApp and DataProvider output are unchanged (R7). `start()` removes the overlay's `inert` again, so a client-entry splash in the same document is interactive.
+- **Owner.** a11y TC-45.43 still owns the full focus check. Pinned in `script.test.ts` ("overlay inert (EXE48)").
+
+## EXE49 · TC-137 probes `[data-state="loading"]` because `[data-skeleton]` does not exist (TASK-45.3) — accepted
+- **Found.** TC-137's precondition names `[data-skeleton]`, but no element in the app has that attribute. Every loading skeleton the client entry can paint carries `data-state="loading"` already: ShellLoading (the DataProviderLoader fallback), ShellSkeleton, HomeSkeleton and RowSkeleton.
+- **Rule.** The probe uses `[data-state="loading"]`. Adding a `data-skeleton` marker would change GatedApp/DataProvider output, which R7 forbids for this task.
+- **Probe.** An init script counts animation frames after an armed flag is set (just before the double click on "Get started"). It records the first frame with a skeleton and the `data-splash` value in that frame. `seed/manifest.json` is held for 1 s, so the loading frames are long enough to see.
+- **Red proof.** With the `showSplash()` call removed from GatedApp's layout effect, TC-137 fails: the splash never turns on.
+- **Start step.** The spec opens `/onboarding?step=3` instead of clicking through steps 1–2. Steps 1–2 are client-side `?step=` pushes that never mount GatedApp, so they do not change what is measured.
+
+## EXE85 · The E1 route baseline is a constant in `splash-budget.ts`, not a `scripts/fixtures/` file (TASK-45.7, TC-161) — accepted
+- **Found.** TC-161's precondition says the E1 stats snapshot is committed under `scripts/fixtures/`. The TASK-45.7 side-track brief allows only `scripts/splash-budget.ts`, its test, `package.json` and the docs.
+- **Rule.** `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` holds the exact First Load JS gzip bytes for each of the 18 routes. Same data, one file fewer, and the test pins it (18 routes, `/settings` = 301778 B).
+- **Source.** A clean `pnpm build` of d7144cb (E1, technical plan A8) in the side worktree (detached checkout, then back to the branch), measured with route-budget's own `measureRoutes`. Every route matches `task45/baseline-test-all.log` to the 0.1 KB it prints. Raw: `task45/side-45.7/e1-route-budget.json`.
+- **Update rule.** Re-record only when a ticket deliberately moves the baseline. A route with no E1 entry fails the gate.
+
+## EXE86 · Only the 15 KB inline total gates; the ticket's per-part sub-targets are printed, not enforced (TASK-45.7) — open for the orchestrator
+- **Found.** TP-45.g gates gzip-9 of script + `splash.css` + `splashMarkup()` together at ≈15 KB. TKT-45.07 also lists sub-targets: runtime ≤ 2 KB, CSS ≤ 7 KB, markup + SVG ≤ 4 KB. At 95684a3 the runtime string is **2997 B** gzip, already over the 2 KB sub-target (CSS 826 B, markup 182 B, total 3875 B / 15360 B).
+- **Rule.** The plan (TP-45.g) wins: the gate enforces the 15 KB total (15360 B), and prints the three parts as `info` so drift stays visible.
+- **Ask.** If the 2 KB runtime cap is meant to be hard, that is a product call (it would fail today, before TASK-45.4's bar logic lands). Not decided here.
+
+## EXE87 · Splash rasters are classified by file name (TASK-45.7, TC-160) — accepted
+- **Rule.** Under `src/assets/splash/`, a raster (`.avif .webp .png .jpg .jpeg .gif`) whose name contains `sky` is capped at 60 KB per file; names containing `cloud` are summed per format and capped at 30 KB (Design §11: two strips ≤ 30 KB total; TC-164: AVIF and the WebP fallback each within the same caps). Any other raster fails as "not sky or clouds". Bytes are raw file size, since images ship uncompressed.
+- **Consequence.** TASK-45.9 must name its files with `sky` / `cloud`. The directory does not exist yet, so the check passes with nothing to measure and says so.
+
+## EXE88 · TC-162 scans `.next/static/chunks/*.js` for markers taken from the runtime config and markup (TASK-45.7) — accepted
+- **Markers.** `seenKey` and `forceKey` from `splashConfig(false)`, every `data-splash-*` attribute in `splashMarkup()`, and the runtime's `splash:painted` mark. The `events.ts` dispatch strings (`verilane:splash`, `splash:ready`) are allowed, as TC-162 says.
+- **Scope.** JS only. `splash.css` is imported by `layout.tsx` and lands in a CSS chunk by design; it is counted in the inline total instead.
+- **Not vacuous.** All five markers appear in the 15 prerendered `.next/server/app/*.html` files; injecting `"verilane-splash-seen"` into a built chunk makes the gate exit 1 naming the chunk and 20 B (`task45/side-45.7/negative-check.log`).
+- **Inline measure.** The script is measured from source (`buildSplashScript` under tsx), which is not minified. The string in the built HTML is SWC-minified, so the source figure is an upper bound.
+
+## EXE89 · The raster check fails closed and splash.css url() refs must land in `src/assets/splash/`; the shared-JS markers widen (TASK-45.7 fix round 1, review R-1/R-4) — accepted
+- **Supersedes** EXE87's "the directory does not exist yet, so the check passes". `src/assets/splash/` is now walked recursively, and a file is named by its path under the folder, so `clouds/a.webp` still sums as clouds. Only ENOENT counts as "no rasters". Any other read error fails the gate with the error message.
+- **url() rule.** Every `url()` in `src/app/splash.css` is resolved from `src/app/` and must name an existing file under `src/assets/splash/`. If it does not, it fails with "no such file". A ref that resolves outside the folder, or an absolute or remote URL, fails with "outside". A missing or empty folder therefore passes only while the CSS has no such ref. `data:` URIs are skipped, since they are counted in the inline gzip, and so are `#fragment` refs; neither is a network request. A query or hash suffix is ignored when matching the file.
+- **Markers.** EXE88's set, plus `splash:skip`, `splash:ceiling` and the ceiling warn message, plus `SPLASH_COPY` opening/ready/error/skip. `SPLASH_COPY.cont` ("Continue") is left out because app UI ships that word in 3 of the 68 shared chunks, which would be a false positive. All the added strings appear in the 15 prerendered HTML files and in 0 chunks.
+- **Evidence.** Appending `url("../assets/splash/sky.webp")` to splash.css makes the real gate exit 1 with `splash.css url(../assets/splash/sky.webp): no such file in src/assets/splash/`. After the restore it exits 0 (`task45/side-45.7/fix1-negative-url.log`).

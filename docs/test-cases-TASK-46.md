@@ -34,7 +34,7 @@
 - **Expected:** Only additions after "Revision R1"; text identical to §11.1 then §11.2; no other Design.md line changes.
 
 ### TC-092 · Emitted CSS carries hashed heritage URLs in both image-set entries
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · R5 · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · R5 · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** Kill R5: Next/Turbopack rewrites `url()` inside `image-set()` and keeps the `type()` hints.
 - **Preconditions:** `pnpm build:e2e`; server on `E2E_PORT`.
 - **Steps:** Load `/`; collect `link[rel=stylesheet]` hrefs; fetch each; find rules with `heritage-`.
@@ -42,7 +42,7 @@
 - **Expected:** Path A: both light and dark desk rules contain `/_next/static/media/heritage-…<hash>.avif` with `type("image/avif")` and `….webp` with `type("image/webp")`; every URL returns 200. Path B: `/heritage/…v1.*`, same checks.
 
 ### TC-093 · Heritage asset is served immutable
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · N1 · **Type:** integration · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.5 · N1 · **Type:** integration · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** Repeat visits cost no heritage bytes.
 - **Preconditions:** As TC-092.
 - **Steps:** `request.get(<heritage url from TC-092>)`; read `cache-control`.
@@ -50,15 +50,16 @@
 - **Expected:** Contains `max-age=31536000` and `immutable`.
 
 ### TC-094 · Service worker keeps the heritage asset referenced (STATIC_REF matches)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.6 · R5b · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.6 · R5b · **Type:** integration · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** `pruneStatics` in `public/sw.js` does not drop the art, because a cached CSS chunk's reference to it matches `STATIC_REF`.
 - **Preconditions:** As TC-092.
 - **Steps:** Fetch `/sw.js` text; extract the `STATIC_REF` regex literal; fetch the CSS chunk(s); run the regex over the CSS text.
 - **Data:** Emitted CSS (absolute `/_next/static/media/…` or relative `../media/…`).
 - **Expected:** Every heritage URL in the CSS is matched by `STATIC_REF`. On failure: stop and raise the regex widening for approval (plan sign-off item 6); `sw.js` is not edited without it.
+- **Note:** Adapted per EXE56 (path B): the art is served from `/heritage/…`, outside `/_next/static/`, the only key space `pruneStatics()` manages, so the test asserts that instead of a `STATIC_REF` match.
 
 ### TC-095 · First heritage request matches the theme in light, dark and system-dark (SC4)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · SC4 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · SC4 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** No wrong-theme flash or wasted request.
 - **Preconditions:** Fresh context per mode.
 - **Steps:** Mode 1 `colorScheme: light`, no storage; mode 2 `verilane-theme=dark` via `addInitScript`; mode 3 `colorScheme: dark`, no storage. Record `page.on("request")` matching `/heritage-/` while loading `/`.
@@ -66,7 +67,7 @@
 - **Expected:** First match contains `heritage-light-` (mode 1) or `heritage-dark-` (modes 2, 3); no request for the other theme before `data-idle` is set.
 
 ### TC-096 · Theme toggle swaps art in the same frame, no transition
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · F3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.8 · F3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** The art follows the theme instantly.
 - **Preconditions:** `/` loaded in light.
 - **Steps:** In one `page.evaluate`: click ThemeToggle, then in `requestAnimationFrame` read `getComputedStyle([data-heritage]).backgroundImage` and `transitionDuration`.
@@ -74,15 +75,23 @@
 - **Expected:** `backgroundImage` contains `heritage-dark-`; `transitionDuration` is `0s`.
 
 ### TC-097 · Overlays stay above the art (R7)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** `isolate`/`-z-10` do not trap menus, dialogs or tooltips under the band.
 - **Preconditions:** `/` and `/settings` at 1440×900.
 - **Steps:** Open AccountMenu, a Settings AlertDialog, and a Tooltip over the band; `document.elementFromPoint` at each overlay's centre.
 - **Data:** —
 - **Expected:** Each hit is inside its overlay element.
 
+### TC-097b · Shell overlays paint above bottom tabs at 375 (R-1)
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · R-1 · EXE57 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04) · **Finding:** R-1
+- **Objective:** The bottom tabs (fixed z-40, inside the isolated content column) never paint over or take taps meant for shell overlays below 768px.
+- **Preconditions:** 375×800; `/`, `/disputes`, `/audit`.
+- **Steps:** With nothing open, `document.elementFromPoint` at the centre of a non-current tab's bounding box, then tap there; open the disputes Filter side panel, the audit detail drawer and the tour confirm card, probing the same tab-centre point (the More tab's centre for the tour); close each and probe again.
+- **Data:** —
+- **Expected:** Closed: the hit is the targeted tab and the tap navigates to its href. Open: the hit is inside the dialog (the tour backdrop for the tour), never the Mobile nav.
+
 ### TC-098 · Clicks pass through the art (SC3)
-- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · SC3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · SC3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** The decorative layer never intercepts input.
 - **Preconditions:** `/` at 1440×900.
 - **Steps:** Pick a control inside the band area; `elementFromPoint` at its centre; click it.
@@ -92,7 +101,7 @@
 ## M-46.2 · Contract and gates
 
 ### TC-099 · heritageLevelFor maps every PRD §4 route
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03) · **Finding:** —
 - **Objective:** One table, exact levels.
 - **Preconditions:** —
 - **Steps:** `it.each` over the table, plus trailing-slash and `?q`/`#h` variants.
@@ -100,47 +109,50 @@
 - **Expected:** Each returns its level.
 
 ### TC-100 · Unmapped routes default to reduced
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03) · **Finding:** —
 - **Objective:** A new route never gets full-strength art by accident.
 - **Preconditions:** —
-- **Steps:** `heritageLevelFor("/something-new")`, `heritageLevelFor("/a/b/c")`.
+- **Steps:** `heritageLevelFor("/something-new")`, `heritageLevelFor("/a/b/c")`, `""`, and the near-miss names `/invoicesX`, `/queue-archive`, `/settingsx` (no prefix matching).
 - **Data:** —
 - **Expected:** `"reduced"`.
 
 ### TC-101 · Mobile fetches heritage art only on Home (F5)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** No mobile bytes off Home.
 - **Preconditions:** Viewport 390×844.
 - **Steps:** Load `/`, `/queue`, `/drafts` in fresh pages; record heritage requests.
 - **Data:** —
 - **Expected:** `/` requests the theme's `-strip` asset only; `/queue` and `/drafts` request none; `[data-heritage]` is `display:none` there.
+- **Breakpoint guard (TC-101b, fix round R-4):** the heritage band's media conditions are Tailwind's md (48rem) and lg (64rem): mobile is the complement of md and tablet is md up to lg, with no `px` breakpoint. The test reads the conditions from the served CSSOM, because Lightning CSS lowers the source range syntax (`(width < 48rem)` → `not all and (min-width:48rem)`). It also checks the whole-pixel edges on `/queue`: 767 → `display:none`; 768 and 1023 → the 300px box; 1024 → not 300px. A fractional-width red is not possible because Chromium snaps viewports to whole CSS pixels, so the guard fails on the old `max-width:767px` queries instead.
+- **Computed style (TC-101c, R-5):** `/drafts` at 1440 → `reduced`, opacity `0.6`; `/queue` at 800 → `normal`, height `300px`, `background-position` starting `38%`.
 
 ### TC-102 · Forced colors and print fetch nothing (F6)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F6 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F6 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** The art disappears where it would harm legibility.
-- **Preconditions:** `emulateMedia({ forcedColors: "active" })`, then separately `emulateMedia({ media: "print" })`, before navigation.
+- **Preconditions:** `emulateMedia({ forcedColors: "active" })`, then separately `emulateMedia({ media: "print" })`, before navigation; each at 1440×900 and at 390×844 (R-1, where the mobile `display:block` on Home competes with the `!important` hide).
 - **Steps:** Load `/`; record heritage requests; read computed `display`.
 - **Data:** —
 - **Expected:** Zero heritage requests; `display` is `none`.
 
 ### TC-103 · Switch-off renders an inert layer and fetches nothing (SC9)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1/46.3.5 · SC9 · **Type:** unit + e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1/46.3.5 · SC9 · **Type:** unit + e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** The one-line switch-off works.
 - **Preconditions:** —
 - **Steps:** Unit: `heritageLevelFor(route, false)` for every table route and an unmapped one. e2e: load `/e2e-harness` (level `off` by the table).
 - **Data:** —
 - **Expected:** Unit: all `"off"`. e2e: `[data-level="off"]`, `display:none`, zero heritage requests, no `data-idle` ever set.
+- **Note (R-3):** the `data-idle` clause cannot fail until TASK-46.4 adds the idle preload. From then on it needs a MutationObserver or a wait past the rIC timeout to mean anything. **Done in 46.4 (5801e30, EXE61):** both the observer and a 4.5 s settle; passes in both projects.
 
 ### TC-104 · Auth routes do not mount the layer (F1)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
-- **Objective:** ShellGate's bare auth routes stay bare.
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
+- **Objective:** ShellGate's bare auth routes stay bare. **Regression guard (R-6):** ShellGate already rendered these routes bare before 46.3, so this test passed before the change and guards against a future mount rather than proving new behaviour.
 - **Preconditions:** Signed-out session state where needed.
 - **Steps:** Load `/welcome`, `/sign-in`, `/sign-up`, `/onboarding`.
 - **Data:** —
 - **Expected:** `[data-heritage]` count 0; zero heritage requests.
 
 ### TC-105 · Route budgets hold with the heritage code (N2)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.6 (re-run 46.8.3) · N2 · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.6 (re-run 46.8.3) · N2 · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03; JS +301 B every route vs d7144cb, cumulative for 46.1–46.3; /settings 295.0 KB. CSS +412 B gzip after fix round 1 (shared chunk 16,868 → 17,280 B, `gzip -c`, base `3ilam13vdx2jo.css` vs `0tqku-bvfemwl.css`; the review measured +418 B before the range-syntax change). route-budget counts JS only, so the CSS delta is recorded here by hand. Whether to adopt this as the new A8 baseline is with the user.) · **Finding:** —
 - **Objective:** The component and CSS cost ≤ 1.5 KB gzip per shell route.
 - **Preconditions:** `pnpm build`; base route-budget numbers from A8.
 - **Steps:** `pnpm route-budget`; diff per route against base.
@@ -148,7 +160,7 @@
 - **Expected:** Exit 0; each shell route delta ≤ +1.5 KB; `/settings` ≤ 300 KB.
 
 ### TC-106 · Exactly one other-theme request after idle (F4)
-- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, unit 540c696, e2e 5801e30; e2e TC-106b runs in both projects at 1440 (desk) and 390 (strip), with "after `data-idle`" by network start time, EXE61) · **Finding:** —
 - **Objective:** Toggling is instant without double-fetching on first paint.
 - **Preconditions:** Unit: fake timers. e2e: `/` in light.
 - **Steps:** Unit: `scheduleIdleOnce` with rIC host (called once, `{timeout:4000}`) and without rIC (`setTimeout` 2500); cb runs once. e2e: wait for `[data-idle]`, wait 1 s, count requests for `heritage-dark-`.
@@ -156,7 +168,7 @@
 - **Expected:** Unit as stated; e2e exactly 1 opposite-theme request, issued after `data-idle`.
 
 ### TC-107 · Save-Data skips the preload
-- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1/46.4.4 · F4 · **Type:** unit + e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, unit 540c696, e2e 5801e30 TC-107b) · **Finding:** —
 - **Objective:** Respect data-saver users.
 - **Preconditions:** e2e: `addInitScript` defines `navigator.connection = { saveData: true }`.
 - **Steps:** Unit: host with `saveData: true`. e2e: load `/`, wait 5 s.
@@ -164,7 +176,7 @@
 - **Expected:** Nothing scheduled; zero opposite-theme requests; no `data-idle`.
 
 ### TC-108 · Unmount before idle leaves no request and no error
-- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1 · **Type:** unit · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.04 · TASK-46.4 · 46.4.1 · **Type:** unit · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, 540c696) · **Finding:** —
 - **Objective:** The effect cleans up.
 - **Preconditions:** Fake timers.
 - **Steps:** `const cancel = scheduleIdleOnce(host, cb); cancel(); vi.runAllTimers(); cancel();`
@@ -172,7 +184,7 @@
 - **Expected:** `cb` never called; no throw on double cancel.
 
 ### TC-109 · image-budget fails a desk asset over 60 KB
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d · EXE91) · **Finding:** —
 - **Objective:** The byte budget is enforced, not hoped for.
 - **Preconditions:** —
 - **Steps:** `checkBudget` with `heritage-light-desk.avif` at 61 440 bytes (and a 61 440 WebP).
@@ -180,7 +192,7 @@
 - **Expected:** `ok:false`; error names the file and its size and the 60 KB limit. `main()` exits 1 (46.5.4 demonstration).
 
 ### TC-110 · image-budget fails a strip asset over 25 KB
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d) · **Finding:** —
 - **Objective:** Mobile budget enforced separately.
 - **Preconditions:** —
 - **Steps:** `checkBudget` with a 26 624-byte strip.
@@ -188,7 +200,7 @@
 - **Expected:** `ok:false` with the file named; a 25 600-byte strip passes.
 
 ### TC-111 · image-budget fails on a missing file
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d) · **Finding:** —
 - **Objective:** A deleted asset cannot pass by absence.
 - **Preconditions:** —
 - **Steps:** `checkBudget` with 7 of 8 expected files; with 0 files.
@@ -196,7 +208,7 @@
 - **Expected:** Both `ok:false`, listing the missing names.
 
 ### TC-112 · encode-heritage outputs the right sizes and formats
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.3 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.3 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, da06ee9) · **Finding:** —
 - **Objective:** The pipeline is reproducible.
 - **Preconditions:** Synthetic 3360×1440 sharp image in a temp dir under `TMPDIR` (E Drive).
 - **Steps:** `encodeHeritage(master, "light", { out })`; `sharp(file).metadata()` on each output; repeat with `width: 2000`.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { DataProviderLoader } from "@/components/DataProviderLoader";
@@ -9,6 +9,7 @@ import { ShellSkeleton } from "@/components/states/ShellSkeleton";
 import { requestTour } from "@/components/tour/tourStore";
 import { readTourLink } from "@/components/tour/tourLink";
 import { isAuthRoute, startGuestSession, useSession } from "@/lib/session";
+import { emitSplash, resetSplash, showSplash } from "@/lib/splash/events";
 
 /**
  * TASK-39: decides what wraps a route.
@@ -29,6 +30,15 @@ function GatedApp({ children }: { children: ReactNode }) {
   const session = useSession();
   const router = useRouter();
 
+  // TASK-45.3: client entry (onboarding → "/"). A layout effect runs before
+  // the first paint of this mount and before any of its phase effects, so the
+  // overlay covers the very first frame. Observe-only: it renders nothing.
+  // The cleanup ends this mount's phase log (review R-3).
+  useLayoutEffect(() => {
+    showSplash();
+    return resetSplash;
+  }, []);
+
   useEffect(() => {
     if (session === undefined) return; // not read yet
     // TASK-44: the shareable demo link (?tour=1) goes straight into the tour —
@@ -43,6 +53,11 @@ function GatedApp({ children }: { children: ReactNode }) {
     }
     if (session === null) router.replace("/welcome");
   }, [session, router]);
+
+  // TASK-45.2: splash phase — the guest session is known.
+  useEffect(() => {
+    if (session === "guest") emitSplash("session");
+  }, [session]);
 
   if (session !== "guest") return <GateSkeleton />;
   return (

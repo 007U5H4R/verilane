@@ -7,6 +7,7 @@ import { useContext } from "react";
 import { BannerHost } from "@/components/shell/Banner";
 import { BottomTabs } from "@/components/shell/BottomTabs";
 import { IconRail } from "@/components/shell/IconRail";
+import { IndianHeritageBackground } from "@/components/shell/IndianHeritageBackground";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { crumbsFor, navHrefFor } from "@/components/shell/breadcrumb";
@@ -55,7 +56,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <Sidebar activeHref={activeHref} />
       <IconRail activeHref={activeHref} />
-      <div className="flex min-w-0 flex-col">
+      <div className="relative isolate flex min-w-0 flex-col">
+        <IndianHeritageBackground />
         <TopBar
           crumbs={crumbsFor(pathname)}
           sidebar={sidebar}
@@ -68,8 +70,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AutopilotGate />
         <TourGate />
         <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+        {/* Inside the isolated column (EXE57): outside it, the fixed z-40 tabs
+            painted over every overlay the column caps (side panels, drawers,
+            the tour backdrop). */}
+        <BottomTabs activeHref={activeHref} />
       </div>
-      <BottomTabs activeHref={activeHref} />
     </div>
   );
 }
