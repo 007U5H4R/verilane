@@ -693,3 +693,30 @@
 - **Probe.** An init script counts animation frames after an armed flag is set (just before the double click on "Get started"). It records the first frame with a skeleton and the `data-splash` value in that frame. `seed/manifest.json` is held for 1 s, so the loading frames are long enough to see.
 - **Red proof.** With the `showSplash()` call removed from GatedApp's layout effect, TC-137 fails: the splash never turns on.
 - **Start step.** The spec opens `/onboarding?step=3` instead of clicking through steps 1–2. Steps 1–2 are client-side `?step=` pushes that never mount GatedApp, so they do not change what is measured.
+
+## EXE85 · The E1 route baseline is a constant in `splash-budget.ts`, not a `scripts/fixtures/` file (TASK-45.7, TC-161) — accepted
+- **Found.** TC-161's precondition says the E1 stats snapshot is committed under `scripts/fixtures/`. The TASK-45.7 side-track brief allows only `scripts/splash-budget.ts`, its test, `package.json` and the docs.
+- **Rule.** `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` holds the exact First Load JS gzip bytes for each of the 18 routes. Same data, one file fewer, and the test pins it (18 routes, `/settings` = 301778 B).
+- **Source.** A clean `pnpm build` of d7144cb (E1, technical plan A8) in the side worktree (detached checkout, then back to the branch), measured with route-budget's own `measureRoutes`. Every route matches `task45/baseline-test-all.log` to the 0.1 KB it prints. Raw: `task45/side-45.7/e1-route-budget.json`.
+- **Update rule.** Re-record only when a ticket deliberately moves the baseline. A route with no E1 entry fails the gate.
+
+## EXE86 · Only the 15 KB inline total gates; the ticket's per-part sub-targets are printed, not enforced (TASK-45.7) — open for the orchestrator
+- **Found.** TP-45.g gates gzip-9 of script + `splash.css` + `splashMarkup()` together at ≈15 KB. TKT-45.07 also lists sub-targets: runtime ≤ 2 KB, CSS ≤ 7 KB, markup + SVG ≤ 4 KB. At 95684a3 the runtime string is **2997 B** gzip, already over the 2 KB sub-target (CSS 826 B, markup 182 B, total 3875 B / 15360 B).
+- **Rule.** The plan (TP-45.g) wins: the gate enforces the 15 KB total (15360 B), and prints the three parts as `info` so drift stays visible.
+- **Ask.** If the 2 KB runtime cap is meant to be hard, that is a product call (it would fail today, before TASK-45.4's bar logic lands). Not decided here.
+
+## EXE87 · Splash rasters are classified by file name (TASK-45.7, TC-160) — accepted
+- **Rule.** Under `src/assets/splash/`, a raster (`.avif .webp .png .jpg .jpeg .gif`) whose name contains `sky` is capped at 60 KB per file; names containing `cloud` are summed per format and capped at 30 KB (Design §11: two strips ≤ 30 KB total; TC-164: AVIF and the WebP fallback each within the same caps). Any other raster fails as "not sky or clouds". Bytes are raw file size, since images ship uncompressed.
+- **Consequence.** TASK-45.9 must name its files with `sky` / `cloud`. The directory does not exist yet, so the check passes with nothing to measure and says so.
+
+## EXE88 · TC-162 scans `.next/static/chunks/*.js` for markers taken from the runtime config and markup (TASK-45.7) — accepted
+- **Markers.** `seenKey` and `forceKey` from `splashConfig(false)`, every `data-splash-*` attribute in `splashMarkup()`, and the runtime's `splash:painted` mark. The `events.ts` dispatch strings (`verilane:splash`, `splash:ready`) are allowed, as TC-162 says.
+- **Scope.** JS only. `splash.css` is imported by `layout.tsx` and lands in a CSS chunk by design; it is counted in the inline total instead.
+- **Not vacuous.** All five markers appear in the 15 prerendered `.next/server/app/*.html` files; injecting `"verilane-splash-seen"` into a built chunk makes the gate exit 1 naming the chunk and 20 B (`task45/side-45.7/negative-check.log`).
+- **Inline measure.** The script is measured from source (`buildSplashScript` under tsx), which is not minified. The string in the built HTML is SWC-minified, so the source figure is an upper bound.
+
+## EXE89 · The raster check fails closed and splash.css url() refs must land in `src/assets/splash/`; the shared-JS markers widen (TASK-45.7 fix round 1, review R-1/R-4) — accepted
+- **Supersedes** EXE87's "the directory does not exist yet, so the check passes". `src/assets/splash/` is now walked recursively, and a file is named by its path under the folder, so `clouds/a.webp` still sums as clouds. Only ENOENT counts as "no rasters". Any other read error fails the gate with the error message.
+- **url() rule.** Every `url()` in `src/app/splash.css` is resolved from `src/app/` and must name an existing file under `src/assets/splash/`. If it does not, it fails with "no such file". A ref that resolves outside the folder, or an absolute or remote URL, fails with "outside". A missing or empty folder therefore passes only while the CSS has no such ref. `data:` URIs are skipped, since they are counted in the inline gzip, and so are `#fragment` refs; neither is a network request. A query or hash suffix is ignored when matching the file.
+- **Markers.** EXE88's set, plus `splash:skip`, `splash:ceiling` and the ceiling warn message, plus `SPLASH_COPY` opening/ready/error/skip. `SPLASH_COPY.cont` ("Continue") is left out because app UI ships that word in 3 of the 68 shared chunks, which would be a false positive. All the added strings appear in the 15 prerendered HTML files and in 0 chunks.
+- **Evidence.** Appending `url("../assets/splash/sky.webp")` to splash.css makes the real gate exit 1 with `splash.css url(../assets/splash/sky.webp): no such file in src/assets/splash/`. After the restore it exits 0 (`task45/side-45.7/fix1-negative-url.log`).

@@ -344,7 +344,7 @@
 - **Expected:** `done` within 50 ms; `inert` removed.
 
 ### TC-160 · The `splash-budget` gate measures and fails correctly
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The gate is trustworthy.
 - **Preconditions:** vitest `unit`; injectable readers.
 - **Steps:** Feed under-budget and over-budget inputs: inline bytes, rasters (60/30 KB) and route deltas.
@@ -352,15 +352,15 @@
 - **Expected:** Exit 0 when under budget. Over budget gives a non-zero exit, and the message names the offending item and its bytes.
 
 ### TC-161 · The per-route shared-JS delta against E1 is ≤ 0.5 KB
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · S-budget · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · S-budget · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The hooks are nearly free.
-- **Preconditions:** `pnpm build`; the E1 stats snapshot is committed under `scripts/fixtures/` in TASK-45.7.
+- **Preconditions:** `pnpm build`; E1 snapshot is `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` (EXE85).
 - **Steps:** `pnpm splash-budget`.
 - **Data:** E1 route stats.
 - **Expected:** Every route's delta is ≤ 512 B; `route-budget` stays green (`/settings` < 300 KB).
 
 ### TC-162 · Zero splash bytes in shared JS when the splash is off; the inline total is ≤ ≈15 KB gzip
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The runtime and scene live in HTML and CSS, not in JS chunks.
 - **Preconditions:** `pnpm build`. This is re-run after TASK-45.9.
 - **Steps:** Scan `.next/static/chunks` for runtime markers such as `verilane-splash-seen`; run `pnpm splash-budget` for the inline total.
