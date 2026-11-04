@@ -1,11 +1,16 @@
 /** TASK-45.7 · TC-160: the splash budget measures each part and fails naming the item and its bytes. */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import {
   BUDGETS,
   E1_ROUTE_GZIP,
   checkInline,
+  checkRasterRefs,
   checkRasters,
+  listRasterFiles,
   checkRouteDeltas,
   report,
   scanChunks,
@@ -68,6 +73,85 @@ describe("checkRasters", () => {
   });
 });
 
+describe("checkRasters extensions", () => {
+  it("classifies an uppercase extension (sky.AVIF) against the sky cap (R-9)", () => {
+    expect(checkRasters([{ name: "sky.AVIF", bytes: BUDGETS.sky + 1 }])).toEqual([
+      { item: "raster sky.AVIF", bytes: BUDGETS.sky + 1, limit: BUDGETS.sky, over: true },
+    ]);
+  });
+
+  it("classifies a nested file by its path under the folder", () => {
+    expect(checkRasters([{ name: "clouds/a.webp", bytes: 10 }, { name: "clouds/b.webp", bytes: 20 }])).toEqual([
+      { item: "rasters clouds (.webp)", bytes: 30, limit: BUDGETS.clouds, over: false },
+    ]);
+  });
+});
+
+describe("listRasterFiles (R-1)", () => {
+  it("walks subdirectories and returns paths relative to the folder with sizes", () => {
+    const dir = mkdtempSync(join(tmpdir(), "splash-assets-"));
+    try {
+      mkdirSync(join(dir, "clouds"));
+      writeFileSync(join(dir, "sky.webp"), Buffer.alloc(7));
+      writeFileSync(join(dir, "clouds", "a.avif"), Buffer.alloc(3));
+      expect(listRasterFiles(dir).sort((a, b) => a.name.localeCompare(b.name))).toEqual([
+        { name: "clouds/a.avif", bytes: 3 },
+        { name: "sky.webp", bytes: 7 },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("returns [] when the folder does not exist (ENOENT)", () => {
+    expect(listRasterFiles(join(tmpdir(), "splash-assets-does-not-exist-45-7"))).toEqual([]);
+  });
+
+  it("rethrows any other read error instead of passing silently", () => {
+    const eacces = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+    expect(() =>
+      listRasterFiles("/x", () => {
+        throw eacces;
+      }),
+    ).toThrow(/EACCES/);
+  });
+});
+
+describe("checkRasterRefs (R-1)", () => {
+  const files = ["sky.webp", "clouds/a.avif"];
+
+  it("passes with no findings when splash.css has no url() and the folder is absent", () => {
+    expect(checkRasterRefs(".splash{background:linear-gradient(#000,#fff)}", [])).toEqual([]);
+  });
+
+  it("fails a url() when the folder is missing or empty", () => {
+    expect(checkRasterRefs('.s{background:url("../assets/splash/sky.webp")}', [])).toEqual([
+      { item: 'splash.css url(../assets/splash/sky.webp): no such file in src/assets/splash/', bytes: 0, limit: 0, over: true },
+    ]);
+  });
+
+  it("passes a url() that resolves to a file in the folder, nested included, quoted or not", () => {
+    const css = ".a{background:url(../assets/splash/sky.webp)}.b{background:url('../assets/splash/clouds/a.avif?v=2')}";
+    expect(checkRasterRefs(css, files)).toEqual([
+      { item: "splash.css url(../assets/splash/sky.webp)", bytes: 0, limit: 0, over: false },
+      { item: "splash.css url(../assets/splash/clouds/a.avif?v=2)", bytes: 0, limit: 0, over: false },
+    ]);
+  });
+
+  it("fails a url() that resolves outside src/assets/splash/, including absolute and remote URLs", () => {
+    const css = ".a{background:url(../../public/sky.webp)}.b{background:url(/sky.webp)}.c{background:url(https://cdn.example/sky.webp)}";
+    expect(checkRasterRefs(css, files).map((f) => [f.item, f.over])).toEqual([
+      ["splash.css url(../../public/sky.webp): outside src/assets/splash/", true],
+      ["splash.css url(/sky.webp): outside src/assets/splash/", true],
+      ["splash.css url(https://cdn.example/sky.webp): outside src/assets/splash/", true],
+    ]);
+  });
+
+  it("ignores data: URIs and #fragment refs (they cost inline bytes, not requests)", () => {
+    expect(checkRasterRefs(".a{background:url(data:image/png;base64,AAAA)}.b{filter:url(#blur)}", [])).toEqual([]);
+  });
+});
+
 describe("checkRouteDeltas", () => {
   it("passes a growth of exactly 512 B and fails 513 B, naming the route", () => {
     const res = checkRouteDeltas(
@@ -121,12 +205,24 @@ describe("scanChunks", () => {
     ]);
   });
 
-  it("derives its markers from the runtime config and markup", () => {
-    const m = splashMarkers();
-    expect(m).toContain("verilane-splash-seen");
-    expect(m).toContain("verilane-splash-force");
-    expect(m).toContain("data-splash-skip");
-    expect(m).not.toContain("verilane:splash");
+  it("derives its markers from the runtime config, copy, runtime literals and markup (R-4, R-9)", () => {
+    // "Continue" (SPLASH_COPY.cont) is left out: app UI ships it in shared chunks (EXE89).
+    expect(splashMarkers()).toEqual([
+      "verilane-splash-seen",
+      "verilane-splash-force",
+      "splash:painted",
+      "splash:skip",
+      "splash:ceiling",
+      "[verilane] splash ceiling reached before the app was ready",
+      "Verilane. Opening workspace…",
+      "Verilane. Workspace ready",
+      "Verilane. Workspace opened",
+      "Skip intro",
+      "data-splash-status",
+      "data-splash-skip",
+    ]);
+    expect(splashMarkers()).not.toContain("verilane:splash");
+    expect(splashMarkers()).not.toContain("splash:ready");
   });
 });
 
