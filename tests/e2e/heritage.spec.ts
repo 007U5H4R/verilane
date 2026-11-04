@@ -269,9 +269,10 @@ test("TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)", asy
 
   // A drawer rendered inside <main>: the audit detail drawer (a role switch
   // gives a fresh profile its one audit row).
-  await page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" }).click();
   await page.goto("/audit");
   await ready(page);
+  await page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" }).click();
+  await expect(page.getByTestId("audit-row")).toHaveCount(1);
   await page.getByTestId("audit-row").first().getByRole("button", { name: /^View details/ }).click();
   await expect(page.getByTestId("audit-drawer")).toBeVisible();
   expect(await bottomHit()).toMatchObject({ inDialog: true, inNav: false });
