@@ -382,7 +382,9 @@ export function splashRuntime(): Runtime {
     function onKey(e: KeyboardEvent) {
       if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
       // Tab moves focus to Skip intro (Design §8, TC-155); it never skips (EXE79).
-      if (e.key === "Tab") return;
+      // A real Shift+Tab sends a "Shift" keydown first, so a bare Shift is
+      // exempt too; Shift+letter still skips on the letter.
+      if (e.key === "Tab" || e.key === "Shift") return;
       const before = m.attr;
       run({ type: "input", t: now(), repeat: e.repeat, mod: e.ctrlKey || e.metaKey || e.altKey });
       // The skipping key reaches nothing behind the overlay. Its default is
@@ -436,6 +438,14 @@ export function splashRuntime(): Runtime {
       if (disarmT) w.clearTimeout(disarmT);
       disarmT = 0;
       if (!listening) bindPointer(false);
+    }
+
+    // The sheen mask's logo is fetched only once the splash shows (EXE83). On
+    // a hard load the overlay is parsed after this script, so DOMContentLoaded
+    // runs this again; a client entry or replay finds it in start().
+    function loadSheen() {
+      const s = q("image[data-href]");
+      if (s && !s.hasAttribute("href")) s.setAttribute("href", s.getAttribute("data-href") || "");
     }
 
     function watchApp() {
@@ -499,6 +509,7 @@ export function splashRuntime(): Runtime {
       bindPointer(true);
       const o = overlay();
       if (o) o.removeAttribute("inert");
+      loadSheen();
       apply(r.fx);
       watchApp();
       // what this mount reported before show() ran
@@ -553,6 +564,7 @@ export function splashRuntime(): Runtime {
     // The skip button is server-rendered after this script; bind it once it
     // exists, whether or not this load showed the splash (client entry may).
     d.addEventListener("DOMContentLoaded", function () {
+      if (m && (m.attr === "on" || m.attr === "hold")) loadSheen();
       const b = overlay() && overlay()!.querySelector("[data-splash-skip]");
       if (b) b.addEventListener("click", function () {
         api.skip();

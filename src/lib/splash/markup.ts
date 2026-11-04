@@ -67,7 +67,9 @@ const SHEEN =
   '<svg class="splash-sheen" viewBox="0 0 460 170" preserveAspectRatio="none" focusable="false">' +
   "<defs>" +
   '<mask id="splash-sheen-m" maskUnits="userSpaceOnUse" x="0" y="0" width="460" height="170" style="mask-type:alpha">' +
-  '<image href="' + LOGO + '" width="460" height="170"/>' +
+  // No href here: an SVG <image> loads even inside the display:none overlay
+  // (loading=lazy does not apply), so start() copies data-href in (EXE83).
+  '<image data-href="' + LOGO + '" width="460" height="170"/>' +
   "</mask>" +
   '<linearGradient id="splash-sheen-g" x1="0" y1="0" x2="1" y2=".2">' +
   '<stop offset=".3" stop-color="#ffecc4" stop-opacity="0"/>' +

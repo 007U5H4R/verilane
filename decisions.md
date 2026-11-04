@@ -731,14 +731,16 @@
 - **Found.** Design §8 says 36 px tall on a pointer device and 44 px on touch; TC-155 asks for a ≥ 44×44 target on both.
 - **Rule.** The `<button>` is 44 px tall (min-width 44 px) and transparent. Its visible pill is a `::before` inset 4 px top and bottom (36 px, the Design look), and inset 0 under `(pointer: coarse)`. The focus ring sits on the pill (`:focus-visible::before`, 2 px mint, offset 3 px). The hint swaps by `(pointer: coarse)`: "or press any key" / "or tap anywhere", both in the markup and both added to the SPLASH_COPY markers.
 
-## EXE79 · Tab moves focus to Skip intro and does not skip (TASK-45.5, TC-155) — open for the orchestrator
+## EXE79 · Tab moves focus to Skip intro and does not skip (TASK-45.5, TC-155) — decided (orchestrator)
 - **Found.** PRD R11 and Design §8 say any non-repeat `keydown` skips, and the mockup skips on Tab too. Design §8 and TC-155 also say the button is reachable by Tab and the first Tab focuses it with a visible ring. With Tab skipping, the overlay goes inert on that keydown and the focus is blurred, so TC-155 cannot pass.
 - **Rule.** The inline key handler ignores `key === "Tab"` (with or without Shift): no skip, no preventDefault, focus moves as normal. Every other key still skips. Pinned in `script.test.ts` and TC-155.
-- **Ask.** The alternative is to keep Tab as a skip key and drop "first Tab focuses Skip" from TC-155. Keeping Tab as navigation is the accessible reading (a keyboard user can reach the real button), so it is applied here pending sign-off.
+- **Shift.** A real Shift+Tab sends a bare `key === "Shift"` keydown before the Tab, so `Shift` is exempt too; otherwise reverse tabbing skipped the splash (review 45.5, fix round 1). Shift+letter still skips on the letter's keydown. Pinned in `script.test.ts` (Shift then Tab stays `on`; Shift then `A` skips) and in TC-155 (a real `Shift+Tab` press leaves the splash up with focus in the overlay or on body, and the next Tab returns to Skip).
+- **Decision.** Ruled by the orchestrator in review 45.5: Tab moves focus to Skip intro and never skips. The alternative (Tab skips, drop "first Tab focuses Skip" from TC-155) is rejected.
 
 ## EXE80 · The wordmark sheen is an inline-SVG band under a clip, moved by transform (TASK-45.5, S15) — accepted
 - **Rule.** The mockup's sheen animates `background-position` over a masked gradient. That is not transform/opacity (S15), so the band is a gradient rect in an inline SVG clipped to the logo, animated by `translateX` (`splash-sheen`, 700 ms at 1.6 s, per the Design F04 row; the mockup file runs it at 800 ms). The look is the same sweep.
 - **Also.** The status block uses `splash-up-in` (300 ms at 3.2 s, the bar reveal beat); the intro set that TC-147 now requires is drawn from these keyframes (review-45.4 R-2).
+- **Paint cost.** The band is a transform on an SVG child inside a mask, so the browser repaints the masked layer each frame for the 700 ms sweep rather than compositing it on the GPU. No code change now; re-check the frame cost in TC-156 and on the final art in TASK-45.9 (review 45.5, fix round 1).
 
 ## EXE81 · The splash tagline is not a shared-JS marker (TASK-45.5, TC-162) — accepted
 - **Found.** "AR Collections Copilot" also ships in the app Sidebar (`src/components/shell/Sidebar.tsx`), so it is in shared chunks by design and would be a false positive.
@@ -747,6 +749,12 @@
 ## EXE82 · Short/landscape phones get a `max-height: 500px` rule to keep the lockup off the bar (TASK-45.5, TC-151) — accepted
 - **Found.** At 812×375 (375 landscape), the §12 `max-width` rules alone left `.splash-brand` overlapping `.splash-progress`/`.splash-track` by ~28 px — both were sized for portrait height, and no rule used the viewport's height.
 - **Rule.** Added `@media (max-height: 500px)`: brand moves to `top: 28vh` and narrows to `clamp(170px, 34vw, 280px)`; tagline/status margins and font sizes shrink; the bar's `bottom` tightens to `max(72px, 9vh)`. Measured clear via the TC-151 e2e overlap check at 812×375 in both themes.
+
+## EXE83 · The sheen mask's logo `href` is set when the splash shows, not in the markup (TASK-45.5 fix round 1, review minor 2) — accepted
+- **Found.** Measured in Chromium (`task45/45.5/logo-repro.cjs`, log `fix1-logo-repro.log`): an SVG `<image href>` inside a `display:none` container fetches its file; `loading="lazy"` does not apply to SVG `<image>`. The lazy `<img>`, an empty `href` and an absent `href` fetch nothing. So the sheen mask pulled the 30 KB logo on every cold load, including the ones where the splash never shows.
+- **Rule.** The markup carries the path as `data-href` on the mask's `<image>` and has no `href`; the runtime copies `data-href` into `href` only while the splash is live: in `start()` (client entry and replays, where the overlay already exists) and at `DOMContentLoaded` (a hard load, where the head script runs before the overlay is parsed; the first e2e run caught this). The path stays in one place (`markup.ts` `LOGO`). The lazy `<img>` layers are unchanged.
+- **Pinned.** `markup.test.ts` (no bare `href` on the `<image>`), `script.test.ts` (no `href` while off, set on show), and an e2e check in `splash-scene.spec.ts`: a load with the splash off makes no request for `/brand/verilane-logo-light.png` (the app's own logo goes through `/_next/image`), and a splash load (the control) does.
+- **Budget.** splash-budget inline total 8576 B / 15360 B after the change (the DOMContentLoaded call adds 34 B over the first gate run, 8542 B); route deltas stay 157 B / 512 B.
 
 ## EXE85 · The E1 route baseline is a constant in `splash-budget.ts`, not a `scripts/fixtures/` file (TASK-45.7, TC-161) — accepted
 - **Found.** TC-161's precondition says the E1 stats snapshot is committed under `scripts/fixtures/`. The TASK-45.7 side-track brief allows only `scripts/splash-budget.ts`, its test, `package.json` and the docs.
