@@ -659,3 +659,9 @@
   - `exit()` now emits the mark first, and the ceiling warns after the exit effects. Both orders are covered by `runtime.test.ts` "step · exit effect order" (red, then green).
 - **Cause 2, accepted.** The done timer can fire up to about 6 ms early against `performance.now()`. This is the same slack as EXE39; `max(now, due)` counts it as due.
 - **TC-134 now asserts** `300 − 20 ≤ done − exit ≤ 1500`. One run saw an 814 ms main-thread stall after un-inert. Its cause is unmeasured; the CSS fade is unaffected. A point check of `done` against t0 stacks two timers' lateness and flakes under contention.
+
+## EXE45 · TC-130 interleaved mode judges the median of 21 paired differences (TASK-45.2) — accepted
+- Four earlier runs on bbb8955 gave deltas of +157.9 (simple), −8.1, −30.4 and +74.0 ms (interleaved, 9 pairs). The baseline spread was about 150–160 ms, roughly 3× the 50 ms budget, so a difference of two medians over 9 runs could not tell pass from fail. One stalled "on" run (1148.7 ms) was enough to swing the +74 result.
+- User ruling 2026-11-04: harden the test, then rerun. Interleaved mode now runs `PAIRS = 21`, alternates which side of each pair runs first, and judges `median(on[i] − off[i])`, which cancels drift between pairs and ignores a lone stalled run. Simple mode is unchanged (9 runs, difference of medians). This stays within TC-130 (n ≥ 9, compare medians).
+- Caveat: the paired metric was chosen after the failing run was seen, so only fresh runs count as evidence. Fresh run on bbb8955: delta −13.7 ms. The difference of medians agrees (740.7 vs 738.1 ms), so the verdict does not depend on which estimator is used. Load average 5.7–10 during the run. Raw data: `task45/perf/tc-130-chromium-light-1793764705812.json`.
+- Re-verify TC-130 at the Stage 8 test pass, after 45.3–45.10 add the full scene and bar.

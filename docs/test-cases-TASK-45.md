@@ -72,7 +72,7 @@
 - **Expected:** Same node, still connected. The overlay's `data-*`/status text is unchanged by React.
 
 ### TC-130 · `splash:ready` is within ±50 ms of the no-splash baseline
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Pass (2026-11-04, Δ −13.7 ms, EXE45) · **Finding:** —
 - **Objective:** The splash does not delay readiness.
 - **Preconditions:** `pnpm build:e2e`; `pnpm e2e:splash-perf`; a fresh context per run.
 - **Steps:**

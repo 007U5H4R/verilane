@@ -8,6 +8,10 @@ import { test, expect, type Browser } from "@playwright/test";
 // fresh context: a fresh profile seeds, the same path a first visit takes.
 
 const RUNS = 9;
+// Interleaved mode (a noisy machine) takes more pairs and judges the median of
+// the per-pair differences, which cancels drift between pairs and ignores a
+// lone stalled run (EXE45).
+const PAIRS = 21;
 const BUDGET_MS = 50;
 const OUT = "/Volumes/E Drive/Dev/.scratch/task45/perf";
 
@@ -49,19 +53,27 @@ test("TC-130: splash:ready is within 50 ms of the no-splash baseline @splash-per
   const mode = process.env.SPLASH_PERF_MODE === "interleaved" || spread > BUDGET_MS ? "interleaved" : "simple";
   let off = baseline;
   const on: number[] = [];
+  let delta: number;
   if (mode === "simple") {
     for (let i = 0; i < RUNS; i++) on.push(await readyAt(browser, true));
+    delta = median(on) - median(off);
   } else {
     off = [];
-    for (let i = 0; i < RUNS; i++) {
-      off.push(await readyAt(browser, false));
-      on.push(await readyAt(browser, true));
+    for (let i = 0; i < PAIRS; i++) {
+      // Alternate which side runs first so neither always gets the warmer slot.
+      if (i % 2 === 0) {
+        off.push(await readyAt(browser, false));
+        on.push(await readyAt(browser, true));
+      } else {
+        on.push(await readyAt(browser, true));
+        off.push(await readyAt(browser, false));
+      }
     }
+    delta = median(on.map((t, i) => t - off[i]!));
   }
-  const delta = median(on) - median(off);
   const result = {
     project: testInfo.project.name,
-    runs: RUNS,
+    runs: mode === "simple" ? RUNS : PAIRS,
     baseline,
     spread,
     mode,
@@ -69,6 +81,7 @@ test("TC-130: splash:ready is within 50 ms of the no-splash baseline @splash-per
     on,
     medianOff: median(off),
     medianOn: median(on),
+    // simple: median(on) - median(off); interleaved: median of per-pair (on - off).
     delta,
     at: new Date().toISOString(),
   };
