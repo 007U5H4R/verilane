@@ -15,7 +15,21 @@ interface Stub {
   marks: string[];
   window: Record<string, unknown> & { verilaneSplash?: { state(): string; skip(): void; show(): void } };
   /** Pending setTimeout callbacks, with the delay each was scheduled for. */
-  timers: { fn: () => void; delay: number }[];
+  timers: { fn: () => void; delay: number; id: number }[];
+  /** Calls the window's listeners for `type` the way a browser would (deduped by fn + capture). */
+  dispatch(type: string, init?: Record<string, unknown>): FakeEvent;
+  /** Runs pending timers (and any they schedule) until none are left. */
+  flush(): void;
+}
+
+interface FakeEvent {
+  type: string;
+  key?: string;
+  defaultPrevented: boolean;
+  stopped: boolean;
+  preventDefault(): void;
+  stopImmediatePropagation(): void;
+  [k: string]: unknown;
 }
 
 function stubWindow(
@@ -24,6 +38,8 @@ function stubWindow(
   const attrs: Record<string, string> = {};
   const marks: string[] = [];
   const timers: Stub["timers"] = [];
+  const listeners: { type: string; fn: (e: unknown) => void; capture: boolean }[] = [];
+  let nextId = 0;
   let t = 0;
   const store = (init: Record<string, string>) => {
     const data = { ...init };
@@ -60,11 +76,22 @@ function stubWindow(
     },
     console: { warn: () => {} },
     setTimeout: (fn: () => void, delay: number) => {
-      timers.push({ fn, delay });
-      return timers.length;
+      nextId += 1;
+      timers.push({ fn, delay, id: nextId });
+      return nextId;
     },
-    addEventListener: () => {},
-    removeEventListener: () => {},
+    clearTimeout: (id: number) => {
+      const i = timers.findIndex((x) => x.id === id);
+      if (i >= 0) timers.splice(i, 1);
+    },
+    addEventListener: (type: string, fn: (e: unknown) => void, capture?: boolean) => {
+      const c = !!capture;
+      if (!listeners.some((l) => l.type === type && l.fn === fn && l.capture === c)) listeners.push({ type, fn, capture: c });
+    },
+    removeEventListener: (type: string, fn: (e: unknown) => void, capture?: boolean) => {
+      const i = listeners.findIndex((l) => l.type === type && l.fn === fn && l.capture === !!capture);
+      if (i >= 0) listeners.splice(i, 1);
+    },
     location: { search: opts.search ?? "", pathname: "/" },
     MutationObserver: class {
       observe() {}
@@ -78,7 +105,31 @@ function stubWindow(
     },
   });
   Object.defineProperty(window, "sessionStorage", { get: () => tab });
-  return { attrs, marks, window, timers };
+  const dispatch = (type: string, init: Record<string, unknown> = {}): FakeEvent => {
+    const ev: FakeEvent = {
+      type,
+      defaultPrevented: false,
+      stopped: false,
+      preventDefault() {
+        ev.defaultPrevented = true;
+      },
+      stopImmediatePropagation() {
+        ev.stopped = true;
+      },
+      ...init,
+    };
+    // Capture listeners first, in registration order; a stopped event reaches no more.
+    for (const l of [...listeners.filter((x) => x.capture), ...listeners.filter((x) => !x.capture)]) {
+      if (l.type !== type) continue;
+      if (ev.stopped) break;
+      l.fn(ev);
+    }
+    return ev;
+  };
+  const flush = () => {
+    for (let i = 0; i < 50 && timers.length; i++) timers.splice(0).forEach((x) => x.fn());
+  };
+  return { attrs, marks, window, timers, dispatch, flush };
 }
 
 function exec(src: string, stub: Stub) {
@@ -152,6 +203,150 @@ describe("buildSplashScript", () => {
     fire(9700);
     expect(stub.attrs["data-splash"]).toBe("exit");
     expect(stub.marks).toContain("splash:ceiling");
+  });
+
+  // TASK-45.2 R-7 (ticket: "show() twice … idempotent").
+  it("show() while the splash is live is a no-op; after done it replays", () => {
+    const clock = { t: 0 };
+    const stub = stubWindow({ session: "guest", clock });
+    exec(prod, stub);
+    const pending = stub.timers.length;
+    stub.window.verilaneSplash?.show();
+    expect(stub.marks.filter((x) => x === "splash:painted")).toHaveLength(1);
+    expect(stub.timers).toHaveLength(pending);
+    expect(stub.attrs["data-splash"]).toBe("on");
+    clock.t = 300;
+    stub.window.verilaneSplash?.skip();
+    clock.t = 700;
+    stub.flush();
+    expect(stub.attrs["data-splash"]).toBe("done");
+    stub.window.verilaneSplash?.show();
+    expect(stub.attrs["data-splash"]).toBe("on");
+    expect(stub.marks.filter((x) => x === "splash:painted")).toHaveLength(2);
+  });
+
+  describe("pointer skip swallows exactly the skipping press's click (R-2)", () => {
+    function skipByPointer() {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", clock });
+      exec(prod, stub);
+      clock.t = 300;
+      const down = stub.dispatch("pointerdown");
+      expect(stub.attrs["data-splash"]).toBe("exit");
+      expect(down.stopped).toBe(true);
+      return { stub, clock };
+    }
+
+    it("after a long press, the release's click is still swallowed", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 2300;
+      stub.dispatch("pointerup");
+      const click = stub.dispatch("click");
+      expect(click.defaultPrevented).toBe(true);
+      expect(click.stopped).toBe(true);
+    });
+
+    // Also proves stop() is idempotent: the stale D and ceiling timers call it again after done.
+    it("the swallow outlives the overlay when the press outlasts the exit", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 700;
+      stub.flush();
+      expect(stub.attrs["data-splash"]).toBe("done");
+      clock.t = 12_000;
+      stub.dispatch("pointerup");
+      expect(stub.dispatch("click").defaultPrevented).toBe(true);
+    });
+
+    it("a new press ends the swallow, so its click reaches the app", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 310;
+      stub.dispatch("pointerup");
+      clock.t = 400;
+      stub.dispatch("pointerdown");
+      clock.t = 410;
+      stub.dispatch("pointerup");
+      expect(stub.dispatch("click").defaultPrevented).toBe(false);
+    });
+
+    it("a cancelled press swallows nothing later", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 350;
+      stub.dispatch("pointercancel");
+      clock.t = 400;
+      expect(stub.dispatch("click").defaultPrevented).toBe(false);
+    });
+
+    it("only one click is swallowed", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 310;
+      stub.dispatch("pointerup");
+      expect(stub.dispatch("click").defaultPrevented).toBe(true);
+      expect(stub.dispatch("click").defaultPrevented).toBe(false);
+    });
+  });
+
+  // R-4: a replay inside the old 600 ms deferred-removal window kept its click
+  // listener only until the stale timer removed it.
+  it("a replay right after done still swallows its own skipping click", () => {
+    const clock = { t: 0 };
+    const stub = stubWindow({ session: "guest", clock });
+    exec(prod, stub);
+    clock.t = 300;
+    stub.dispatch("pointerdown");
+    stub.dispatch("pointerup");
+    stub.dispatch("click");
+    clock.t = 700;
+    // Run only the exit → done timer, so anything stop() defers is still pending.
+    for (const x of stub.timers.filter((y) => y.delay === 300)) {
+      stub.timers.splice(stub.timers.indexOf(x), 1);
+      x.fn();
+    }
+    expect(stub.attrs["data-splash"]).toBe("done");
+    const leftBehind = stub.timers.filter((x) => x.delay !== 5700 && x.delay !== 9700);
+    stub.window.verilaneSplash?.show();
+    expect(stub.attrs["data-splash"]).toBe("on");
+    // Fire whatever stop() left behind; it must not unbind the new run.
+    leftBehind.forEach((x) => x.fn());
+    clock.t = 1100;
+    stub.dispatch("pointerdown");
+    expect(stub.attrs["data-splash"]).toBe("exit");
+    stub.dispatch("pointerup");
+    expect(stub.dispatch("click").defaultPrevented).toBe(true);
+  });
+
+  describe("the skipping key's default (R-3)", () => {
+    function skipByKey(init: Record<string, unknown>) {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", clock });
+      exec(prod, stub);
+      clock.t = 300;
+      const ev = stub.dispatch("keydown", init);
+      return { stub, ev };
+    }
+
+    it.each([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"])(
+      "prevents the scroll a skipping %j would cause",
+      (key) => {
+        const { stub, ev } = skipByKey({ key });
+        expect(stub.attrs["data-splash"]).toBe("exit");
+        expect(ev.stopped).toBe(true);
+        expect(ev.defaultPrevented).toBe(true);
+      },
+    );
+
+    it.each(["F5", "F11", "Escape", "Enter", "a"])("leaves the default of a skipping %j alone", (key) => {
+      const { stub, ev } = skipByKey({ key });
+      expect(stub.attrs["data-splash"]).toBe("exit");
+      expect(ev.stopped).toBe(true);
+      expect(ev.defaultPrevented).toBe(false);
+    });
+
+    it("a modified key neither skips nor is prevented", () => {
+      const { stub, ev } = skipByKey({ key: "ArrowDown", ctrlKey: true });
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(ev.defaultPrevented).toBe(false);
+      expect(ev.stopped).toBe(false);
+    });
   });
 
   it("swallows a throw from a broken window", () => {

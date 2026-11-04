@@ -191,7 +191,19 @@ export function splashRuntime(): Runtime {
     let m: Model | null = null;
     let app: HTMLElement | null = null;
     let mo: MutationObserver | null = null;
-    let swallowUntil = 0;
+    // The skipping press's click is swallowed. That click lands on pointerup,
+    // so the swallow is tied to the press, not a clock from pointerdown: it is
+    // armed on the skipping pointerdown, ends GRACE ms after its pointerup (a
+    // click comes right after the up, or never), and a new press or a
+    // pointercancel ends it early. While armed, the pointer listeners outlive
+    // the overlay.
+    const GRACE = 500;
+    let listening = false;
+    let armed = false;
+    let upAt = 0;
+    let disarmT = 0;
+    // Keys whose default scrolls the page; a skipping one would scroll the app.
+    const SCROLL_KEYS = [" ", "Spacebar", "PageUp", "PageDown", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"];
     const now = function () {
       return perf.now();
     };
@@ -259,26 +271,54 @@ export function splashRuntime(): Runtime {
       if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
       const before = m.attr;
       run({ type: "input", t: now(), repeat: e.repeat, mod: e.ctrlKey || e.metaKey || e.altKey });
-      // The skipping key reaches nothing behind the overlay; default is left alone.
-      if (m.attr !== before) e.stopImmediatePropagation();
+      // The skipping key reaches nothing behind the overlay. Its default is
+      // left alone (F5, Escape, Enter …) unless it would scroll the app.
+      if (m.attr !== before) {
+        e.stopImmediatePropagation();
+        if (SCROLL_KEYS.indexOf(e.key) >= 0) e.preventDefault();
+      }
     }
 
     function onPointer(e: PointerEvent) {
+      // a new press ends the previous one's swallow
+      if (armed) disarm();
       if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
       const before = m.attr;
       run({ type: "input", t: now() });
       if (m.attr !== before) {
         e.stopImmediatePropagation();
-        swallowUntil = now() + 500;
+        armed = true;
+        upAt = 0;
       }
     }
 
+    function onUp() {
+      if (!armed || upAt) return;
+      upAt = now();
+      disarmT = w.setTimeout(disarm, GRACE);
+    }
+
     function onClick(e: MouseEvent) {
-      if (swallowUntil && now() <= swallowUntil) {
-        swallowUntil = 0;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      }
+      if (!armed || (upAt && now() > upAt + GRACE)) return;
+      disarm();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+
+    function bindPointer(on: boolean) {
+      const f = on ? w.addEventListener : w.removeEventListener;
+      f.call(w, "pointerdown", onPointer as EventListener, true);
+      f.call(w, "pointerup", onUp, true);
+      f.call(w, "pointercancel", disarm, true);
+      f.call(w, "click", onClick as EventListener, true);
+    }
+
+    function disarm() {
+      armed = false;
+      upAt = 0;
+      if (disarmT) w.clearTimeout(disarmT);
+      disarmT = 0;
+      if (!listening) bindPointer(false);
     }
 
     function watchApp() {
@@ -304,23 +344,25 @@ export function splashRuntime(): Runtime {
       });
     }
 
+    // Idempotent: stale timers tick after done and land here again.
     function stop() {
+      if (!listening) return;
+      listening = false;
       w.removeEventListener("keydown", onKey, true);
-      w.removeEventListener("pointerdown", onPointer, true);
       w.removeEventListener("verilane:splash", onPhase);
-      // the click swallow stays until it has fired or expired
-      w.setTimeout(function () {
-        w.removeEventListener("click", onClick, true);
-      }, 600);
+      // an armed swallow keeps the pointer listeners until its press ends
+      if (!armed) bindPointer(false);
     }
 
     function start() {
       if (m && m.attr !== "done") return;
       const r = begin(now(), cfg);
       m = r.m;
+      // a replay starts clean: no swallow carried over from the last run
+      disarm();
+      listening = true;
       w.addEventListener("keydown", onKey, true);
-      w.addEventListener("pointerdown", onPointer, true);
-      w.addEventListener("click", onClick, true);
+      bindPointer(true);
       w.addEventListener("verilane:splash", onPhase);
       apply(r.fx);
       watchApp();
