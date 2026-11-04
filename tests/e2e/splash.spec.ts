@@ -528,6 +528,39 @@ test("TC-137: client entry from onboarding paints the splash in or before the fi
   expect(await page.evaluate(() => sessionStorage.getItem("verilane-splash-seen"))).toBe("1");
 });
 
+test("TC-137 smoke: from / signed out, through welcome and the tour to Get started, the splash paints exactly once", async ({
+  page,
+  context,
+}) => {
+  // Review R-5. Signed out on the only hard load (after splashOn's guest write).
+  await context.addInitScript(() => {
+    try {
+      window.localStorage.removeItem("verilane-session");
+    } catch {
+      // storage blocked: the spec fails on the expectations below
+    }
+  });
+
+  await page.goto(`/${FORCE}&__session=none`);
+  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Collections, with clarity." })).toBeVisible();
+  expect(await paintedCount(page)).toBe(0); // no splash over the redirect
+
+  await page.getByRole("link", { name: "Take the 30-second tour" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=1$/);
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page).toHaveURL(/step=3$/);
+  expect(await paintedCount(page)).toBe(0);
+
+  await page.getByRole("button", { name: "Get started" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await waitForSplash(page, "on");
+  await waitForSplash(page, "done", 15_000);
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  expect(await paintedCount(page)).toBe(1);
+});
+
 test("TC-138: a reload does not replay, in-app navigation never shows it, a new tab does", async ({ page, context }) => {
   await page.goto(`/${FORCE}`, { waitUntil: "domcontentloaded" });
   await skipSplash(page);
