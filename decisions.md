@@ -722,6 +722,32 @@
 - **Rule.** `exit()` emits `stall false` and `sub ""` when either is showing, and resets both in the model. A ceiling or skip exit no longer fades out with "Still working…" and a running glint. An exit with neither showing emits neither effect.
 - **Supersedes** the 45.4 report's note that `data-stalled` stays set after a ceiling exit. Pinned in `runtime.test.ts` (review R-4 cases).
 
+## EXE77 · The bar fill starts at `#3fa97b` (TASK-45.5, TP-45.j, TC-154) — accepted
+- **Rule.** `--sp-fill-start: #3fa97b`; the fill is `linear-gradient(90deg, var(--sp-fill-start), var(--sp-mint))`, with `--sp-mint #8ed7b0` at the end. Same green hue family as the mockup, so this is an EXE and not a Design revision (TP-45.j).
+- **Found.** The mockup's darker start (`#21845f`) is 2.37–3.33:1 against the placeholder hills and the lowest sky band, under the 3:1 non-text minimum (Freeze item 1). `#3fa97b` is the darkest step in the family that clears 3:1 on every one: 3.75:1 on the lightest backdrop, 4.0–5.3:1 on the others (`task45/45.5/contrast.mjs`). The mint end is ≥ 6.5:1.
+- **Re-check.** TC-154 measures the rendered pixels at reveal and at hold; it re-runs on the final art in TASK-45.9.
+
+## EXE78 · Skip intro is a 44 px target with a 36 px pill on fine pointers (TASK-45.5, TC-155) — accepted
+- **Found.** Design §8 says 36 px tall on a pointer device and 44 px on touch; TC-155 asks for a ≥ 44×44 target on both.
+- **Rule.** The `<button>` is 44 px tall (min-width 44 px) and transparent. Its visible pill is a `::before` inset 4 px top and bottom (36 px, the Design look), and inset 0 under `(pointer: coarse)`. The focus ring sits on the pill (`:focus-visible::before`, 2 px mint, offset 3 px). The hint swaps by `(pointer: coarse)`: "or press any key" / "or tap anywhere", both in the markup and both added to the SPLASH_COPY markers.
+
+## EXE79 · Tab moves focus to Skip intro and does not skip (TASK-45.5, TC-155) — open for the orchestrator
+- **Found.** PRD R11 and Design §8 say any non-repeat `keydown` skips, and the mockup skips on Tab too. Design §8 and TC-155 also say the button is reachable by Tab and the first Tab focuses it with a visible ring. With Tab skipping, the overlay goes inert on that keydown and the focus is blurred, so TC-155 cannot pass.
+- **Rule.** The inline key handler ignores `key === "Tab"` (with or without Shift): no skip, no preventDefault, focus moves as normal. Every other key still skips. Pinned in `script.test.ts` and TC-155.
+- **Ask.** The alternative is to keep Tab as a skip key and drop "first Tab focuses Skip" from TC-155. Keeping Tab as navigation is the accessible reading (a keyboard user can reach the real button), so it is applied here pending sign-off.
+
+## EXE80 · The wordmark sheen is an inline-SVG band under a clip, moved by transform (TASK-45.5, S15) — accepted
+- **Rule.** The mockup's sheen animates `background-position` over a masked gradient. That is not transform/opacity (S15), so the band is a gradient rect in an inline SVG clipped to the logo, animated by `translateX` (`splash-sheen`, 700 ms at 1.6 s, per the Design F04 row; the mockup file runs it at 800 ms). The look is the same sweep.
+- **Also.** The status block uses `splash-up-in` (300 ms at 3.2 s, the bar reveal beat); the intro set that TC-147 now requires is drawn from these keyframes (review-45.4 R-2).
+
+## EXE81 · The splash tagline is not a shared-JS marker (TASK-45.5, TC-162) — accepted
+- **Found.** "AR Collections Copilot" also ships in the app Sidebar (`src/components/shell/Sidebar.tsx`), so it is in shared chunks by design and would be a false positive.
+- **Rule.** The SPLASH_COPY marker list gains the 45.4 stall, seeding and error copy plus both hints; the tagline stays out, and `splash-budget.test.ts` pins that it is not a marker.
+
+## EXE82 · Short/landscape phones get a `max-height: 500px` rule to keep the lockup off the bar (TASK-45.5, TC-151) — accepted
+- **Found.** At 812×375 (375 landscape), the §12 `max-width` rules alone left `.splash-brand` overlapping `.splash-progress`/`.splash-track` by ~28 px — both were sized for portrait height, and no rule used the viewport's height.
+- **Rule.** Added `@media (max-height: 500px)`: brand moves to `top: 28vh` and narrows to `clamp(170px, 34vw, 280px)`; tagline/status margins and font sizes shrink; the bar's `bottom` tightens to `max(72px, 9vh)`. Measured clear via the TC-151 e2e overlap check at 812×375 in both themes.
+
 ## EXE85 · The E1 route baseline is a constant in `splash-budget.ts`, not a `scripts/fixtures/` file (TASK-45.7, TC-161) — accepted
 - **Found.** TC-161's precondition says the E1 stats snapshot is committed under `scripts/fixtures/`. The TASK-45.7 side-track brief allows only `scripts/splash-budget.ts`, its test, `package.json` and the docs.
 - **Rule.** `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` holds the exact First Load JS gzip bytes for each of the 18 routes. Same data, one file fewer, and the test pins it (18 routes, `/settings` = 301778 B).

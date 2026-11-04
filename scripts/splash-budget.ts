@@ -11,7 +11,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, posix, relative, sep } from "node:path";
 import { gzipSync } from "node:zlib";
-import { splashMarkup } from "../src/lib/splash/markup";
+import { SPLASH_SCENE_COPY, splashMarkup } from "../src/lib/splash/markup";
 import { SPLASH_COPY, buildSplashScript, splashConfig } from "../src/lib/splash/runtime";
 import { measureRoutes, type RouteStat } from "./route-budget";
 
@@ -143,11 +143,21 @@ const RUNTIME_LITERALS = ["splash:painted", "splash:skip", "splash:ceiling", "[v
 /**
  * Strings only the runtime, its config, its copy or its markup carry; the events.ts
  * dispatch ("verilane:splash", "splash:ready") is allowed. SPLASH_COPY.cont
- * ("Continue") is left out: app UI ships that word in shared chunks (EXE89).
+ * ("Continue") is left out: app UI ships that word in shared chunks (EXE89), and
+ * so is the scene tagline, which the Sidebar also renders (TASK-45.5).
  */
 export function splashMarkers(): string[] {
   const cfg = splashConfig(false);
-  const copy = [SPLASH_COPY.opening, SPLASH_COPY.ready, SPLASH_COPY.error, SPLASH_COPY.skip];
+  const copy = [
+    SPLASH_COPY.opening,
+    SPLASH_COPY.seeding,
+    SPLASH_COPY.ready,
+    SPLASH_COPY.error,
+    SPLASH_COPY.skip,
+    SPLASH_COPY.stall,
+    SPLASH_SCENE_COPY.hintKey,
+    SPLASH_SCENE_COPY.hintTouch,
+  ];
   const attrs = splashMarkup().match(/data-splash-[a-z-]+/g) ?? [];
   return [...new Set([cfg.seenKey, cfg.forceKey, ...RUNTIME_LITERALS, ...copy, ...attrs])];
 }

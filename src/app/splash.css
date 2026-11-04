@@ -11,20 +11,36 @@
 html[data-splash="on"] #verilane-splash,
 html[data-splash="hold"] #verilane-splash,
 html[data-splash="exit"] #verilane-splash {
+  /* Design §10 tokens (TASK-45.5 adds the scene's). The SVG layers in
+     markup.ts carry the hill, tower and cap colours as literals. */
   --sp-base: #062f24;
+  --sp-deep: #041f18;
+  --sp-mid: #083a2b;
   --sp-soft: #ddf2e7;
   --sp-text: #f3f8f5;
   --sp-muted: #b9d4c5;
   --sp-bright: #21845f;
   --sp-mint: #8ed7b0;
+  --sp-light: 255 236 196;
+  /* EXE77 (TP-45.j): the fill's left end, one step lighter than --sp-bright
+     so it reaches ≥ 3:1 on every hill and the lowest sky (Freeze item 1). */
+  --sp-fill-start: #3fa97b;
+  --sp-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* the brand and bar axis (Design §12) */
+  --bx: 46vw;
   display: block;
   position: fixed;
   inset: 0;
+  overflow: hidden;
+  /* always dark, whatever the app theme (TC-153) */
+  color-scheme: dark;
   /* above sonner's toaster (z-index 999999999) */
   z-index: 2147483000;
   background: var(--sp-base);
   color: var(--sp-muted);
   opacity: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity 300ms ease-out;
 }
 
@@ -38,27 +54,211 @@ html[data-splash="hold"] {
   overflow: hidden;
 }
 
-#verilane-splash .splash-inner {
+/* ---- TASK-45.5: the scene (Design §5, §6). Motion is transform and opacity
+   only (S15); every layer keeps its from/to state outside its window. ---- */
+#verilane-splash .splash-scene {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  animation: splash-fade 500ms var(--sp-ease-out) both;
+}
+
+#verilane-splash .splash-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60vw 46vh at 84vw 40vh, rgb(var(--sp-light) / 0.1), transparent 70%),
+    linear-gradient(180deg, var(--sp-deep) 0%, var(--sp-base) 42%, var(--sp-mid) 72%, #0a4532 100%);
+}
+
+#verilane-splash .splash-hills {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 34vh;
+}
+
+/* clouds: one-way drift over the 10 s maximum life; the foreground travels
+   twice the background (parallax, TC-152) */
+#verilane-splash .splash-cloud {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+#verilane-splash .splash-cloud-bg {
+  left: 20vw;
+  top: 13vh;
+  width: 34vw;
+  height: 8vw;
+  background:
+    radial-gradient(closest-side at 30% 60%, rgb(221 242 231 / 0.13), transparent),
+    radial-gradient(closest-side at 62% 45%, rgb(221 242 231 / 0.11), transparent),
+    radial-gradient(closest-side at 82% 62%, rgb(221 242 231 / 0.08), transparent);
+  animation: splash-drift-bg 10s linear both;
+}
+
+#verilane-splash .splash-cloud-fg {
+  left: -8vw;
+  top: 55vh;
+  width: 54vw;
+  height: 13vw;
+  background:
+    radial-gradient(closest-side at 25% 58%, rgb(221 242 231 / 0.16), transparent),
+    radial-gradient(closest-side at 52% 42%, rgb(221 242 231 / 0.14), transparent),
+    radial-gradient(closest-side at 78% 60%, rgb(221 242 231 / 0.1), transparent);
+  animation: splash-drift-fg 10s linear both;
+}
+
+/* the lighthouse rig: tower, glow and beam share one box, so the beam can
+   never drift off the lantern */
+#verilane-splash .splash-rig {
+  position: absolute;
+  left: 85vw;
+  bottom: 29vh;
+  height: clamp(170px, 34vh, 380px);
+  aspect-ratio: 1 / 4;
+  transform: translateX(-50%);
+}
+
+#verilane-splash .splash-tower {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#verilane-splash .splash-lantern {
+  position: absolute;
+  left: 50%;
+  top: 11%;
+  width: 0;
+  height: 0;
+}
+
+#verilane-splash .splash-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: clamp(120px, 22vh, 260px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--sp-light) / 0.75), rgb(var(--sp-light) / 0.22) 45%, transparent);
+  transform: translate(-50%, -50%);
+  animation: splash-glow-in 700ms var(--sp-ease-out) 400ms both;
+}
+
+#verilane-splash .splash-beam-tilt {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform: rotate(-6deg);
+  transform-origin: 0 0;
+}
+
+#verilane-splash .splash-beam {
+  position: absolute;
+  right: 0;
+  top: calc(92vw * -0.31);
+  width: 92vw;
+  height: calc(92vw * 0.62);
+  transform-origin: 100% 50%;
+  animation: splash-beam-in 1000ms var(--sp-ease-out) 800ms both;
+}
+
+#verilane-splash .splash-beam-wide,
+#verilane-splash .splash-beam-core {
+  position: absolute;
+  inset: 0;
+}
+
+#verilane-splash .splash-beam-wide {
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
+  background: linear-gradient(to left, rgb(var(--sp-light) / 0.34), rgb(var(--sp-light) / 0.1) 45%, transparent 88%);
+  mask: linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent);
+}
+
+/* the beam holds still and breathes; it never sweeps (Design §18) */
+#verilane-splash .splash-beam-core {
+  clip-path: polygon(100% 50%, 0 36%, 0 64%);
+  background: linear-gradient(to left, rgb(var(--sp-light) / 0.5), rgb(var(--sp-light) / 0.1) 45%, transparent 75%);
+  animation: splash-breathe 5s ease-in-out 1800ms infinite both;
+}
+
+/* the brand lockup: the official logo, split into a V and a wordmark layer */
+#verilane-splash .splash-brand {
+  position: absolute;
+  left: var(--bx);
+  top: 45vh;
+  width: clamp(230px, 31vw, 440px);
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+#verilane-splash .splash-logo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 460 / 170;
+}
+
+#verilane-splash .splash-logo img,
+#verilane-splash .splash-sheen {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#verilane-splash .splash-v,
+#verilane-splash .splash-sheen {
+  clip-path: inset(0 74.6% 0 0);
+}
+
+#verilane-splash .splash-v {
+  animation: splash-v-in 600ms var(--sp-ease-out) 1400ms both;
+}
+
+#verilane-splash .splash-sheen-band {
+  animation: splash-sheen 700ms ease-in-out 1600ms both;
+}
+
+#verilane-splash .splash-word {
+  clip-path: inset(0 0 0 25.4%);
+  animation: splash-word-in 600ms var(--sp-ease-out) 2000ms both;
+}
+
+#verilane-splash .splash-tagline {
+  margin: clamp(6px, 1.2vh, 14px) 0 0;
+  font-size: clamp(12px, 1.15vw, 16px);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sp-muted);
+  animation: splash-up-in 600ms var(--sp-ease-out) 2600ms both;
 }
 
 #verilane-splash .splash-status {
+  margin: 10px 0 0;
+  min-height: 1.45em;
   font-size: 13px;
-  margin: 0;
+  /* F07: the status rises with the bar block at 3.2 s; it stays in the a11y
+     tree throughout (the bar itself is revealed by the runtime, 45.4) */
+  animation: splash-up-in 300ms var(--sp-ease-out) 3200ms both;
 }
 
 /* TASK-45.4 (Design §4, §7): the real-phase bar. Its value is --splash-p,
    set by the runtime from real phases only; the glint is visual only. */
 #verilane-splash .splash-progress {
-  width: clamp(200px, 24vw, 340px);
+  --pw: clamp(200px, 24vw, 340px);
+  position: absolute;
+  left: calc(var(--bx) - var(--pw) / 2);
+  bottom: max(116px, 13vh);
+  width: var(--pw);
   max-width: calc(100vw - 32px);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   text-align: center;
 }
 
@@ -89,7 +289,7 @@ html[data-splash="hold"] {
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--sp-bright), var(--sp-mint));
+  background: linear-gradient(90deg, var(--sp-fill-start), var(--sp-mint));
   transform-origin: 0 50%;
   transform: scaleX(var(--splash-p, 0.1));
   transition: transform 350ms cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -145,37 +345,267 @@ html[data-splash="hold"] {
 
 #verilane-splash .splash-skip-wrap {
   position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
+  right: max(20px, 2.2vw, env(safe-area-inset-right));
+  bottom: max(20px, 3vh, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
 }
 
+/* EXE78: a 44 × 44 target everywhere (TC-155); the visible pill stays the
+   frozen 36 px on fine pointers and fills the target on coarse ones */
 #verilane-splash .splash-skip {
-  min-height: 36px;
+  position: relative;
+  isolation: isolate;
+  min-width: 44px;
+  height: 44px;
   padding: 0 14px;
-  border: 1px solid rgb(221 242 231 / 0.34);
-  border-radius: 8px;
+  border: 0;
   background: transparent;
   color: var(--sp-text);
   font: 500 13px/1 var(--font-inter, system-ui), system-ui, sans-serif;
   cursor: pointer;
 }
 
-#verilane-splash .splash-skip:focus-visible {
-  outline: 2px solid var(--sp-soft);
-  outline-offset: 2px;
+#verilane-splash .splash-skip::before {
+  content: "";
+  position: absolute;
+  inset: 4px 0;
+  z-index: -1;
+  border: 1px solid rgb(221 242 231 / 0.34);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
 }
 
-@media (pointer: coarse) {
-  #verilane-splash .splash-skip {
-    min-height: 44px;
-  }
+#verilane-splash .splash-skip:hover::before {
+  background: rgb(255 255 255 / 0.12);
+}
+
+#verilane-splash .splash-skip:focus {
+  outline: none;
+}
+
+#verilane-splash .splash-skip:focus-visible::before {
+  outline: 2px solid var(--sp-mint);
+  outline-offset: 3px;
 }
 
 #verilane-splash .splash-hint {
   margin: 0;
   font-size: 12px;
+}
+
+#verilane-splash .splash-hint-touch {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  #verilane-splash .splash-skip::before {
+    inset: 0;
+  }
+
+  #verilane-splash .splash-skip-wrap {
+    gap: 4px;
+  }
+
+  #verilane-splash .splash-hint-key {
+    display: none;
+  }
+
+  #verilane-splash .splash-hint-touch {
+    display: inline;
+  }
+}
+
+/* Design §12: tablet and phone (viewport queries stand in for the mockup's
+   container queries, Freeze item 4) */
+@media (max-width: 900px) {
+  html[data-splash] #verilane-splash {
+    --bx: 44vw;
+  }
+
+  #verilane-splash .splash-brand {
+    top: 42vh;
+    width: clamp(220px, 44vw, 380px);
+  }
+
+  #verilane-splash .splash-tagline {
+    font-size: 13px;
+  }
+
+  #verilane-splash .splash-rig {
+    left: 84vw;
+    height: clamp(170px, 28vh, 320px);
+  }
+}
+
+@media (max-width: 600px) {
+  html[data-splash] #verilane-splash {
+    --bx: 50vw;
+  }
+
+  #verilane-splash .splash-brand {
+    top: 36vh;
+    width: min(70vw, 300px);
+  }
+
+  #verilane-splash .splash-rig {
+    left: 83vw;
+    bottom: 27vh;
+    height: clamp(150px, 24vh, 240px);
+  }
+
+  /* fewer clouds on phones */
+  #verilane-splash .splash-cloud-bg {
+    display: none;
+  }
+
+  #verilane-splash .splash-cloud-fg {
+    top: 58vh;
+    width: 80vw;
+    height: 22vw;
+    opacity: 0.8;
+  }
+
+  #verilane-splash .splash-progress {
+    --pw: min(62vw, 260px);
+  }
+
+  #verilane-splash .splash-tagline {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+  }
+}
+
+/* EXE82 (TC-151): short/landscape phones (e.g. 812x375) have too little
+   height for the §12 rules above to keep the lockup and the bar block from
+   overlapping — both were sized for portrait. Pull the brand block up and
+   tighten it, and bring the bar closer to the bottom edge, measured via the
+   e2e overlap check. */
+@media (max-height: 500px) {
+  #verilane-splash .splash-brand {
+    top: 28vh;
+    width: clamp(170px, 34vw, 280px);
+  }
+
+  #verilane-splash .splash-tagline {
+    margin: 4px 0 0;
+    font-size: 11px;
+  }
+
+  #verilane-splash .splash-status {
+    margin: 4px 0 0;
+    font-size: 12px;
+  }
+
+  #verilane-splash .splash-progress {
+    bottom: max(72px, 9vh);
+  }
+}
+
+@keyframes splash-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes splash-drift-bg {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(5vw, 0, 0);
+  }
+}
+
+@keyframes splash-drift-fg {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(10vw, 0, 0);
+  }
+}
+
+@keyframes splash-glow-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes splash-beam-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes splash-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.78;
+  }
+}
+
+@keyframes splash-v-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* the band crosses the V (x −200 → 140 in the logo's 460-wide viewBox) */
+@keyframes splash-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(340px);
+  }
+}
+
+@keyframes splash-word-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes splash-up-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

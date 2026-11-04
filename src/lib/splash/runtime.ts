@@ -381,6 +381,8 @@ export function splashRuntime(): Runtime {
 
     function onKey(e: KeyboardEvent) {
       if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
+      // Tab moves focus to Skip intro (Design §8, TC-155); it never skips (EXE79).
+      if (e.key === "Tab") return;
       const before = m.attr;
       run({ type: "input", t: now(), repeat: e.repeat, mod: e.ctrlKey || e.metaKey || e.altKey });
       // The skipping key reaches nothing behind the overlay. Its default is
