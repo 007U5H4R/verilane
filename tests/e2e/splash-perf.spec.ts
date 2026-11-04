@@ -80,6 +80,8 @@ test("TC-130: splash:ready is within 50 ms of the no-splash baseline @splash-per
     const s = [...diffs].sort((a, b) => a - b);
     ci = { lo: s[CI_ORDER[0] - 1]!, hi: s[CI_ORDER[1] - 1]!, coverage: CI_COVERAGE };
   }
+  // R-5: the CI straddling the budget means this run cannot call the gate either way.
+  const inconclusive = ci ? ci.lo < BUDGET_MS && BUDGET_MS < ci.hi : null;
   const result = {
     project: testInfo.project.name,
     runs: mode === "simple" ? RUNS : PAIRS,
@@ -94,12 +96,14 @@ test("TC-130: splash:ready is within 50 ms of the no-splash baseline @splash-per
     delta,
     // interleaved only: distribution-free CI of the per-pair median; null in simple mode.
     ci,
+    // interleaved only: true when the CI straddles the budget; null in simple mode.
+    inconclusive,
     at: new Date().toISOString(),
   };
   mkdirSync(OUT, { recursive: true });
   writeFileSync(`${OUT}/tc-130-${testInfo.project.name}-${Date.now()}.json`, JSON.stringify(result, null, 2));
   console.log(`TC-130 ${JSON.stringify({ spread, mode, medianOff: result.medianOff, medianOn: result.medianOn, delta, ci })}`);
-  if (ci && ci.lo < BUDGET_MS && BUDGET_MS < ci.hi) {
+  if (ci && inconclusive) {
     console.log(`TC-130 inconclusive: CI straddles +${BUDGET_MS} ms (${ci.lo.toFixed(1)}..${ci.hi.toFixed(1)})`);
   }
   expect(delta).toBeLessThanOrEqual(BUDGET_MS);
