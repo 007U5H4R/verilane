@@ -45,21 +45,45 @@ describe("checkRasters", () => {
     expect(checkRasters([])).toEqual([]);
   });
 
-  it("caps each sky file at 60 KB and the clouds at 30 KB per format", () => {
+  it("caps the sky at 60 KB per format and the clouds at 30 KB in total (TASK-45.9, TC-164)", () => {
     const res = checkRasters([
       { name: "sky.avif", bytes: 40_000 },
       { name: "sky.webp", bytes: 61 * 1024 },
       { name: "clouds-back.avif", bytes: 10_000 },
       { name: "clouds-front.avif", bytes: 12_000 },
-      { name: "clouds-back.webp", bytes: 20_000 },
-      { name: "clouds-front.webp", bytes: 12_000 },
     ]);
     expect(res).toEqual([
-      { item: "raster sky.avif", bytes: 40_000, limit: 60 * 1024, over: false },
-      { item: "raster sky.webp", bytes: 61 * 1024, limit: 60 * 1024, over: true },
-      { item: "rasters clouds (.avif)", bytes: 22_000, limit: 30 * 1024, over: false },
-      { item: "rasters clouds (.webp)", bytes: 32_000, limit: 30 * 1024, over: true },
+      { item: "rasters sky (.avif)", bytes: 40_000, limit: 60 * 1024, over: false },
+      { item: "rasters sky (.webp)", bytes: 61 * 1024, limit: 60 * 1024, over: true },
+      { item: "rasters clouds (all formats)", bytes: 22_000, limit: 30 * 1024, over: false },
     ]);
+  });
+
+  it("sums every sky file of one format, so two sky files cannot each sit under 60 KB (TASK-45.9)", () => {
+    expect(checkRasters([{ name: "sky.avif", bytes: 40_000 }, { name: "sky-2x.avif", bytes: 30_000 }])).toEqual([
+      { item: "rasters sky (.avif)", bytes: 70_000, limit: 60 * 1024, over: true },
+    ]);
+  });
+
+  it("sums the clouds across formats, so a WebP fallback set cannot slip past the 30 KB cap (TASK-45.9, EXE98)", () => {
+    expect(
+      checkRasters([
+        { name: "clouds-fg.avif", bytes: 12_269 },
+        { name: "clouds-bg.avif", bytes: 11_752 },
+        { name: "clouds-fg.webp", bytes: 9_450 },
+      ]),
+    ).toEqual([{ item: "rasters clouds (all formats)", bytes: 33_471, limit: 30 * 1024, over: true }]);
+  });
+
+  it("passes the shipped finals: sky AVIF + WebP, clouds fg + bg AVIF (TC-164)", () => {
+    const res = checkRasters([
+      { name: "sky.avif", bytes: 49_737 },
+      { name: "sky.webp", bytes: 22_026 },
+      { name: "clouds-fg.avif", bytes: 12_269 },
+      { name: "clouds-bg.avif", bytes: 11_752 },
+    ]);
+    expect(res.every((f) => !f.over)).toBe(true);
+    expect(res.find((f) => f.item === "rasters clouds (all formats)")?.bytes).toBe(24_021);
   });
 
   it("fails a raster it cannot classify as sky or clouds", () => {
@@ -76,13 +100,13 @@ describe("checkRasters", () => {
 describe("checkRasters extensions", () => {
   it("classifies an uppercase extension (sky.AVIF) against the sky cap (R-9)", () => {
     expect(checkRasters([{ name: "sky.AVIF", bytes: BUDGETS.sky + 1 }])).toEqual([
-      { item: "raster sky.AVIF", bytes: BUDGETS.sky + 1, limit: BUDGETS.sky, over: true },
+      { item: "rasters sky (.avif)", bytes: BUDGETS.sky + 1, limit: BUDGETS.sky, over: true },
     ]);
   });
 
   it("classifies a nested file by its path under the folder", () => {
     expect(checkRasters([{ name: "clouds/a.webp", bytes: 10 }, { name: "clouds/b.webp", bytes: 20 }])).toEqual([
-      { item: "rasters clouds (.webp)", bytes: 30, limit: BUDGETS.clouds, over: false },
+      { item: "rasters clouds (all formats)", bytes: 30, limit: BUDGETS.clouds, over: false },
     ]);
   });
 });

@@ -3,8 +3,8 @@
 // Run after `pnpm build`: `pnpm splash-budget` (wired into `test:all` after
 // route-budget, which is unchanged). It measures source, deterministically:
 //   1. gzip-9 of the inline head script + splash.css + splashMarkup() together ≤ 15 KB;
-//   2. rasters in src/assets/splash/ (recursive): each sky file ≤ 60 KB, clouds ≤ 30 KB
-//      per format; every url() in splash.css must name a file in that folder (EXE89);
+//   2. rasters in src/assets/splash/ (recursive): sky ≤ 60 KB per format, clouds
+//      ≤ 30 KB across all formats (TASK-45.9); every url() in splash.css must name a file in that folder (EXE89);
 //   3. each route's First Load JS (route-budget's own measure) grows ≤ 512 B over E1;
 //   4. no splash runtime/markup marker in .next/static/chunks/*.js (the runtime
 //      lives in server HTML; only the events.ts dispatch may reach shared JS).
@@ -68,18 +68,25 @@ export function checkInline(parts: { name: string; content: string | Buffer }[],
 
 const RASTER = new Set([".avif", ".webp", ".png", ".jpg", ".jpeg", ".gif"]);
 
-/** Raw file bytes (images go over the wire uncompressed). Sky per file; clouds summed per format. */
+/**
+ * Raw file bytes (images go over the wire uncompressed). TASK-45.9 (TC-164):
+ * the sky is summed per format (≤ 60 KB each, the AVIF and its WebP fallback
+ * are alternatives); the clouds are summed across every format (≤ 30 KB in
+ * total), since they ship AVIF only (EXE98) and a fallback set must still fit.
+ */
 export function checkRasters(files: { name: string; bytes: number }[]): Finding[] {
   const out: Finding[] = [];
-  const clouds = new Map<string, number>();
+  const sky = new Map<string, number>();
+  let clouds: number | null = null;
   for (const f of files) {
     const ext = extname(f.name).toLowerCase();
     if (!RASTER.has(ext)) continue;
-    if (/sky/i.test(f.name)) out.push(finding(`raster ${f.name}`, f.bytes, BUDGETS.sky));
-    else if (/cloud/i.test(f.name)) clouds.set(ext, (clouds.get(ext) ?? 0) + f.bytes);
+    if (/sky/i.test(f.name)) sky.set(ext, (sky.get(ext) ?? 0) + f.bytes);
+    else if (/cloud/i.test(f.name)) clouds = (clouds ?? 0) + f.bytes;
     else out.push({ item: `raster ${f.name} (not sky or clouds)`, bytes: f.bytes, limit: 0, over: true });
   }
-  for (const [ext, bytes] of clouds) out.push(finding(`rasters clouds (${ext})`, bytes, BUDGETS.clouds));
+  for (const [ext, bytes] of sky) out.push(finding(`rasters sky (${ext})`, bytes, BUDGETS.sky));
+  if (clouds !== null) out.push(finding("rasters clouds (all formats)", clouds, BUDGETS.clouds));
   return out;
 }
 
