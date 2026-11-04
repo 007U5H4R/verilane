@@ -340,7 +340,15 @@ async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light"
   const band = await page.evaluate(() => {
     const el = document.querySelector("[data-heritage]");
     if (!el) return null;
-    return { level: el.getAttribute("data-level"), display: getComputedStyle(el).display, idle: el.hasAttribute("data-idle") };
+    const cs = getComputedStyle(el);
+    return {
+      level: el.getAttribute("data-level"),
+      display: cs.display,
+      idle: el.hasAttribute("data-idle"),
+      opacity: cs.opacity,
+      height: cs.height,
+      position: cs.backgroundPosition,
+    };
   });
   const pathname = new URL(page.url()).pathname;
   const count = await page.locator("[data-heritage]").count();
@@ -371,20 +379,101 @@ test("TC-101: below 768 only Home fetches art, and only the theme's strip (F5)",
 
 test("TC-102: forced colors and print hide the art and fetch nothing (F6)", async ({ browser, baseURL }, info) => {
   const theme = schemeOf(info);
-  for (const media of [{ forcedColors: "active" }, { media: "print" }] as const) {
-    const r = await loadFresh(browser, baseURL!, theme, { url: "/", viewport: { width: 1440, height: 900 }, media });
-    expect(r.band?.display, JSON.stringify(media)).toBe("none");
-    expect(r.requests, JSON.stringify(media)).toEqual([]);
+  // R-1: the 390 Home run is the one that needs `!important`, because the
+  // mobile Home rule (display:block) is more specific than the override.
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    for (const media of [{ forcedColors: "active" }, { media: "print" }] as const) {
+      const label = `${viewport.width} ${JSON.stringify(media)}`;
+      const r = await loadFresh(browser, baseURL!, theme, { url: "/", viewport, media });
+      // Soft, so one run reports every viewport × media pair that fails.
+      expect.soft(r.band?.level, label).toBe("normal");
+      expect.soft(r.band?.display, label).toBe("none");
+      expect.soft(r.requests, label).toEqual([]);
+    }
   }
+});
+
+/** Every @media condition, as served, wrapping a rule whose selector starts with / contains `match`. */
+async function mediaFor(page: Page, match: { startsWith: string } | { includes: string }): Promise<string[]> {
+  // No `new Function` here: the production CSP has no 'unsafe-eval'.
+  return page.evaluate((m) => {
+    const hit = (s: string) => ("startsWith" in m ? s.startsWith(m.startsWith) : s.includes(m.includes));
+    const out = new Set<string>();
+    // Covers both shapes: `@media { .x {} }` and nested `.x { @media {} }`.
+    const walk = (rules: CSSRuleList, media: string | null, selector: string | null) => {
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSMediaRule) {
+          if (selector && hit(selector)) out.add(rule.conditionText);
+          walk(rule.cssRules, rule.conditionText, selector);
+        } else if (rule instanceof CSSStyleRule) {
+          if (media && hit(rule.selectorText)) out.add(media);
+          walk(rule.cssRules, media, rule.selectorText);
+        } else if ("cssRules" in rule) walk((rule as CSSGroupingRule).cssRules, media, selector);
+      }
+    };
+    for (const sheet of Array.from(document.styleSheets)) walk(sheet.cssRules, null, null);
+    return [...out];
+  }, match);
+}
+
+// R-4: the heritage breakpoints must be Tailwind's own md/lg, not `max-width:
+// 767px`/`1023px`. Those leave a gap at fractional widths (zoom, odd DPRs:
+// 767.5px is the mobile layout with the desktop art). Chromium snaps every
+// viewport and iframe to whole CSS pixels, so the gap can't be reproduced
+// here; this guards the served conditions instead, plus the integer edges.
+test("TC-101b: heritage breakpoints are Tailwind's md/lg as served, with no fractional gap (R-4)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  const context = await browser.newContext({ baseURL, colorScheme: theme, serviceWorkers: "block" });
+  const page = await context.newPage();
+  await openHome(page);
+  const md = await mediaFor(page, { startsWith: ".md\\:" });
+  const lg = await mediaFor(page, { startsWith: ".lg\\:" });
+  const heritage = await mediaFor(page, { includes: "[data-heritage]" });
+  await context.close();
+
+  // Lightning CSS may lower range syntax (`(width >= 48rem)` → `(min-width:
+  // 48rem)`), so derive the expected heritage conditions from Tailwind's own.
+  const mdCond = md.find((c) => c.includes("48rem") && !c.includes("not"));
+  const lgCond = lg.find((c) => c.includes("64rem") && !c.includes("not"));
+  expect(mdCond, `Tailwind md in ${JSON.stringify(md)}`).toMatch(/^\((?:min-width: 48rem|width >= 48rem)\)$/);
+  expect(lgCond, `Tailwind lg in ${JSON.stringify(lg)}`).toMatch(/^\((?:min-width: 64rem|width >= 64rem)\)$/);
+  const lowered = mdCond!.startsWith("(min-width");
+  const mobile = lowered ? `not all and ${mdCond}` : "(width < 48rem)";
+  const tablet = lowered ? `${mdCond} and (not ${lgCond})` : "(48rem <= width < 64rem)";
+  // Exactly the complement of md, and md up to lg. Nothing in px.
+  expect(heritage).toEqual(expect.arrayContaining([mobile, tablet]));
+  for (const m of heritage) expect(m, "no px breakpoints on the heritage band").not.toMatch(/\d+px/);
+
+  // The whole-pixel edges either side of each breakpoint.
+  const at = async (width: number) => (await loadFresh(browser, baseURL!, theme, { url: "/queue", viewport: { width, height: 900 } })).band;
+  expect((await at(767))?.display, "767").toBe("none");
+  expect(await at(768), "768").toMatchObject({ display: "block", height: "300px" });
+  expect(await at(1023), "1023").toMatchObject({ display: "block", height: "300px" });
+  expect((await at(1024))?.height, "1024").not.toBe("300px");
+});
+
+// R-5: the computed strength and the tablet box, not just the attribute.
+test("TC-101c: reduced routes are quieter and tablet uses the 300px box at 38% (R-5)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  const drafts = await loadFresh(browser, baseURL!, theme, { url: "/drafts", viewport: { width: 1440, height: 900 } });
+  expect(drafts.band).toMatchObject({ level: "reduced", display: "block", opacity: "0.6" });
+  const queue = await loadFresh(browser, baseURL!, theme, { url: "/queue", viewport: { width: 800, height: 900 } });
+  expect(queue.band).toMatchObject({ level: "normal", display: "block", opacity: "1", height: "300px" });
+  expect(queue.band?.position).toMatch(/^38% /);
 });
 
 test("TC-103: a route at level off renders an inert layer and fetches nothing (SC9)", async ({ browser, baseURL }, info) => {
   const r = await loadFresh(browser, baseURL!, schemeOf(info), { url: "/e2e-harness", viewport: { width: 1440, height: 900 } });
   expect(r.pathname).toBe("/e2e-harness");
-  expect(r.band).toEqual({ level: "off", display: "none", idle: false });
+  // `idle: false` can only fail once TASK-46.4 adds the idle preload (R-3).
+  expect(r.band).toMatchObject({ level: "off", display: "none", idle: false });
   expect(r.requests).toEqual([]);
 });
 
+// Regression guard (R-6): ShellGate already rendered these bare before 46.3.
 test("TC-104: auth routes never mount the layer (F1)", async ({ browser, baseURL }, info) => {
   for (const route of ["/welcome", "/sign-in", "/sign-up", "/onboarding"]) {
     // Signed out per tab (see onboarding.spec), so the bare auth screen renders.
