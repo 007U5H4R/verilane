@@ -218,7 +218,11 @@ export function splashRuntime(): Runtime {
     // Mark first: it records when the exit began; un-inerting can take tens of ms.
     // TASK-45.6: reduced motion cuts straight to done; there is no fade to wait for.
     if (m.rm) {
-      fx.push({ k: "mark", v: "splash:exit" }, { k: "uninert" }, { k: "attr", v: "done" }, { k: "mark", v: "splash:done" });
+      fx.push({ k: "mark", v: "splash:exit" }, { k: "uninert" });
+      // as the fade path: the cut leaves no glint or "Still working" behind
+      if (m.stalled) fx.push({ k: "stall", v: false });
+      if (m.longStall) fx.push({ k: "sub", v: "" });
+      fx.push({ k: "attr", v: "done" }, { k: "mark", v: "splash:done" });
       return with_(m, { attr: "done", tExit: t, stalled: false, longStall: false });
     }
     fx.push({ k: "mark", v: "splash:exit" }, { k: "attr", v: "exit" }, { k: "uninert" }, { k: "timer", v: t + cfg.exitMs });

@@ -463,6 +463,20 @@ describe("step · reduced motion", () => {
     expect(begin(0, cfg).m.rm).toBe(false);
   });
 
+  it("a ceiling cut clears the stall glint and the sub-line before done, like the fade path", () => {
+    const { m, fx } = runRm([tick(1000), tick(2500), tick(5000)]);
+    expect(m.attr).toBe("done");
+    // stalled and long-stalled at 2.5 s (D_rm + 1.5 s), cleared by the 5 s cut
+    expect(fx).toContainEqual({ k: "stall", v: true });
+    expect(fx).toContainEqual({ k: "sub", v: cfg.copy.stall });
+    const doneAt = fx.findIndex((f) => f.k === "attr" && f.v === "done");
+    const afterExit = fx.slice(fx.findIndex((f) => f.k === "mark" && f.v === "splash:exit"));
+    expect(afterExit).toContainEqual({ k: "stall", v: false });
+    expect(afterExit).toContainEqual({ k: "sub", v: "" });
+    expect(fx.findIndex((f) => f.k === "sub" && f.v === "")).toBeLessThan(doneAt);
+    expect(fx.findIndex((f) => f.k === "stall" && f.v === false)).toBeLessThan(doneAt);
+  });
+
   it("ready at 300 ms cuts straight to done at 1 s, with no exit fade", () => {
     expect(runRm([phase("ready", 300), tick(999)]).m.attr).toBe("on");
     const { m, fx } = runRm([phase("ready", 300), tick(1000)]);

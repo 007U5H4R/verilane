@@ -36,6 +36,8 @@ interface Stub {
   advance(t: number): void;
   /** Calls the document's listeners for `type` (DOMContentLoaded). */
   docDispatch(type: string): void;
+  /** TASK-45.6: fires every MutationObserver callback, as a DOM insertion would. */
+  mutate(): void;
 }
 
 interface KV {
@@ -146,6 +148,8 @@ function stubWindow(
   });
   const app = fakeEl();
   const docListeners: { type: string; fn: () => void }[] = [];
+  /** Callbacks of every MutationObserver the script built (TASK-45.6). */
+  const observers: (() => void)[] = [];
   const location = { search: opts.search ?? "", pathname: opts.pathname ?? "/" };
   const documentElement = {
     setAttribute: (k: string, v: string) => {
@@ -197,6 +201,9 @@ function stubWindow(
           },
         }),
     MutationObserver: class {
+      constructor(fn: () => void) {
+        observers.push(fn);
+      }
       observe() {}
       disconnect() {}
     },
@@ -243,7 +250,8 @@ function stubWindow(
     if (opts.clock) opts.clock.t = to;
   };
   const docDispatch = (type: string) => docListeners.filter((l) => l.type === type).forEach((l) => l.fn());
-  return { attrs, marks, window, timers, dispatch, flush, local, tab, location, overlay, app, skipButton, bar, track, msg, sub, advance, docDispatch };
+  const mutate = () => observers.forEach((fn) => fn());
+  return { attrs, marks, window, timers, dispatch, flush, local, tab, location, overlay, app, skipButton, bar, track, msg, sub, advance, docDispatch, mutate };
 }
 
 function exec(src: string, stub: Stub) {
@@ -734,6 +742,18 @@ describe("buildSplashScript", () => {
       expect(stub.bar.attrs["data-splash-bar"]).toBeUndefined();
       opts.dom = true;
       stub.docDispatch("DOMContentLoaded");
+      expect(stub.bar.attrs["data-splash-bar"]).toBe("shown");
+    });
+
+    it("on a hard load, reveals the bar as soon as the app wrapper is inserted, before DOMContentLoaded", () => {
+      const clock = { t: 0 };
+      const opts = { session: "guest", dom: false, clock, rm: true };
+      const stub = stubWindow(opts);
+      exec(prod, stub);
+      stub.mutate();
+      expect(stub.bar.attrs["data-splash-bar"]).toBeUndefined();
+      opts.dom = true;
+      stub.mutate();
       expect(stub.bar.attrs["data-splash-bar"]).toBe("shown");
     });
 
