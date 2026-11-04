@@ -112,7 +112,7 @@
 - **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.1 · F2 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03) · **Finding:** —
 - **Objective:** A new route never gets full-strength art by accident.
 - **Preconditions:** —
-- **Steps:** `heritageLevelFor("/something-new")`, `heritageLevelFor("/a/b/c")`.
+- **Steps:** `heritageLevelFor("/something-new")`, `heritageLevelFor("/a/b/c")`, `""`, and the near-miss names `/invoicesX`, `/queue-archive`, `/settingsx` (no prefix matching).
 - **Data:** —
 - **Expected:** `"reduced"`.
 
@@ -123,11 +123,13 @@
 - **Steps:** Load `/`, `/queue`, `/drafts` in fresh pages; record heritage requests.
 - **Data:** —
 - **Expected:** `/` requests the theme's `-strip` asset only; `/queue` and `/drafts` request none; `[data-heritage]` is `display:none` there.
+- **Breakpoint guard (TC-101b, fix round R-4):** the heritage band's media conditions are Tailwind's md (48rem) and lg (64rem): mobile is the complement of md and tablet is md up to lg, with no `px` breakpoint. The test reads the conditions from the served CSSOM, because Lightning CSS lowers the source range syntax (`(width < 48rem)` → `not all and (min-width:48rem)`). It also checks the whole-pixel edges on `/queue`: 767 → `display:none`; 768 and 1023 → the 300px box; 1024 → not 300px. A fractional-width red is not possible because Chromium snaps viewports to whole CSS pixels, so the guard fails on the old `max-width:767px` queries instead.
+- **Computed style (TC-101c, R-5):** `/drafts` at 1440 → `reduced`, opacity `0.6`; `/queue` at 800 → `normal`, height `300px`, `background-position` starting `38%`.
 
 ### TC-102 · Forced colors and print fetch nothing (F6)
 - **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F6 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
 - **Objective:** The art disappears where it would harm legibility.
-- **Preconditions:** `emulateMedia({ forcedColors: "active" })`, then separately `emulateMedia({ media: "print" })`, before navigation.
+- **Preconditions:** `emulateMedia({ forcedColors: "active" })`, then separately `emulateMedia({ media: "print" })`, before navigation; each at 1440×900 and at 390×844 (R-1, where the mobile `display:block` on Home competes with the `!important` hide).
 - **Steps:** Load `/`; record heritage requests; read computed `display`.
 - **Data:** —
 - **Expected:** Zero heritage requests; `display` is `none`.
@@ -139,17 +141,18 @@
 - **Steps:** Unit: `heritageLevelFor(route, false)` for every table route and an unmapped one. e2e: load `/e2e-harness` (level `off` by the table).
 - **Data:** —
 - **Expected:** Unit: all `"off"`. e2e: `[data-level="off"]`, `display:none`, zero heritage requests, no `data-idle` ever set.
+- **Note (R-3):** the `data-idle` clause cannot fail until TASK-46.4 adds the idle preload. From then on it needs a MutationObserver or a wait past the rIC timeout to mean anything.
 
 ### TC-104 · Auth routes do not mount the layer (F1)
 - **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
-- **Objective:** ShellGate's bare auth routes stay bare.
+- **Objective:** ShellGate's bare auth routes stay bare. **Regression guard (R-6):** ShellGate already rendered these routes bare before 46.3, so this test passed before the change and guards against a future mount rather than proving new behaviour.
 - **Preconditions:** Signed-out session state where needed.
 - **Steps:** Load `/welcome`, `/sign-in`, `/sign-up`, `/onboarding`.
 - **Data:** —
 - **Expected:** `[data-heritage]` count 0; zero heritage requests.
 
 ### TC-105 · Route budgets hold with the heritage code (N2)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.6 (re-run 46.8.3) · N2 · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03; +301 B every route vs d7144cb, /settings 295.0 KB) · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.6 (re-run 46.8.3) · N2 · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 648be03; JS +301 B every route vs d7144cb, cumulative for 46.1–46.3; /settings 295.0 KB. CSS +412 B gzip after fix round 1 (shared chunk 16,868 → 17,280 B, `gzip -c`, base `3ilam13vdx2jo.css` vs `0tqku-bvfemwl.css`; the review measured +418 B before the range-syntax change). route-budget counts JS only, so the CSS delta is recorded here by hand. Whether to adopt this as the new A8 baseline is with the user.) · **Finding:** —
 - **Objective:** The component and CSS cost ≤ 1.5 KB gzip per shell route.
 - **Preconditions:** `pnpm build`; base route-budget numbers from A8.
 - **Steps:** `pnpm route-budget`; diff per route against base.
