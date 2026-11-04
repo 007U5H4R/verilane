@@ -222,6 +222,10 @@ test("TC-146: a stall shows the glint, then the 'Still working' line, without mo
   const before = log.filter((p) => p.at < ready.at);
   const last = before.at(-1)!;
   expect(last.phase).toBe("seeding");
+  // the runtime took ready before the 9.7 s ceiling (a starved CPU can push
+  // the held load past it; the overlay then exits without clearing the stall)
+  const [ceiling] = await marks(page, "splash:ceiling");
+  expect(ceiling, "ready landed before the ceiling").toBeNull();
   const samples = await bar(page);
 
   const stallOn = samples.find((s) => s.what === "stalled" && s.v === "1");
