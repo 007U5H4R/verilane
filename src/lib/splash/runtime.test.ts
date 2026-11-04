@@ -358,6 +358,32 @@ describe("step · reveal, stall, stall line, hold", () => {
     expect(subs(fx)).toEqual([]);
     expect(fx.filter((f) => f.k === "reveal")).toHaveLength(0);
   });
+
+  // review-45.4 R-4: a ceiling or skip exit must not fade out under a running
+  // glint and a "Still working" line; the exit itself clears both.
+  it("a ceiling exit clears a running glint and the stall line, after the exit mark", () => {
+    const { m, fx } = run([phase("session", 100), phase("provider", 200), tick(3200), tick(4200), tick(9700)]);
+    const at = fx.findIndex((f) => f.k === "mark" && f.v === "splash:exit");
+    const after = fx.slice(at);
+    expect(stalls(fx)).toEqual([true, false]);
+    expect(subs(fx)).toEqual([cfg.copy.stall, ""]);
+    expect(after).toContainEqual({ k: "stall", v: false });
+    expect(after).toContainEqual({ k: "sub", v: "" });
+    expect(m).toMatchObject({ attr: "exit", stalled: false, longStall: false });
+  });
+
+  it("a skip during a stall clears the glint and the stall line", () => {
+    const { m, fx } = run([phase("session", 100), tick(3200), tick(4100), key(4500)]);
+    expect(stalls(fx)).toEqual([true, false]);
+    expect(subs(fx)).toEqual([cfg.copy.stall, ""]);
+    expect(m).toMatchObject({ attr: "exit", stalled: false, longStall: false });
+  });
+
+  it("an exit with no stall showing emits no stall or sub effects", () => {
+    const { fx } = run([phase("ready", 1000), tick(5700)]);
+    expect(stalls(fx)).toEqual([]);
+    expect(subs(fx)).toEqual([]);
+  });
 });
 
 // TASK-45.3 · TC-136: every combination of the trigger inputs (PRD §2.3).
