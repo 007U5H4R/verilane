@@ -527,5 +527,32 @@ test.describe("TC-156: frame captures", () => {
         await ctx.close();
       }
     });
+
+    // TASK-45.6: the reduced-motion static frame (bar up from t0) and the
+    // same frame once the stall line shows (D_rm + 1.5 s = 2.5 s).
+    test(`TC-156 reduced motion at ${s.w}`, async ({ browser, baseURL }) => {
+      test.setTimeout(120_000);
+      mkdirSync(SHOTS!, { recursive: true });
+      const out = (n: string) => join(SHOTS!, `${s.w}-${n}.png`);
+      const ctx = await browser.newContext({
+        baseURL,
+        colorScheme: "light",
+        reducedMotion: "reduce",
+        viewport: { width: s.w, height: s.h },
+      });
+      await splashOn(ctx);
+      await holdManifest(ctx, 15_000);
+      for (const f of [
+        { name: "rm", at: 600 },
+        { name: "rm-stall", at: 2700 },
+      ]) {
+        const page = await ctx.newPage();
+        await openSplash(page);
+        await waitPastT0(page, f.at);
+        await page.screenshot({ path: out(f.name), caret: "initial" });
+        await page.close();
+      }
+      await ctx.close();
+    });
   }
 });
