@@ -288,6 +288,18 @@ describe("buildSplashScript", () => {
       expect(stub.dispatch("click", { detail: 0 }).defaultPrevented).toBe(false);
     });
 
+    it("a right-button skip arms nothing, so its own pointerup and click reach the app", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", clock });
+      exec(prod, stub);
+      clock.t = 300;
+      stub.dispatch("pointerdown", { button: 2 });
+      expect(stub.attrs["data-splash"]).toBe("exit");
+      clock.t = 310;
+      stub.dispatch("pointerup", { button: 2 });
+      expect(stub.dispatch("click", { detail: 1 }).defaultPrevented).toBe(false);
+    });
+
     it("a keyboard-activated click (detail 0) is not the press's click", () => {
       const { stub, clock } = skipByPointer();
       clock.t = 310;
