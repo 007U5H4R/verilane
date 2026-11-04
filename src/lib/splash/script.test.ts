@@ -20,6 +20,62 @@ interface Stub {
   dispatch(type: string, init?: Record<string, unknown>): FakeEvent;
   /** Runs pending timers (and any they schedule) until none are left. */
   flush(): void;
+  local: KV;
+  tab: KV;
+  location: { search: string; pathname: string };
+  /** The server-rendered overlay and the app wrapper (TASK-45.3). */
+  overlay: FakeEl;
+  app: FakeEl;
+  skipButton: FakeEl;
+  /** Calls the document's listeners for `type` (DOMContentLoaded). */
+  docDispatch(type: string): void;
+}
+
+interface KV {
+  getItem(k: string): string | null;
+  setItem(k: string, v: string): void;
+  removeItem(k: string): void;
+}
+
+interface FakeEl {
+  attrs: Record<string, string>;
+  props: Record<string, string>;
+  textContent: string;
+  listeners: Record<string, ((e: unknown) => void)[]>;
+  setAttribute(k: string, v: string): void;
+  removeAttribute(k: string): void;
+  hasAttribute(k: string): boolean;
+  addEventListener(t: string, fn: (e: unknown) => void): void;
+  contains(x: unknown): boolean;
+  querySelector(sel: string): FakeEl | null;
+  style: { setProperty(k: string, v: string): void };
+}
+
+function fakeEl(children: Record<string, FakeEl> = {}): FakeEl {
+  const el: FakeEl = {
+    attrs: {},
+    props: {},
+    textContent: "",
+    listeners: {},
+    setAttribute: (k, v) => {
+      el.attrs[k] = v;
+    },
+    removeAttribute: (k) => {
+      delete el.attrs[k];
+    },
+    hasAttribute: (k) => k in el.attrs,
+    addEventListener: (t, fn) => {
+      (el.listeners[t] ??= []).push(fn);
+    },
+    contains: (x) => x === el || Object.values(children).includes(x as FakeEl),
+    querySelector: (sel) => children[sel] ?? null,
+    style: {
+      setProperty: (k, v) => {
+        el.props[k] = v;
+      },
+    },
+  };
+  return el;
 }
 
 interface FakeEvent {
@@ -33,7 +89,17 @@ interface FakeEvent {
 }
 
 function stubWindow(
-  opts: { session?: string | null; search?: string; throwStorage?: boolean; clock?: { t: number } } = {},
+  opts: {
+    session?: string | null;
+    search?: string;
+    pathname?: string;
+    throwStorage?: boolean;
+    clock?: { t: number };
+    /** Shared tab storage, so a second stub is a reload of the same tab. */
+    tab?: KV;
+    /** Render the overlay and app nodes (otherwise getElementById finds nothing). */
+    dom?: boolean;
+  } = {},
 ): Stub {
   const attrs: Record<string, string> = {};
   const marks: string[] = [];
@@ -41,10 +107,10 @@ function stubWindow(
   const listeners: { type: string; fn: (e: unknown) => void; capture: boolean }[] = [];
   let nextId = 0;
   let t = 0;
-  const store = (init: Record<string, string>) => {
+  const store = (init: Record<string, string>): KV => {
     const data = { ...init };
     return {
-      getItem: (k: string) => (k in data ? data[k] : null),
+      getItem: (k: string) => (k in data ? (data[k] as string) : null),
       setItem: (k: string, v: string) => {
         data[k] = v;
       },
@@ -54,7 +120,13 @@ function stubWindow(
     };
   };
   const local = store(opts.session ? { "verilane-session": opts.session } : {});
-  const tab = store({});
+  const tab = opts.tab ?? store({});
+  const skipButton = fakeEl();
+  const status = fakeEl();
+  const overlay = fakeEl({ "[data-splash-skip]": skipButton, "[data-splash-status]": status });
+  const app = fakeEl();
+  const docListeners: { type: string; fn: () => void }[] = [];
+  const location = { search: opts.search ?? "", pathname: opts.pathname ?? "/" };
   const documentElement = {
     setAttribute: (k: string, v: string) => {
       attrs[k] = v;
@@ -64,8 +136,11 @@ function stubWindow(
   const window: Stub["window"] = {
     document: {
       documentElement,
-      getElementById: () => null,
-      addEventListener: () => {},
+      getElementById: (id: string) =>
+        !opts.dom ? null : id === "verilane-splash" ? overlay : id === "verilane-app" ? app : null,
+      addEventListener: (type: string, fn: () => void) => {
+        docListeners.push({ type, fn });
+      },
       activeElement: null,
     },
     performance: {
@@ -92,7 +167,7 @@ function stubWindow(
       const i = listeners.findIndex((l) => l.type === type && l.fn === fn && l.capture === !!capture);
       if (i >= 0) listeners.splice(i, 1);
     },
-    location: { search: opts.search ?? "", pathname: "/" },
+    location,
     MutationObserver: class {
       observe() {}
       disconnect() {}
@@ -129,7 +204,8 @@ function stubWindow(
   const flush = () => {
     for (let i = 0; i < 50 && timers.length; i++) timers.splice(0).forEach((x) => x.fn());
   };
-  return { attrs, marks, window, timers, dispatch, flush };
+  const docDispatch = (type: string) => docListeners.filter((l) => l.type === type).forEach((l) => l.fn());
+  return { attrs, marks, window, timers, dispatch, flush, local, tab, location, overlay, app, skipButton, docDispatch };
 }
 
 function exec(src: string, stub: Stub) {
@@ -207,7 +283,8 @@ describe("buildSplashScript", () => {
   });
 
   // TASK-45.2 R-7 (ticket: "show() twice … idempotent").
-  it("show() while the splash is live is a no-op; after done it replays", () => {
+  // TASK-45.3: after done, show() re-runs decide(), so only a cleared seen flag replays.
+  it("show() while the splash is live is a no-op; after done it replays only once the seen flag is cleared", () => {
     const clock = { t: 0 };
     const stub = stubWindow({ session: "guest", clock });
     exec(prod, stub);
@@ -221,6 +298,9 @@ describe("buildSplashScript", () => {
     clock.t = 700;
     stub.flush();
     expect(stub.attrs["data-splash"]).toBe("done");
+    stub.window.verilaneSplash?.show();
+    expect(stub.attrs["data-splash"]).toBe("done");
+    stub.tab.removeItem("verilane-splash-seen");
     stub.window.verilaneSplash?.show();
     expect(stub.attrs["data-splash"]).toBe("on");
     expect(stub.marks.filter((x) => x === "splash:painted")).toHaveLength(2);
@@ -344,6 +424,7 @@ describe("buildSplashScript", () => {
     }
     expect(stub.attrs["data-splash"]).toBe("done");
     const leftBehind = stub.timers.filter((x) => x.delay !== 5700 && x.delay !== 9700);
+    stub.tab.removeItem("verilane-splash-seen");
     stub.window.verilaneSplash?.show();
     expect(stub.attrs["data-splash"]).toBe("on");
     // Fire whatever stop() left behind; it must not unbind the new run.
@@ -387,6 +468,128 @@ describe("buildSplashScript", () => {
       expect(stub.attrs["data-splash"]).toBe("on");
       expect(ev.defaultPrevented).toBe(false);
       expect(ev.stopped).toBe(false);
+    });
+  });
+
+  // TASK-45.3 · 45.3.2: once per tab, client entry, phase replay, bfcache.
+  describe("once per tab and client entry (45.3.2)", () => {
+    const painted = (stub: Stub) => stub.marks.filter((x) => x === "splash:painted").length;
+
+    it("showing sets the tab's seen flag, so a reload of the tab does not replay", () => {
+      const first = stubWindow({ session: "guest" });
+      exec(prod, first);
+      expect(first.attrs["data-splash"]).toBe("on");
+      expect(first.tab.getItem("verilane-splash-seen")).toBe("1");
+      const reload = stubWindow({ session: "guest", tab: first.tab });
+      exec(prod, reload);
+      expect(reload.attrs["data-splash"]).toBeUndefined();
+      expect(reload.window.verilaneSplash?.state()).toBe("off");
+    });
+
+    it("a new tab (fresh tab storage) shows it again", () => {
+      const first = stubWindow({ session: "guest" });
+      exec(prod, first);
+      const other = stubWindow({ session: "guest" });
+      exec(prod, other);
+      expect(other.attrs["data-splash"]).toBe("on");
+    });
+
+    it("never shows, or sets the flag, on an auth route", () => {
+      for (const pathname of ["/welcome", "/sign-in", "/sign-up", "/onboarding", "/onboarding/x"]) {
+        const stub = stubWindow({ session: "guest", pathname });
+        exec(prod, stub);
+        expect(stub.attrs["data-splash"]).toBeUndefined();
+        expect(stub.tab.getItem("verilane-splash-seen")).toBeNull();
+      }
+    });
+
+    it("client entry: show() re-decides against the current session and path", () => {
+      const stub = stubWindow({ session: null, pathname: "/onboarding", dom: true });
+      exec(prod, stub);
+      expect(stub.window.verilaneSplash?.state()).toBe("off");
+      // onboarding Finish: the session is stored, then the router lands on "/"
+      stub.local.setItem("verilane-session", "guest");
+      stub.window.verilaneSplash?.show();
+      expect(stub.attrs["data-splash"]).toBeUndefined();
+      stub.location.pathname = "/";
+      stub.window.verilaneSplash?.show();
+      stub.window.verilaneSplash?.show();
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(painted(stub)).toBe(1);
+      expect(stub.tab.getItem("verilane-splash-seen")).toBe("1");
+      expect(stub.app.hasAttribute("inert")).toBe(true);
+    });
+
+    it("show() with storage blocked stays off and does not throw", () => {
+      const stub = stubWindow({ session: "guest", throwStorage: true });
+      exec(prod, stub);
+      expect(() => stub.window.verilaneSplash?.show()).not.toThrow();
+      expect(stub.window.verilaneSplash?.state()).toBe("off");
+    });
+
+    it("replays phases emitted before show() into the new run", () => {
+      const stub = stubWindow({ session: null, dom: true });
+      exec(prod, stub);
+      stub.dispatch("verilane:splash", { detail: { phase: "session" } });
+      stub.dispatch("verilane:splash", { detail: { phase: "provider" } });
+      stub.local.setItem("verilane-session", "guest");
+      stub.window.verilaneSplash?.show();
+      expect(stub.overlay.props["--splash-p"]).toBe("0.65");
+      stub.dispatch("verilane:splash", { detail: { phase: "ready" } });
+      expect(stub.overlay.props["--splash-p"]).toBe("1");
+    });
+
+    it("a new session phase starts a new log, so an earlier mount's phases are not replayed", () => {
+      const stub = stubWindow({ session: null, dom: true });
+      exec(prod, stub);
+      for (const phase of ["session", "provider", "ready", "session"])
+        stub.dispatch("verilane:splash", { detail: { phase } });
+      stub.local.setItem("verilane-session", "guest");
+      stub.window.verilaneSplash?.show();
+      expect(stub.overlay.props["--splash-p"]).toBe("0.35");
+      expect(stub.attrs["data-splash"]).toBe("on");
+    });
+
+    it("binds the skip button even when the hard load decided off, so a client-entry splash can be skipped", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: null, dom: true, clock });
+      exec(prod, stub);
+      stub.docDispatch("DOMContentLoaded");
+      stub.local.setItem("verilane-session", "guest");
+      stub.window.verilaneSplash?.show();
+      clock.t = 10;
+      (stub.skipButton.listeners.click ?? []).forEach((fn) => fn({}));
+      expect(stub.attrs["data-splash"]).toBe("exit");
+    });
+
+    // Carry-in Q2 (EXE48): the skip button leaves the tab order once the exit starts.
+    it("the overlay is inert from the exit on, and not inert again on a replay", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", dom: true, clock });
+      exec(prod, stub);
+      expect(stub.overlay.hasAttribute("inert")).toBe(false);
+      clock.t = 300;
+      stub.window.verilaneSplash?.skip();
+      expect(stub.overlay.hasAttribute("inert")).toBe(true);
+      expect(stub.app.hasAttribute("inert")).toBe(false);
+      clock.t = 700;
+      stub.flush();
+      stub.tab.removeItem("verilane-splash-seen");
+      stub.window.verilaneSplash?.show();
+      expect(stub.overlay.hasAttribute("inert")).toBe(false);
+    });
+
+    it("a bfcache restore (pageshow persisted) ends a live splash at once", () => {
+      const stub = stubWindow({ session: "guest", dom: true });
+      exec(prod, stub);
+      stub.dispatch("pageshow", { persisted: false });
+      expect(stub.attrs["data-splash"]).toBe("on");
+      stub.dispatch("pageshow", { persisted: true });
+      expect(stub.attrs["data-splash"]).toBe("done");
+      expect(stub.app.hasAttribute("inert")).toBe(false);
+      expect(stub.marks).toContain("splash:done");
+      // nothing left listening: a key no longer reaches the runtime
+      expect(stub.dispatch("keydown", { key: "a" }).stopped).toBe(false);
     });
   });
 

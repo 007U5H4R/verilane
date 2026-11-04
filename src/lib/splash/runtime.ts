@@ -247,6 +247,8 @@ export function splashRuntime(): Runtime {
           else if (f.k === "uninert") {
             setInert(false);
             const o = overlay();
+            // EXE48: the exiting overlay leaves the tab order too (Q2)
+            if (o) o.setAttribute("inert", "");
             const a = d.activeElement as HTMLElement | null;
             if (o && a && o.contains(a) && a.blur) a.blur();
           } else if (f.k === "status") {
@@ -273,9 +275,17 @@ export function splashRuntime(): Runtime {
       apply(r.fx);
     }
 
+    // Phases are logged whether or not the splash is live, so a client-entry
+    // show() can replay what the mount already reported. "session" is the
+    // first phase of a GatedApp mount: it starts a new log.
+    let log: { phase: string; t: number }[] = [];
     function onPhase(e: Event) {
       const detail = (e as CustomEvent).detail;
-      if (detail && typeof detail.phase === "string") run({ type: "phase", phase: detail.phase, t: now() });
+      if (!detail || typeof detail.phase !== "string") return;
+      const t = now();
+      if (detail.phase === "session") log = [];
+      log.push({ phase: detail.phase, t: t });
+      run({ type: "phase", phase: detail.phase, t: t });
     }
 
     function onKey(e: KeyboardEvent) {
@@ -363,13 +373,30 @@ export function splashRuntime(): Runtime {
       if (!listening) return;
       listening = false;
       w.removeEventListener("keydown", onKey, true);
-      w.removeEventListener("verilane:splash", onPhase);
       // an armed swallow keeps the pointer listeners until its press ends
       if (!armed) bindPointer(false);
     }
 
+    function readEnv(): DecideEnv {
+      let storageOk = true;
+      let session: string | null = null;
+      let seen = false;
+      let force = false;
+      try {
+        session = w.localStorage.getItem(cfg.sessionKey);
+        const ss = w.sessionStorage;
+        seen = ss.getItem(cfg.seenKey) === "1";
+        if (cfg.forceParam) {
+          if (new URLSearchParams(w.location.search).get(cfg.forceParam) === "1") ss.setItem(cfg.forceKey, "1");
+          force = ss.getItem(cfg.forceKey) === "1";
+        }
+      } catch {
+        storageOk = false;
+      }
+      return { path: w.location.pathname, session: session, seen: seen, force: force, storageOk: storageOk, rm: false };
+    }
+
     function start() {
-      if (m && m.attr !== "done") return;
       const r = begin(now(), cfg);
       m = r.m;
       // a replay starts clean: no swallow carried over from the last run
@@ -377,13 +404,38 @@ export function splashRuntime(): Runtime {
       listening = true;
       w.addEventListener("keydown", onKey, true);
       bindPointer(true);
-      w.addEventListener("verilane:splash", onPhase);
+      const o = overlay();
+      if (o) o.removeAttribute("inert");
       apply(r.fx);
       watchApp();
+      // what this mount reported before show() ran
+      const t0 = m.t0;
+      log.slice().forEach(function (x) {
+        run({ type: "phase", phase: x.phase, t: Math.max(x.t, t0) });
+      });
+    }
+
+    // Hard load and client entry alike: once per tab, never while live.
+    function show() {
+      if (m && m.attr !== "done") return;
+      if (!decide(readEnv(), cfg)) return;
+      try {
+        w.sessionStorage.setItem(cfg.seenKey, "1");
+      } catch {
+        return;
+      }
+      start();
+    }
+
+    // A bfcache restore brings back a frozen live splash; end it at once.
+    function onPageShow(e: PageTransitionEvent) {
+      if (!e.persisted || !m || m.attr === "done") return;
+      m = with_(m, { attr: "done" });
+      apply([{ k: "uninert" }, { k: "attr", v: "done" }, { k: "mark", v: "splash:done" }]);
     }
 
     const api: SplashApi = {
-      show: start,
+      show: show,
       skip: function () {
         if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
         // the guard protects against stray input, not an explicit call
@@ -396,23 +448,11 @@ export function splashRuntime(): Runtime {
     };
     w.verilaneSplash = api;
 
-    let storageOk = true;
-    let session: string | null = null;
-    let force = false;
-    try {
-      session = w.localStorage.getItem(cfg.sessionKey);
-      const ss = w.sessionStorage;
-      if (cfg.forceParam) {
-        if (new URLSearchParams(w.location.search).get(cfg.forceParam) === "1") ss.setItem(cfg.forceKey, "1");
-        force = ss.getItem(cfg.forceKey) === "1";
-      }
-    } catch {
-      storageOk = false;
-    }
-    const env: DecideEnv = { path: w.location.pathname, session: session, seen: false, force: force, storageOk: storageOk, rm: false };
-    if (!decide(env, cfg)) return;
-    start();
-    // The skip button is server-rendered after this script; bind it once it exists.
+    w.addEventListener("verilane:splash", onPhase);
+    w.addEventListener("pageshow", onPageShow as EventListener);
+    show();
+    // The skip button is server-rendered after this script; bind it once it
+    // exists, whether or not this load showed the splash (client entry may).
     d.addEventListener("DOMContentLoaded", function () {
       const b = overlay() && overlay()!.querySelector("[data-splash-skip]");
       if (b) b.addEventListener("click", function () {
