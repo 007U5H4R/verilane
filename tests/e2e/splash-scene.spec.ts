@@ -535,7 +535,11 @@ test("EXE83: the splash logo and art are not fetched on a load where the splash 
   expect(on.splash).toMatch(/^(on|hold|exit|done)$/);
   expect(on.href).toBe(LOGO);
   expect(on.hits.length, "the logo is fetched when the splash shows").toBeGreaterThan(0);
-  expect(on.art.length, "the art is fetched when the splash shows").toBeGreaterThanOrEqual(1);
+  // Each layer on its own (R-7): a renamed layer would otherwise drop out of
+  // ART, and the `off` check above would stop guarding it without failing.
+  for (const layer of [/\/sky\./, /\/clouds-fg\./, /\/clouds-bg\./]) {
+    expect(on.art.some((p) => layer.test(p)), `${layer} is fetched when the splash shows (${on.art.join(", ")})`).toBe(true);
+  }
 });
 
 // TC-156: frame captures for the human look-check. They write to the
