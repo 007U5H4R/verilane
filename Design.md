@@ -452,3 +452,16 @@ The user chose to restyle the whole app closer to the Expensify web reference an
 - **Queue rows:** these are now separated row-cards with an 8px gap, replacing the single fused list.
 
 Also: the sidebar and icon rail are now sticky at full viewport height, and the top bar is translucent (`bg-canvas/75` + blur).
+
+## Revision R4 — 2026-11-02 (TASK-45 splash scoped exception)
+
+The root `Design.md` rejects gradients, glows, decorative motion, and redrawing the logo. The splash uses gradients, glow and a decorative loop under these limits:
+
+- **Where:** only inside `#splash`, only while `html[data-splash]` is not `done`, and only on first entry per tab.
+- **Logo:** the official `public/brand/verilane-logo-light.png` is used **unmodified**. It is split into two layers with static clip-paths, the same pattern `LogoCard.tsx` already uses:
+  - V: `inset(0 74.6% 0 0)`
+  - wordmark: `inset(0 0 0 25.4%)`
+
+  Nothing is redrawn, recoloured or traced.
+- **Glow:** only the lantern glow and the beam are luminous. No UI element has a glow. The bar fill is a `--rail-bright` → `--rail-mint` gradient, both existing tokens.
+- **Exit:** the app behind the splash is exactly today's `ShellSkeleton`. The exception leaves no residue.
