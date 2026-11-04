@@ -15,6 +15,7 @@
     "build:e2e": "NEXT_PUBLIC_E2E=1 next build",
     "e2e": "playwright test",
     "e2e:install": "tsx scripts/e2e-install.ts",
+    "e2e:splash-perf": "SPLASH_PERF=1 playwright test tests/e2e/splash-perf.spec.ts --project=chromium-light --workers=1",
     "check:secrets": "tsx scripts/check-bundle-secrets.ts",
     "route-budget": "tsx scripts/route-budget.ts",
     "check:e2e-hooks": "tsx scripts/check-e2e-hooks.ts",

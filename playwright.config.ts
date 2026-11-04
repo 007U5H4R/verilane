@@ -18,6 +18,9 @@ const port = process.env.E2E_PORT ?? "3100";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // TASK-45.2 (TP-45.h): the splash A/B is slow and noisy, so it runs only via
+  // `pnpm e2e:splash-perf` (SPLASH_PERF=1), never in the default `pnpm e2e`.
+  ...(process.env.SPLASH_PERF === "1" ? { grep: /@splash-perf/ } : { grepInvert: /@splash-perf/ }),
   outputDir: "test-results",
   use: {
     baseURL: `http://127.0.0.1:${port}`,
