@@ -40,6 +40,9 @@ export interface SplashConfig {
   guardMs: number;
   /** Hard ceiling = D + ceilingExtra; the overlay exits regardless. */
   ceilingExtra: number;
+  /** TASK-45.6 (Design §18): under prefers-reduced-motion, D is Drm, the ceiling is ceilingRm (from t0), the beat is 0, the bar shows from t0 and the exit is an instant cut. */
+  Drm: number;
+  ceilingRm: number;
   /** The bar is revealed this long after paint (Design §1: amends PRD R13's 4.0 s). */
   revealAt: number;
   /** Stalled: this long since the last phase, after reveal, not ready (Design §4). */
@@ -73,6 +76,8 @@ export interface Model {
   revealed: boolean;
   stalled: boolean;
   longStall: boolean;
+  /** TASK-45.6: prefers-reduced-motion at show(); fixed for this run. */
+  rm: boolean;
 }
 
 export type Effect =
@@ -120,7 +125,7 @@ declare global {
 interface Runtime {
   decide(env: DecideEnv, cfg: SplashConfig): boolean;
   progress(phases: string[]): number;
-  begin(t0: number, cfg: SplashConfig): { m: Model; fx: Effect[] };
+  begin(t0: number, cfg: SplashConfig, rm?: boolean): { m: Model; fx: Effect[] };
   step(m: Model, ev: SplashEvent, cfg: SplashConfig): { m: Model; fx: Effect[] };
   boot(w: Window, cfg: SplashConfig): void;
 }
@@ -153,7 +158,16 @@ export function splashRuntime(): Runtime {
     return Object.assign({}, m, patch);
   }
 
-  function begin(t0: number, cfg: SplashConfig): { m: Model; fx: Effect[] } {
+  // TASK-45.6: the reduced-motion run swaps D, the ceiling and the beat.
+  function dur(m: Model, cfg: SplashConfig): number {
+    return m.rm ? cfg.Drm : cfg.D;
+  }
+
+  function ceiling(m: Model, cfg: SplashConfig): number {
+    return m.t0 + (m.rm ? cfg.ceilingRm : cfg.D + cfg.ceilingExtra);
+  }
+
+  function begin(t0: number, cfg: SplashConfig, rm?: boolean): { m: Model; fx: Effect[] } {
     const m: Model = {
       t0: t0,
       attr: "on",
@@ -163,19 +177,22 @@ export function splashRuntime(): Runtime {
       tExit: null,
       skipped: false,
       lastT: t0,
-      revealed: false,
+      revealed: !!rm,
       stalled: false,
       longStall: false,
+      rm: !!rm,
     };
+    const D = dur(m, cfg);
     return {
       m: m,
       fx: [
         { k: "attr", v: "on" },
         { k: "mark", v: "splash:painted" },
-        { k: "timer", v: t0 + cfg.revealAt },
-        { k: "timer", v: t0 + cfg.D },
-        { k: "timer", v: t0 + cfg.D + cfg.stallLinePastD },
-        { k: "timer", v: t0 + cfg.D + cfg.ceilingExtra },
+        // reduced motion: the bar is there from the first frame
+        m.rm ? { k: "reveal" } : { k: "timer", v: t0 + cfg.revealAt },
+        { k: "timer", v: t0 + D },
+        { k: "timer", v: t0 + D + cfg.stallLinePastD },
+        { k: "timer", v: ceiling(m, cfg) },
       ],
     };
   }
@@ -189,7 +206,7 @@ export function splashRuntime(): Runtime {
     const stalled = revealed && !ready && t - m.lastT >= cfg.stallMs;
     // sticky until ready: a line that comes and goes reads as flicker
     const longStall =
-      !ready && (m.longStall || t - m.lastT >= cfg.stallLineMs || t >= m.t0 + cfg.D + cfg.stallLinePastD);
+      !ready && (m.longStall || t - m.lastT >= cfg.stallLineMs || t >= m.t0 + dur(m, cfg) + cfg.stallLinePastD);
     if (revealed && !m.revealed) fx.push({ k: "reveal" });
     if (stalled !== m.stalled) fx.push({ k: "stall", v: stalled });
     if (longStall !== m.longStall) fx.push({ k: "sub", v: longStall ? cfg.copy.stall : "" });
@@ -199,6 +216,15 @@ export function splashRuntime(): Runtime {
 
   function exit(m: Model, t: number, cfg: SplashConfig, fx: Effect[]): Model {
     // Mark first: it records when the exit began; un-inerting can take tens of ms.
+    // TASK-45.6: reduced motion cuts straight to done; there is no fade to wait for.
+    if (m.rm) {
+      fx.push({ k: "mark", v: "splash:exit" }, { k: "uninert" });
+      // as the fade path: the cut leaves no glint or "Still working" behind
+      if (m.stalled) fx.push({ k: "stall", v: false });
+      if (m.longStall) fx.push({ k: "sub", v: "" });
+      fx.push({ k: "attr", v: "done" }, { k: "mark", v: "splash:done" });
+      return with_(m, { attr: "done", tExit: t, stalled: false, longStall: false });
+    }
     fx.push({ k: "mark", v: "splash:exit" }, { k: "attr", v: "exit" }, { k: "uninert" }, { k: "timer", v: t + cfg.exitMs });
     // A ceiling or skip exit fades without the glint or "Still working" (review-45.4 R-4)
     if (m.stalled) fx.push({ k: "stall", v: false });
@@ -218,7 +244,7 @@ export function splashRuntime(): Runtime {
       let n = with_(m, { phases: phases, lastT: ev.t });
       fx.push({ k: "bar", v: progress(phases) });
       if ((ev.phase === "ready" || ev.phase === "error") && m.tReady === null) {
-        const exitAt = Math.max(m.t0 + cfg.D, ev.t + cfg.beatMs);
+        const exitAt = Math.max(m.t0 + dur(m, cfg), ev.t + (m.rm ? 0 : cfg.beatMs));
         n = with_(n, { tReady: ev.t, exitAt: exitAt });
         fx.push(
           { k: "status", v: ev.phase === "error" ? cfg.copy.error : cfg.copy.ready },
@@ -242,7 +268,7 @@ export function splashRuntime(): Runtime {
       }
       if (!live(m)) return { m: m, fx: fx };
       m = visuals(m, t, cfg, fx);
-      if (t >= m.t0 + cfg.D + cfg.ceilingExtra) {
+      if (t >= ceiling(m, cfg)) {
         fx.push({ k: "mark", v: "splash:ceiling" });
         const n = exit(m, t, cfg, fx);
         // Warn last: console.warn is slow under devtools and must not delay the exit.
@@ -250,7 +276,7 @@ export function splashRuntime(): Runtime {
         return { m: n, fx: fx };
       }
       if (m.exitAt !== null && t >= m.exitAt) return { m: exit(m, t, cfg, fx), fx: fx };
-      if (m.attr === "on" && t >= m.t0 + cfg.D) {
+      if (m.attr === "on" && t >= m.t0 + dur(m, cfg)) {
         fx.push({ k: "attr", v: "hold" });
         return { m: with_(m, { attr: "hold" }), fx: fx };
       }
@@ -381,6 +407,10 @@ export function splashRuntime(): Runtime {
 
     function onKey(e: KeyboardEvent) {
       if (!m || (m.attr !== "on" && m.attr !== "hold")) return;
+      // Tab moves focus to Skip intro (Design §8, TC-155); it never skips (EXE79).
+      // A real Shift+Tab sends a "Shift" keydown first, so a bare Shift is
+      // exempt too; Shift+letter still skips on the letter.
+      if (e.key === "Tab" || e.key === "Shift") return;
       const before = m.attr;
       run({ type: "input", t: now(), repeat: e.repeat, mod: e.ctrlKey || e.metaKey || e.altKey });
       // The skipping key reaches nothing behind the overlay. Its default is
@@ -436,6 +466,14 @@ export function splashRuntime(): Runtime {
       if (!listening) bindPointer(false);
     }
 
+    // The sheen mask's logo is fetched only once the splash shows (EXE83). On
+    // a hard load the overlay is parsed after this script, so DOMContentLoaded
+    // runs this again; a client entry or replay finds it in start().
+    function loadSheen() {
+      const s = q("image[data-href]");
+      if (s && !s.hasAttribute("href")) s.setAttribute("href", s.getAttribute("data-href") || "");
+    }
+
     function watchApp() {
       if (d.getElementById("verilane-app")) {
         setInert(true);
@@ -446,6 +484,7 @@ export function splashRuntime(): Runtime {
       const obs = new MO(function () {
         if (d.getElementById("verilane-app")) {
           if (m && (m.attr === "on" || m.attr === "hold")) setInert(true);
+          markupParsed();
           if (mo) mo.disconnect();
           mo = null;
         }
@@ -456,7 +495,15 @@ export function splashRuntime(): Runtime {
         if (mo) mo.disconnect();
         mo = null;
         if (m && (m.attr === "on" || m.attr === "hold")) setInert(true);
+        markupParsed();
       });
+    }
+
+    // TASK-45.6: on a hard load show() runs in <head>, before the overlay
+    // markup is parsed, so a reveal at t0 (reduced motion) finds no bar.
+    // #verilane-app follows the overlay, so once it exists the bar does too.
+    function markupParsed() {
+      if (m && m.revealed && m.attr !== "done") apply([{ k: "reveal" }]);
     }
 
     // Idempotent: stale timers tick after done and land here again.
@@ -484,11 +531,17 @@ export function splashRuntime(): Runtime {
       } catch {
         storageOk = false;
       }
-      return { path: w.location.pathname, session: session, seen: seen, force: force, storageOk: storageOk, rm: false };
+      let rm = false;
+      try {
+        rm = !!w.matchMedia && w.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      } catch {
+        rm = false;
+      }
+      return { path: w.location.pathname, session: session, seen: seen, force: force, storageOk: storageOk, rm: rm };
     }
 
-    function start() {
-      const r = begin(now(), cfg);
+    function start(rm: boolean) {
+      const r = begin(now(), cfg, rm);
       m = r.m;
       // a replay starts clean: no swallow carried over from the last run
       disarm();
@@ -497,6 +550,7 @@ export function splashRuntime(): Runtime {
       bindPointer(true);
       const o = overlay();
       if (o) o.removeAttribute("inert");
+      loadSheen();
       apply(r.fx);
       watchApp();
       // what this mount reported before show() ran
@@ -509,13 +563,14 @@ export function splashRuntime(): Runtime {
     // Hard load and client entry alike: once per tab, never while live.
     function show() {
       if (m && m.attr !== "done") return;
-      if (!decide(readEnv(), cfg)) return;
+      const env = readEnv();
+      if (!decide(env, cfg)) return;
       try {
         w.sessionStorage.setItem(cfg.seenKey, "1");
       } catch {
         return;
       }
-      start();
+      start(env.rm);
     }
 
     // A bfcache restore brings back a frozen live splash; end it at once.
@@ -551,6 +606,7 @@ export function splashRuntime(): Runtime {
     // The skip button is server-rendered after this script; bind it once it
     // exists, whether or not this load showed the splash (client entry may).
     d.addEventListener("DOMContentLoaded", function () {
+      if (m && (m.attr === "on" || m.attr === "hold")) loadSheen();
       const b = overlay() && overlay()!.querySelector("[data-splash-skip]");
       if (b) b.addEventListener("click", function () {
         api.skip();
@@ -581,6 +637,8 @@ export function splashConfig(e2e: boolean): SplashConfig {
     beatMs: 250,
     guardMs: 250,
     ceilingExtra: 4000,
+    Drm: 1000,
+    ceilingRm: 5000,
     revealAt: 3200,
     stallMs: 1500,
     stallLineMs: 4000,

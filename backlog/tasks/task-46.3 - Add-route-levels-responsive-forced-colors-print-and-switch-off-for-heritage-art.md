@@ -3,10 +3,10 @@ id: TASK-46.3
 title: >-
   Add route levels, responsive, forced-colors, print and switch-off for heritage
   art
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-02 16:53'
+updated_date: '2026-11-04 10:01'
 labels:
   - P1
 dependencies:

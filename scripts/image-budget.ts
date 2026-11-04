@@ -3,7 +3,8 @@
 // over 60 KB, any strip asset is over 25 KB, or any of the 8 expected files is
 // missing (so an empty directory can't pass). Reads the path-B asset directory
 // chosen by the TKT-46.02 verdict (EXE55): public/heritage/*.v1.{avif,webp}.
-// Run: `pnpm image-budget` (wired into `test:all` right after `route-budget`).
+// Run: `pnpm image-budget [dir]` (dir defaults to public/heritage; wired into
+// `test:all` right after `route-budget`).
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -25,7 +26,43 @@ export interface AssetFile {
   bytes: number;
 }
 
-const KIND = /^heritage-[a-z]+-(desk|strip)\./;
+/** Matches desk/strip assets, including size variants like `desk@2x` and `desk-2x`. */
+const KIND = /^heritage-[a-z]+-(desk|strip)\b/i;
+
+function limitFor(name: string): { kind: string; limit: number } | null {
+  const kind = KIND.exec(name)?.[1]?.toLowerCase();
+  if (!kind) return null;
+  return { kind, limit: kind === "desk" ? DESK_BUDGET : STRIP_BUDGET };
+}
+
+const errCode = (err: unknown) => (err as NodeJS.ErrnoException)?.code ?? String(err);
+
+/**
+ * Lists the files in `dir` with their sizes. An absent directory is empty (so
+ * every expected file is reported missing). Any other read failure, on the
+ * directory or on one entry, throws "cannot read <path>: <code>".
+ */
+export function listAssets(dir: string): AssetFile[] {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (err) {
+    if (errCode(err) === "ENOENT") return [];
+    throw new Error(`cannot read ${dir}: ${errCode(err)}`);
+  }
+  const files: AssetFile[] = [];
+  for (const name of names) {
+    const path = join(dir, name);
+    let st;
+    try {
+      st = statSync(path);
+    } catch (err) {
+      throw new Error(`cannot read ${path}: ${errCode(err)}`);
+    }
+    if (st.isFile()) files.push({ name, bytes: st.size });
+  }
+  return files;
+}
 
 export function checkBudget(
   files: AssetFile[],
@@ -37,9 +74,9 @@ export function checkBudget(
     if (!present.has(name)) errors.push(`${name} is missing`);
   }
   for (const f of files) {
-    const kind = KIND.exec(f.name)?.[1];
-    if (!kind) continue;
-    const limit = kind === "desk" ? DESK_BUDGET : STRIP_BUDGET;
+    const budget = limitFor(f.name);
+    if (!budget) continue;
+    const { kind, limit } = budget;
     if (f.bytes > limit) {
       errors.push(
         `${f.name} is ${f.bytes} bytes (${(f.bytes / 1024).toFixed(1)} KB), over the ${limit / 1024} KB ${kind} budget`,
@@ -50,27 +87,27 @@ export function checkBudget(
 }
 
 function main(): void {
-  const dir = join(process.cwd(), ASSET_DIR);
+  const dirArg = process.argv[2] ?? ASSET_DIR;
   let files: AssetFile[];
   try {
-    files = readdirSync(dir)
-      .filter((name) => statSync(join(dir, name)).isFile())
-      .map((name) => ({ name, bytes: statSync(join(dir, name)).size }));
-  } catch {
-    // An absent directory is reported as every expected file missing.
-    files = [];
+    // Relative paths resolve against the cwd; messages show the path as given.
+    files = listAssets(dirArg);
+  } catch (err) {
+    console.error(`image-budget: ${(err as Error).message}`);
+    process.exit(1);
   }
 
-  for (const f of files.filter((f) => KIND.test(f.name)).sort((a, b) => a.name.localeCompare(b.name))) {
-    const limit = /-desk\./.test(f.name) ? DESK_BUDGET : STRIP_BUDGET;
+  for (const f of files.sort((a, b) => a.name.localeCompare(b.name))) {
+    const budget = limitFor(f.name);
+    if (!budget) continue;
     const kb = (f.bytes / 1024).toFixed(1);
-    console.log(`${f.bytes > limit ? "OVER" : "ok  "}  ${kb.padStart(6)} KB / ${limit / 1024} KB  ${f.name}`);
+    console.log(`${f.bytes > budget.limit ? "OVER" : "ok  "}  ${kb.padStart(6)} KB / ${budget.limit / 1024} KB  ${f.name}`);
   }
 
   const res = checkBudget(files, EXPECTED);
   if (!res.ok) {
     for (const e of res.errors) console.error(`image-budget: ${e}`);
-    console.error(`image-budget: ${res.errors.length} problem(s) in ${ASSET_DIR}`);
+    console.error(`image-budget: ${res.errors.length} problem(s) in ${dirArg}`);
     process.exit(1);
   }
   console.log(

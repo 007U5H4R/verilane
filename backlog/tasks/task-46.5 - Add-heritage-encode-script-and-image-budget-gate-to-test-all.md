@@ -1,10 +1,10 @@
 ---
 id: TASK-46.5
 title: 'Add heritage encode script and image-budget gate to test:all'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-02 16:53'
+updated_date: '2026-11-04 12:21'
 labels:
   - P1
 dependencies:

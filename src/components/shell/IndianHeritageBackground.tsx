@@ -15,6 +15,8 @@ import { heritageLevelFor, isHeritageHome, scheduleIdleOnce } from "@/lib/herita
 // TASK-46.4: once the page is idle, `data-idle` gives the preload span the
 // other theme's image (CSS), so the first toggle swaps from cache (F4). Not on
 // `off`, not under Save-Data (scheduleIdleOnce); the effect cancels on unmount.
+// The layer outlives client navigations, so `idle` from a normal route is
+// gated on `!off` too: an off route never carries data-idle (R-1, TC-103b).
 export function IndianHeritageBackground() {
   const pathname = usePathname();
   const level = heritageLevelFor(pathname);
@@ -30,7 +32,7 @@ export function IndianHeritageBackground() {
       data-heritage=""
       data-level={level}
       data-home={isHeritageHome(pathname) ? "" : undefined}
-      data-idle={idle ? "" : undefined}
+      data-idle={idle && !off ? "" : undefined}
       className="pointer-events-none absolute inset-x-0 top-0 -z-10 select-none"
     >
       <span data-heritage-preload="" />
