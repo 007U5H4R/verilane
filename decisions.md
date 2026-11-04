@@ -948,3 +948,33 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 ## EXE97 · `splash-rm.spec.ts` forces each of TC-157–159's three runs with its own manifest mock, reusing `splash.spec.ts`'s helpers (TASK-45.6) — accepted
 - **Rule.** `beforeEach` emulates `reducedMotion: "reduce"` and holds `/seed/manifest.json` indefinitely (the TC-157/158-run-B/159 precondition: readiness never, or not before the probe). TC-158's run A unroutes the mock so a fresh guest's seeding completes well inside D_rm (1 s), proving the fast-ready path; run B keeps the hold and proves the 5 s ceiling path. TC-159 presses Escape past the 250 ms guard and checks `done` within budget plus the same `want + lag + 50` style slack used in `splash-bar.spec.ts` (kept small since rm has no lag probes of its own).
 - **File boundary.** Per the brief, new assertions live only in `tests/e2e/splash-rm.spec.ts`; `markup.ts` and `splash-bar.spec.ts` (TASK-45.5's territory) are untouched.
+
+## EXE98 · Clouds ship AVIF only; the sky ships AVIF + WebP (TASK-45.9, user decision 2026-11-04) — accepted
+- **Rule.** The user approved TC-163 (sky G1-r2-b, clouds G2-r2-a) on 2026-11-04 and ruled that the sky ships AVIF with a WebP fallback, each ≤ 60 KB, and the clouds ship AVIF only, fg + bg ≤ 30 KB in total, with no WebP fallback.
+- **Consequence.** A browser without AVIF gets the sky from the WebP and no clouds. The cloud strips fail to decode and the gradient and sky show through. That is accepted. TC-164's Expected line is amended to say so.
+- **Files.** `src/assets/splash/sky.avif` 49,737 B, `sky.webp` 22,026 B, `clouds-fg.avif` 12,269 B, `clouds-bg.avif` 11,752 B (clouds 24,021 B in total). They are byte-identical copies of the approved encodes in `task45/gen/encode/`, with no re-encode.
+
+## EXE99 · Raster budget: the sky is capped per format and the clouds across formats, which supersedes the ledger's single 60 KB total (TASK-45.9) — accepted, flagged
+- **Rule.** `splash-budget` fails if any one sky file is over 60 KB, or if all the cloud files together are over 30 KB. This was committed red-first in ed49fd5.
+- **Conflict.** The orchestrator ledger records 45.7 review R-2 as "one 60 KB total across sky and clouds". The 45.9 brief carries the user's 2026-11-04 caps (sky 60 KB per format, clouds 30 KB total), and those are what is enforced. A browser with AVIF fetches 49.7 + 12.3 + 11.8 = 73.8 KB. That is over a single 60 KB total but within the caps the user approved. If R-2 is meant to stand, the sky AVIF needs re-tuning, and that is a separate ruling.
+
+## EXE100 · Cloud geometry and opacity follow the approved TC-163 composite, not the placeholder rules (TASK-45.9) — accepted
+- **Rule.** These values are taken from `task45/gen/tools/composite.mjs`, which produced the frames the user approved:
+  - background cloud: left −10vw, top 10vh, 125vw × 19.5vw, opacity 0.2
+  - foreground cloud: left −8vw, top 50vh, 130vw × 24.4vw, opacity 0.32
+  - sky plate: `62% 70% / cover`
+- **Removed.** The placeholder's `border-radius: 50%` and radial-gradient puffs are gone. So is Design §12's phone override for the foreground cloud (top 58vh, 80vw × 22vw, opacity 0.8). The approved 375 composite keeps the desktop foreground geometry at 0.32, and the user approved that frame. The composite is the newer and more specific decision, so the §12 placeholder rule does not carry over to real art. The background cloud stays hidden at ≤ 600 px, as before.
+- **Kept.** The drift keyframes and the 2:1 parallax (TC-152) are unchanged.
+
+## EXE101 · Lightning CSS leaves a var()-free `image-set()` unhashed, so the clouds use `url()` and splash-budget checks the built CSS (TASK-45.9) — accepted
+- **Finding.** In Next 16.4.3 (Turbopack with Lightning CSS), a single-candidate `image-set(url(x.avif) type("image/avif"))` with no `var()` in the declaration is parsed and printed back as `image-set("../assets/splash/x.avif" 1x type(...))` with a `-webkit-image-set(url(../assets/...))` fallback. The path is never rewritten, so it would 404. The sky's `image-set()` is hashed only because the same declaration carries a `var()` (in the gradients), and that keeps the value as raw tokens. Two failed builds showed this, in both the `background-image` and the shorthand form.
+- **Rule.** The clouds use a plain `url()` (AVIF only, EXE98), which Turbopack hashes. The sky keeps `image-set()` with its WebP fallback.
+- **Guard.** `splash-budget` now runs `checkBuiltRefs` (TDD: 4 red then green). The built `.next/static/chunks/*.css` that carries `#verilane-splash` must reference every splash raster as `url(../media/<stem>.<hash><ext>)`, and any leftover `assets/splash/` string fails. On the broken build the gate exited 1 with 6 findings (`task45/45.9/splash-budget-red-on-broken-build.log`). So if the sky's `var()` is ever removed and its URLs stop being hashed, the gate goes red instead of the image going missing.
+- **Observed hashed URLs.** `../media/sky.238e-cvcczsaz.avif`, `../media/sky.1l_v5iwf51lrn.webp`, `../media/clouds-fg.36uox7uoktvrl.avif`, `../media/clouds-bg.0i2dy4elzrq2l.avif`.
+
+## EXE102 · TC-165 holds the rasters at the network, and the scene specs wait for the art to decode (TASK-45.9) — accepted
+- **TC-165.** `page.route` matches `/_next/static/media/(sky|clouds-(fg|bg)).<hash>.(avif|webp)` and holds each request for 10 s.
+  - At 200, 1500, 3500 and 5200 ms after `splash:painted`, it checks that nothing has been released and the phase is `on`.
+  - At each of those times it samples four sky-band pixels, which must be dark (relative luminance < 0.08) and green-led, i.e. the placeholder gradient and not a blank or light frame.
+  - It then requires a fast `splash:ready` (< D − 250) and `splash:done` within 6000 ± 200 ms of `splash:painted`.
+- **Art wait.** `openSplash()` now also awaits `artLoaded()`. For each displayed scene layer it takes the first `url()` of the computed `background-image`, decodes it with `new Image().decode()`, then waits two frames. So TC-154's contrast and TC-156's captures measure the real art rather than a gradient frame. TC-165 does not use it.

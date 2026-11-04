@@ -293,7 +293,7 @@
 - **Expected:** The overlay pixels are identical across themes. After the exit, the app shows its theme with no white flash.
 
 ### TC-154 · Bar fill ≥ 3:1 and text ≥ 4.5:1 against the scene
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass on placeholder art (2026-11-04, 5c9c72a, EXE77; re-run on final art in TASK-45.9) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass on final art (2026-11-05, 5ceccb0, TASK-45.9; reveal fill 4.90/8.56, status 8.57, skip 4.72, hint 7.43; hold fill-end 3.65 light, fill-start 4.12 light / 4.07 dark) · **Finding:** —
 - **Objective:** WCAG non-text and text contrast.
 - **Preconditions:** splash-on; frames paused at reveal and at hold. Re-run on the final art in TASK-45.9.
 - **Steps:** Sample pixels at the fill start, the fill end, the status text and the skip label against the pixels behind them.
@@ -312,7 +312,7 @@
   - The label swaps per pointer type (Design §18).
 
 ### TC-156 · Frame screenshots match the frozen design beats
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (captured 2026-11-04 at 5c9c72a; pairs listed in the TASK-45.5 report) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (re-captured on final art 2026-11-05 at 5ceccb0; 33 shots at /Volumes/E Drive/Dev/.scratch/task45/45.9/shots/) · **Finding:** —
 - **Objective:** The implementation matches the approved mockup.
 - **Preconditions:** splash-on; `page.clock` at each beat; 1440 / 768 / 375.
 - **Steps:** Capture each beat; review side by side with `.design/exploration/task-45/shots/`.
@@ -344,7 +344,7 @@
 - **Expected:** `done` within 50 ms; `inert` removed.
 
 ### TC-160 · The `splash-budget` gate measures and fails correctly
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80; re-run 2026-11-05, 5ceccb0) · **Finding:** —
 - **Objective:** The gate is trustworthy.
 - **Preconditions:** vitest `unit`; injectable readers.
 - **Steps:** Feed under-budget and over-budget inputs: inline bytes, rasters (60/30 KB) and route deltas.
@@ -360,7 +360,7 @@
 - **Expected:** Every route's delta is ≤ 512 B; `route-budget` stays green (`/settings` < 300 KB).
 
 ### TC-162 · Zero splash bytes in shared JS when the splash is off; the inline total is ≤ ≈15 KB gzip
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80; re-run 2026-11-05, 5ceccb0) · **Finding:** —
 - **Objective:** The runtime and scene live in HTML and CSS, not in JS chunks.
 - **Preconditions:** `pnpm build`. This is re-run after TASK-45.9.
 - **Steps:** Scan `.next/static/chunks` for runtime markers such as `verilane-splash-seen`; run `pnpm splash-budget` for the inline total.
@@ -384,15 +384,15 @@
   - The selection, round count and spend are recorded in HANDOFF.
 
 ### TC-164 · Final rasters are within budget and served hashed
-- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.1, 45.9.3 · S-budget · **Type:** static + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.1, 45.9.3 · S-budget · **Type:** static + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-05, 5ceccb0; sky 49,737 B AVIF / 22,026 B WebP, clouds 24,021 B AVIF total, all four URLs hashed) · **Finding:** —
 - **Objective:** The art ships cheaply.
 - **Preconditions:** Finals are in `src/assets/splash/`; `pnpm build`.
 - **Steps:** Run `pnpm splash-budget`; load `/?__splash=1` and collect the image requests.
 - **Data:** —
-- **Expected:** Sky ≤ 60 KB and clouds ≤ 30 KB (AVIF, with a WebP fallback within the same caps). The URLs are content-hashed via `image-set()`.
+- **Expected:** Sky ≤ 60 KB per format (AVIF, with a WebP fallback) and clouds ≤ 30 KB total, clouds AVIF-only per user decision 2026-11-04, EXE98. The URLs are content-hashed (the sky via `image-set()`, the clouds via `url()`, EXE101).
 
 ### TC-165 · The splash never waits on the art
-- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.2 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.2 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-05, 5ceccb0; 3 rasters held, 0 released before done; done 6004 ms light / 6002 ms dark) · **Finding:** —
 - **Objective:** A slow image does not extend the splash or block readiness.
 - **Preconditions:** splash-on; `page.route` delays the splash rasters by 10 s.
 - **Steps:** Time to `done`, with ready fast.
