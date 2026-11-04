@@ -450,9 +450,32 @@ test("TC-137: client entry from onboarding paints the splash in or before the fi
   });
   // Every animation frame: the first frame (after the probe is armed) with a
   // skeleton in the DOM, and the splash state at that frame.
+  // Review R-1: a rAF sample can't tell a layout effect from a passive one,
+  // since both can land before the next frame. A MutationObserver callback
+  // runs at the microtask checkpoint right after the commit task that inserts
+  // the skeleton: a layout effect has set data-splash by then, but a passive
+  // effect scheduled as a later task has not.
   await context.addInitScript((sel) => {
-    const p = { armed: false, frame: 0, skeletonFrame: -1, splashAtSkeleton: null as string | null, splashFrame: -1 };
+    const p = {
+      armed: false,
+      frame: 0,
+      skeletonFrame: -1,
+      splashAtSkeleton: null as string | null,
+      splashFrame: -1,
+      splashAtInsert: "unseen" as string | null,
+    };
     (window as unknown as { __probe: typeof p }).__probe = p;
+    new MutationObserver((records) => {
+      if (!p.armed || p.splashAtInsert !== "unseen") return;
+      for (const r of records) {
+        for (const n of Array.from(r.addedNodes)) {
+          if (n instanceof Element && (n.matches(sel) || n.querySelector(sel))) {
+            p.splashAtInsert = document.documentElement.getAttribute("data-splash");
+            return;
+          }
+        }
+      }
+    }).observe(document, { childList: true, subtree: true });
     const tick = () => {
       if (p.armed) {
         p.frame += 1;
@@ -484,12 +507,21 @@ test("TC-137: client entry from onboarding paints the splash in or before the fi
   await page.getByRole("button", { name: "Get started" }).dblclick();
   await expect(page).toHaveURL(/\/$/);
   await waitForSplash(page, "on");
+  // Review R-2: the second click is not a skip (as TC-131 checks for input).
+  expect(await markAt(page, "splash:skip")).toBeNull();
+  expect(["on", "hold"]).toContain(await splashState(page));
   await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
 
   const probe = await page.evaluate(
-    () => (window as unknown as { __probe: { skeletonFrame: number; splashAtSkeleton: string | null; splashFrame: number } }).__probe,
+    () =>
+      (
+        window as unknown as {
+          __probe: { skeletonFrame: number; splashAtSkeleton: string | null; splashFrame: number; splashAtInsert: string | null };
+        }
+      ).__probe,
   );
   expect(probe.skeletonFrame, "a skeleton frame was observed").toBeGreaterThan(0);
+  expect(probe.splashAtInsert, "data-splash when the skeleton was inserted").toBe("on");
   expect(probe.splashAtSkeleton).toBe("on");
   expect(probe.splashFrame).toBeLessThanOrEqual(probe.skeletonFrame);
   expect(await paintedCount(page)).toBe(1);
