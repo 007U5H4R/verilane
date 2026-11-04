@@ -384,7 +384,7 @@
   - The selection, round count and spend are recorded in HANDOFF.
 
 ### TC-164 · Final rasters are within budget and served hashed
-- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.1, 45.9.3 · S-budget · **Type:** static + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-05, 5ceccb0; sky 49,737 B AVIF / 22,026 B WebP, clouds 24,021 B AVIF total, all four URLs hashed) · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.1, 45.9.3 · S-budget · **Type:** static + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-05, 5ceccb0; sky 49,737 B AVIF / 22,026 B WebP, clouds 24,021 B AVIF total, all four URLs hashed; requests: see the TC-165 annotation, three hashed /_next/static/media/ AVIF URLs on /queue?__splash=1) · **Finding:** —
 - **Objective:** The art ships cheaply.
 - **Preconditions:** Finals are in `src/assets/splash/`; `pnpm build`.
 - **Steps:** Run `pnpm splash-budget`; load `/?__splash=1` and collect the image requests.
