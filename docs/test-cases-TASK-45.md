@@ -253,12 +253,12 @@
 - **Expected:** Exit at the ceiling; the last `aria-valuenow` is < 100; the app's own failure UI is reachable and not `inert`.
 
 ### TC-149 · The DataProvider error path exits promptly and reveals the error
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass with open question (2026-11-04, 3c0bd57, EXE70, EXE72, EXE75): the bar reaches 100 on error per PRD R13 / Design §7, not < 100 as written · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3c0bd57, EXE70, EXE72, EXE75) · **Finding:** —
 - **Objective:** `error` is a terminal phase like `ready`.
 - **Preconditions:** splash-on; a fresh profile whose `/seed/manifest.json` request is aborted (EXE72), which drives the provider's error path.
 - **Steps:** Wait for `done`.
 - **Data:** —
-- **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar stays < 100; the existing error render is visible.
+- **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar completes to 100, since `error` is terminal like `ready` (PRD R13, Design §7, EXE70); the existing error render is visible.
 
 ### TC-150 · A skip at 65 % does not complete the bar
 - **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —

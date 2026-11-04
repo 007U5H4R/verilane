@@ -694,9 +694,9 @@
 - **Red proof.** With the `showSplash()` call removed from GatedApp's layout effect, TC-137 fails: the splash never turns on.
 - **Start step.** The spec opens `/onboarding?step=3` instead of clicking through steps 1–2. Steps 1–2 are client-side `?step=` pushes that never mount GatedApp, so they do not change what is measured.
 
-## EXE70 · The error phase completes the bar to 100, like ready (TASK-45.4) — open for the orchestrator
+## EXE70 · The error phase completes the bar to 100, like ready (TASK-45.4) — accepted 2026-11-04 (orchestrator, under the user's delegation)
 - **Rule.** `error` is terminal like `ready` (PRD R13, Design §7), so `progress()` maps it to 100 and the exit is at `max(t0 + D, tError + 250)`.
-- **Conflict.** TC-149 says "the bar stays < 100". TC-149 asserts 100 and is marked "Pass with open question". The TC expectation is unchanged until the user rules.
+- **Conflict.** TC-149 says "the bar stays < 100". TC-149 asserts 100 and is marked "Pass with open question". Ruled: the PRD and Design outrank the TC wording, so TC-149's expected result is amended to "completes to 100".
 
 ## EXE71 · The splash-bar e2e uses the real clock, timed from `splash:painted` (TASK-45.4) — accepted
 - **Rule.** In-page times are relative to `splash:painted` (t0), and the test waits with `waitPastT0`, not `page.clock`. `page.clock` would freeze the pre-hydration runtime and the provider's IDB work together.
