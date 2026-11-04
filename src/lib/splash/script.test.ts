@@ -231,7 +231,7 @@ describe("buildSplashScript", () => {
       const stub = stubWindow({ session: "guest", clock });
       exec(prod, stub);
       clock.t = 300;
-      const down = stub.dispatch("pointerdown");
+      const down = stub.dispatch("pointerdown", { button: 0 });
       expect(stub.attrs["data-splash"]).toBe("exit");
       expect(down.stopped).toBe(true);
       return { stub, clock };
@@ -262,7 +262,7 @@ describe("buildSplashScript", () => {
       clock.t = 310;
       stub.dispatch("pointerup");
       clock.t = 400;
-      stub.dispatch("pointerdown");
+      stub.dispatch("pointerdown", { button: 0 });
       clock.t = 410;
       stub.dispatch("pointerup");
       expect(stub.dispatch("click").defaultPrevented).toBe(false);
@@ -274,6 +274,34 @@ describe("buildSplashScript", () => {
       stub.dispatch("pointercancel");
       clock.t = 400;
       expect(stub.dispatch("click").defaultPrevented).toBe(false);
+    });
+
+    // N-1: only a primary press has a click of its own to swallow.
+    it("a right-button skip arms nothing, so a later keyboard click reaches the app", () => {
+      const clock = { t: 0 };
+      const stub = stubWindow({ session: "guest", clock });
+      exec(prod, stub);
+      clock.t = 300;
+      stub.dispatch("pointerdown", { button: 2 });
+      expect(stub.attrs["data-splash"]).toBe("exit");
+      clock.t = 400;
+      expect(stub.dispatch("click", { detail: 0 }).defaultPrevented).toBe(false);
+    });
+
+    it("a keyboard-activated click (detail 0) is not the press's click", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 310;
+      expect(stub.dispatch("click", { detail: 0 }).defaultPrevented).toBe(false);
+      stub.dispatch("pointerup");
+      expect(stub.dispatch("click", { detail: 1 }).defaultPrevented).toBe(true);
+    });
+
+    it("a context menu ends the swallow", () => {
+      const { stub, clock } = skipByPointer();
+      clock.t = 310;
+      stub.dispatch("contextmenu");
+      stub.dispatch("pointerup");
+      expect(stub.dispatch("click", { detail: 1 }).defaultPrevented).toBe(false);
     });
 
     it("only one click is swallowed", () => {
@@ -292,7 +320,7 @@ describe("buildSplashScript", () => {
     const stub = stubWindow({ session: "guest", clock });
     exec(prod, stub);
     clock.t = 300;
-    stub.dispatch("pointerdown");
+    stub.dispatch("pointerdown", { button: 0 });
     stub.dispatch("pointerup");
     stub.dispatch("click");
     clock.t = 700;
@@ -308,7 +336,7 @@ describe("buildSplashScript", () => {
     // Fire whatever stop() left behind; it must not unbind the new run.
     leftBehind.forEach((x) => x.fn());
     clock.t = 1100;
-    stub.dispatch("pointerdown");
+    stub.dispatch("pointerdown", { button: 0 });
     expect(stub.attrs["data-splash"]).toBe("exit");
     stub.dispatch("pointerup");
     expect(stub.dispatch("click").defaultPrevented).toBe(true);
