@@ -314,3 +314,83 @@ test("TC-097b: shell overlays paint above bottom tabs at 375 (R-1)", async ({ pa
     expect(h).toMatchObject({ inDialog: false, inNav: true, href: h.target });
   }
 });
+
+// TASK-46.3 · Route levels, responsive, forced colors, print, switch-off.
+
+type Load = {
+  url: string;
+  viewport?: { width: number; height: number };
+  media?: Parameters<Page["emulateMedia"]>[0];
+};
+
+/**
+ * Load `url` in a fresh context (empty cache, SW blocked, the project's color
+ * scheme) and report every heritage request it made and the band's state.
+ */
+async function loadFresh(browser: Browser, baseURL: string, colorScheme: "light" | "dark", load: Load) {
+  const context = await browser.newContext({ baseURL, colorScheme, serviceWorkers: "block", viewport: load.viewport });
+  const page = await context.newPage();
+  if (load.media) await page.emulateMedia(load.media);
+  const requests: string[] = [];
+  page.on("request", (r) => {
+    if (/heritage-/.test(r.url())) requests.push(new URL(r.url()).pathname);
+  });
+  await page.goto(load.url);
+  await page.waitForLoadState("networkidle");
+  const band = await page.evaluate(() => {
+    const el = document.querySelector("[data-heritage]");
+    if (!el) return null;
+    return { level: el.getAttribute("data-level"), display: getComputedStyle(el).display, idle: el.hasAttribute("data-idle") };
+  });
+  const pathname = new URL(page.url()).pathname;
+  const count = await page.locator("[data-heritage]").count();
+  await context.close();
+  return { requests, band, pathname, count };
+}
+
+function schemeOf(info: { project: { use: { colorScheme?: string | null } } }): "light" | "dark" {
+  return info.project.use.colorScheme === "dark" ? "dark" : "light";
+}
+
+test("TC-101: below 768 only Home fetches art, and only the theme's strip (F5)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  const viewport = { width: 390, height: 844 };
+
+  const home = await loadFresh(browser, baseURL!, theme, { url: "/", viewport });
+  expect(home.band).toMatchObject({ level: "normal", display: "block" });
+  expect(home.requests.length).toBeGreaterThan(0);
+  for (const r of home.requests) expect(r).toMatch(new RegExp(`^/heritage/heritage-${theme}-strip\\.v\\d+\\.(avif|webp)$`));
+
+  for (const url of ["/queue", "/drafts"]) {
+    const off = await loadFresh(browser, baseURL!, theme, { url, viewport });
+    expect(off.pathname, url).toBe(url);
+    expect(off.band?.display, url).toBe("none");
+    expect(off.requests, url).toEqual([]);
+  }
+});
+
+test("TC-102: forced colors and print hide the art and fetch nothing (F6)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  for (const media of [{ forcedColors: "active" }, { media: "print" }] as const) {
+    const r = await loadFresh(browser, baseURL!, theme, { url: "/", viewport: { width: 1440, height: 900 }, media });
+    expect(r.band?.display, JSON.stringify(media)).toBe("none");
+    expect(r.requests, JSON.stringify(media)).toEqual([]);
+  }
+});
+
+test("TC-103: a route at level off renders an inert layer and fetches nothing (SC9)", async ({ browser, baseURL }, info) => {
+  const r = await loadFresh(browser, baseURL!, schemeOf(info), { url: "/e2e-harness", viewport: { width: 1440, height: 900 } });
+  expect(r.pathname).toBe("/e2e-harness");
+  expect(r.band).toEqual({ level: "off", display: "none", idle: false });
+  expect(r.requests).toEqual([]);
+});
+
+test("TC-104: auth routes never mount the layer (F1)", async ({ browser, baseURL }, info) => {
+  for (const route of ["/welcome", "/sign-in", "/sign-up", "/onboarding"]) {
+    // Signed out per tab (see onboarding.spec), so the bare auth screen renders.
+    const r = await loadFresh(browser, baseURL!, schemeOf(info), { url: `${route}?__session=none`, viewport: { width: 1440, height: 900 } });
+    expect(r.pathname, route).toBe(route);
+    expect(r.count, route).toBe(0);
+    expect(r.requests, route).toEqual([]);
+  }
+});
