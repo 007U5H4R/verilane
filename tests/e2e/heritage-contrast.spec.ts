@@ -47,6 +47,19 @@ const P_BAND: Record<Level, [number, number]> = {
 // without a zone carve-out.
 const LIGHT_ZONE_FLOOR_LSTAR = 92.1;
 
+// PRD §6.2 / brief 46.6.4: the dark art's brightest (98th percentile) L*
+// per level. The aesthetic bound that stands in for the light zone floor.
+const DARK_PEAK_LSTAR: Record<Level, [number, number]> = {
+  normal: [13, 19.5],
+  reduced: [9.5, 13],
+};
+
+// SC2 measures the art, not the page: every element except the heritage
+// layer is hidden before the screenshot. Without this, the 2nd/98th
+// percentile lands on UI ink (text, borders, buttons) instead of the art,
+// and P reads 0.2-0.7 on every route regardless of the CSS opacity.
+const ART_ONLY_CSS = "body *{visibility:hidden !important;} [data-heritage]{visibility:visible !important;}";
+
 interface Box {
   x: number;
   y: number;
@@ -221,8 +234,16 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 // ── TC-115: SC2, prominence stays inside the band per level ─────────────────
+// FIXME(TASK-46.6): parked pending the user's call on the SC2 escalation
+// in the TASK-46.6 handback report.
+// The committed PLACEHOLDER art misses the plan's bands at the art level,
+// independent of the reduced opacity: light normal P 0.061-0.062 (< 0.08),
+// dark normal P 0.037 and peak L* 9.3 (< 13), dark reduced P 0.019 and peak
+// L* 7.7 (< 9.5). Light reduced at 0.6 (P 0.041, zone L* 94.2) and the light
+// zone floor (92.12) pass. Re-enable once the final art lands (46.8); the
+// bands are the plan's and must not be loosened to make this pass.
 for (const theme of ["light", "dark"] as const) {
-  test(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
+  test.fixme(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
     test.skip(info.project.name !== "chromium-light", "both themes are forced via localStorage on this one project");
     // Same route × width sweep as TC-113/TC-114, plus per-route screenshotting;
     // well past the default 30s test timeout, so give it room.
@@ -239,6 +260,7 @@ for (const theme of ["light", "dark"] as const) {
             expect.soft(band, `${url} ${theme} ${width}: no heritage band (unexpected for level ${level})`).not.toBeNull();
             continue;
           }
+          await page.addStyleTag({ content: ART_ONLY_CSS });
           const png = await page.screenshot();
           // Outside-zone sample: the band box minus the zone rectangle, as the
           // two rects that remain (right of the zone; below the zone).
@@ -251,6 +273,11 @@ for (const theme of ["light", "dark"] as const) {
             const [lo, hi] = P_BAND[level];
             expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level})`).toBeGreaterThanOrEqual(lo);
             expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level})`).toBeLessThanOrEqual(hi);
+            if (theme === "dark") {
+              const [dlo, dhi] = DARK_PEAK_LSTAR[level];
+              expect.soft(peakL, `${url} ${theme} ${width} outside-zone peak L* (level ${level})`).toBeGreaterThanOrEqual(dlo);
+              expect.soft(peakL, `${url} ${theme} ${width} outside-zone peak L* (level ${level})`).toBeLessThanOrEqual(dhi);
+            }
           }
           // Light-only text-zone floor: PRD §6.2 — art inside the zone must
           // stay at L* ≥ 92.1 so --text-muted keeps AA. Dark has no AA floor
