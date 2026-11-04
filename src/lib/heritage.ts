@@ -28,10 +28,20 @@ export const HERITAGE_LEVELS: Readonly<Record<string, HeritageLevel>> = {
 /** A new route never gets full-strength art by accident (TC-100). */
 const DEFAULT_LEVEL: HeritageLevel = "reduced";
 
+/** The path alone: no query or hash, no trailing slash (except Home's). */
+function normalise(pathname: string): string {
+  const path = pathname.split(/[?#]/, 1)[0]!;
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+/** Home is the one route that keeps the strip below 768px (`data-home`). */
+export function isHeritageHome(pathname: string): boolean {
+  return normalise(pathname) === "/";
+}
+
 export function heritageLevelFor(pathname: string, enabled: boolean = HERITAGE_ENABLED): HeritageLevel {
   if (!enabled) return "off";
-  let path = pathname.split(/[?#]/, 1)[0]!;
-  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  const path = normalise(pathname);
   const exact = HERITAGE_LEVELS[path];
   if (exact) return exact;
   const segments = path.split("/");
