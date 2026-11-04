@@ -59,16 +59,20 @@ async function check(files: string[], theme: "light" | "dark", deskW: number, de
   }
 }
 
+// AVIF at effort 9 (the real setting) takes ~8 s per test idle; 120 s leaves room
+// for a parallel build on the same machine and is still a finite cap.
+const ENCODE_TIMEOUT = 120_000;
+
 describe("encodeHeritage", () => {
   it("TC-112: writes 4 files — desk 2400×1029 and strip 1200×480, AVIF + WebP, no ICC/EXIF", async () => {
     const out = join(dir, "default");
     const files = await encodeHeritage(master, "light", { out });
     await check(files, "light", 2400, 1029);
-  });
+  }, ENCODE_TIMEOUT);
 
   it("TC-112: --width 2000 gives a 2000×857 desk; the strip stays 1200×480", async () => {
     const out = join(dir, "w2000");
     const files = await encodeHeritage(master, "dark", { out, width: 2000 });
     await check(files, "dark", 2000, 857);
-  });
+  }, ENCODE_TIMEOUT);
 });
