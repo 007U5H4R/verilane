@@ -1,17 +1,22 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 
-// TASK-45.2 · Splash tracer (TC-128, TC-129, TC-131–TC-135). The splash is
+// TASK-45.2 · Splash tracer (TC-128, TC-129, TC-131–TC-135); TASK-45.3 adds
+// once per tab, client entry and the R7 pinning (TC-137–TC-141). The splash is
 // off by default in the e2e build; `?__splash=1` forces it (TP-45.f). Times
 // are read from the page's own marks, relative to `splash:painted` (t0).
 
 const FORCE = "?__splash=1";
 
-/** The "splash-on" preconditions from docs/test-cases-TASK-45.md. */
+/** The "splash-on" preconditions from docs/test-cases-TASK-45.md. The seen
+ * flag is cleared once per tab (TASK-45.3), so a reload sees the real flag. */
 async function splashOn(context: BrowserContext) {
   await context.addInitScript(() => {
     try {
       window.localStorage.setItem("verilane-session", "guest");
-      window.sessionStorage.removeItem("verilane-splash-seen");
+      if (window.sessionStorage.getItem("e2e:splash-reset") === null) {
+        window.sessionStorage.removeItem("verilane-splash-seen");
+        window.sessionStorage.setItem("e2e:splash-reset", "1");
+      }
     } catch {
       // Storage blocked: the splash stays off, and the spec fails loudly.
     }
@@ -397,7 +402,240 @@ test.describe("TC-135: off by default in e2e builds; ?__splash=1 forces it", () 
     await waitPastT0(page, 300);
     await page.keyboard.press("Escape");
     await waitForSplash(page, "done");
-    // Step 3 (client-entry splash after onboarding Finish) needs the seen flag
-    // and client entry from TASK-45.3; it is covered there by TC-137 (EXE decision).
+    // Step 3 (client-entry splash after onboarding Finish, forced by the
+    // param it was opened with) is covered by TC-137 (TASK-45.3).
+  });
+});
+
+/** Records every `data-splash` value the page ever sets, from the first byte. */
+async function recordSplashAttrs(context: BrowserContext) {
+  await context.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __splashAttrs: string[] }).__splashAttrs = seen;
+    new MutationObserver(() => {
+      const v = document.documentElement?.getAttribute("data-splash");
+      if (v != null) seen.push(v);
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-splash"] });
+  });
+}
+
+const splashAttrs = (page: Page) => page.evaluate(() => (window as unknown as { __splashAttrs: string[] }).__splashAttrs);
+
+const paintedCount = (page: Page) => page.evaluate(() => performance.getEntriesByName("splash:painted").length);
+
+/** Skips a forced splash on a hard load and waits until it is done. */
+async function skipSplash(page: Page) {
+  await waitForSplash(page, "on");
+  await waitPastT0(page, 300);
+  await page.keyboard.press("Escape");
+  await waitForSplash(page, "done");
+}
+
+// TASK-45.3 · 45.3.3. `[data-skeleton]` in the TC text does not exist in the
+// app; every loading skeleton carries `data-state="loading"` (EXE49), and
+// adding a marker would change the gate's output (R7).
+const SKELETON = '[data-state="loading"]';
+
+test("TC-137: client entry from onboarding paints the splash in or before the first skeleton frame; a double click shows one", async ({
+  page,
+  context,
+}) => {
+  // Start signed out: this runs after splashOn's guest write, on the only hard load.
+  await context.addInitScript(() => {
+    try {
+      window.localStorage.removeItem("verilane-session");
+    } catch {
+      // storage blocked: the spec fails on the splash expectation below
+    }
+  });
+  // Every animation frame: the first frame (after the probe is armed) with a
+  // skeleton in the DOM, and the splash state at that frame.
+  await context.addInitScript((sel) => {
+    const p = { armed: false, frame: 0, skeletonFrame: -1, splashAtSkeleton: null as string | null, splashFrame: -1 };
+    (window as unknown as { __probe: typeof p }).__probe = p;
+    const tick = () => {
+      if (p.armed) {
+        p.frame += 1;
+        const splash = document.documentElement.getAttribute("data-splash");
+        if (splash !== null && p.splashFrame < 0) p.splashFrame = p.frame;
+        if (p.skeletonFrame < 0 && document.querySelector(sel)) {
+          p.skeletonFrame = p.frame;
+          p.splashAtSkeleton = splash;
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, SKELETON);
+  // Hold the seed so the loading frames last long enough to be seen.
+  await context.route("**/seed/manifest.json", async (route) => {
+    await new Promise((r) => setTimeout(r, 1000));
+    await route.continue();
+  });
+
+  await page.goto(`/onboarding${FORCE}&__session=none&step=3`);
+  await expect(page.getByRole("heading", { level: 1, name: "Prepare with confidence." })).toBeVisible();
+  expect(await splashState(page)).toBe("off"); // an auth route never shows it
+  expect(await page.locator(SKELETON).count()).toBe(0);
+  await page.evaluate(() => {
+    (window as unknown as { __probe: { armed: boolean } }).__probe.armed = true;
+  });
+
+  await page.getByRole("button", { name: "Get started" }).dblclick();
+  await expect(page).toHaveURL(/\/$/);
+  await waitForSplash(page, "on");
+  await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
+
+  const probe = await page.evaluate(
+    () => (window as unknown as { __probe: { skeletonFrame: number; splashAtSkeleton: string | null; splashFrame: number } }).__probe,
+  );
+  expect(probe.skeletonFrame, "a skeleton frame was observed").toBeGreaterThan(0);
+  expect(probe.splashAtSkeleton).toBe("on");
+  expect(probe.splashFrame).toBeLessThanOrEqual(probe.skeletonFrame);
+  expect(await paintedCount(page)).toBe(1);
+  expect(await page.evaluate(() => sessionStorage.getItem("verilane-splash-seen"))).toBe("1");
+});
+
+test("TC-138: a reload does not replay, in-app navigation never shows it, a new tab does", async ({ page, context }) => {
+  await page.goto(`/${FORCE}`, { waitUntil: "domcontentloaded" });
+  await skipSplash(page);
+
+  await recordSplashAttrs(context);
+  await page.reload();
+  await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
+  await page.waitForTimeout(500);
+  expect(await splashAttrs(page)).toEqual([]);
+  expect(await splashState(page)).toBe("off");
+
+  await page.getByRole("navigation").first().getByRole("link", { name: "Queue" }).first().click();
+  await expect(page).toHaveURL(/\/queue/);
+  await page.waitForTimeout(500);
+  expect(await splashAttrs(page)).toEqual([]);
+  expect(await appInert(page)).toBe(false);
+
+  const other = await context.newPage();
+  await other.goto(`/${FORCE}`, { waitUntil: "domcontentloaded" });
+  expect(await splashState(other)).toBe("on");
+  await other.close();
+});
+
+test.describe("TC-139: never on auth routes, without a session, or with blocked storage", () => {
+  async function expectNoSplash(page: Page, context: BrowserContext, path: string) {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    await recordSplashAttrs(context);
+    await page.goto(path);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(500);
+    expect(await splashAttrs(page)).toEqual([]);
+    expect(await splashState(page)).toBe("off");
+    expect(await markAt(page, "splash:painted")).toBeNull();
+    expect(errors).toEqual([]);
+  }
+
+  for (const route of ["/welcome", "/sign-in", "/sign-up", "/onboarding"]) {
+    test(`TC-139: ${route} as guest`, async ({ page, context }) => {
+      await expectNoSplash(page, context, `${route}${FORCE}`);
+    });
+  }
+
+  test("TC-139: / with no session", async ({ page, context }) => {
+    await context.addInitScript(() => {
+      window.localStorage.removeItem("verilane-session");
+    });
+    await expectNoSplash(page, context, `/${FORCE}&__session=none`);
+    await expect(page).toHaveURL(/\/welcome$/);
+  });
+
+  test("TC-139: / with localStorage.getItem throwing", async ({ page, context }) => {
+    await context.addInitScript(() => {
+      Storage.prototype.getItem = function () {
+        throw new DOMException("blocked", "SecurityError");
+      };
+    });
+    await expectNoSplash(page, context, `/${FORCE}`);
+  });
+});
+
+test("TC-140: a bfcache restore never re-covers the app", async ({ page }) => {
+  await page.goto(`/${FORCE}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
+  await skipSplash(page);
+  await page.goto("about:blank");
+  await page.goBack();
+  await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
+  expect(["done", "off"]).toContain(await splashState(page));
+  expect(await appInert(page)).toBe(false);
+});
+
+test.describe("TC-141: readiness hooks are observe-only with the splash off (R7)", () => {
+  /** Records the `verilane:splash` phases in order, from the first byte. */
+  async function recordPhases(context: BrowserContext) {
+    await context.addInitScript(() => {
+      const phases: string[] = [];
+      (window as unknown as { __phases: string[] }).__phases = phases;
+      window.addEventListener("verilane:splash", (e) => phases.push((e as CustomEvent).detail.phase));
+    });
+  }
+  const phases = (page: Page) => page.evaluate(() => (window as unknown as { __phases: string[] }).__phases);
+
+  /** The "runtime absent" path: the head script's window.verilaneSplash never lands. */
+  async function noRuntime(context: BrowserContext) {
+    await context.addInitScript(() => {
+      Object.defineProperty(window, "verilaneSplash", { get: () => undefined, set: () => {}, configurable: false });
+    });
+  }
+
+  test("TC-141: phases fire session → provider → (seeding) → ready, and Home renders as before", async ({ page, context }) => {
+    await recordPhases(context);
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => phases(page)).toContain("ready");
+    expect((await phases(page)).filter((p) => p !== "seeding")).toEqual(["session", "provider", "ready"]);
+    const seeding = (await phases(page)).indexOf("seeding");
+    if (seeding >= 0) expect(seeding).toBe(2);
+    expect(await splashState(page)).toBe("off");
+  });
+
+  test("TC-141: without the runtime, the redirect, ?tour=1 and client entry behave as before", async ({ page, context }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    await noRuntime(context);
+    await context.addInitScript(() => {
+      window.localStorage.removeItem("verilane-session");
+    });
+
+    await page.goto("/queue?__session=none");
+    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+
+    await page.goto("/queue?tour=1&__session=none");
+    await expect(page.getByTestId("tour-confirm")).toBeVisible();
+    expect(page.url()).not.toContain("/welcome");
+    expect(page.url()).not.toContain("tour=1");
+
+    await page.goto("/onboarding?__session=none&step=3");
+    await page.getByRole("button", { name: "Get started" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible({ timeout: 15_000 });
+    expect(await page.evaluate(() => window.verilaneSplash)).toBeUndefined();
+    expect(errors).toEqual([]);
+  });
+
+  test("TC-141: a DataProvider error still renders the app bare and reports error", async ({ page, context }) => {
+    const logged: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") logged.push(msg.text());
+    });
+    await recordPhases(context);
+    // A fresh profile must seed; a failed seed is the provider's error path.
+    await context.route("**/seed/manifest.json", (route) => route.abort());
+    await page.goto("/");
+    await expect.poll(() => phases(page), { timeout: 15_000 }).toContain("error");
+    expect(await phases(page)).not.toContain("ready");
+    expect(logged.some((t) => t.includes("[verilane] failed to open database"))).toBe(true);
+    await expect(page.getByRole("status", { name: "Loading workspace" })).toHaveCount(0);
+    await expect(page.locator("#verilane-app")).toBeAttached();
+    expect(await splashState(page)).toBe("off");
   });
 });
