@@ -185,7 +185,7 @@
 - **Expected:** All existing specs are green and the order is as listed. No hook throws when the runtime is absent (the `verilaneSplash` undefined path).
 
 ### TC-142 · `progress()` is phase-driven, monotonic and capped before ready
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.1 · S23 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.1 · S23 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
 - **Objective:** Only real phases move the bar.
 - **Preconditions:** vitest `unit`.
 - **Steps:** Evaluate `progress()` over phase sequences, including duplicates, out-of-order input and no seeding. Step the model through time-only events.
@@ -196,7 +196,7 @@
   - Time-only events never change the value.
 
 ### TC-143 · The bar is revealed at 3.2 s and is absent from the a11y tree before that
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE71) · **Finding:** —
 - **Objective:** The reveal timing and the a11y tree agree.
 - **Preconditions:** splash-on; `page.clock`.
 - **Steps:** Take an `accessibility.snapshot()` at 3.0 s and at 3.4 s.
@@ -204,7 +204,7 @@
 - **Expected:** At 3.0 s: no progressbar node, `visibility:hidden`. At 3.4 s: a progressbar is present.
 
 ### TC-144 · Progressbar aria values track the phases
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
 - **Objective:** Assistive technology reads the real progress.
 - **Preconditions:** splash-on.
 - **Steps:** Sample `aria-valuenow`/`aria-valuetext` on each `verilane:splash` event.
@@ -215,7 +215,7 @@
   - `aria-valuemin` is 0 and `aria-valuemax` is 100.
 
 ### TC-145 · Status copy per phase, seeding only when real, a single live region
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S22, S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S22, S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
 - **Objective:** Honest, non-chatty announcements.
 - **Preconditions:** splash-on. Run A: a seeded DB, by loading twice. Run B: a fresh context.
 - **Steps:** Record the `role=status` text over time; count the live regions in the overlay.
@@ -226,7 +226,7 @@
   - The copy matches Design §18 strings.
 
 ### TC-146 · A stall shows the glint, then the "Still working…" line, without moving the value
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
 - **Objective:** The stall UI is visual only.
 - **Preconditions:** splash-on; the loader chunk is delayed by 6 s; `test.slow()`.
 - **Steps:** Sample `data-stalled`, the sub-line visibility and `aria-valuenow`.
@@ -237,7 +237,7 @@
   - The value is unchanged during the stall.
 
 ### TC-147 · A slow load holds after D and never restarts the cinematic
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73, EXE74) · **Finding:** —
 - **Objective:** Hold is a calm loop, not a replay.
 - **Preconditions:** splash-on; ready is delayed until 8 s; `test.slow()`.
 - **Steps:** Read `data-splash` at 5.0, 6.0 and 8.5 s; count the `animationstart` events for the intro keyframes.
@@ -245,7 +245,7 @@
 - **Expected:** `on` → `hold` → `exit`/`done`. The intro keyframes start once. Exit comes ≤ 250 ms + 300 ms after ready.
 
 ### TC-148 · Ceiling with a chunk-load failure exits with the bar incomplete
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21, S23 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21, S23 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35; global-error replaces the overlay, see report) · **Finding:** —
 - **Objective:** A failed `DataProvider` chunk never strands the user behind the splash.
 - **Preconditions:** splash-on; `page.route` aborts the DataProvider chunk; `test.slow()`.
 - **Steps:** Wait for `done`.
@@ -253,7 +253,7 @@
 - **Expected:** Exit at the ceiling; the last `aria-valuenow` is < 100; the app's own failure UI is reachable and not `inert`.
 
 ### TC-149 · The DataProvider error path exits promptly and reveals the error
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass with open question (2026-11-04, b39be35, EXE70, EXE72): the bar reaches 100 on error per PRD R13 / Design §7, not < 100 as written · **Finding:** —
 - **Objective:** `error` is a terminal phase like `ready`.
 - **Preconditions:** splash-on; an init script makes `indexedDB.open` fail.
 - **Steps:** Wait for `done`.
@@ -261,7 +261,7 @@
 - **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar stays < 100; the existing error render is visible.
 
 ### TC-150 · A skip at 65 % does not complete the bar
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
 - **Objective:** The bar never lies, even on exit.
 - **Preconditions:** splash-on; ready is delayed by 3 s.
 - **Steps:** Wait for `aria-valuenow=65`; press a key.
