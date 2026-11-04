@@ -175,9 +175,9 @@ describe("checkRouteDeltas", () => {
     ]);
   });
 
-  it("carries the E1 snapshot (d7144cb) for every measured route", () => {
+  it("carries the splash baseline snapshot (d20558e, EXE94) for every measured route", () => {
     expect(Object.keys(E1_ROUTE_GZIP)).toHaveLength(18);
-    expect(E1_ROUTE_GZIP["/settings"]).toBe(301778);
+    expect(E1_ROUTE_GZIP["/settings"]).toBe(302256);
   });
 });
 

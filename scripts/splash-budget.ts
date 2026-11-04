@@ -23,29 +23,32 @@ export const BUDGETS = {
 } as const;
 
 /**
- * First Load JS gzip bytes per route at E1 (d7144cb, technical plan A8),
- * measured with route-budget's `measureRoutes` on a clean `pnpm build` of that
- * commit (EXE85). Regenerate only when a ticket deliberately moves the baseline.
+ * First Load JS gzip bytes per route at the splash baseline: main d7144cb plus
+ * TASK-46 (heritage background) and TASK-46.5, built at d20558e. Measured with
+ * route-budget's `measureRoutes` on a clean `pnpm build` of that tree.
+ * EXE94 moved this from E1 (d7144cb, EXE85) because TASK-46 adds about 478 B of
+ * shared JS to every route that is not splash code. The 512 B limit is unchanged.
+ * Regenerate only when a ticket deliberately moves the baseline.
  */
 export const E1_ROUTE_GZIP: Readonly<Record<string, number>> = {
-  "/settings": 301778,
-  "/disputes/[id]": 292272,
-  "/invoices/[id]": 291391,
-  "/payments": 288604,
-  "/audit": 287470,
-  "/disputes": 286515,
-  "/queue": 285333,
-  "/invoices": 282587,
-  "/sign-in": 281155,
-  "/sign-up": 281155,
-  "/emails": 281119,
-  "/onboarding": 280473,
-  "/welcome": 280194,
-  "/": 279884,
-  "/drafts": 277888,
-  "/e2e-harness": 276387,
-  "/_not-found": 273640,
-  "/settings/eval": 273640,
+  "/settings": 302256,
+  "/disputes/[id]": 292750,
+  "/invoices/[id]": 291869,
+  "/payments": 289082,
+  "/audit": 287948,
+  "/disputes": 286993,
+  "/queue": 285811,
+  "/invoices": 283065,
+  "/sign-in": 281633,
+  "/sign-up": 281633,
+  "/emails": 281597,
+  "/onboarding": 280951,
+  "/welcome": 280672,
+  "/": 280362,
+  "/drafts": 278366,
+  "/e2e-harness": 276865,
+  "/_not-found": 274118,
+  "/settings/eval": 274118,
 };
 
 export interface Finding {

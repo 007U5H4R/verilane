@@ -572,6 +572,11 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - sharp 0.35.5 was already a direct devDependency (the `make-icons.ts` precedent), so `package.json` gained only the `image-budget` script and its `test:all` step after `route-budget`. `pnpm-lock.yaml` is unchanged.
 - TC-112 encodes with the real settings (AVIF q45 effort 9 4:2:0, WebP q70 smart subsample). That takes about 8 s per test with the machine idle. Its two tests carry an explicit 120 s timeout, not the suite's 30 s, so a sibling worktree build can't turn it into a false red. The cap is still finite.
 
+## EXE94 · The splash-budget route baseline moves from E1 (d7144cb) to main + TASK-46 (d20558e); the 512 B limit stays (release TASK-45 + TASK-46) — accepted, user ruling 2026-11-04
+- Merging TASK-45 and TASK-46 together made every route fail the splash-budget delta: 633–635 B against 512 B. TASK-46 adds about 478 B of shared JS to every route (the heritage layer). That is not splash code, but the EXE85 E1 snapshot predates it.
+- User ruling: measure splash against main + TASK-46 and keep the 512 B limit. `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` is regenerated from a clean `pnpm build` of d20558e (main + TASK-46 + TASK-46.5) with route-budget's `measureRoutes`. The splash delta is now about 157 B per route, as it was on the TASK-45 branch alone.
+- The constant keeps its name so the code and tests stay put. Its doc comment names d20558e and this entry.
+
 ## S15 · TASK-45 splash: CSS-only motion, no animation library — approved 2026-11-02
 **Context.** ≤15 KB gzip budget; the splash must paint before hydration; no motion library is installed.
 **Decision.** CSS keyframes on transform/opacity only; static clip-paths; no animated filters or blend modes; one `--splash-d` property drives the cinematic length.
