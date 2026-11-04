@@ -181,7 +181,7 @@
 - **Expected:** `cb` never called; no throw on double cancel.
 
 ### TC-109 · image-budget fails a desk asset over 60 KB
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d · EXE91) · **Finding:** —
 - **Objective:** The byte budget is enforced, not hoped for.
 - **Preconditions:** —
 - **Steps:** `checkBudget` with `heritage-light-desk.avif` at 61 440 bytes (and a 61 440 WebP).
@@ -189,7 +189,7 @@
 - **Expected:** `ok:false`; error names the file and its size and the 60 KB limit. `main()` exits 1 (46.5.4 demonstration).
 
 ### TC-110 · image-budget fails a strip asset over 25 KB
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · N1/SC5 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d) · **Finding:** —
 - **Objective:** Mobile budget enforced separately.
 - **Preconditions:** —
 - **Steps:** `checkBudget` with a 26 624-byte strip.
@@ -197,7 +197,7 @@
 - **Expected:** `ok:false` with the file named; a 25 600-byte strip passes.
 
 ### TC-111 · image-budget fails on a missing file
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.1 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 3d55b6d) · **Finding:** —
 - **Objective:** A deleted asset cannot pass by absence.
 - **Preconditions:** —
 - **Steps:** `checkBudget` with 7 of 8 expected files; with 0 files.
@@ -205,7 +205,7 @@
 - **Expected:** Both `ok:false`, listing the missing names.
 
 ### TC-112 · encode-heritage outputs the right sizes and formats
-- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.3 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.05 · TASK-46.5 · 46.5.3 · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, da06ee9) · **Finding:** —
 - **Objective:** The pipeline is reproducible.
 - **Preconditions:** Synthetic 3360×1440 sharp image in a temp dir under `TMPDIR` (E Drive).
 - **Steps:** `encodeHeritage(master, "light", { out })`; `sharp(file).metadata()` on each output; repeat with `width: 2000`.
