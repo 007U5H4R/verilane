@@ -234,16 +234,10 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 // ── TC-115: SC2, prominence stays inside the band per level ─────────────────
-// FIXME(TASK-46.6): parked pending the user's call on the SC2 escalation
-// in the TASK-46.6 handback report.
-// The committed PLACEHOLDER art misses the plan's bands at the art level,
-// independent of the reduced opacity: light normal P 0.061-0.062 (< 0.08),
-// dark normal P 0.037 and peak L* 9.3 (< 13), dark reduced P 0.019 and peak
-// L* 7.7 (< 9.5). Light reduced at 0.6 (P 0.041, zone L* 94.2) and the light
-// zone floor (92.12) pass. Re-enable once the final art lands (46.8); the
-// bands are the plan's and must not be loosened to make this pass.
+// Re-enabled in TASK-46.8 with the final art. The bands are the plan's and
+// must not be loosened to make this pass.
 for (const theme of ["light", "dark"] as const) {
-  test.fixme(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
+  test(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
     test.skip(info.project.name !== "chromium-light", "both themes are forced via localStorage on this one project");
     // Same route × width sweep as TC-113/TC-114, plus per-route screenshotting;
     // well past the default 30s test timeout, so give it room.

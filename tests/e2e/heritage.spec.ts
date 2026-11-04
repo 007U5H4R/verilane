@@ -644,3 +644,56 @@ test("TC-107b: Save-Data skips the preload: no other-theme request and no data-i
   expect(t.idleAt).toBeNull();
   expect(idleAttr).toBeNull();
 });
+
+// TASK-46.8 · TC-125 (SC7): the splash hands off to a finished background.
+// Cold cinematic load (`?__splash=1`, motion allowed, the splash-on
+// preconditions from splash.spec.ts). An init script stamps the moment
+// html[data-splash] first reads "done" (epoch ms, the page's clock); the band's
+// own art request must have finished by then, on the browser's network clock.
+type SplashWindow = Window & { __splashDoneAt?: number };
+
+test("TC-125: the heritage art is complete when the splash hands off (SC7)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  const context = await browser.newContext({ baseURL, colorScheme: theme, serviceWorkers: "block", viewport: { width: 1440, height: 900 } });
+  await context.addInitScript(() => {
+    try {
+      window.localStorage.setItem("verilane-session", "guest");
+      window.sessionStorage.removeItem("verilane-splash-seen");
+    } catch {
+      // Storage blocked: the splash stays off and the "painted" check fails loudly.
+    }
+    const w = window as SplashWindow;
+    new MutationObserver(() => {
+      if (w.__splashDoneAt === undefined && document.documentElement.dataset.splash === "done") {
+        w.__splashDoneAt = performance.timeOrigin + performance.now();
+      }
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-splash"] });
+  });
+  const page = await context.newPage();
+  const finished: { path: string; endAt: number }[] = [];
+  page.on("requestfinished", (r) => {
+    if (!r.url().includes("/heritage/")) return;
+    const t = r.timing();
+    finished.push({ path: new URL(r.url()).pathname, endAt: t.responseEnd >= 0 ? t.startTime + t.responseEnd : Number.NaN });
+  });
+  await page.goto("/?__splash=1");
+  await page.waitForFunction(() => document.documentElement.dataset.splash === "done", undefined, { timeout: 20_000 });
+  const painted = await page.evaluate(() => performance.getEntriesByName("splash:painted").length);
+  const doneAt = await page.evaluate(() => (window as SplashWindow).__splashDoneAt ?? null);
+  const own = `heritage-${theme}-desk.`;
+  await expect.poll(() => finished.filter((f) => f.path.includes(own)).length, { message: "the band's art request finished" }).toBeGreaterThan(0);
+  const art = finished.find((f) => f.path.includes(own))!;
+  const decoded = await page.evaluate(async (path) => {
+    const img = new Image();
+    img.src = path;
+    await img.decode();
+    return img.naturalWidth;
+  }, art.path);
+  await context.close();
+
+  info.annotations.push({ type: "tc-125", description: JSON.stringify({ art, doneAt, leadMs: doneAt === null ? null : doneAt - art.endAt }) });
+  expect(painted, "the cinematic splash ran").toBe(1);
+  expect(doneAt, "data-splash reached done").not.toBeNull();
+  expect(art.endAt, `${art.path} finished before or at hand-off`).toBeLessThanOrEqual(doneAt!);
+  expect(decoded).toBeGreaterThan(0);
+});
