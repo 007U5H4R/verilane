@@ -83,6 +83,8 @@ export interface SplashApi {
   show(): void;
   skip(): void;
   state(): Attr | "off";
+  /** TASK-45.3 (review R-3): a GatedApp mount ended; forget its phases. */
+  reset(): void;
 }
 
 declare global {
@@ -444,6 +446,12 @@ export function splashRuntime(): Runtime {
       },
       state: function () {
         return m ? m.attr : "off";
+      },
+      // A GatedApp mount ended (its layout-effect cleanup). Its phases must
+      // not replay into the next mount's client entry, which may never emit
+      // "session" (review R-3). A live splash keeps running.
+      reset: function () {
+        log = [];
       },
     };
     w.verilaneSplash = api;

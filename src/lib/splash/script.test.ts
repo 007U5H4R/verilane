@@ -13,7 +13,7 @@ import { buildSplashScript, splashConfig } from "./runtime";
 interface Stub {
   attrs: Record<string, string>;
   marks: string[];
-  window: Record<string, unknown> & { verilaneSplash?: { state(): string; skip(): void; show(): void } };
+  window: Record<string, unknown> & { verilaneSplash?: { state(): string; skip(): void; show(): void; reset(): void } };
   /** Pending setTimeout callbacks, with the delay each was scheduled for. */
   timers: { fn: () => void; delay: number; id: number }[];
   /** Calls the window's listeners for `type` the way a browser would (deduped by fn + capture). */
@@ -548,6 +548,28 @@ describe("buildSplashScript", () => {
       stub.window.verilaneSplash?.show();
       expect(stub.overlay.props["--splash-p"]).toBe("0.35");
       expect(stub.attrs["data-splash"]).toBe("on");
+    });
+
+    it("reset() drops an ended mount's log, so a remount that skips the session phase replays nothing (review R-3)", () => {
+      const stub = stubWindow({ session: null, dom: true });
+      exec(prod, stub);
+      for (const phase of ["session", "provider", "ready"])
+        stub.dispatch("verilane:splash", { detail: { phase } });
+      stub.window.verilaneSplash?.reset(); // GatedApp unmounted
+      stub.local.setItem("verilane-session", "guest");
+      stub.window.verilaneSplash?.show(); // the next mount's client entry
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(stub.overlay.props["--splash-p"]).not.toBe("1");
+      expect(stub.marks).not.toContain("splash:exit");
+    });
+
+    it("reset() leaves a live splash alone and never throws", () => {
+      const stub = stubWindow({ session: "guest", dom: true });
+      exec(prod, stub);
+      expect(() => stub.window.verilaneSplash?.reset()).not.toThrow();
+      expect(stub.attrs["data-splash"]).toBe("on");
+      stub.dispatch("verilane:splash", { detail: { phase: "session" } });
+      expect(stub.overlay.props["--splash-p"]).toBe("0.35");
     });
 
     it("binds the skip button even when the hard load decided off, so a client-entry splash can be skipped", () => {

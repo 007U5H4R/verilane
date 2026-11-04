@@ -28,3 +28,15 @@ export function showSplash(): void {
     /* no runtime, or a broken one: the app renders exactly as without it */
   }
 }
+
+/**
+ * TASK-45.3 (review R-3): GatedApp unmounted, so the runtime forgets that
+ * mount's phases. Never throws, and an older runtime without reset() is fine.
+ */
+export function resetSplash(): void {
+  try {
+    window.verilaneSplash?.reset?.();
+  } catch {
+    /* no runtime, or a broken one: nothing to forget */
+  }
+}

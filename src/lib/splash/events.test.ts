@@ -1,7 +1,7 @@
 /** TASK-45.2: phase hooks are one-line, never-throwing CustomEvent emitters. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { emitSplash, showSplash } from "./events";
+import { emitSplash, resetSplash, showSplash } from "./events";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -54,5 +54,32 @@ describe("showSplash", () => {
       },
     });
     expect(() => showSplash()).not.toThrow();
+  });
+});
+
+// Review R-3: a GatedApp unmount ends its mount's phase log.
+describe("resetSplash", () => {
+  it("calls the runtime's reset()", () => {
+    const reset = vi.fn();
+    vi.stubGlobal("window", { verilaneSplash: { reset } });
+    resetSplash();
+    expect(reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("never throws: no runtime, an older runtime without reset(), no window, or a throwing reset()", () => {
+    vi.stubGlobal("window", {});
+    expect(() => resetSplash()).not.toThrow();
+    vi.stubGlobal("window", { verilaneSplash: { show: () => {} } });
+    expect(() => resetSplash()).not.toThrow();
+    vi.stubGlobal("window", undefined);
+    expect(() => resetSplash()).not.toThrow();
+    vi.stubGlobal("window", {
+      verilaneSplash: {
+        reset: () => {
+          throw new Error("boom");
+        },
+      },
+    });
+    expect(() => resetSplash()).not.toThrow();
   });
 });

@@ -9,7 +9,7 @@ import { ShellSkeleton } from "@/components/states/ShellSkeleton";
 import { requestTour } from "@/components/tour/tourStore";
 import { readTourLink } from "@/components/tour/tourLink";
 import { isAuthRoute, startGuestSession, useSession } from "@/lib/session";
-import { emitSplash, showSplash } from "@/lib/splash/events";
+import { emitSplash, resetSplash, showSplash } from "@/lib/splash/events";
 
 /**
  * TASK-39: decides what wraps a route.
@@ -33,8 +33,10 @@ function GatedApp({ children }: { children: ReactNode }) {
   // TASK-45.3: client entry (onboarding → "/"). A layout effect runs before
   // the first paint of this mount and before any of its phase effects, so the
   // overlay covers the very first frame. Observe-only: it renders nothing.
+  // The cleanup ends this mount's phase log (review R-3).
   useLayoutEffect(() => {
     showSplash();
+    return resetSplash;
   }, []);
 
   useEffect(() => {
