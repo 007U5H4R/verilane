@@ -1,6 +1,8 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+import { holdManifest } from "./splash-hold";
+
 // TASK-45.2 · Splash tracer (TC-128, TC-129, TC-131–TC-135); TASK-45.3 adds
 // once per tab, client entry and the R7 pinning (TC-137–TC-141). The splash is
 // off by default in the e2e build; `?__splash=1` forces it (TP-45.f). Times
@@ -741,15 +743,6 @@ test.describe("TC-141: readiness hooks are observe-only with the splash off (R7)
 
 // TASK-45.10 · release evidence (TC-166, TC-168).
 
-/** Hold the seed manifest for `ms`, so a fresh profile's ready lands late and
- * the splash stays up through `on` into `hold` (as in splash-bar.spec.ts). */
-async function holdManifest(context: BrowserContext, ms: number) {
-  await context.route("**/seed/manifest.json", async (route) => {
-    await new Promise((r) => setTimeout(r, ms));
-    await route.continue().catch(() => {});
-  });
-}
-
 /** Serious and critical axe violations, one line per node. */
 async function seriousAxe(page: Page, scope?: string) {
   const builder = new AxeBuilder({ page });
@@ -765,16 +758,20 @@ async function seriousAxe(page: Page, scope?: string) {
 
 test("TC-166: axe finds no serious or critical violations at on, hold and after done", async ({ page, context }) => {
   test.slow();
-  // Fresh profile: seeding waits on the manifest, so ready lands near 8 s and
-  // the overlay passes through on (1 s) and hold (after D) before it exits.
-  await holdManifest(context, 7000);
+  // Fresh profile: seeding waits on the manifest, held until the hold scan is
+  // done (R-6), so the overlay passes through on (1 s) and hold (after D).
+  const manifest = await holdManifest(context);
   await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
 
   // on, at 1 s: the overlay alone (the app behind it is inert and covered).
   await waitPastT0(page, 1000);
   expect(await splashState(page)).toBe("on");
+  const onStart = Date.now();
   const on = await seriousAxe(page, "#verilane-splash");
-  expect(await splashState(page), "still on after the scan").toBe("on");
+  const onScanMs = Date.now() - onStart;
+  // The on window is 1 s to D (5.7 s); a scan slower than that under host load
+  // misses it. The duration is in the message so a failure says which it was.
+  expect(await splashState(page), `still on after the scan (scan took ${onScanMs} ms)`).toBe("on");
 
   // hold: past D with ready still pending. The bar is revealed by now.
   await waitForSplash(page, "hold", 15_000);
@@ -785,6 +782,7 @@ test("TC-166: axe finds no serious or critical violations at on, hold and after 
   await expect(overlay.getByRole("status")).toHaveCount(1);
   await expect(overlay.getByRole("progressbar")).toHaveCount(1);
   expect(await overlay.locator(".splash-scene").getAttribute("aria-hidden")).toBe("true");
+  manifest.release();
 
   // done: the whole page, once the app has loaded behind the overlay.
   await waitForSplash(page, "done", 20_000);
