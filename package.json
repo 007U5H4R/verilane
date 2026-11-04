@@ -17,12 +17,13 @@
     "e2e:install": "tsx scripts/e2e-install.ts",
     "check:secrets": "tsx scripts/check-bundle-secrets.ts",
     "route-budget": "tsx scripts/route-budget.ts",
+    "image-budget": "tsx scripts/image-budget.ts",
     "check:e2e-hooks": "tsx scripts/check-e2e-hooks.ts",
     "check:deploy-env": "tsx scripts/check-deploy-env.ts",
     "vercel-build": "pnpm check:deploy-env && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks",
     "seed": "tsx scripts/seed.ts",
     "eval:live": "tsx --conditions=react-server scripts/eval-live.ts",
-    "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm perf && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm build:e2e && pnpm e2e --workers=1"
+    "test:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm perf && pnpm eval && pnpm build && pnpm check:secrets && pnpm check:e2e-hooks && pnpm route-budget && pnpm image-budget && pnpm build:e2e && pnpm e2e --workers=1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
