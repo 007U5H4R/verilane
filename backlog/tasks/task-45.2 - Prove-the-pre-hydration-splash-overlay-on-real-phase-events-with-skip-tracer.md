@@ -1,10 +1,10 @@
 ---
 id: TASK-45.2
 title: Prove the pre-hydration splash overlay on real phase events with skip (tracer)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-02 17:19'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 00:23'
 labels:
   - P1
 dependencies:

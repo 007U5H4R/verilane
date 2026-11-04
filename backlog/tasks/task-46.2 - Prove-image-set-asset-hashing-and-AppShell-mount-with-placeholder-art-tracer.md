@@ -3,10 +3,10 @@ id: TASK-46.2
 title: >-
   Prove image-set() asset hashing and AppShell mount with placeholder art
   (tracer)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-02 16:39'
-updated_date: '2026-11-02 16:53'
+updated_date: '2026-11-04 00:23'
 labels:
   - P1
 dependencies:
