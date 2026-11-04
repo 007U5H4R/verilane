@@ -475,3 +475,16 @@ Code already cites "Design.md Revision R2 (TASK-38)" (`globals.css`, `layout.tsx
 - **Off by system:** hidden under `forced-colors: active` and in print. No motion exists to reduce.
 - **Weight:** ≤ 60 KB per theme on desktop and ≤ 25 KB on the mobile strip, AVIF with WebP fallback, enforced by `scripts/image-budget.ts`.
 - **Switch-off rule (binding):** if Stage 7 critique or Stage 8 measurement shows the art failing SC1 (contrast) or SC2 (prominence band) on any data-dense route, **or** the user judges it to be noise after one week of use, set `heritageLevelFor()` to return `"off"` for the affected routes, or for all of them. **Do not redesign the art to rescue it.** Switching off is a one-line change and needs no further design review. Deleting the feature reverts this revision.
+
+## Revision R4 — 2026-11-02 (TASK-45 splash scoped exception)
+
+The root `Design.md` rejects gradients, glows, decorative motion, and redrawing the logo. The splash uses gradients, glow and a decorative loop under these limits:
+
+- **Where:** only inside `#splash`, only while `html[data-splash]` is not `done`, and only on first entry per tab.
+- **Logo:** the official `public/brand/verilane-logo-light.png` is used **unmodified**. It is split into two layers with static clip-paths, the same pattern `LogoCard.tsx` already uses:
+  - V: `inset(0 74.6% 0 0)`
+  - wordmark: `inset(0 0 0 25.4%)`
+
+  Nothing is redrawn, recoloured or traced.
+- **Glow:** only the lantern glow and the beam are luminous. No UI element has a glow. The bar fill is a `--rail-bright` → `--rail-mint` gradient, both existing tokens.
+- **Exit:** the app behind the splash is exactly today's `ShellSkeleton`. The exception leaves no residue.

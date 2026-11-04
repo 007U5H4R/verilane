@@ -44,7 +44,7 @@
 - **Expected:** Only `docs/`, `.design/exploration/task-45/`, `decisions.md` and `Design.md` change. Both files show additions only. R4 sits after the last existing revision.
 
 ### TC-127 · Runtime state machine and built script behave in isolation
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.1–.3 · S21, S22 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.1–.3 · S21, S22 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** `step()` implements on → hold → exit → done with `exitAt = max(t0+D, tReady+250)`, and `buildSplashScript` runs with no bundler residue.
 - **Preconditions:** vitest `unit`; fake timestamps.
 - **Steps:** Feed event sequences into `step()`: ready at 1 s, ready at 7 s, no ready, skip at 100 ms, skip at 300 ms. Run the built string in `node:vm` with a stub `window`/`document`. Scan the string.
@@ -56,7 +56,7 @@
   - The string has no `require(`, `__webpack` or `import(`, and the non-e2e string has no `__splash`.
 
 ### TC-128 · Zero hydration warnings with the splash on
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Pre-hydration `data-splash`/`inert` mutations cause no React hydration mismatch.
 - **Preconditions:** splash-on.
 - **Steps:** Collect `console` and `pageerror` from navigation until `data-splash=done` (skip via keypress after 300 ms).
@@ -64,7 +64,7 @@
 - **Expected:** No message matching `/hydrat|did not match|mismatch/i`; no `pageerror`. If this fails, apply the TP-45.b fallback and re-run.
 
 ### TC-129 · Overlay node identity is stable across ShellGate swaps
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · RK1, R2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Skeleton → loader → AppShell never remounts `#verilane-splash`.
 - **Preconditions:** splash-on; the loader chunk is delayed by 1.5 s via `page.route` so the swap happens under the overlay.
 - **Steps:** Take an element handle on `#verilane-splash` at DOMContentLoaded. Wait for the AppShell landmark. Check `isConnected` and `===` against a fresh query.
@@ -72,7 +72,7 @@
 - **Expected:** Same node, still connected. The overlay's `data-*`/status text is unchanged by React.
 
 ### TC-130 · `splash:ready` is within ±50 ms of the no-splash baseline
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Pass (2026-11-04, Δ −13.7 ms, EXE45) · **Finding:** —
 - **Objective:** The splash does not delay readiness.
 - **Preconditions:** `pnpm build:e2e`; `pnpm e2e:splash-perf`; a fresh context per run.
 - **Steps:**
@@ -83,7 +83,7 @@
 - **Expected:** The median Δ is ≤ 50 ms. A larger Δ is a no-go, which reopens Stage 2. Record the numbers in HANDOFF.
 
 ### TC-131 · Skip exits within 50 ms and the app is interactive afterwards
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Any key, click or tap skips promptly and removes `inert`.
 - **Preconditions:** splash-on.
 - **Steps:** Wait 400 ms; press Escape; read the gap between the `splash:skip` and `splash:exit` marks; wait for `done`; click a queue row.
@@ -91,7 +91,7 @@
 - **Expected:** The gap is ≤ 50 ms; `#verilane-app` has no `inert`; the row click works.
 
 ### TC-132 · The skipping input is swallowed and shortcuts still work
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** A skip never acts on the app, and the browser keeps its shortcuts.
 - **Preconditions:** splash-on; a test listener on `document` counts click and keydown events reaching the app.
 - **Steps:** Skip by clicking where a link sits underneath, then skip with Enter. Separately press Meta/Ctrl+L.
@@ -101,7 +101,7 @@
   - The modifier shortcut is not `preventDefault`-ed: `defaultPrevented` is false and the splash does not skip.
 
 ### TC-133 · 250 ms start guard and auto-repeat keys are ignored
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S22 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** Accidental input at load or a held key does not skip.
 - **Preconditions:** splash-on.
 - **Steps:** Press a key at 100 ms; dispatch a `keydown` with `repeat:true` at 400 ms; press a fresh key at 500 ms.
@@ -109,7 +109,7 @@
 - **Expected:** Still `on` after the first two; exit after the third.
 
 ### TC-134 · The ceiling exits with a mark and a warning
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 694f703) · **Finding:** —
 - **Objective:** A load that never becomes ready cannot trap the user.
 - **Preconditions:** splash-on; the DataProvider chunk route never resolves; `test.slow()`.
 - **Steps:** Wait for `done`.
@@ -120,7 +120,7 @@
   - `inert` is removed.
 
 ### TC-135 · Off by default in e2e builds; `?__splash=1` forces it and survives client navigation
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · TP-45.f · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.8 · TP-45.f · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Steps 1–2 Pass (2026-11-04, 694f703); step 3 Pass via TC-137 (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** The existing 185 specs never see the splash; the force param works.
 - **Preconditions:** `pnpm build:e2e`; guest session.
 - **Steps:**
@@ -135,7 +135,7 @@
 ## M-45.2 · Behaviour on a placeholder scene
 
 ### TC-136 · `decide()` truth table
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.1 · S21, §6 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.1 · S21, §6 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** The splash shows only for a guest, on a non-auth route, once per tab, when storage works.
 - **Preconditions:** vitest `unit`.
 - **Steps:** Table-test every combination.
@@ -145,15 +145,15 @@
   - Any storage throw → false.
 
 ### TC-137 · Client entry from onboarding shows the splash before any skeleton frame; a double click shows one
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.3 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.3 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170, EXE49) · **Finding:** —
 - **Objective:** No skeleton flash between Finish and the splash.
-- **Preconditions:** splash-on started at `/onboarding` with no session; a rAF probe records the first frame in which `[data-skeleton]` and `data-splash` exist.
+- **Preconditions:** splash-on started at `/onboarding?step=3` with no session; a rAF probe records the first frame in which `[data-state="loading"]` and `data-splash` exist (EXE49).
 - **Steps:** Complete onboarding; double-click Finish.
 - **Data:** —
 - **Expected:** `data-splash=on` is set in or before the first frame where the skeleton exists. `show()` runs once (one `splash:painted` mark).
 
 ### TC-138 · Refresh does not replay, a new tab does, in-app navigation never does
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** Once per tab.
 - **Preconditions:** splash-on; skip once.
 - **Steps:** Reload; navigate to `/queue` via a link; open a new page in the same context.
@@ -161,7 +161,7 @@
 - **Expected:** Reload: no splash. Link: no splash. New page: splash.
 
 ### TC-139 · Never on auth routes, without a session, or with blocked storage
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · §6 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** The real browser matches TC-136.
 - **Preconditions:** `?__splash=1` in each case.
 - **Steps:** Load each of the 4 auth routes as guest; load `/` with no session (`?__session=none`); load `/` with an init script that makes `localStorage.getItem` throw.
@@ -169,7 +169,7 @@
 - **Expected:** No `data-splash` in any case; no `pageerror`.
 
 ### TC-140 · bfcache restore does not show the splash
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.4 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** Back/forward restores never re-cover the app.
 - **Preconditions:** splash-on; skip.
 - **Steps:** Navigate to an external `about:blank`, then `goBack()`.
@@ -177,7 +177,7 @@
 - **Expected:** `data-splash` is `done` or absent; `#verilane-app` is not `inert`.
 
 ### TC-141 · Readiness hooks are observe-only (R7 pinning)
-- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.5 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.03 · TASK-45.3 · 45.3.5 · R7 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, aa3b170) · **Finding:** —
 - **Objective:** Adding the hooks changes no app behaviour.
 - **Preconditions:** splash off (no param).
 - **Steps:** Run the existing onboarding, tracer and DataProvider error specs. In addition, assert that `?tour=1`, the null-session redirect to `/welcome`, and the error render match the pre-change behaviour, and that `verilane:splash` events fire in the order session → provider → (seeding) → ready.
@@ -185,7 +185,7 @@
 - **Expected:** All existing specs are green and the order is as listed. No hook throws when the runtime is absent (the `verilaneSplash` undefined path).
 
 ### TC-142 · `progress()` is phase-driven, monotonic and capped before ready
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.1 · S23 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.1 · S23 · **Type:** unit · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
 - **Objective:** Only real phases move the bar.
 - **Preconditions:** vitest `unit`.
 - **Steps:** Evaluate `progress()` over phase sequences, including duplicates, out-of-order input and no seeding. Step the model through time-only events.
@@ -196,7 +196,7 @@
   - Time-only events never change the value.
 
 ### TC-143 · The bar is revealed at 3.2 s and is absent from the a11y tree before that
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE71) · **Finding:** —
 - **Objective:** The reveal timing and the a11y tree agree.
 - **Preconditions:** splash-on; `page.clock`.
 - **Steps:** Take an `accessibility.snapshot()` at 3.0 s and at 3.4 s.
@@ -204,7 +204,7 @@
 - **Expected:** At 3.0 s: no progressbar node, `visibility:hidden`. At 3.4 s: a progressbar is present.
 
 ### TC-144 · Progressbar aria values track the phases
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
 - **Objective:** Assistive technology reads the real progress.
 - **Preconditions:** splash-on.
 - **Steps:** Sample `aria-valuenow`/`aria-valuetext` on each `verilane:splash` event.
@@ -215,7 +215,7 @@
   - `aria-valuemin` is 0 and `aria-valuemax` is 100.
 
 ### TC-145 · Status copy per phase, seeding only when real, a single live region
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S22, S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.3 · S22, S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35) · **Finding:** —
 - **Objective:** Honest, non-chatty announcements.
 - **Preconditions:** splash-on. Run A: a seeded DB, by loading twice. Run B: a fresh context.
 - **Steps:** Record the `role=status` text over time; count the live regions in the overlay.
@@ -226,7 +226,7 @@
   - The copy matches Design §18 strings.
 
 ### TC-146 · A stall shows the glint, then the "Still working…" line, without moving the value
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · Design §18 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
 - **Objective:** The stall UI is visual only.
 - **Preconditions:** splash-on; the loader chunk is delayed by 6 s; `test.slow()`.
 - **Steps:** Sample `data-stalled`, the sub-line visibility and `aria-valuenow`.
@@ -237,7 +237,7 @@
   - The value is unchanged during the stall.
 
 ### TC-147 · A slow load holds after D and never restarts the cinematic
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73, EXE74) · **Finding:** —
 - **Objective:** Hold is a calm loop, not a replay.
 - **Preconditions:** splash-on; ready is delayed until 8 s; `test.slow()`.
 - **Steps:** Read `data-splash` at 5.0, 6.0 and 8.5 s; count the `animationstart` events for the intro keyframes.
@@ -245,7 +245,7 @@
 - **Expected:** `on` → `hold` → `exit`/`done`. The intro keyframes start once. Exit comes ≤ 250 ms + 300 ms after ready.
 
 ### TC-148 · Ceiling with a chunk-load failure exits with the bar incomplete
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21, S23 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S21, S23 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35; global-error replaces the overlay, see report) · **Finding:** —
 - **Objective:** A failed `DataProvider` chunk never strands the user behind the splash.
 - **Preconditions:** splash-on; `page.route` aborts the DataProvider chunk; `test.slow()`.
 - **Steps:** Wait for `done`.
@@ -253,7 +253,7 @@
 - **Expected:** Exit at the ceiling; the last `aria-valuenow` is < 100; the app's own failure UI is reachable and not `inert`.
 
 ### TC-149 · The DataProvider error path exits promptly and reveals the error
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass with open question (2026-11-04, b39be35, EXE70, EXE72): the bar reaches 100 on error per PRD R13 / Design §7, not < 100 as written · **Finding:** —
 - **Objective:** `error` is a terminal phase like `ready`.
 - **Preconditions:** splash-on; an init script makes `indexedDB.open` fail.
 - **Steps:** Wait for `done`.
@@ -261,7 +261,7 @@
 - **Expected:** The error status copy shows; exit is at `max(t0+D, tError+250)`; the bar stays < 100; the existing error render is visible.
 
 ### TC-150 · A skip at 65 % does not complete the bar
-- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.04 · TASK-45.4 · 45.4.4 · S23 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Pass (2026-11-04, b39be35, EXE73) · **Finding:** —
 - **Objective:** The bar never lies, even on exit.
 - **Preconditions:** splash-on; ready is delayed by 3 s.
 - **Steps:** Wait for `aria-valuenow=65`; press a key.
@@ -344,7 +344,7 @@
 - **Expected:** `done` within 50 ms; `inert` removed.
 
 ### TC-160 · The `splash-budget` gate measures and fails correctly
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The gate is trustworthy.
 - **Preconditions:** vitest `unit`; injectable readers.
 - **Steps:** Feed under-budget and over-budget inputs: inline bytes, rasters (60/30 KB) and route deltas.
@@ -352,15 +352,15 @@
 - **Expected:** Exit 0 when under budget. Over budget gives a non-zero exit, and the message names the offending item and its bytes.
 
 ### TC-161 · The per-route shared-JS delta against E1 is ≤ 0.5 KB
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · S-budget · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · S-budget · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The hooks are nearly free.
-- **Preconditions:** `pnpm build`; the E1 stats snapshot is committed under `scripts/fixtures/` in TASK-45.7.
+- **Preconditions:** `pnpm build`; E1 snapshot is `E1_ROUTE_GZIP` in `scripts/splash-budget.ts` (EXE85).
 - **Steps:** `pnpm splash-budget`.
 - **Data:** E1 route stats.
 - **Expected:** Every route's delta is ≤ 512 B; `route-budget` stays green (`/settings` < 300 KB).
 
 ### TC-162 · Zero splash bytes in shared JS when the splash is off; the inline total is ≤ ≈15 KB gzip
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
 - **Objective:** The runtime and scene live in HTML and CSS, not in JS chunks.
 - **Preconditions:** `pnpm build`. This is re-run after TASK-45.9.
 - **Steps:** Scan `.next/static/chunks` for runtime markers such as `verilane-splash-seen`; run `pnpm splash-budget` for the inline total.

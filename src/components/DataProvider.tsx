@@ -12,6 +12,7 @@ import { seedStatus } from "@/store/seedVersion";
 import { DbContext, PersistentContext, SeedUpdateContext } from "@/store/hooks";
 import { E2EBridge } from "@/components/E2EBridge";
 import { ShellLoading } from "@/components/shell/ShellLoading";
+import { emitSplash } from "@/lib/splash/events";
 
 interface DataProviderProps {
   children: ReactNode;
@@ -27,12 +28,13 @@ export function DataProvider({ children }: DataProviderProps) {
 
   useEffect(() => {
     let cancelled = false;
+    emitSplash("provider"); // TASK-45.2: splash phase
     (async () => {
       try {
         const { db, persistent } = await openDb();
         // TASK-40: a returning visit only checks the seed version; the
         // loader loads when the database still needs seeding.
-        const result = (await seedStatus(db)) ?? (await (await import("@/store/loader")).ensureSeeded(db));
+        const result = (await seedStatus(db)) ?? (emitSplash("seeding"), await (await import("@/store/loader")).ensureSeeded(db));
         if (!cancelled) {
           setStatus({
             kind: "ready",
@@ -51,6 +53,11 @@ export function DataProvider({ children }: DataProviderProps) {
       cancelled = true;
     };
   }, []);
+
+  // TASK-45.2: splash phase — the app is ready (or failed and renders bare).
+  useEffect(() => {
+    if (status.kind !== "loading") emitSplash(status.kind);
+  }, [status.kind]);
 
   if (status.kind === "loading") return <ShellLoading />;
   if (status.kind === "error") {
