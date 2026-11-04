@@ -3,10 +3,10 @@ id: TASK-45.4
 title: >-
   Drive the splash progress bar from real phases with stall, hold and ceiling
   states
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 17:19'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 12:21'
 labels:
   - P1
 dependencies:
