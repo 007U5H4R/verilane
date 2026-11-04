@@ -3,15 +3,16 @@
 // Run after `pnpm build`: `pnpm splash-budget` (wired into `test:all` after
 // route-budget, which is unchanged). It measures source, deterministically:
 //   1. gzip-9 of the inline head script + splash.css + splashMarkup() together ≤ 15 KB;
-//   2. rasters in src/assets/splash/: each sky file ≤ 60 KB, clouds ≤ 30 KB per format;
+//   2. rasters in src/assets/splash/ (recursive): each sky file ≤ 60 KB, clouds ≤ 30 KB
+//      per format; every url() in splash.css must name a file in that folder (EXE89);
 //   3. each route's First Load JS (route-budget's own measure) grows ≤ 512 B over E1;
 //   4. no splash runtime/markup marker in .next/static/chunks/*.js (the runtime
 //      lives in server HTML; only the events.ts dispatch may reach shared JS).
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join } from "node:path";
+import { extname, join, posix, relative, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 import { splashMarkup } from "../src/lib/splash/markup";
-import { buildSplashScript, splashConfig } from "../src/lib/splash/runtime";
+import { SPLASH_COPY, buildSplashScript, splashConfig } from "../src/lib/splash/runtime";
 import { measureRoutes, type RouteStat } from "./route-budget";
 
 export const BUDGETS = {
@@ -79,6 +80,50 @@ export function checkRasters(files: { name: string; bytes: number }[]): Finding[
   return out;
 }
 
+/**
+ * Every raster under `dir`, recursively, named by its path relative to `dir`.
+ * A missing folder is "no rasters" (checkRasterRefs then fails any url() that
+ * expected one); any other read error is rethrown so the gate cannot pass blind.
+ */
+export function listRasterFiles(dir: string, list: (d: string) => string[] = walk): { name: string; bytes: number }[] {
+  let paths: string[];
+  try {
+    paths = list(dir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
+  }
+  return paths.map((p) => ({ name: relative(dir, p).split(sep).join("/"), bytes: statSync(p).size }));
+}
+
+const SPLASH_ASSETS = "src/assets/splash/";
+
+/**
+ * Each url() in splash.css (which lives in src/app/) must resolve to a file in
+ * src/assets/splash/, so every raster the splash can request is one the budget
+ * measured. `files` are paths relative to that folder. data: URIs (counted in the
+ * inline gzip) and #fragment refs are not requests and are skipped (EXE89).
+ */
+export function checkRasterRefs(css: string, files: string[]): Finding[] {
+  const have = new Set(files);
+  const out: Finding[] = [];
+  for (const m of css.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/g)) {
+    const ref = (m[2] ?? "").trim();
+    if (ref === "" || ref.startsWith("data:") || ref.startsWith("#")) continue;
+    const item = `splash.css url(${ref})`;
+    const path = ref.replace(/[?#].*$/, "");
+    const resolved = /^[a-z][a-z0-9+.-]*:|^\/\//i.test(path) || path.startsWith("/") ? null : posix.join("src/app", path);
+    if (resolved === null || !resolved.startsWith(SPLASH_ASSETS)) {
+      out.push({ item: `${item}: outside ${SPLASH_ASSETS}`, bytes: 0, limit: 0, over: true });
+    } else if (!have.has(resolved.slice(SPLASH_ASSETS.length))) {
+      out.push({ item: `${item}: no such file in ${SPLASH_ASSETS}`, bytes: 0, limit: 0, over: true });
+    } else {
+      out.push({ item, bytes: 0, limit: 0, over: false });
+    }
+  }
+  return out;
+}
+
 /** Growth of each route's First Load JS over E1. A route with no baseline fails until E1 is re-recorded. */
 export function checkRouteDeltas(
   current: { route: string; gzipBytes: number }[],
@@ -92,11 +137,19 @@ export function checkRouteDeltas(
   });
 }
 
-/** Strings only the runtime, its config or its markup carry; the events.ts dispatch ("verilane:splash") is allowed. */
+/** Runtime-body literals events.ts does not carry (events.ts has only "verilane:splash" and "splash:ready"). */
+const RUNTIME_LITERALS = ["splash:painted", "splash:skip", "splash:ceiling", "[verilane] splash ceiling reached before the app was ready"];
+
+/**
+ * Strings only the runtime, its config, its copy or its markup carry; the events.ts
+ * dispatch ("verilane:splash", "splash:ready") is allowed. SPLASH_COPY.cont
+ * ("Continue") is left out: app UI ships that word in shared chunks (EXE89).
+ */
 export function splashMarkers(): string[] {
   const cfg = splashConfig(false);
+  const copy = [SPLASH_COPY.opening, SPLASH_COPY.ready, SPLASH_COPY.error, SPLASH_COPY.skip];
   const attrs = splashMarkup().match(/data-splash-[a-z-]+/g) ?? [];
-  return [...new Set([cfg.seenKey, cfg.forceKey, "splash:painted", ...attrs])];
+  return [...new Set([cfg.seenKey, cfg.forceKey, ...RUNTIME_LITERALS, ...copy, ...attrs])];
 }
 
 /** Every marker hit is a failure; bytes are the marker's length (the minimum it costs). */
@@ -156,14 +209,17 @@ function main(): void {
   console.log(`info  script ${gz(script)} B · css ${gz(css)} B · markup ${gz(markup)} B (gzip-9 each)`);
   findings.push(checkInline([{ name: "script", content: script }, { name: "css", content: css }, { name: "markup", content: markup }]));
 
-  const rasterDir = join(root, "src/assets/splash");
-  let rasters: { name: string; bytes: number }[] = [];
+  const rasterDir = join(root, SPLASH_ASSETS);
+  let rasters: { name: string; bytes: number }[];
   try {
-    rasters = readdirSync(rasterDir).map((name) => ({ name, bytes: statSync(join(rasterDir, name)).size }));
-  } catch {
-    console.log("info  src/assets/splash/ absent — no rasters to measure");
+    rasters = listRasterFiles(rasterDir);
+  } catch (err) {
+    console.error(`splash-budget: cannot read ${rasterDir}: ${(err as Error).message}`);
+    process.exit(1);
   }
-  findings.push(...checkRasters(rasters));
+  const refs = checkRasterRefs(css.toString("utf-8"), rasters.map((r) => r.name));
+  console.log(`info  ${rasters.length} file(s) under ${SPLASH_ASSETS} · ${refs.length} url() ref(s) in splash.css`);
+  findings.push(...checkRasters(rasters), ...refs);
 
   findings.push(...checkRouteDeltas(measureRoutes(stats, (p) => readFileSync(join(root, p)))));
 
