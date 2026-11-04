@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 // so every @keyframes declaration and every transitioned property must be one
 // of those two. Anything else (left, filter, background-position …) repaints.
 const ALLOWED = new Set(["transform", "opacity"]);
+// `transition: none` animates nothing; the reduced-motion block (TASK-45.6)
+// uses it to switch every transition off, so it is allowed in transitions only.
+const TRANSITION_ALLOWED = new Set([...ALLOWED, "none"]);
 
 function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -66,7 +69,7 @@ export function s15Violations(raw: string): string[] {
   for (const k of keyframeBodies(css)) {
     for (const p of declaredProps(k.body)) if (!ALLOWED.has(p)) bad.push(`@keyframes ${k.name}: ${p}`);
   }
-  for (const p of transitionedProps(css)) if (!ALLOWED.has(p)) bad.push(`transition: ${p}`);
+  for (const p of transitionedProps(css)) if (!TRANSITION_ALLOWED.has(p)) bad.push(`transition: ${p}`);
   return bad;
 }
 
@@ -95,4 +98,11 @@ describe("splash.css S15 guard: transform and opacity only", () => {
   ])("fails on %j", (decl, prop) => {
     expect(s15Violations(`.a { ${decl}; }`)).toEqual([`transition: ${prop}`]);
   });
+
+  it.each(["transition: none", "transition: none !important", "transition-property: none"])(
+    "allows %j (switches transitions off)",
+    (decl) => {
+      expect(s15Violations(`.a { ${decl}; }`)).toEqual([]);
+    },
+  );
 });

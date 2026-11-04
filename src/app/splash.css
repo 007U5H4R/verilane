@@ -609,3 +609,17 @@ html[data-splash="hold"] {
     transform: none;
   }
 }
+
+/* ── reduced motion (TASK-45.6) ── */
+/* Design §18: a static frame. Blanket rule over the whole splash subtree, so
+   it also covers keyframes added later (TASK-45.5). The runtime shows the bar
+   from t0 and cuts straight to done, so nothing here needs to fade. */
+@media (prefers-reduced-motion: reduce) {
+  #verilane-splash,
+  #verilane-splash *,
+  #verilane-splash *::before,
+  #verilane-splash *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
