@@ -136,20 +136,100 @@ test("TC-129: overlay node identity is stable across the ShellGate swaps", async
 });
 
 test.describe("TC-131: skip exits within 50 ms and the app is interactive afterwards", () => {
-  async function expectSkipThenInteractive(page: Page, skip: (page: Page) => Promise<void>) {
-    await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
-    expect(await splashState(page)).toBe("on");
-    await waitPastT0(page, 400);
-    await skip(page);
-    await waitForSplash(page, "exit");
-    const [skipAt, exitAt] = [await markAt(page, "splash:skip"), await markAt(page, "splash:exit")];
-    expect(skipAt).not.toBeNull();
-    expect(exitAt! - skipAt!).toBeLessThanOrEqual(50);
-    await waitForSplash(page, "done");
-    expect(await appInert(page)).toBe(false);
-    const row = page.locator('a[href^="/invoices/"]').first();
-    await row.click();
-    await expect(page).toHaveURL(/\/invoices\/[^/]+/);
+  type Probe = { input: number | null; handled: number | null; search: number | null; click: number | null };
+  // The row opens its invoice as a full document load (splash or not), so the
+  // probe lives in sessionStorage to outlive the page that took the input.
+  const probe = (page: Page) =>
+    page.evaluate(() => {
+      const n = (k: string) => (sessionStorage.getItem(k) === null ? null : Number(sessionStorage.getItem(k)));
+      return { input: n("probe:input"), handled: n("probe:handled"), search: n("probe:search"), click: n("probe:click") };
+    });
+
+  // R-6: times are the browser's own event timestamps, not the runtime's
+  // marks. The input listener is an init script, so it is registered before
+  // the runtime's capture listener and sees the skipping event first.
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(() => {
+      const once = (k: string, v: number) => {
+        if (sessionStorage.getItem(k) === null) sessionStorage.setItem(k, String(v));
+      };
+      const first = (e: Event) => {
+        if (sessionStorage.getItem("probe:input") !== null) return;
+        once("probe:input", e.timeStamp);
+        once("probe:handled", performance.now());
+      };
+      window.addEventListener("keydown", first, true);
+      window.addEventListener("pointerdown", first, true);
+      document.addEventListener("focusin", (e) => {
+        const t = e.target as Element;
+        if (t.closest("#verilane-app") && t.getAttribute("role") === "combobox") once("probe:search", performance.now());
+      });
+      // On document, after the runtime's window-capture swallow, so it counts
+      // only a click that really reached the row.
+      document.addEventListener(
+        "click",
+        (e) => {
+          if ((e.target as Element).closest('a[href^="/invoices/"]')) once("probe:click", e.timeStamp);
+        },
+        true,
+      );
+    });
+  });
+
+  // `clock` is where "input" is read from: the event's own timeStamp, or (for
+  // emulated touch only) when the first page listener ran. Headless touch is
+  // delivered 40-220 ms after its timeStamp with or without the splash (EXE47).
+  // Each app interaction gets its own pass and is the first driver action
+  // after the skip, so the 350 ms measures the app, not driver round-trips.
+  async function expectSkipThenInteractive(
+    page: Page,
+    skip: (page: Page) => Promise<void>,
+    clock: "event" | "handler" = "event",
+  ) {
+    for (const via of ["keyboard", "pointer"] as const) {
+      await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
+      await page.evaluate(() => sessionStorage.clear());
+      expect(await splashState(page)).toBe("on");
+      await waitPastT0(page, 400);
+      // The app must be under the overlay before the skip, or "interactive
+      // ≤ 350 ms after input" would time the app's own load (EXE46). The
+      // first row sits below the fold, so it is scrolled in under the overlay.
+      const row = page.locator('a[href^="/invoices/"]').first();
+      await row.waitFor({ state: "attached", timeout: 15_000 });
+      await row.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      const box = await row.boundingBox();
+      expect(box).not.toBeNull();
+      await skip(page);
+      if (via === "keyboard") {
+        // The shell's Ctrl/Cmd+K focuses the search field in the app. (Tab
+        // would land on the overlay's skip button, first in DOM order; EXE46.)
+        await page.keyboard.press("ControlOrMeta+K");
+        await page.waitForFunction(() => sessionStorage.getItem("probe:search") !== null);
+        const p = await probe(page);
+        const input = clock === "event" ? p.input : p.handled;
+        const [skipAt, exitAt] = [await markAt(page, "splash:skip"), await markAt(page, "splash:exit")];
+        test.info().annotations.push({
+          type: "TC-131 input",
+          description: `clock=${clock} · timeStamp ${p.input} · first listener ${p.handled} · exit−input ${exitAt! - input!} · search−input ${p.search! - input!}`,
+        });
+        expect(input).not.toBeNull();
+        expect(skipAt).not.toBeNull();
+        expect(exitAt! - input!).toBeLessThanOrEqual(50);
+        expect(p.search! - input!).toBeLessThanOrEqual(350);
+        await waitForSplash(page, "done");
+        expect(await appInert(page)).toBe(false);
+      } else {
+        // A raw click at the row, with no actionability wait to hide a block.
+        await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+        await expect(page).toHaveURL(/\/invoices\/[^/]+/);
+        const p = await probe(page);
+        const input = clock === "event" ? p.input : p.handled;
+        expect(input).not.toBeNull();
+        expect(p.click).not.toBeNull();
+        test.info().annotations.push({ type: "TC-131 click", description: `clock=${clock} · click−input ${p.click! - input!}` });
+        expect(p.click! - input!).toBeLessThanOrEqual(350);
+      }
+    }
   }
 
   test("TC-131: Escape", async ({ page }) => {
@@ -167,7 +247,7 @@ test.describe("TC-131: skip exits within 50 ms and the app is interactive afterw
   test.describe("touch", () => {
     test.use({ hasTouch: true });
     test("TC-131: touch tap", async ({ page }) => {
-      await expectSkipThenInteractive(page, (p) => p.touchscreen.tap(200, 200));
+      await expectSkipThenInteractive(page, (p) => p.touchscreen.tap(200, 200), "handler");
     });
   });
 });
