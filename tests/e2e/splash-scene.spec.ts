@@ -369,6 +369,17 @@ test.describe("TC-155: the Skip intro button", () => {
       return { visible: el.matches(":focus-visible"), style: b.outlineStyle, width: b.outlineWidth, color: b.outlineColor };
     });
     expect(ring).toEqual({ visible: true, style: "solid", width: "2px", color: "rgb(142, 215, 176)" });
+    // EXE79: a real Shift+Tab (Shift keydown, then Tab) moves focus back and
+    // does not skip; focus never lands in the inert app behind the overlay.
+    await page.keyboard.press("Shift+Tab");
+    expect(await page.evaluate(() => document.documentElement.dataset.splash), "Shift+Tab does not skip").toMatch(/^(on|hold)$/);
+    const where = await page.evaluate(() => {
+      const a = document.activeElement;
+      return !a || a === document.body ? "body" : a.closest("#verilane-splash") ? "overlay" : "app:" + a.tagName;
+    });
+    expect(["body", "overlay"], "focus after Shift+Tab").toContain(where);
+    await page.keyboard.press("Tab");
+    await expect(btn, "Tab returns to Skip").toBeFocused();
   });
 
   test.describe("coarse pointer", () => {
@@ -377,6 +388,50 @@ test.describe("TC-155: the Skip intro button", () => {
       await check(page, true);
     });
   });
+});
+
+// EXE83: an SVG <image> loads even inside the display:none overlay, so the
+// sheen mask gets its href only when the splash shows. The app's own logo goes
+// through /_next/image, so a raw request for the file is the splash's alone.
+test("EXE83: the splash logo is not fetched on a load where the splash does not show", async ({ browser, baseURL }) => {
+  const LOGO = "/brand/verilane-logo-light.png";
+  async function load(show: boolean) {
+    const ctx = await browser.newContext({ baseURL, viewport: { width: 1440, height: 900 } });
+    await ctx.addInitScript((seen) => {
+      try {
+        window.localStorage.setItem("verilane-session", "guest");
+        if (seen) window.sessionStorage.setItem("verilane-splash-seen", "1");
+        else if (window.sessionStorage.getItem("e2e:splash-reset") === null) {
+          window.sessionStorage.removeItem("verilane-splash-seen");
+          window.sessionStorage.setItem("e2e:splash-reset", "1");
+        }
+      } catch {
+        // Storage blocked: the assertions below fail loudly.
+      }
+    }, !show);
+    const page = await ctx.newPage();
+    const hits: string[] = [];
+    page.on("request", (r) => {
+      if (new URL(r.url()).pathname === LOGO) hits.push(r.url());
+    });
+    await page.goto(show ? `/queue${FORCE}` : "/queue", { waitUntil: "load" });
+    await page.waitForTimeout(800);
+    const state = await page.evaluate(() => ({
+      splash: document.documentElement.dataset.splash ?? "none",
+      href: document.querySelector("#verilane-splash .splash-sheen image")?.getAttribute("href") ?? null,
+    }));
+    await ctx.close();
+    return { hits, ...state };
+  }
+  const off = await load(false);
+  expect(off.splash, "the splash does not show").toMatch(/^(none|done)$/);
+  expect(off.href, "no href on the hidden sheen").toBeNull();
+  expect(off.hits, "no logo request").toEqual([]);
+  // control: the same check sees the request when the splash shows
+  const on = await load(true);
+  expect(on.splash).toMatch(/^(on|hold|exit|done)$/);
+  expect(on.href).toBe(LOGO);
+  expect(on.hits.length, "the logo is fetched when the splash shows").toBeGreaterThan(0);
 });
 
 // TC-156: frame captures for the human look-check. They write to the

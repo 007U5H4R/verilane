@@ -69,7 +69,10 @@ describe("splashMarkup · scene (45.5)", () => {
     expect(imgs[0]).toContain('class="splash-v"');
     expect(imgs[1]).toContain('class="splash-word"');
     // the sheen is masked by the same artwork, so it never leaves the V
-    expect(html).toMatch(/<svg class="splash-sheen"[\s\S]*<image [^>]*href="\/brand\/verilane-logo-light.png"/);
+    expect(html).toMatch(/<svg class="splash-sheen"[\s\S]*<image [^>]*data-href="\/brand\/verilane-logo-light.png"/);
+    // ...but carries no href: an SVG <image> loads even while the overlay is
+    // display:none, so the runtime sets href when the splash shows (EXE83)
+    expect(html).not.toMatch(/<image [^>]*(?<!data-)href=/);
   });
 
   it("shows the tagline and both key hints (one is hidden per pointer type)", () => {

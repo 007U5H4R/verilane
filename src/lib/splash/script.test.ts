@@ -52,6 +52,7 @@ interface FakeEl {
   setAttribute(k: string, v: string): void;
   removeAttribute(k: string): void;
   hasAttribute(k: string): boolean;
+  getAttribute(k: string): string | null;
   addEventListener(t: string, fn: (e: unknown) => void): void;
   contains(x: unknown): boolean;
   querySelector(sel: string): FakeEl | null;
@@ -71,6 +72,7 @@ function fakeEl(children: Record<string, FakeEl> = {}): FakeEl {
       delete el.attrs[k];
     },
     hasAttribute: (k) => k in el.attrs,
+    getAttribute: (k) => el.attrs[k] ?? null,
     addEventListener: (t, fn) => {
       (el.listeners[t] ??= []).push(fn);
     },
@@ -134,7 +136,10 @@ function stubWindow(
   const track = fakeEl();
   const msg = fakeEl();
   const sub = fakeEl();
+  const sheen = fakeEl();
+  sheen.attrs["data-href"] = "/brand/verilane-logo-light.png";
   const overlay = fakeEl({
+    "image[data-href]": sheen,
     "[data-splash-skip]": skipButton,
     "[data-splash-status]": status,
     "[data-splash-bar]": bar,
@@ -504,6 +509,19 @@ describe("buildSplashScript", () => {
       expect(ev.defaultPrevented).toBe(false);
       expect(ev.stopped).toBe(false);
     });
+
+    it("a real Shift+Tab (Shift keydown, then Tab) does not skip (EXE79)", () => {
+      const { stub } = skipByKey({ key: "Shift", shiftKey: true });
+      stub.dispatch("keydown", { key: "Tab", shiftKey: true });
+      expect(stub.attrs["data-splash"]).toBe("on");
+    });
+
+    it("Shift+letter still skips on the letter", () => {
+      const { stub } = skipByKey({ key: "Shift", shiftKey: true });
+      expect(stub.attrs["data-splash"]).toBe("on");
+      stub.dispatch("keydown", { key: "A", shiftKey: true });
+      expect(stub.attrs["data-splash"]).toBe("exit");
+    });
   });
 
   // TASK-45.3 · 45.3.2: once per tab, client entry, phase replay, bfcache.
@@ -553,6 +571,37 @@ describe("buildSplashScript", () => {
       expect(painted(stub)).toBe(1);
       expect(stub.tab.getItem("verilane-splash-seen")).toBe("1");
       expect(stub.app.hasAttribute("inert")).toBe(true);
+    });
+
+    it("the sheen mask's logo gets its href only when the splash shows (EXE83)", () => {
+      const stub = stubWindow({ session: null, dom: true });
+      exec(prod, stub);
+      const sheen = stub.overlay.querySelector("image[data-href]")!;
+      expect(stub.window.verilaneSplash?.state()).toBe("off");
+      expect(sheen.hasAttribute("href")).toBe(false);
+      stub.local.setItem("verilane-session", "guest");
+      stub.window.verilaneSplash?.show();
+      expect(stub.attrs["data-splash"]).toBe("on");
+      expect(sheen.attrs.href).toBe("/brand/verilane-logo-light.png");
+    });
+
+    it("hard load: the overlay is parsed after the script, so the sheen href is set at DOMContentLoaded (EXE83)", () => {
+      const opts: Parameters<typeof stubWindow>[0] = { session: "guest" };
+      const stub = stubWindow(opts);
+      exec(prod, stub);
+      expect(stub.attrs["data-splash"]).toBe("on");
+      const sheen = stub.overlay.querySelector("image[data-href]")!;
+      expect(sheen.hasAttribute("href")).toBe(false);
+      opts.dom = true; // the body (overlay) is now parsed
+      stub.docDispatch("DOMContentLoaded");
+      expect(sheen.attrs.href).toBe("/brand/verilane-logo-light.png");
+    });
+
+    it("hard load with the splash off: DOMContentLoaded leaves the sheen without an href", () => {
+      const stub = stubWindow({ session: null, dom: true });
+      exec(prod, stub);
+      stub.docDispatch("DOMContentLoaded");
+      expect(stub.overlay.querySelector("image[data-href]")!.hasAttribute("href")).toBe(false);
     });
 
     it("show() with storage blocked stays off and does not throw", () => {
