@@ -287,7 +287,8 @@ export function splashRuntime(): Runtime {
       run({ type: "input", t: now() });
       if (m.attr !== before) {
         e.stopImmediatePropagation();
-        armed = true;
+        // only a primary press is followed by a click of its own (N-1)
+        armed = !e.button;
         upAt = 0;
       }
     }
@@ -299,7 +300,8 @@ export function splashRuntime(): Runtime {
     }
 
     function onClick(e: MouseEvent) {
-      if (!armed || (upAt && now() > upAt + GRACE)) return;
+      // detail 0: keyboard/synthetic activation, not the press's click
+      if (!armed || e.detail === 0 || (upAt && now() > upAt + GRACE)) return;
       disarm();
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -310,6 +312,7 @@ export function splashRuntime(): Runtime {
       f.call(w, "pointerdown", onPointer as EventListener, true);
       f.call(w, "pointerup", onUp, true);
       f.call(w, "pointercancel", disarm, true);
+      f.call(w, "contextmenu", disarm, true);
       f.call(w, "click", onClick as EventListener, true);
     }
 
