@@ -1,5 +1,35 @@
 # HANDOFF — Verilane
 
+## ▶ ACTIVE — TASK-45 + TASK-46 Stage 6 Execution (resume point, updated 2026-11-04 after release r2)
+
+**Resume with:** `bw-execution-orchestration` + `orchestration-playbook`. The ledgers are the source of truth: `/Volumes/E Drive/Dev/.scratch/task45/ledger.md` and `/Volumes/E Drive/Dev/.scratch/task46/ledger.md`.
+
+**Standing user delegations (verbatim, still binding):** "I will be AFK, dont wait for my approval. Take decisions on my behalf. And complete everything." · "Approved go ahead and fan out agents. Complete everything. TIme matters" · "approved, go ahead. Commit, merge, push and deploy." · "for 45.8 and 46.7, dont worry about the budget, just give your best" · "yes give splash priority". Human checkpoints TC-156 and TC-163 stay flagged, never faked (TC-117 approved). Subagents never push. Dispatch with no `model:` override. Shared e2e lock: `task4x/e2e.lock`.
+
+### Release r2 — SHIPPED (TASK-74 Done)
+PR #6 merged at 51cf19b (task/45-splash with 45.5 + 45.6, task/46-heritage-bg with 46.4 + 46.6, and the backlog syncs). Release gates: everything in test:all except `pnpm eval` passed, and full e2e was 491 passed, 0 failed, 25 skipped. Prod deploy `dpl_Epf1tL3aiRyXEd6BMwybHGDxtZav` was verified 2026-11-04: READY, aliased to verilane.tusharpathak.com, /, /queue and /settings return 200 with the splash markup, 0 runtime errors. Rollback: `dpl_5vsyWFY6jy1p5iJ9tCo4mPS7TwUP` (f0b9f65).
+
+### Ticket status
+| Ticket | Status |
+|---|---|
+| 45.1–45.7 | Done and in production |
+| 45.8 art gen | Done; **TC-163 look-check pending the user** (`task45/gen/composite/`, report-45.8.md) |
+| 45.9 encode final art | Blocked on TC-163 + **user decision: G2 clouds WebP fallback, half-res WebP (22.3 KB) vs AVIF-only (recommended)** |
+| 45.10 + whole-branch review | After 45.9 |
+| 46.1–46.6 | Done and in production. In 46.6, TC-115 (SC2) is `fixme`: the placeholder art is too faint (light normal P 0.061 against a 0.08 floor; dark raw P 0.037). |
+| 46.7 heritage art | Done, TC-117 approved by the user |
+| 46.8 final art | Next. Re-enable TC-115 unchanged on the final art. Re-measure the light text zone after encoding: it is at L* 92.1, against a floor of 92.1. If SC2 still fails, the **user decides** whether to take the PRD R1 fallback (P ≤ 6.5 %). |
+
+**Known reds (don't chase):** TC-081 flake, TC-085 perf, the lint `_done` warning, `pnpm eval` 8 failing (TASK-72).
+
+### Next actions, in order
+1. 46.8: encode the final heritage art and re-enable TC-115.
+2. Once the user signs off TC-163 and makes the WebP decision: 45.9, then 45.10.
+3. Whole-branch reviews for TASK-45 and TASK-46, then a release, then Stage 7 design critique.
+4. Open follow-up: AppShell remounts the heritage layer twice after the splash (ticket candidate from 46.4).
+
+---
+
 ## Main chain — Verilane v1 release (Stage 10 DONE 2026-11-03; Stage 11 · Feedback & Regression: TASK-64 DONE and deployed — `bw-feedback-regression`)
 
 **Auto-advance (this session's user instruction):** when a stage's exit criteria are met, rewrite this section and start the next stage without waiting. Stop for anything destructive.
@@ -8,7 +38,7 @@ Stages 1–9: DONE. Release gate is `QA-report.md` (READY WITH ACCEPTED RISKS, a
 
 ### Stage 10 · Deployment + Production Monitoring — DONE (TASK-65)
 - **Live:** https://verilane.tusharpathak.com. It is deployed by the Vercel git integration from `main`.
-- **Vercel:** project `prj_Id5zfSGk5rr2psR93e6wGrv3fahr`, team `team_pLaStAJybzggE3tGD5ioih5M`. The production deploy is `dpl_B9pvyfxAVuLumpMicXGEmFbhmp9N` (main at d7144cb, PR #4, TASK-64). The rollback candidate is `dpl_61xSanfPgaoj7aoy5QiNYvdmUcW5` (77d68ed, PR #3). *Record new IDs here after every deploy, because they were lost once on compaction.*
+- **Vercel:** project `prj_Id5zfSGk5rr2psR93e6wGrv3fahr`, team `team_pLaStAJybzggE3tGD5ioih5M`. The production deploy is `dpl_5vsyWFY6jy1p5iJ9tCo4mPS7TwUP` (main at f0b9f65, PR #5, TASK-45/46 progress), verified READY + aliased 2026-11-04. The rollback candidate is `dpl_B9pvyfxAVuLumpMicXGEmFbhmp9N` (d7144cb, PR #4). *Record new IDs here after every deploy, because they were lost once on compaction.*
 - **Pre-deploy items:** R1 (og.png) and R5 (TASK-58 CSP/headers, TASK-59 `check:deploy-env` build guard) landed before the deploy.
 - **TASK-63 (fixed live):** the invoice detail grid widened to 448px at 375px on INV-A. Fixed in 69b5888 with `grid-cols-[minmax(0,1fr)]`. Live re-check passed 10/10 at 375 and 768. The regression test is the DES-001 loop in `tests/e2e/responsive.spec.ts`, which now includes `/invoices/INV-A`.
 - **TASK-64 (logged, P3):** the /queue stat badge text is truncated at 375px. Cosmetic. Fixed in Stage 11 (see below).
