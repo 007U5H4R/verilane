@@ -240,13 +240,22 @@ test("TC-098: clicks pass through the art to the control underneath (SC3)", asyn
 // rendered inside it at the column's level. The bottom tabs (fixed z-40) must
 // live inside that column too, or below 768px they paint over side panels,
 // drawers and the tour's backdrop, and take the taps meant for them.
-test("TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)", async ({ page }) => {
+test("TC-097b: shell overlays paint above bottom tabs at 375 (R-1)", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
-  /** What a tap just above the bottom edge, mid-screen, lands on. */
+  /** What a tap at the centre of the first non-current bottom tab lands on. */
   const bottomHit = () =>
     page.evaluate(() => {
-      const hit = document.elementFromPoint(187, window.innerHeight - 20);
+      const target = document.querySelector<HTMLAnchorElement>('nav[aria-label="Mobile"] a[href]:not([aria-current="page"])')!;
+      const r = target.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const hit = document.elementFromPoint(cx, cy);
       return {
+        cx,
+        cy,
+        // The tab bar is pinned to the viewport's bottom edge, whatever its height.
+        atBottom: target.closest("nav")!.getBoundingClientRect().bottom === window.innerHeight && r.bottom <= window.innerHeight,
+        target: target.getAttribute("href"),
         inDialog: !!hit?.closest('[role="dialog"]'),
         inNav: !!hit?.closest('nav[aria-label="Mobile"]'),
         href: hit?.closest("a")?.getAttribute("href") ?? null,
@@ -256,9 +265,9 @@ test("TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)", asy
   // Nothing open: the tab under that point takes the tap and navigates.
   await openHome(page);
   const tab = await bottomHit();
-  expect(tab).toMatchObject({ inDialog: false, inNav: true });
+  expect(tab).toMatchObject({ atBottom: true, inDialog: false, inNav: true, href: tab.target });
   expect(tab.href).toMatch(/^\/\w+$/);
-  await page.mouse.click(187, 800 - 20);
+  await page.mouse.click(tab.cx, tab.cy);
   await expect(page).toHaveURL((u) => u.pathname === tab.href);
 
   // The disputes Filters side panel.
@@ -269,7 +278,10 @@ test("TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)", asy
   expect(await bottomHit()).toMatchObject({ inDialog: true, inNav: false });
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  expect(await bottomHit()).toMatchObject({ inDialog: false, inNav: true });
+  {
+    const h = await bottomHit();
+    expect(h).toMatchObject({ inDialog: false, inNav: true, href: h.target });
+  }
 
   // A drawer rendered inside <main>: the audit detail drawer (a role switch
   // gives a fresh profile its one audit row).
@@ -297,5 +309,8 @@ test("TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)", asy
   expect(more).toEqual({ inNav: false, inBackdrop: true });
   await page.getByTestId("tour-confirm").getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByTestId("tour-confirm")).toHaveCount(0);
-  expect(await bottomHit()).toMatchObject({ inDialog: false, inNav: true });
+  {
+    const h = await bottomHit();
+    expect(h).toMatchObject({ inDialog: false, inNav: true, href: h.target });
+  }
 });

@@ -82,6 +82,14 @@
 - **Data:** —
 - **Expected:** Each hit is inside its overlay element.
 
+### TC-097b · Shell overlays paint above bottom tabs at 375 (R-1)
+- **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · R-1 · EXE57 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04) · **Finding:** R-1
+- **Objective:** The bottom tabs (fixed z-40, inside the isolated content column) never paint over or take taps meant for shell overlays below 768px.
+- **Preconditions:** 375×800; `/`, `/disputes`, `/audit`.
+- **Steps:** With nothing open, `document.elementFromPoint` at the centre of a non-current tab's bounding box, then tap there; open the disputes Filter side panel, the audit detail drawer and the tour confirm card, probing the same tab-centre point (the More tab's centre for the tour); close each and probe again.
+- **Data:** —
+- **Expected:** Closed: the hit is the targeted tab and the tap navigates to its href. Open: the hit is inside the dialog (the tour backdrop for the tour), never the Mobile nav.
+
 ### TC-098 · Clicks pass through the art (SC3)
 - **Rel:** M-46.1 · TKT-46.02 · TASK-46.2 · 46.2.9 · SC3 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, d594918) · **Finding:** —
 - **Objective:** The decorative layer never intercepts input.
