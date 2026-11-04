@@ -93,6 +93,26 @@ describe("step · exit timing (exitAt = max(t0 + D, tReady + beat))", () => {
   });
 });
 
+// The exit mark is the moment the exit began: it must be stamped before
+// un-inerting the app, which can take tens of ms (TC-134 saw done − exit 273 ms).
+describe("step · exit effect order", () => {
+  it("marks splash:exit before the attr change and un-inert", () => {
+    const { fx } = run([phase("ready", 1000), tick(5700)]);
+    const i = fx.findIndex((f) => f.k === "mark" && f.v === "splash:exit");
+    expect(i).toBeGreaterThan(-1);
+    expect(i).toBeLessThan(fx.findIndex((f) => f.k === "uninert"));
+    expect(i).toBeLessThan(fx.findIndex((f) => f.k === "attr" && f.v === "exit"));
+  });
+
+  // console.warn is slow with a devtools/CDP listener; it must not delay the exit.
+  it("on the ceiling, warns only after the exit effects", () => {
+    const { fx } = run([tick(5700), tick(9700)]);
+    const w = fx.findIndex((f) => f.k === "warn");
+    expect(w).toBeGreaterThan(fx.findIndex((f) => f.k === "mark" && f.v === "splash:exit"));
+    expect(w).toBeGreaterThan(fx.findIndex((f) => f.k === "uninert"));
+  });
+});
+
 describe("step · ceiling", () => {
   it("with no ready, exits at 9700 with a warning and the ceiling mark", () => {
     const before = run([tick(5700), tick(9699)]);

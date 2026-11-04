@@ -131,7 +131,8 @@ export function splashRuntime(): Runtime {
   }
 
   function exit(m: Model, t: number, cfg: SplashConfig, fx: Effect[]): Model {
-    fx.push({ k: "attr", v: "exit" }, { k: "uninert" }, { k: "mark", v: "splash:exit" }, { k: "timer", v: t + cfg.exitMs });
+    // Mark first: it records when the exit began; un-inerting can take tens of ms.
+    fx.push({ k: "mark", v: "splash:exit" }, { k: "attr", v: "exit" }, { k: "uninert" }, { k: "timer", v: t + cfg.exitMs });
     return with_(m, { attr: "exit", tExit: t });
   }
 
@@ -164,8 +165,11 @@ export function splashRuntime(): Runtime {
       }
       if (!live(m)) return { m: m, fx: fx };
       if (t >= m.t0 + cfg.D + cfg.ceilingExtra) {
-        fx.push({ k: "warn", v: "[verilane] splash ceiling reached before the app was ready" }, { k: "mark", v: "splash:ceiling" });
-        return { m: exit(m, t, cfg, fx), fx: fx };
+        fx.push({ k: "mark", v: "splash:ceiling" });
+        const n = exit(m, t, cfg, fx);
+        // Warn last: console.warn is slow under devtools and must not delay the exit.
+        fx.push({ k: "warn", v: "[verilane] splash ceiling reached before the app was ready" });
+        return { m: n, fx: fx };
       }
       if (m.exitAt !== null && t >= m.exitAt) return { m: exit(m, t, cfg, fx), fx: fx };
       if (m.attr === "on" && t >= m.t0 + cfg.D) {
