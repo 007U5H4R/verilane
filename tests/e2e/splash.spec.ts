@@ -136,13 +136,13 @@ test("TC-129: overlay node identity is stable across the ShellGate swaps", async
 });
 
 test.describe("TC-131: skip exits within 50 ms and the app is interactive afterwards", () => {
-  type Probe = { input: number | null; handled: number | null; search: number | null; click: number | null };
+  type Probe = { input: number | null; handled: number | null; k: number | null; search: number | null; click: number | null };
   // The row opens its invoice as a full document load (splash or not), so the
   // probe lives in sessionStorage to outlive the page that took the input.
   const probe = (page: Page): Promise<Probe> =>
     page.evaluate(() => {
       const n = (k: string) => (sessionStorage.getItem(k) === null ? null : Number(sessionStorage.getItem(k)));
-      return { input: n("probe:input"), handled: n("probe:handled"), search: n("probe:search"), click: n("probe:click") };
+      return { input: n("probe:input"), handled: n("probe:handled"), k: n("probe:k"), search: n("probe:search"), click: n("probe:click") };
     });
 
   // R-6: times are the browser's own event timestamps, not the runtime's
@@ -160,6 +160,15 @@ test.describe("TC-131: skip exits within 50 ms and the app is interactive afterw
       };
       window.addEventListener("keydown", first, true);
       window.addEventListener("pointerdown", first, true);
+      // N-2: when the driver actually delivered Ctrl/Cmd+K, to tell a slow
+      // driver apart from a slow app.
+      window.addEventListener(
+        "keydown",
+        (e) => {
+          if ((e.key === "k" || e.key === "K") && (e.ctrlKey || e.metaKey)) once("probe:k", e.timeStamp);
+        },
+        true,
+      );
       document.addEventListener("focusin", (e) => {
         const t = e.target as Element;
         if (t.closest("#verilane-app") && t.getAttribute("role") === "combobox") once("probe:search", performance.now());
@@ -210,15 +219,21 @@ test.describe("TC-131: skip exits within 50 ms and the app is interactive afterw
         const [skipAt, exitAt] = [await markAt(page, "splash:skip"), await markAt(page, "splash:exit")];
         test.info().annotations.push({
           type: "TC-131 input",
-          description: `clock=${clock} · timeStamp ${p.input} · first listener ${p.handled} · exit−input ${exitAt! - input!} · search−input ${p.search! - input!}`,
+          description: `clock=${clock} · timeStamp ${p.input} · first listener ${p.handled} · exit−input ${exitAt! - input!} · k−input ${p.k! - input!} · search−input ${p.search! - input!}`,
         });
         expect(input).not.toBeNull();
         expect(skipAt).not.toBeNull();
         expect(exitAt! - input!).toBeLessThanOrEqual(50);
+        // N-2: Cmd+K reaching the page late is the driver's delay, not the
+        // app's; such a run says nothing about the 350 ms, so it is invalid.
+        expect(p.k).not.toBeNull();
+        if (p.k! - input! > 300) throw new Error(`invalid run: driver gap (k−input ${p.k! - input!} ms > 300)`);
         expect(p.search! - input!).toBeLessThanOrEqual(350);
         await waitForSplash(page, "done");
         expect(await appInert(page)).toBe(false);
       } else {
+        // N-3: the skip must have happened; read before the click navigates.
+        expect(await markAt(page, "splash:skip")).not.toBeNull();
         // A raw click at the row, with no actionability wait to hide a block.
         await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
         await expect(page).toHaveURL(/\/invoices\/[^/]+/);
