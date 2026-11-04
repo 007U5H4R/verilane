@@ -1,7 +1,7 @@
 /** TASK-45.2: phase hooks are one-line, never-throwing CustomEvent emitters. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { emitSplash } from "./events";
+import { emitSplash, showSplash } from "./events";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -29,5 +29,30 @@ describe("emitSplash", () => {
   it("never throws, even without a window", () => {
     vi.stubGlobal("window", undefined);
     expect(() => emitSplash("provider")).not.toThrow();
+  });
+});
+
+// TASK-45.3 · 45.3.3: the client entry asks the runtime to re-decide.
+describe("showSplash", () => {
+  it("calls the runtime's show()", () => {
+    const show = vi.fn();
+    vi.stubGlobal("window", { verilaneSplash: { show } });
+    showSplash();
+    expect(show).toHaveBeenCalledTimes(1);
+  });
+
+  it("never throws: no runtime, no window, or a throwing show()", () => {
+    vi.stubGlobal("window", {});
+    expect(() => showSplash()).not.toThrow();
+    vi.stubGlobal("window", undefined);
+    expect(() => showSplash()).not.toThrow();
+    vi.stubGlobal("window", {
+      verilaneSplash: {
+        show: () => {
+          throw new Error("boom");
+        },
+      },
+    });
+    expect(() => showSplash()).not.toThrow();
   });
 });

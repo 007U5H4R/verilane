@@ -14,3 +14,17 @@ export function emitSplash(phase: SplashPhase): void {
     /* the splash is decoration; a missing window or event API must not break loading */
   }
 }
+
+/**
+ * TASK-45.3: client entry. A guest who arrives without a hard load (onboarding
+ * Finish → "/") asks the head runtime to re-decide; it shows at most once per
+ * tab and is a no-op while a splash is live. Never throws, so the gate's
+ * render cannot depend on it (R7).
+ */
+export function showSplash(): void {
+  try {
+    window.verilaneSplash?.show();
+  } catch {
+    /* no runtime, or a broken one: the app renders exactly as without it */
+  }
+}

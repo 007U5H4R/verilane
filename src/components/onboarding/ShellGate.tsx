@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { DataProviderLoader } from "@/components/DataProviderLoader";
@@ -9,7 +9,7 @@ import { ShellSkeleton } from "@/components/states/ShellSkeleton";
 import { requestTour } from "@/components/tour/tourStore";
 import { readTourLink } from "@/components/tour/tourLink";
 import { isAuthRoute, startGuestSession, useSession } from "@/lib/session";
-import { emitSplash } from "@/lib/splash/events";
+import { emitSplash, showSplash } from "@/lib/splash/events";
 
 /**
  * TASK-39: decides what wraps a route.
@@ -29,6 +29,13 @@ export function ShellGate({ children }: { children: ReactNode }) {
 function GatedApp({ children }: { children: ReactNode }) {
   const session = useSession();
   const router = useRouter();
+
+  // TASK-45.3: client entry (onboarding → "/"). A layout effect runs before
+  // the first paint of this mount and before any of its phase effects, so the
+  // overlay covers the very first frame. Observe-only: it renders nothing.
+  useLayoutEffect(() => {
+    showSplash();
+  }, []);
 
   useEffect(() => {
     if (session === undefined) return; // not read yet
