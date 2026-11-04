@@ -51,3 +51,53 @@ export function heritageLevelFor(pathname: string, enabled: boolean = HERITAGE_E
   }
   return DEFAULT_LEVEL;
 }
+
+/** Just the globals scheduleIdleOnce touches, so tests can pass a fake (TP10). */
+export interface IdleHost {
+  requestIdleCallback?: (cb: () => void, opts: { timeout: number }) => number;
+  cancelIdleCallback?: (id: number) => void;
+  setTimeout: (cb: () => void, ms: number) => number;
+  clearTimeout: (id: number) => void;
+  /** Read as SaveDataHint. Typed `object` because TS's DOM `Navigator` has no
+   *  `connection` (Network Information API), so `window` would not fit (EXE60). */
+  navigator?: object;
+}
+
+/** The one Network Information API field read here. */
+type SaveDataHint = { connection?: { saveData?: boolean } };
+
+/** rIC's deadline; the browser runs cb by then even if it never goes idle. */
+const IDLE_TIMEOUT_MS = 4000;
+/** Without rIC (Safari), a fixed delay well after first paint. */
+const FALLBACK_DELAY_MS = 2500;
+
+/**
+ * Runs cb once at idle (rIC with a 4 s timeout, else setTimeout 2500). Under
+ * Save-Data it schedules nothing. Returns a cancel that is safe to call at any
+ * time, any number of times (TC-106a–TC-108).
+ */
+export function scheduleIdleOnce(host: IdleHost, cb: () => void): () => void {
+  if ((host.navigator as SaveDataHint | undefined)?.connection?.saveData) return () => {};
+  let done = false;
+  const run = () => {
+    if (done) return;
+    done = true;
+    cb();
+  };
+  const ric = host.requestIdleCallback;
+  const cancelIdle = host.cancelIdleCallback;
+  if (ric && cancelIdle) {
+    const id = ric.call(host, run, { timeout: IDLE_TIMEOUT_MS });
+    return () => {
+      if (done) return;
+      done = true;
+      cancelIdle.call(host, id);
+    };
+  }
+  const id = host.setTimeout.call(host, run, FALLBACK_DELAY_MS);
+  return () => {
+    if (done) return;
+    done = true;
+    host.clearTimeout.call(host, id);
+  };
+}
