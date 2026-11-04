@@ -616,3 +616,39 @@
   - route-budget: all 18 routes ≤ 300 KB gzip (max `/settings` 294.7 KB).
   - e2e `--workers=1`: 355 passed, 1 skipped, 0 failed (21.5 min), with TC-081 and TC-085 green on this run.
 - **Decision.** The eval failures count as a known red, not a regression, per EXE23 (user, 2026-11-01: TC-066 is a known limitation and the thresholds are unchanged). Because `test:all` is an `&&` chain it stops at `eval`, so the baseline runs in two parts: `typecheck → eval`, then `build → e2e`. TASK-45 regressions are judged against these counts.
+
+## EXE34 · Splash runtime is one self-contained function, stringified into the head (TASK-45.2) — accepted
+- `src/lib/splash/runtime.ts` exports a pure `step()` state machine (unit-tested) and `splashRuntime()`, which embeds its own copy of the machine. `buildSplashScript()` inlines `splashRuntime.toString()` with the config. The script follows the THEME_SCRIPT pattern and is allowed by the static CSP's 'unsafe-inline'. It has no imports, so it adds nothing to client JS (`/settings` stays at 294.8 KB). It adds about 5.1 KB of inline HTML per page.
+- `script.test.ts` runs the exact emitted string in a fresh `node:vm` context. A helper or import leaking out of the function fails there rather than in a browser.
+- Globals are reached through a `(w as Window & typeof globalThis)` cast on the passed window, so the stringified body never references module scope.
+
+## EXE35 · 45.2 `decide()` is the minimum; auth routes, seen flag and TC-135 step 3 go to TASK-45.3 (TASK-45.2) — accepted
+- In 45.2 the splash shows only for a guest session with readable storage. In e2e builds it is off unless forced with `?__splash=1`, which persists in sessionStorage `verilane-splash-force`. `"__splash"` joins HOOKS in `check-e2e-hooks`. The full truth table (auth routes, `verilane-splash-seen`, once per tab) and TC-135 step 3 are TASK-45.3 / TC-137.
+
+## EXE36 · Overlay stacks above the sonner toaster (TASK-45.2) — accepted
+- `#verilane-splash` uses `z-index: 2147483000`, above sonner's toaster (999999999). No toast can paint over the splash while the app below is inert.
+
+## EXE37 · TC-129 and TC-134 hold readiness by routing the seed manifest (TASK-45.2) — accepted
+- The plan delayed the DataProvider chunk. That chunk name is not stable under Turbopack, while a fresh context always fetches `**/seed/manifest.json` to seed. The specs delay that request (TC-129, 1.5 s) or never resolve it (TC-134), so readiness can be controlled without touching the app.
+
+## EXE38 · `layout.test.ts` updated for the splash head script and markup (TASK-45.2) — accepted
+- `<head>` now has two scripts (THEME_SCRIPT, then the splash). The existing theme assertion read the head's single child, so it now finds the theme script by its content. A new test asserts the splash script, the `#verilane-splash` overlay and the `#verilane-app` wrapper (`display: contents`). Both the overlay and the wrapper carry `suppressHydrationWarning`, because the runtime sets attributes on them before hydration.
+
+## EXE39 · Timers tick at `max(now, deadline)` (TASK-45.2) — accepted
+- **Found by TC-134.** Chromium ran the 9700 ms ceiling timer while `performance.now()` still read 9699.x. `step()` saw "not yet" and nothing rescheduled, so the overlay never left (one light-project run hung).
+- **Fix.** The runtime ticks with `Math.max(now(), due)`. The regression test is `script.test.ts` "treats a timer that fires slightly early as having reached its deadline" (red, then green).
+
+## EXE40 · The TC-130 spec is tagged `@splash-perf`, not `@perf` (TASK-45.2) — accepted
+- TP-45.h said `@perf`, but the existing `perf.spec.ts` uses `describe("@perf")` and runs inside `pnpm e2e` (TC-085). A shared tag would either pull the 10-minute TC-130 into `pnpm e2e` or drop TC-085 from it.
+- `playwright.config.ts` greps `@splash-perf` only when `SPLASH_PERF=1`, and greps it out otherwise. The script is `pnpm e2e:splash-perf` (chromium-light, 1 worker). Setting `SPLASH_PERF_MODE=interleaved` forces A/B pairs even when the baseline spread is ≤ ±50 ms; use it when the CPU is shared.
+
+## EXE41 · TC-134 asserts the exit at 9.7 s and done at 10.0 s (TASK-45.2) — accepted
+- Per the technical plan, the ceiling starts the exit at t0 + D + 4000 = 9700 ms, and `done` follows exitMs (300) later. The spec allows ±200 ms on each.
+
+## EXE42 · TC-128 also matches minified React hydration codes (TASK-45.2) — accepted
+- Production React reports hydration errors only as #418, #423 and #425. The console regex is `/hydrat|did not match|mismatch|#418|#423|#425/i`, plus any `pageerror`.
+
+## EXE43 · RK2 / TC-130 verdict is taken from interleaved A/B under CPU contention (TASK-45.2) — accepted
+- The first run used simple A/B (9 off, then 9 on), because its baseline spread was ±27.8 ms. It gave Δ = +157.9 ms (off 589.5, on 747.4), at load 20.5 → 16.0, with the TASK-46 agent and iCloud running.
+- Two interleaved re-runs gave Δ = −8.1 ms (spread ±111.8, load 12.2) and Δ = −30.4 ms (spread ±434.2, load 12.7). Only interleaving controls for contention that changes over time, so the verdict comes from the interleaved runs: no measurable regression.
+- **Caveat.** These spreads are well above the 50 ms budget, so the gate cannot resolve 50 ms on this machine today. Re-run `SPLASH_PERF_MODE=interleaved pnpm e2e:splash-perf` on a quiet machine before TASK-45.7 (budget).
