@@ -72,7 +72,7 @@
 - **Expected:** Same node, still connected. The overlay's `data-*`/status text is unchanged by React.
 
 ### TC-130 · `splash:ready` is within ±50 ms of the no-splash baseline
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Pass (2026-11-04, Δ −13.7 ms, EXE45); re-check 2026-11-05 at 83bfeee inconclusive under host load: Δ +108.9 / +162.7 ms, spread 212 / 152 ms, CI −15.8..277.3 / 30.7..404.9 (EXE111) · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Fail by gate at fbfcd69 under host load (Δ 108.9, 162.7 ms; spread 212 / 152 ms; CI −15.8..277.3 / 30.7..404.9); the 2026-11-04 pass (Δ −13.7 ms, EXE45) at an earlier commit is superseded; idle-host re-run required before release. P0: if Δ > 50 on an idle host, reopen Stage 2 / park as finding (EXE111) · **Finding:** —
 - **Objective:** The splash does not delay readiness.
 - **Preconditions:** `pnpm build:e2e`; `pnpm e2e:splash-perf`; a fresh context per run.
 - **Steps:**
@@ -400,7 +400,7 @@
 - **Expected:** `done` at D + 300 ms ± 200 ms. The placeholder gradient is visible meanwhile; there is no blank frame.
 
 ### TC-166 · axe finds no serious or critical violations at on, hold and ready
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.1 · a11y · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, e78be28; axe found 0 violations of any impact at `on`, `hold` and after `done`, light and dark; task45/45.10/e2e-new-specs-2.log) · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.1 · a11y · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, e78be28; axe found 0 violations of any impact at `on`, `hold` and after `done`, light and dark; task45/45.10/e2e-new-specs-2.json) · **Finding:** —
 - **Objective:** Overlay accessibility.
 - **Preconditions:** splash-on; `@axe-core/playwright`, already used by the suite.
 - **Steps:** Run axe at `on` (1 s), at `hold` (slow ready) and after `done`.
@@ -420,7 +420,7 @@
   - The evidence is recorded in HANDOFF.
 
 ### TC-168 · Focus cannot enter the app while it is covered, and lands in the app after exit
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.3 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, e78be28; 10 Tabs while covered alternate Skip and body, app `inert`; after Escape the first Tab lands on the app's first control, "A Verilane home") · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.3 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, e78be28; 10 Tabs while covered alternate Skip and body, app `inert`; after Escape the first Tab lands on the app's first control, "A Verilane home"; task45/45.10/e2e-new-specs-2.json) · **Finding:** —
 - **Objective:** `inert` is correct and is always cleared.
 - **Preconditions:** splash-on.
 - **Steps:** Tab 10× during `on` and record `activeElement`; skip; Tab once.
@@ -428,19 +428,19 @@
 - **Expected:** While covered, focus stays on Skip or body (never inside `#verilane-app`). After exit, the first Tab reaches the app's skip link or first control.
 
 ### TC-169 · Splash-on performance: INP, CLS, long tasks
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · N-perf · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Fail (2026-11-05, 83bfeee; 4× CPU: splash-runtime long scripts 0 in 6/6 runs after EXE109, CLS at exit 0 in 9/9; skip INP medians 256 / 248 / 336 ms > 200, third run keydown phases delay 23–250, processing 43–221, presentation 172–233 ms (EXE110); host load 7–32; task45/45.10/splash-perf{,-2,-3}.log) · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · N-perf · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Fail (INP; fix round 1, 2026-11-05, uncommitted tree on fbfcd69; 4× CPU, warm-up + 5 skip runs + 1 natural-exit run: inline document long scripts >50 ms 0 in 6/6 (EXE113: the earlier splash-only attribution was vacuous, Chromium reports sourceCharPosition 0 for inline scripts; the control proves the stricter gate sees an injected 120 ms loop), raw CLS after exit 0 in 6/6 including the natural exit; skip INP [280, 200, 280, 272, 128], median 272 ms > 200 (EXE110, open stop-rule item for the user); host load 10–25, not perf evidence; idle-host re-run pending; task45/45.10/fix1-specs-2.log) · **Finding:** —
 - **Objective:** The animation stays off the main thread.
 - **Preconditions:** `pnpm e2e:splash-perf`; 4× CPU throttle via CDP.
 - **Steps:** PerformanceObserver on `longtask`, `layout-shift` and `event`, from load until `done` plus one interaction.
 - **Data:** —
 - **Expected:**
-  - No long task attributable to the splash runtime above 50 ms.
+  - No long task attributable to the splash runtime above 50 ms (gated as: no inline document script above 50 ms, EXE113).
   - CLS = 0 when the overlay exits.
   - INP for the skip input is ≤ 200 ms.
   - `splash:ready` Δ is re-checked per TC-130.
 
 ### TC-170 · No-splash Core Web Vitals unchanged against E1
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · R1 · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Pass (2026-11-05, 83bfeee vs E1 cf2c541, 11 interleaved pairs: median pair Δ LCP +28 ms, CLS 0 vs 0, first-row ready +36.9 ms; the R-8 assertion in the EXE83 test (0 splash-art requests with the splash off, ≥ 1 with it on) is this case's request evidence (EXE108, EXE112); task45/45.10/splash-perf.log) · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · R1 · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Inconclusive (point median +28 ms; CI straddles +50); idle re-run pending. (2026-11-05, uncommitted working tree before 83bfeee (EXE109 edit pending) vs E1 cf2c541, 11 interleaved pairs: point estimate within budget, median pair Δ LCP +28 ms (93.5 % CI −28..64), CLS 0 vs 0, first-row ready +36.9 ms (93.5 % CI −46.6..200.6); the spec now takes 21 pairs and logs TC-130's order-statistic CI; idle-host re-run required with TC-130; the R-8 assertion in the EXE83 test (0 splash-art requests with the splash off, ≥ 1 with it on) is this case's request evidence (EXE108, EXE112); task45/45.10/splash-perf.log) · **Finding:** —
 - **Objective:** Returning tabs and non-guests pay nothing.
 - **Preconditions:** A seen flag set (so no splash); the E1 build alongside the branch build.
 - **Steps:** Interleaved A/B, n ≥ 9: LCP, CLS, `splash:ready`.
