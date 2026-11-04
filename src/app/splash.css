@@ -68,6 +68,14 @@ html[data-splash="hold"] {
   background:
     radial-gradient(60vw 46vh at 84vw 40vh, rgb(var(--sp-light) / 0.1), transparent 70%),
     linear-gradient(180deg, var(--sp-deep) 0%, var(--sp-base) 42%, var(--sp-mid) 72%, #0a4532 100%);
+  /* TASK-45.9: the G1 sky plate over the same gradient. The gradient shows
+     until the art decodes (S21: nothing waits on it); a browser that cannot
+     parse image-set() keeps the declaration above. */
+  background:
+    image-set(url("../assets/splash/sky.avif") type("image/avif"), url("../assets/splash/sky.webp") type("image/webp"))
+      62% 70% / cover no-repeat,
+    radial-gradient(60vw 46vh at 84vw 40vh, rgb(var(--sp-light) / 0.1), transparent 70%),
+    linear-gradient(180deg, var(--sp-deep) 0%, var(--sp-base) 42%, var(--sp-mid) 72%, #0a4532 100%);
 }
 
 #verilane-splash .splash-hills {
@@ -79,34 +87,33 @@ html[data-splash="hold"] {
 }
 
 /* clouds: one-way drift over the 10 s maximum life; the foreground travels
-   twice the background (parallax, TC-152) */
+   twice the background (parallax, TC-152). TASK-45.9: the G2 strips, AVIF
+   only (EXE98), so a plain url(): a one-candidate image-set() is reprinted by
+   Lightning CSS as an unhashed string (EXE101; splash-budget checks the built
+   CSS). Without AVIF the strip fails to decode and no cloud shows, as decided.
+   Geometry and opacity follow the TC-163 approved composite (EXE100). */
 #verilane-splash .splash-cloud {
   position: absolute;
-  border-radius: 50%;
   pointer-events: none;
 }
 
 #verilane-splash .splash-cloud-bg {
-  left: 20vw;
-  top: 13vh;
-  width: 34vw;
-  height: 8vw;
-  background:
-    radial-gradient(closest-side at 30% 60%, rgb(221 242 231 / 0.13), transparent),
-    radial-gradient(closest-side at 62% 45%, rgb(221 242 231 / 0.11), transparent),
-    radial-gradient(closest-side at 82% 62%, rgb(221 242 231 / 0.08), transparent);
+  left: -10vw;
+  top: 10vh;
+  width: 125vw;
+  height: 19.5vw;
+  opacity: 0.2;
+  background: url("../assets/splash/clouds-bg.avif") 0 0 / 100% 100% no-repeat;
   animation: splash-drift-bg 10s linear both;
 }
 
 #verilane-splash .splash-cloud-fg {
   left: -8vw;
-  top: 55vh;
-  width: 54vw;
-  height: 13vw;
-  background:
-    radial-gradient(closest-side at 25% 58%, rgb(221 242 231 / 0.16), transparent),
-    radial-gradient(closest-side at 52% 42%, rgb(221 242 231 / 0.14), transparent),
-    radial-gradient(closest-side at 78% 60%, rgb(221 242 231 / 0.1), transparent);
+  top: 50vh;
+  width: 130vw;
+  height: 24.4vw;
+  opacity: 0.32;
+  background: url("../assets/splash/clouds-fg.avif") 0 0 / 100% 100% no-repeat;
   animation: splash-drift-fg 10s linear both;
 }
 
@@ -458,13 +465,6 @@ html[data-splash="hold"] {
   /* fewer clouds on phones */
   #verilane-splash .splash-cloud-bg {
     display: none;
-  }
-
-  #verilane-splash .splash-cloud-fg {
-    top: 58vh;
-    width: 80vw;
-    height: 22vw;
-    opacity: 0.8;
   }
 
   #verilane-splash .splash-progress {
