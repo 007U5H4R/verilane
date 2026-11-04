@@ -2,8 +2,8 @@
 /**
  * Heritage art encoder (TASK-46.5 · TC-112 · plan §A4). From one 21:9 master
  * (3360×1440 PNG) per theme it writes, into the path-B asset dir (EXE55):
- *   heritage-{theme}-desk.v1.{avif,webp}   2400 wide (or --width), aspect kept
- *   heritage-{theme}-strip.v1.{avif,webp}  1200×480, the master's 15–55%
+ *   heritage-{theme}-desk.v2.{avif,webp}   2400 wide (or --width), aspect kept
+ *   heritage-{theme}-strip.v2.{avif,webp}  1200×480, the master's 15–55%
  *                                          height band, centred horizontally
  * AVIF q45 effort 9 4:2:0; WebP q70 smart subsample; converted to sRGB with
  * every ICC/EXIF/XMP block stripped. Throws on a master outside 2.2–2.5 aspect

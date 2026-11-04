@@ -169,8 +169,8 @@
   height: clamp(320px, 42vw, 620px);
   background: no-repeat center top / cover;
   background-image: image-set(
-    url("/heritage/heritage-light-desk.v1.avif") type("image/avif"),
-    url("/heritage/heritage-light-desk.v1.webp") type("image/webp")
+    url("/heritage/heritage-light-desk.v2.avif") type("image/avif"),
+    url("/heritage/heritage-light-desk.v2.webp") type("image/webp")
   );
   -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
   mask-image: linear-gradient(to bottom, #000 55%, transparent);
@@ -179,15 +179,15 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) [data-heritage] {
     background-image: image-set(
-      url("/heritage/heritage-dark-desk.v1.avif") type("image/avif"),
-      url("/heritage/heritage-dark-desk.v1.webp") type("image/webp")
+      url("/heritage/heritage-dark-desk.v2.avif") type("image/avif"),
+      url("/heritage/heritage-dark-desk.v2.webp") type("image/webp")
     );
   }
 }
 :root[data-theme="dark"] [data-heritage] {
   background-image: image-set(
-    url("/heritage/heritage-dark-desk.v1.avif") type("image/avif"),
-    url("/heritage/heritage-dark-desk.v1.webp") type("image/webp")
+    url("/heritage/heritage-dark-desk.v2.avif") type("image/avif"),
+    url("/heritage/heritage-dark-desk.v2.webp") type("image/webp")
   );
 }
 [data-heritage-preload] {
@@ -203,43 +203,43 @@
    >=48rem, strip below (where only Home renders the box at all). */
 [data-heritage][data-idle] [data-heritage-preload] {
   background-image: image-set(
-    url("/heritage/heritage-dark-desk.v1.avif") type("image/avif"),
-    url("/heritage/heritage-dark-desk.v1.webp") type("image/webp")
+    url("/heritage/heritage-dark-desk.v2.avif") type("image/avif"),
+    url("/heritage/heritage-dark-desk.v2.webp") type("image/webp")
   );
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) [data-heritage][data-idle] [data-heritage-preload] {
     background-image: image-set(
-      url("/heritage/heritage-light-desk.v1.avif") type("image/avif"),
-      url("/heritage/heritage-light-desk.v1.webp") type("image/webp")
+      url("/heritage/heritage-light-desk.v2.avif") type("image/avif"),
+      url("/heritage/heritage-light-desk.v2.webp") type("image/webp")
     );
   }
 }
 :root[data-theme="dark"] [data-heritage][data-idle] [data-heritage-preload] {
   background-image: image-set(
-    url("/heritage/heritage-light-desk.v1.avif") type("image/avif"),
-    url("/heritage/heritage-light-desk.v1.webp") type("image/webp")
+    url("/heritage/heritage-light-desk.v2.avif") type("image/avif"),
+    url("/heritage/heritage-light-desk.v2.webp") type("image/webp")
   );
 }
 @media (width < 48rem) {
   [data-heritage][data-idle] [data-heritage-preload] {
     background-image: image-set(
-      url("/heritage/heritage-dark-strip.v1.avif") type("image/avif"),
-      url("/heritage/heritage-dark-strip.v1.webp") type("image/webp")
+      url("/heritage/heritage-dark-strip.v2.avif") type("image/avif"),
+      url("/heritage/heritage-dark-strip.v2.webp") type("image/webp")
     );
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) [data-heritage][data-idle] [data-heritage-preload] {
       background-image: image-set(
-        url("/heritage/heritage-light-strip.v1.avif") type("image/avif"),
-        url("/heritage/heritage-light-strip.v1.webp") type("image/webp")
+        url("/heritage/heritage-light-strip.v2.avif") type("image/avif"),
+        url("/heritage/heritage-light-strip.v2.webp") type("image/webp")
       );
     }
   }
   :root[data-theme="dark"] [data-heritage][data-idle] [data-heritage-preload] {
     background-image: image-set(
-      url("/heritage/heritage-light-strip.v1.avif") type("image/avif"),
-      url("/heritage/heritage-light-strip.v1.webp") type("image/webp")
+      url("/heritage/heritage-light-strip.v2.avif") type("image/avif"),
+      url("/heritage/heritage-light-strip.v2.webp") type("image/webp")
     );
   }
 }
@@ -273,22 +273,22 @@
     display: block;
     height: clamp(160px, 44vw, 240px);
     background-image: image-set(
-      url("/heritage/heritage-light-strip.v1.avif") type("image/avif"),
-      url("/heritage/heritage-light-strip.v1.webp") type("image/webp")
+      url("/heritage/heritage-light-strip.v2.avif") type("image/avif"),
+      url("/heritage/heritage-light-strip.v2.webp") type("image/webp")
     );
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) [data-heritage][data-home] {
       background-image: image-set(
-        url("/heritage/heritage-dark-strip.v1.avif") type("image/avif"),
-        url("/heritage/heritage-dark-strip.v1.webp") type("image/webp")
+        url("/heritage/heritage-dark-strip.v2.avif") type("image/avif"),
+        url("/heritage/heritage-dark-strip.v2.webp") type("image/webp")
       );
     }
   }
   :root[data-theme="dark"] [data-heritage][data-home] {
     background-image: image-set(
-      url("/heritage/heritage-dark-strip.v1.avif") type("image/avif"),
-      url("/heritage/heritage-dark-strip.v1.webp") type("image/webp")
+      url("/heritage/heritage-dark-strip.v2.avif") type("image/avif"),
+      url("/heritage/heritage-dark-strip.v2.webp") type("image/webp")
     );
   }
 }
