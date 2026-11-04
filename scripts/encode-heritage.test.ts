@@ -7,7 +7,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { encodeHeritage } from "./encode-heritage";
 import { EXPECTED } from "./image-budget";
 
-// Under TMPDIR, which the runner points at the E Drive scratch dir.
+// os.tmpdir() honours TMPDIR; nothing sets it for you, so export it to the E Drive
+// scratch dir when running, or the fixture lands on the internal disk.
 let dir: string;
 let master: string;
 
@@ -39,6 +40,11 @@ beforeAll(async () => {
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
+/** One pixel as [r, g, b] after any colour conversion sharp applies on read. */
+async function pixel(img: sharp.Sharp, x: number, y: number): Promise<number[]> {
+  return [...(await img.extract({ left: x, top: y, width: 1, height: 1 }).removeAlpha().raw().toBuffer())];
+}
+
 async function check(files: string[], theme: "light" | "dark", deskW: number, deskH: number) {
   expect(files).toHaveLength(4);
   expect(files.map((f) => basename(f)).sort()).toEqual(
@@ -57,6 +63,19 @@ async function check(files: string[], theme: "light" | "dark", deskW: number, de
     expect(m.icc, f).toBeUndefined();
     expect(m.exif, f).toBeUndefined();
   }
+
+  // Colour: a saturated cyan-green desk pixel must match the master converted
+  // from P3 to sRGB (red ≈ 24), not the stored P3 numbers (red ≈ 107), which
+  // is what an encoder that ignored the ICC profile would write.
+  const mw = 3360;
+  const mh = 1440;
+  const dx = Math.round(deskW * 0.1);
+  const dy = Math.round(deskH * 0.9);
+  const want = await pixel(sharp(master).toColourspace("srgb"), Math.round((dx * mw) / deskW), Math.round((dy * mh) / deskH));
+  for (const f of files.filter((f) => /-desk\./.test(f))) {
+    const got = await pixel(sharp(f), dx, dy);
+    for (let c = 0; c < 3; c++) expect(Math.abs(got[c] - want[c]), `${f} channel ${c}: ${got} vs ${want}`).toBeLessThanOrEqual(8);
+  }
 }
 
 // AVIF at effort 9 (the real setting) takes ~8 s per test idle; 120 s leaves room
@@ -74,5 +93,22 @@ describe("encodeHeritage", () => {
     const out = join(dir, "w2000");
     const files = await encodeHeritage(master, "dark", { out, width: 2000 });
     await check(files, "dark", 2000, 857);
+  }, ENCODE_TIMEOUT);
+
+  it("refuses a master whose aspect ratio is outside 2.2–2.5 instead of stretching the strip", async () => {
+    const square = join(dir, "square.png");
+    await sharp({ create: { width: 2400, height: 2400, channels: 3, background: "#888" } }).png().toFile(square);
+    await expect(encodeHeritage(square, "light", { out: join(dir, "square-out") })).rejects.toThrow(/aspect ratio 1\.00.*2\.2–2\.5/);
+    const tooWide = join(dir, "too-wide.png");
+    await sharp({ create: { width: 3600, height: 1200, channels: 3, background: "#888" } }).png().toFile(tooWide);
+    await expect(encodeHeritage(tooWide, "light", { out: join(dir, "wide-out") })).rejects.toThrow(/aspect ratio 3\.00/);
+  }, ENCODE_TIMEOUT);
+
+  it("refuses a master narrower than the desk width instead of upscaling it", async () => {
+    const small = join(dir, "small.png");
+    await sharp({ create: { width: 2000, height: 860, channels: 3, background: "#888" } }).png().toFile(small);
+    await expect(encodeHeritage(small, "light", { out: join(dir, "small-out") })).rejects.toThrow(/2000 px wide.*2400/);
+    // The same master is fine when the requested desk width fits.
+    expect(await encodeHeritage(small, "dark", { out: join(dir, "small-ok"), width: 2000 })).toHaveLength(4);
   }, ENCODE_TIMEOUT);
 });
