@@ -231,3 +231,66 @@ test("TC-098: clicks pass through the art to the control underneath (SC3)", asyn
   await page.mouse.click(target!.cx, target!.cy);
   await expect(page).toHaveURL((u) => u.pathname + u.search === target!.href);
 });
+
+// R-1 scar (EXE57): `isolate` on the content column caps every fixed overlay
+// rendered inside it at the column's level. The bottom tabs (fixed z-40) must
+// live inside that column too, or below 768px they paint over side panels,
+// drawers and the tour's backdrop, and take the taps meant for them.
+test("TC-097: at 375 the bottom tabs never paint over shell overlays (R-1)", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  /** What a tap just above the bottom edge, mid-screen, lands on. */
+  const bottomHit = () =>
+    page.evaluate(() => {
+      const hit = document.elementFromPoint(187, window.innerHeight - 20);
+      return {
+        inDialog: !!hit?.closest('[role="dialog"]'),
+        inNav: !!hit?.closest('nav[aria-label="Mobile"]'),
+        href: hit?.closest("a")?.getAttribute("href") ?? null,
+      };
+    });
+
+  // Nothing open: the tab under that point takes the tap and navigates.
+  await openHome(page);
+  const tab = await bottomHit();
+  expect(tab).toMatchObject({ inDialog: false, inNav: true });
+  expect(tab.href).toMatch(/^\/\w+$/);
+  await page.mouse.click(187, 800 - 20);
+  await expect(page).toHaveURL((u) => u.pathname === tab.href);
+
+  // The disputes Filters side panel.
+  await page.goto("/disputes");
+  await ready(page);
+  await page.getByRole("button", { name: /^Filter disputes/ }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(await bottomHit()).toMatchObject({ inDialog: true, inNav: false });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await bottomHit()).toMatchObject({ inDialog: false, inNav: true });
+
+  // A drawer rendered inside <main>: the audit detail drawer (a role switch
+  // gives a fresh profile its one audit row).
+  await page.getByRole("group", { name: "Role" }).getByRole("button", { name: "Manager" }).click();
+  await page.goto("/audit");
+  await ready(page);
+  await page.getByTestId("audit-row").first().getByRole("button", { name: /^View details/ }).click();
+  await expect(page.getByTestId("audit-drawer")).toBeVisible();
+  expect(await bottomHit()).toMatchObject({ inDialog: true, inNav: false });
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("audit-drawer")).toHaveCount(0);
+
+  // The tour's backdrop: its confirm card dims the whole screen, More tab included.
+  // (The running tour's spotlight is pointer-events: none by design, and its
+  // ring deliberately leaves the More tab tappable; see demo-tour.spec.)
+  await page.getByTestId("demo-button").click();
+  await expect(page.getByTestId("tour-confirm")).toBeVisible();
+  const more = await page.evaluate(() => {
+    const el = document.querySelector("[data-tour=nav-more]")!;
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { inNav: !!hit?.closest('nav[aria-label="Mobile"]'), inBackdrop: !!hit?.closest("[data-tour-ui]") };
+  });
+  expect(more).toEqual({ inNav: false, inBackdrop: true });
+  await page.getByTestId("tour-confirm").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByTestId("tour-confirm")).toHaveCount(0);
+  expect(await bottomHit()).toMatchObject({ inDialog: false, inNav: true });
+});
