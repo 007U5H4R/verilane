@@ -9,7 +9,9 @@ import { describe, expect, it } from "vitest";
 
 import { paise } from "@/domain/money";
 import type { ExceptionRow } from "@/domain/exceptions/list";
+import { Rejected, ok } from "@/domain/result";
 import type { Exception, Invoice } from "@/domain/schema";
+import type { PolicyDecisionRow } from "@/store/db";
 import type { ExceptionDetail } from "@/store/hooks";
 import { ExceptionCards, ExceptionsEmpty, ExceptionsError, ExceptionsLoading } from "./ExceptionCards";
 import { ExceptionDetailContent, ExceptionDetailError, allocateBlocker } from "./ExceptionDetailParts";
@@ -198,5 +200,92 @@ describe("/exceptions/[id] — TC-75.12", () => {
     const out = content(detail({ exception: { ...exception, status: "actioned" } }));
     expect(out).toContain("Already resolved");
     expect(out).toMatch(/<button[^>]*data-testid="exception-submit"[^>]*disabled/);
+  });
+});
+
+describe("/exceptions/[id] — Stage 1 Recommend Agent (TKT-75.03, Design-TASK-75 §4)", () => {
+  it("no Stage 1 block for a non-payment exception kind (recommendation undefined)", () => {
+    const out = content(detail({ recommendation: undefined }));
+    expect(out).not.toContain('data-testid="stage-recommend"');
+  });
+
+  it("ok recommendation: verified facts with provenance, recommendation text, confidence", () => {
+    const out = content(
+      detail({
+        recommendation: ok({
+          exception_id: "RV-PAY-P-012",
+          facts: [{ claimId: "amount", kind: "amount", value: "₹25,000.00", evidenceId: "P-012:payments.csv:amount_paise" }],
+          recommendation_text: "Allocate P-012 to INV-F.",
+          confidence: "high",
+          candidate_invoice_ids: ["INV-F"],
+          generated_at: "2026-11-05T00:00:00.000Z",
+        }),
+      }),
+    );
+    expect(out).toContain('data-testid="stage-recommend"');
+    expect(out).toContain("1. Recommend Agent");
+    expect(out).toContain("₹25,000.00");
+    expect(out).toContain("Source: P-012:payments.csv:amount_paise");
+    expect(out).toContain("Allocate P-012 to INV-F.");
+    expect(out).toContain("high (exact match)");
+  });
+
+  it("F13 cannot-recommend: reason shown, no facts list", () => {
+    const out = content(
+      detail({ recommendation: { ok: false, error: new Rejected("No candidate invoices to recommend.") } }),
+    );
+    expect(out).toContain('data-testid="stage-recommend"');
+    expect(out).toContain("Cannot recommend: No candidate invoices to recommend.");
+  });
+});
+
+describe("/exceptions/[id] — Stage 2 Policy Agent + sidebar card (TKT-75.03, Design-TASK-75 §4/§9)", () => {
+  function policyDecision(over: Partial<PolicyDecisionRow> = {}): PolicyDecisionRow {
+    return {
+      decision_id: "POL-RV-PAY-P-012-1",
+      exception_id: "RV-PAY-P-012",
+      evaluated_at: "2026-11-05T00:00:00.000Z",
+      config_version: "policy-v1",
+      verdict: "auto_permitted",
+      reason: "Amount is ≤ ₹5,00,000 and the match is unambiguous.",
+      ...over,
+    };
+  }
+
+  it("loading (policyDecision undefined): both blocks say Evaluating…", () => {
+    const out = content(detail(), { policyDecision: undefined });
+    expect(out).toContain('data-testid="stage-policy"');
+    expect(out).toContain('data-testid="policy-decision-card"');
+    expect((out.match(/Evaluating…/g) ?? []).length).toBe(2);
+  });
+
+  it("not yet evaluated (policyDecision null): both blocks say so", () => {
+    const out = content(detail(), { policyDecision: null });
+    expect((out.match(/Not yet evaluated\./g) ?? []).length).toBe(2);
+  });
+
+  it("auto_permitted: verdict, reason, POL-{id}, policy version, evaluated timestamp — no conflict warning", () => {
+    const out = content(detail(), { policyDecision: policyDecision() });
+    expect(out).toContain("Policy verdict: Auto-permitted");
+    expect(out).toContain("Amount is ≤ ₹5,00,000 and the match is unambiguous.");
+    expect(out).toContain("POL-RV-PAY-P-012-1");
+    expect(out).toContain("policy-v1");
+    expect(out).toContain("Policy Decision");
+    expect(out).not.toContain('data-testid="policy-conflict"');
+  });
+
+  it.each(["needs_analyst", "needs_manager", "blocked"] as const)("verdict label for %s", (verdict) => {
+    const out = content(detail(), { policyDecision: policyDecision({ verdict }) });
+    expect(out).toContain(
+      verdict === "needs_analyst" ? "Needs analyst review" : verdict === "needs_manager" ? "Needs manager review" : "Blocked",
+    );
+  });
+
+  it("model/policy conflict (FS22): Policy wins, conflict shown", () => {
+    const out = content(detail(), {
+      policyDecision: policyDecision({ verdict: "needs_manager", model_policy_conflict: true }),
+    });
+    expect(out).toContain('data-testid="policy-conflict"');
+    expect(out).toContain("Recommend and Policy disagreed — the Policy verdict governs (FS22).");
   });
 });
