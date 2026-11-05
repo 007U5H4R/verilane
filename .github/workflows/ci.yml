@@ -1,0 +1,62 @@
+# Baseline gate on every PR to main and every push to main (TASK-87).
+# The e2e suite (build:e2e / e2e) is deliberately excluded: it takes ~36 min
+# and has known host-load flakes (TC-081, TC-018, TC-158) that need the manual
+# lock/retry process.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # .npmrc pins store-dir to a local macOS volume that doesn't exist on the
+      # runner. pnpm 11 reads pnpm_config_* env vars ahead of .npmrc.
+      - name: Point pnpm store at runner temp
+        run: echo "pnpm_config_store_dir=$RUNNER_TEMP/pnpm-store" >> "$GITHUB_ENV"
+
+      # Version comes from the packageManager field in package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # LayoutProps/PageProps live in the gitignored .next/types, so a clean
+      # checkout must generate them before tsc can pass.
+      - name: Generate Next.js route types
+        run: pnpm exec next typegen
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Perf tests
+        run: pnpm perf
+
+      # Non-blocking for now: 8 of 43 held-out gates fail on main by design
+      # (TC-066, accepted known limitation, tracked in TASK-72), so pnpm eval
+      # exits non-zero. The step still runs and shows as failed in the job.
+      # Remove continue-on-error once TASK-72 makes the held-out gates pass.
+      - name: Eval
+        run: pnpm eval
+        continue-on-error: true
