@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import sharp, { type Sharp } from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { encodeHeritage } from "./encode-heritage";
+import { encodeHeritage, LIGHT_TONE_A } from "./encode-heritage";
 import { EXPECTED } from "./image-budget";
 
 // os.tmpdir() honours TMPDIR; nothing sets it for you, so export it to the E Drive
@@ -71,7 +71,10 @@ async function check(files: string[], theme: "light" | "dark", deskW: number, de
   const mh = 1440;
   const dx = Math.round(deskW * 0.1);
   const dy = Math.round(deskH * 0.9);
-  const want = await pixel(sharp(master).toColourspace("srgb"), Math.round((dx * mw) / deskW), Math.round((dy * mh) / deskH));
+  const srgb = await pixel(sharp(master).toColourspace("srgb"), Math.round((dx * mw) / deskW), Math.round((dy * mh) / deskH));
+  // Light is toned toward the canvas #f7f9f7 by LIGHT_TONE_A (EXE108); dark is not.
+  const canvas = [247, 249, 247];
+  const want = theme === "light" ? srgb.map((v, c) => LIGHT_TONE_A * v + (1 - LIGHT_TONE_A) * canvas[c]!) : srgb;
   for (const f of files.filter((f) => /-desk\./.test(f))) {
     const got = await pixel(sharp(f), dx, dy);
     for (let c = 0; c < 3; c++) expect(Math.abs(got[c]! - want[c]!), `${f} channel ${c}: ${got} vs ${want}`).toBeLessThanOrEqual(8);

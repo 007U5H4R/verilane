@@ -6,7 +6,8 @@
  *   heritage-{theme}-strip.v2.{avif,webp}  1200×480, the master's 15–55%
  *                                          height band, centred horizontally
  * AVIF q45 effort 9 4:2:0; WebP q70 smart subsample; converted to sRGB with
- * every ICC/EXIF/XMP block stripped. Throws on a master outside 2.2–2.5 aspect
+ * every ICC/EXIF/XMP block stripped. The light theme is first toned toward the
+ * canvas by LIGHT_TONE_A (EXE108). Throws on a master outside 2.2–2.5 aspect
  * or narrower than the desk width. Check the result with `pnpm image-budget`.
  *
  *   tsx scripts/encode-heritage.ts <master.png> --theme light|dark [--out dir] [--width 2000]
@@ -16,7 +17,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import { ASSET_DIR, ASSET_VERSION } from "./image-budget";
 
 export const DESK_WIDTH = 2400;
@@ -28,6 +29,18 @@ export const MASTER_ASPECT = { min: 2.2, max: 2.5 };
 
 const AVIF = { quality: 45, effort: 9, chromaSubsampling: "4:2:0" } as const;
 const WEBP = { quality: 70, smartSubsample: true } as const;
+/**
+ * Light-only tone calibration (TASK-46.8 · EXE108, Design §6.1): out = a·in + b
+ * per channel, pinned at the canvas #f7f9f7 so the paper stays the canvas and
+ * the line work moves toward it. The master's paper is about (245,247,245).
+ * 0.81 puts the 2nd-percentile line at L* ≈ 92.5 at 1440, so SC2 P ≈ 6.2%
+ * (≤ 6.5%, PRD §15 R1) with the text zone at L* ≈ 93.2 (floor 92.1). Dark is
+ * not toned.
+ */
+export const LIGHT_TONE_A = 0.81;
+const CANVAS_RGB = [247, 249, 247];
+const tone = (img: Sharp, theme: "light" | "dark") =>
+  theme === "light" ? img.linear([LIGHT_TONE_A, LIGHT_TONE_A, LIGHT_TONE_A], CANVAS_RGB.map((c) => c * (1 - LIGHT_TONE_A))) : img;
 
 /** Encodes one theme's master; resolves to the 4 written file paths. */
 export async function encodeHeritage(
@@ -56,8 +69,8 @@ export async function encodeHeritage(
   const crop = { left: Math.round((mw - bandWidth) / 2), top: bandTop, width: bandWidth, height: bandHeight };
 
   const variants = [
-    { size: "desk", img: () => sharp(master).resize({ width: deskWidth }) },
-    { size: "strip", img: () => sharp(master).extract(crop).resize(STRIP.width, STRIP.height, { fit: "fill" }) },
+    { size: "desk", img: () => tone(sharp(master), theme).resize({ width: deskWidth }) },
+    { size: "strip", img: () => tone(sharp(master), theme).extract(crop).resize(STRIP.width, STRIP.height, { fit: "fill" }) },
   ] as const;
 
   mkdirSync(opts.out, { recursive: true });
