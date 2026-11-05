@@ -41,7 +41,7 @@
 | Field | Type | Notes |
 |---|---|---|
 | payment_id | string | PK |
-| invoice_id | FK \| null | null = unapplied cash (received, not yet allocated to an invoice; TASK-79.1). The CSV import still requires it; null only arises from in-app allocation (TKT-75) |
+| invoice_id | FK \| null | null = unapplied cash (received, not yet allocated to an invoice; TASK-79.1). A blank CSV cell imports as null (EXE123, TKT-75.02); `allocate_payment` sets it to the chosen invoice (EXE125) |
 | paid_on | date | |
 | amount_paise | int | partial payments allowed (FS8) |
 
@@ -114,3 +114,13 @@ event_id (monotonic), at, actor_role, actor_label, action, subject ref, summary 
 ## 7. Seed dataset spec (generated once by a seeded script, committed)
 
 50 invoices / 10 customers / 25 threads, INR, as-of 2026-10-30. Coverage required by the brief and Discovery §9: ≥5 each of duplicate, commitment, confirmation, dispute and missing-data scenarios, plus all ten edge cases (FS1–FS10). A generator script (`scripts/seed.ts`, fixed PRNG seed) produces the CSVs. The output is committed, so the shipped data never depends on re-running the script. A coverage test asserts every required scenario is present.
+
+**Seed coverage added for TKT-75.02 (unapplied cash).** The coverage test is `scripts/seed.test.ts` (TC-75.06).
+
+| Scenario | Seed rows | What it proves |
+|---|---|---|
+| Unapplied bank line | `P-012`: `invoice_id` blank, paid 2026-10-29, ₹25,000 | A blank `invoice_id` imports as null and never reduces any invoice's outstanding. It is counted in unapplied cash (₹25,000 across 1 bank line). |
+| Unique amount match | `INV-F` (C-005) is the only open invoice whose outstanding is ₹25,000 | Recompute raises exactly one `unallocated_payment` exception, `RV-PAY-P-012`, with `candidate_invoice_ids = ["INV-F"]`. It is deterministic and idempotent across reloads (TC-75.07). |
+| Reminder hold | `INV-F` | The invoice is a candidate of an open unallocated item, so its drafts are blocked (check 7). On the seed it already ranks at G3, so the G5 hold is proven by a fixture (TC-75.10, EXE126). |
+
+The seed has no remittance email for P-012, so the detail page shows "None on file — matched on amount". There are no `short_payment_pattern` rows until TKT-75.05.
