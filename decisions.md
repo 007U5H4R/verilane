@@ -1218,3 +1218,20 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - **Filters.** The Queue facets (search, priority, invoice status, customer, ageing) apply to the exception's related invoice. A row with no single related invoice drops out when any facet is set. Search matches the subject, the kind label and the ids.
 - **List scope.** `/exceptions` lists *open* exceptions, so an allocated item leaves the list (AC10). All 7 kinds render through the same row; `short_payment_pattern` has no seed row until 79.5, so a 7-kind unit fixture proves it (list.test.ts).
 - **Home.** The task feed gains an "exceptions" group (open payment-originated exceptions, linking to `/exceptions`) after "payments". The existing "payments" group (uncertain matches and reconciliations) is unchanged.
+
+## EXE128 · `/exceptions` and `/exceptions/[id]` routes, four screen states, allocate through `execute` (TASK-79.2) — accepted
+- **Routes.** Both are static client routes. The list reads search params; the detail reads its id with `useParams()` inside `<Suspense>`, with no `generateStaticParams` (the dispute-detail pattern), because exception ids exist only in the browser's IndexedDB.
+- **List.** 64 px row cards (`min-h-16`): Kind / Subject / Amount / Status / Priority / Action. At md and up they sit on a six-column grid under a header row; below md each card is two lines. The v1 `FiltersPanel`, `filterIntent` and `queueParams` are reused unchanged, with the URL as the source of truth, as in the Queue. `QueueFilters` is a structural superset of `ExceptionFilters`. Facets list only values present in the rows, plus any already selected.
+- **Detail.**
+  - Payment evidence: bank line, date, amount, "Unapplied", provenance, and the ledger total of unapplied cash (M1).
+  - Invoice facts per candidate: number, customer, derived outstanding, days overdue, band, provenance.
+  - "Why this needs review".
+  - Audit trail, newest first, keyed on subject `review:<id>`.
+  - An action bar with disabled-with-reason (§11): "Already resolved", "Review this item in Inbox" (non-payment kinds; allocation is the only action this ticket adds), "Manager approval required" (from `can()`), and "Choose an invoice". The single candidate is preselected.
+- **One path.** Submit calls `execute({type:"allocate_payment"})`, the EXE125 single rw transaction. The UI writes nothing itself. The toast shows the audit summary.
+- **States.** Loading uses skeleton rows. Empty: "No exceptions to review" with a way to the Queue, and a distinct filtered-empty state with Clear filters. The detail has a not-found state. Error comes from an error boundary with Retry (attempt key) or from a missing db. `__state` is forced only when `NEXT_PUBLIC_E2E=1`.
+- **Deviations.**
+  - **Offline.** Allocate stays enabled offline. It is a local IndexedDB write, like every v1 command, and the shell's offline banner covers it.
+  - **Mark disputed.** It is shown but always disabled, with a reason. A dispute path from an exception is out of scope here.
+  - **Remittance.** It reads "None on file — matched on amount", because the seed has no remittance email for P-012.
+  - **Policy Review.** That status is not shown (79.3).
