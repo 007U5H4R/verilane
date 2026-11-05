@@ -38,7 +38,8 @@ test("queue renders all 50 seed invoices in rank order", async ({ page }, testIn
       });
     type Inv = { invoice_id: string; invoice_number: string | null; amount_paise: number };
     type Pri = { invoice_id: string; score?: number; days_overdue: number | null };
-    type Pay = { invoice_id: string; amount_paise: number };
+    // TKT-75.02: an unapplied bank line (P-012) has no invoice.
+    type Pay = { invoice_id: string | null; amount_paise: number };
     const [invoices, priorities, payments] = await Promise.all([
       all<Inv>("invoices"),
       all<Pri>("priorities"),
@@ -46,7 +47,9 @@ test("queue renders all 50 seed invoices in rank order", async ({ page }, testIn
     ]);
     db.close();
     const paid = new Map<string, number>();
-    for (const p of payments) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
+    for (const p of payments) {
+      if (p.invoice_id !== null) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
+    }
     const pri = new Map(priorities.map((p) => [p.invoice_id, p]));
     const key = (i: Inv) => {
       const p = pri.get(i.invoice_id);
