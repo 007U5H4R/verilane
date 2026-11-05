@@ -61,11 +61,26 @@ export interface CreditNoteRow {
   [key: string]: unknown;
 }
 
-/** `policyDecisions` (TASK-75, technical-plan §1.4): empty until TKT-75.03 writes one. */
+/**
+ * `policyDecisions` (TASK-75, technical-plan §1.4; written by TKT-75.03's
+ * `domain/policy.ts`). Append-only and versioned (R7): a row is `.add()`-ed,
+ * never `.put()`/updated/deleted; re-evaluation appends a new row with the
+ * same `exception_id` and a fresh `decision_id`.
+ */
 export interface PolicyDecisionRow {
+  /** `POL-{exception_id}-{n}`, unique and stable once written. */
   decision_id: string;
   exception_id: string;
   evaluated_at: string;
+  /** The rule table version this row was decided under (R7). */
+  config_version?: string;
+  gate_id?: string;
+  verdict?: string;
+  reason?: string;
+  confidence?: string | null;
+  amount_paise?: number;
+  /** FS22: Recommend's own confidence disagreed with this verdict. */
+  model_policy_conflict?: boolean;
   [key: string]: unknown;
 }
 
