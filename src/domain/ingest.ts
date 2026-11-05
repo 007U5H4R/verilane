@@ -132,7 +132,8 @@ function ingestPayments(rows: Row[], dataIssues: DataIssue[]): Payment[] {
     .map((row) => {
       const candidate = {
         payment_id: field(row, "payment_id"),
-        invoice_id: field(row, "invoice_id"),
+        // Blank = unapplied cash (EXE122/EXE123), never "".
+        invoice_id: nullableField(row, "invoice_id"),
         paid_on: field(row, "paid_on"),
         amount_paise: strictInt(field(row, "amount_paise")),
       };

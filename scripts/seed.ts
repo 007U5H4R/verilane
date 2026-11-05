@@ -43,6 +43,7 @@
  * | FS9 no related email             | e.g. INV-B, INV-J, 1047..1050                | —                  |
  * | FS10 unknown status              | INV-H (status_raw `pending_review`)          | —                  |
  * | Paid history / closed            | rows 1–8, INV-I (paid), 1050 (written off)   | —                  |
+ * | Unapplied bank line (TKT-75.02)  | P-012 (no invoice) = INV-F's ₹25,000 only    | —                  |
  * | Not yet due (G6)                 | 1047, 1048, 1049                             | —                  |
  *
  * Paid history sets each customer's average days late (Architecture.md §5):
@@ -832,6 +833,12 @@ export function generateSeed(): SeedFiles {
       po,
     ]);
   }
+
+  // TKT-75.02 (TC-75.06): one unapplied bank line — no invoice on it — whose
+  // amount matches exactly one open invoice's outstanding (INV-F, ₹25,000).
+  // Appended after the loop so no other row's id or PRNG filler moves. The
+  // bank line's own reference is the remittance; there is no email for it.
+  paymentRows.push([`P-${String(paymentRows.length + 1).padStart(3, "0")}`, null, addDays(SEED_AS_OF, -1), 25_000 * 100]);
 
   const customersCsv = toCsv(
     ["customer_id", "name", "contact_emails", "payment_terms_days", "segment"],

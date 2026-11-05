@@ -8,6 +8,7 @@ import { join } from "node:path";
 import Papa from "papaparse";
 import { afterAll, describe, expect, it } from "vitest";
 import { ingest, type Row } from "../src/domain/ingest";
+import { isUnapplied, outstandingOf } from "../src/domain/priority";
 import { INVOICES, THREADS, writeSeed, type SeedFiles } from "./seed";
 
 const SCRATCH_ROOT = "/Volumes/E Drive/Dev/.scratch";
@@ -129,5 +130,21 @@ describe("seed — TC-011 coverage", () => {
     expect(has("status_raw", "unparseable")).toBe(true); // FS10
     // The seed itself never repeats an invoice_number (TC-013's guard is a backstop).
     expect(has("invoice_number", "conflict")).toBe(false);
+  });
+
+  // TC-75.06 (TKT-75.02): an unapplied bank line whose remittance amount
+  // matches exactly one open invoice's outstanding — the tracer's scenario.
+  it("has an unapplied bank line matching exactly one open invoice (TC-75.06)", () => {
+    expect(result.dataIssues.filter((d) => d.record_id.startsWith("P-"))).toEqual([]);
+    const unapplied = result.payments.filter(isUnapplied);
+    expect(unapplied.length).toBeGreaterThanOrEqual(1);
+    const ctx = { payments: result.payments };
+    const open = result.invoices.filter(
+      (i) => i.status !== "paid" && i.status !== "written_off" && outstandingOf(i, ctx) > 0,
+    );
+    const exact = unapplied.filter(
+      (p) => open.filter((i) => outstandingOf(i, ctx) === p.amount_paise).length === 1,
+    );
+    expect(exact.length, "unapplied payments with exactly one candidate").toBeGreaterThanOrEqual(1);
   });
 });

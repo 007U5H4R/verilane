@@ -113,6 +113,21 @@ describe("toCsv / parseImport — TC-059 round-trip", () => {
     }
   });
 
+  // M2 / EXE123: unapplied cash (`invoice_id: null`) exports as a blank cell
+  // and re-imports as null — never dropped, never "".
+  it("round-trips an unapplied payment (null invoice_id) symmetrically", () => {
+    const rows = [
+      { payment_id: "P-900", invoice_id: "INV-001", paid_on: "2026-10-01", amount_paise: 100 },
+      { payment_id: "P-901", invoice_id: null, paid_on: "2026-10-02", amount_paise: 2_500_000 },
+    ];
+    const csv = toCsv("payments", rows);
+    expect(csv.split(/\r?\n/)[2]).toBe("P-901,,2026-10-02,2500000");
+    const back = parseImport("payments", csv);
+    if (!back.ok) throw new Error(JSON.stringify(back.error));
+    expect(back.value.rows).toEqual(rows);
+    expect(back.value.dataIssues).toEqual([]);
+  });
+
   it("exports workflow tables with a header row and escaped cells", () => {
     const csv = toCsv("audit", [
       { event_id: 1, action: "add_note", subject: "invoice:INV-001", summary: 'Note: "hi", there' },
