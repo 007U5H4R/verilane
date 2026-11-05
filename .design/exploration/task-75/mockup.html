@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verilane v2 (TASK-75) — Design Mockup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --canvas: #f8f7f3;
+            --surface: #ffffff;
+            --surface-sunken: #f1efe8;
+            --border: #e4e1d8;
+            --border-strong: #cdc8bb;
+            --text: #17221c;
+            --text-muted: #53605a;
+            --brand: #1f7a4d;
+            --brand-strong: #145c38;
+            --brand-tint: #e6f3ec;
+            --rail: #0f3d29;
+            --rail-active: #1c5a3e;
+            --rail-text: #f3f8f5;
+            --rail-muted: #b9d4c5;
+            --high: #b3261e;
+            --high-bg: #fbe9e7;
+            --med: #8a5a00;
+            --med-bg: #fdf1dc;
+            --low: #3a6b52;
+            --low-bg: #e8f2ec;
+            --disp: #5b5f7a;
+            --disp-bg: #ececf2;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --canvas: #0f1613;
+                --surface: #17201c;
+                --surface-sunken: #121a16;
+                --border: #283531;
+                --border-strong: #3a4944;
+                --text: #e7f0ea;
+                --text-muted: #a9b8b0;
+                --brand: #3fae79;
+                --brand-strong: #6fcc9a;
+                --brand-tint: #173326;
+                --rail: #0a2419;
+                --rail-active: #17402d;
+                --rail-text: #f3f8f5;
+                --rail-muted: #9fc2af;
+                --high: #ff8a80;
+                --high-bg: #3a1f1d;
+                --med: #e8b35c;
+                --med-bg: #3a2e18;
+                --low: #7fcba0;
+                --low-bg: #16302a;
+                --disp: #a9acc9;
+                --disp-bg: #23263a;
+            }
+        }
+
+        body {
+            font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--canvas);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 216px;
+            background: var(--rail);
+            color: var(--rail-text);
+            padding: 20px 16px;
+            flex-shrink: 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo-card {
+            background: white;
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin-bottom: 32px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--text);
+            font-size: 12px;
+        }
+
+        .workspace-header {
+            font-size: 11px;
+            color: var(--rail-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .nav-group {
+            margin-bottom: 24px;
+        }
+
+        .nav-group-label {
+            font-size: 11px;
+            color: var(--rail-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            padding: 0 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--rail-muted);
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: var(--rail-active);
+        }
+
+        .nav-item.active {
+            background: var(--rail-active);
+            color: var(--rail-text);
+        }
+
+        .nav-badge {
+            display: inline-block;
+            background: var(--brand);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        /* MAIN CONTENT */
+        .main {
+            margin-left: 216px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .breadcrumb {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge {
+            background: var(--high-bg);
+            color: var(--high);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* HOME SCREEN */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .kpi-cell {
+            background: var(--surface-sunken);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .kpi-value {
+            font-family: "Iowan Old Style", "Charter", "Source Serif 4", Georgia, serif;
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* NEW: NSM metric */
+        .nsm-section {
+            background: var(--brand-tint);
+            border: 1px solid var(--brand);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .nsm-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .nsm-value {
+            font-family: "Iowan Old Style", "Charter", "Source Serif 4", Georgia, serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--brand);
+            margin-bottom: 4px;
+        }
+
+        .nsm-description {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .tasks-heading {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .task-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .task-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .task-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .task-card-count {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--brand);
+        }
+
+        /* EXCEPTION LIST (row-cards) */
+        .list-header {
+            background: var(--surface-sunken);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            margin: -24px -24px 16px -24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .column-header {
+            flex: 1;
+        }
+
+        .row-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 80px 180px 100px 80px 120px 80px;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .row-card:hover {
+            background: var(--surface-sunken);
+        }
+
+        .row-card.excluded {
+            opacity: 0.6;
+        }
+
+        .row-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .row-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .row-value {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .row-amount {
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-feature-settings: "tnum";
+        }
+
+        /* BADGES */
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            width: fit-content;
+        }
+
+        .badge-high {
+            background: var(--high-bg);
+            color: var(--high);
+        }
+
+        .badge-med {
+            background: var(--med-bg);
+            color: var(--med);
+        }
+
+        .badge-low {
+            background: var(--low-bg);
+            color: var(--low);
+        }
+
+        .badge-disp {
+            background: var(--disp-bg);
+            color: var(--disp);
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* DETAIL VIEW */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+
+        .detail-main {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .detail-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .detail-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .detail-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .document-from-to {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .document-entity {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .document-amount {
+            font-family: "Iowan Old Style", "Charter", "Source Serif 4", Georgia, serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* AGENT STAGES */
+        .agent-stage {
+            background: var(--surface-sunken);
+            border-left: 3px solid var(--brand);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .agent-stage-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .agent-stage-content {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .agent-stage-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* EVIDENCE TABLE */
+        .evidence-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .evidence-group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .evidence-row {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .evidence-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .evidence-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .evidence-value {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .evidence-provenance {
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* BUTTONS */
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .button-primary {
+            background: var(--brand);
+            color: white;
+        }
+
+        .button-primary:hover {
+            background: var(--brand-strong);
+        }
+
+        .button-secondary {
+            background: var(--surface-sunken);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .button-secondary:hover {
+            background: var(--border);
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+        }
+
+        /* SCREEN TABS */
+        .screen-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .screen-tab {
+            padding: 8px 12px;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            background: var(--surface-sunken);
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .screen-tab.active {
+            background: var(--surface);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .screen-pane {
+            display: none;
+        }
+
+        .screen-pane.active {
+            display: block;
+        }
+
+        /* MOBILE */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 72px;
+                padding: 12px 8px;
+            }
+
+            .logo-card {
+                width: 48px;
+                height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+
+            .main {
+                margin-left: 72px;
+            }
+
+            .row-card {
+                grid-template-columns: auto 1fr auto;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                padding: 12px 16px;
+                position: relative;
+                margin-bottom: 12px;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .topbar {
+                padding: 12px 16px;
+            }
+
+            .content {
+                padding: 16px;
+            }
+
+            .kpi-strip {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .task-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="logo-card">V</div>
+            <div class="workspace-header">AR · Demo · Analyst</div>
+
+            <div class="nav-group">
+                <div class="nav-item active">Home</div>
+                <div class="nav-item">Queue <span class="nav-badge">12</span></div>
+                <div class="nav-item">Disputes <span class="nav-badge">3</span></div>
+                <div class="nav-item">Payments</div>
+                <div class="nav-item">Drafts <span class="nav-badge">2</span></div>
+                <div class="nav-item"><strong style="color: var(--brand);">Exceptions</strong> <span class="nav-badge">5</span></div>
+                <div class="nav-item">Audit log</div>
+                <div class="nav-item">Settings</div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <div class="breadcrumb">Verilane</div>
+                    <div class="page-title" id="page-title">Home</div>
+                </div>
+                <div class="topbar-right">
+                    <span class="badge">Demo Data</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">Simulated</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- SCREEN TABS -->
+                <div class="screen-tabs">
+                    <div class="screen-tab active" onclick="switchScreen('home')">Home (NSM)</div>
+                    <div class="screen-tab" onclick="switchScreen('exceptions-list')">Exceptions List</div>
+                    <div class="screen-tab" onclick="switchScreen('exceptions-detail')">Exceptions Detail</div>
+                </div>
+
+                <!-- HOME SCREEN -->
+                <div id="home" class="screen-pane active">
+                    <div class="kpi-strip">
+                        <div class="kpi-cell">
+                            <div class="kpi-value">₹2,14,50,000</div>
+                            <div class="kpi-label">Outstanding</div>
+                        </div>
+                        <div class="kpi-cell">
+                            <div class="kpi-value">₹87,34,000</div>
+                            <div class="kpi-label">High priority</div>
+                        </div>
+                        <div class="kpi-cell">
+                            <div class="kpi-value">3</div>
+                            <div class="kpi-label">Open disputes</div>
+                        </div>
+                        <div class="kpi-cell">
+                            <div class="kpi-value">42</div>
+                            <div class="kpi-label">Avg days overdue</div>
+                        </div>
+                    </div>
+
+                    <!-- NEW: NSM Section -->
+                    <div class="nsm-section">
+                        <div class="nsm-label">NEW: Normalized Success Metric (NSM)</div>
+                        <div class="nsm-value">₹18,32,500</div>
+                        <div class="nsm-description">Simulated — one demo session = one analyst-week. This metric shows the value of correctly resolved exceptions in this session.</div>
+                    </div>
+
+                    <div class="tasks-heading">Needs your attention</div>
+                    <div class="task-cards">
+                        <div class="task-card">
+                            <div class="task-card-title">High-priority invoices</div>
+                            <div class="task-card-count">12 need a decision</div>
+                        </div>
+                        <div class="task-card">
+                            <div class="task-card-title">Exceptions</div>
+                            <div class="task-card-count">5 flagged items</div>
+                        </div>
+                        <div class="task-card">
+                            <div class="task-card-title">Open disputes</div>
+                            <div class="task-card-count">3 unresolved</div>
+                        </div>
+                        <div class="task-card">
+                            <div class="task-card-title">Drafts</div>
+                            <div class="task-card-count">2 awaiting approval</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EXCEPTIONS LIST SCREEN -->
+                <div id="exceptions-list" class="screen-pane">
+                    <div class="list-header">
+                        <div class="column-header">Kind</div>
+                        <div class="column-header">Subject</div>
+                        <div class="column-header">Amount</div>
+                        <div class="column-header">Status</div>
+                        <div class="column-header">Priority</div>
+                        <div class="column-header">Action</div>
+                    </div>
+
+                    <!-- Unallocated payment (new kind) -->
+                    <div class="row-card">
+                        <div class="row-field">
+                            <div class="row-label">Kind</div>
+                            <div class="row-value" style="font-size: 12px;">Unallocated<br/>Payment</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Subject</div>
+                            <div class="row-value">NEFT/ACME/0142</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Amount</div>
+                            <div class="row-value row-amount">₹45,000</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Status</div>
+                            <div class="row-value">Open</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="badge-pill badge-med"><span class="badge-dot"></span>Medium</div>
+                        </div>
+                        <div class="row-field" style="text-align: right;">
+                            <a href="#" class="button button-primary" style="font-size: 12px;">Review</a>
+                        </div>
+                    </div>
+
+                    <!-- Short-payment pattern (new kind) -->
+                    <div class="row-card">
+                        <div class="row-field">
+                            <div class="row-label">Kind</div>
+                            <div class="row-value" style="font-size: 12px;">Short-Payment<br/>Pattern</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Subject</div>
+                            <div class="row-value">Omega Industries</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Amount</div>
+                            <div class="row-value row-amount">-₹12,300</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Status</div>
+                            <div class="row-value">Policy Review</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="badge-pill badge-high"><span class="badge-dot"></span>High</div>
+                        </div>
+                        <div class="row-field" style="text-align: right;">
+                            <a href="#" class="button button-primary" style="font-size: 12px;">Review</a>
+                        </div>
+                    </div>
+
+                    <!-- Pre-existing exception kind (unchanged) -->
+                    <div class="row-card excluded">
+                        <div class="row-field">
+                            <div class="row-label">Kind</div>
+                            <div class="row-value" style="font-size: 12px;">Dispute</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Subject</div>
+                            <div class="row-value">Beta Ltd (INV-0178)</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Amount</div>
+                            <div class="row-value row-amount">₹34,200</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="row-label">Status</div>
+                            <div class="row-value">Excluded</div>
+                        </div>
+                        <div class="row-field">
+                            <div class="badge-pill badge-disp"><span class="badge-dot"></span>Disputed</div>
+                        </div>
+                        <div class="row-field" style="text-align: right;">
+                            <span style="font-size: 12px; color: var(--text-muted);">View</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EXCEPTIONS DETAIL SCREEN -->
+                <div id="exceptions-detail" class="screen-pane">
+                    <div class="action-bar">
+                        <button class="button button-secondary">Mark disputed</button>
+                        <button class="button button-primary">Submit for approval</button>
+                    </div>
+
+                    <div class="detail-grid">
+                        <div class="detail-main">
+                            <!-- Subject & Amount -->
+                            <div class="detail-card">
+                                <div class="detail-card-title">Exception details</div>
+                                <div class="document-from-to">
+                                    <div>
+                                        <div class="row-label">Unallocated Payment</div>
+                                        <div class="document-entity">NEFT/ACME/0142</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div class="row-label">Amount</div>
+                                        <div class="document-amount">₹45,000</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- AGENT STAGES (NEW) -->
+                            <div class="detail-card">
+                                <div class="detail-card-title">Exception resolution workflow</div>
+
+                                <!-- STAGE 1: RECOMMEND -->
+                                <div class="agent-stage">
+                                    <div class="agent-stage-label">1. Recommend Agent</div>
+                                    <div class="agent-stage-content">
+                                        <strong>Verified facts:</strong> NEFT received on 2026-11-03 for ₹45,000; ₹45,000 outstanding on ACME invoice INV-0142; no prior payments from this sender.
+                                    </div>
+                                    <div class="agent-stage-meta">Recommendation: Allocate to INV-0142. Confidence: high (exact match).</div>
+                                </div>
+
+                                <!-- STAGE 2: POLICY -->
+                                <div class="agent-stage">
+                                    <div class="agent-stage-label">2. Policy Agent</div>
+                                    <div class="agent-stage-content">
+                                        <strong>Policy decision:</strong> Amount ≤ ₹5,00,000 and exact/unambiguous match → auto-permitted for Analyst action.
+                                    </div>
+                                    <div class="agent-stage-meta">Policy verdict: auto_permitted. Policy version: v1. Evaluated at: 2026-11-05 14:22 UTC.</div>
+                                </div>
+
+                                <!-- STAGE 3: EXECUTE (pending user action) -->
+                                <div class="agent-stage">
+                                    <div class="agent-stage-label">3. Execute Agent</div>
+                                    <div class="agent-stage-content">
+                                        <strong>Status:</strong> Ready to allocate. Awaiting analyst approval to apply the write (one transaction with audit event).
+                                    </div>
+                                    <div class="agent-stage-meta">Execute ready. No action taken yet.</div>
+                                </div>
+                            </div>
+
+                            <!-- Evidence: Payment -->
+                            <div class="evidence-section">
+                                <div class="evidence-group-title">Payment</div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Received</div>
+                                    <div class="evidence-value">2026-11-03 10:45 AM</div>
+                                    <div class="evidence-provenance">Source: settlements.csv · Row: 842 · Field: received_at</div>
+                                </div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Amount</div>
+                                    <div class="evidence-value">₹45,000</div>
+                                    <div class="evidence-provenance">Source: settlements.csv · Row: 842 · Field: amount_paise</div>
+                                </div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Method</div>
+                                    <div class="evidence-value">NEFT</div>
+                                    <div class="evidence-provenance">Source: settlements.csv · Row: 842 · Field: method</div>
+                                </div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Sender reference</div>
+                                    <div class="evidence-value">ACME/0142</div>
+                                    <div class="evidence-provenance">Source: email · Date: 2026-11-03 09:15 AM · From: ap@acme.co.in</div>
+                                </div>
+                            </div>
+
+                            <!-- Evidence: Invoice -->
+                            <div class="evidence-section">
+                                <div class="evidence-group-title">Invoice facts</div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Invoice</div>
+                                    <div class="evidence-value">INV-0142</div>
+                                    <div class="evidence-provenance">Source: invoices.csv · Row: 1847 · Field: invoice_id</div>
+                                </div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Customer</div>
+                                    <div class="evidence-value">Acme Manufacturing Ltd</div>
+                                    <div class="evidence-provenance">Source: invoices.csv · Row: 1847 · Field: customer</div>
+                                </div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Outstanding</div>
+                                    <div class="evidence-value">₹45,000</div>
+                                    <div class="evidence-provenance">Source: invoices.csv · Row: 1847 · Field: outstanding_amount</div>
+                                </div>
+                                <div class="evidence-row">
+                                    <div class="evidence-label">Days overdue</div>
+                                    <div class="evidence-value">27</div>
+                                    <div class="evidence-provenance">Source: system (calculated) · As of: 2026-11-03</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SIDEBAR: STATUS & AUDIT -->
+                        <div class="detail-sidebar">
+                            <!-- Status card -->
+                            <div class="detail-card">
+                                <div class="detail-card-title">Status</div>
+                                <div style="margin-bottom: 12px;">
+                                    <div class="badge-pill badge-med"><span class="badge-dot"></span>Medium</div>
+                                </div>
+                                <div style="font-size: 13px; color: var(--text); line-height: 1.4;">
+                                    Unallocated payment waiting for allocation decision. Policy cleared for analyst action.
+                                </div>
+                            </div>
+
+                            <!-- NEW: PolicyDecision card -->
+                            <div class="detail-card">
+                                <div class="detail-card-title">Policy Decision</div>
+                                <div style="font-size: 13px; color: var(--text); margin-bottom: 8px;">
+                                    <strong>Verdict:</strong> auto_permitted
+                                </div>
+                                <div style="font-size: 13px; color: var(--text); margin-bottom: 8px;">
+                                    <strong>Reason:</strong> Amount ≤ ₹5,00,000 and exact match
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-muted);">
+                                    Decision ID: POL-00847<br/>
+                                    Policy version: v1<br/>
+                                    Evaluated: 2026-11-05 14:22 UTC
+                                </div>
+                            </div>
+
+                            <!-- Audit trail (snippet) -->
+                            <div class="detail-card">
+                                <div class="detail-card-title">Audit trail</div>
+                                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                                    <div>2026-11-05 14:22 — Policy Agent evaluated exception</div>
+                                    <div style="margin-top: 8px;">2026-11-05 14:22 — Recommend Agent generated facts</div>
+                                    <div style="margin-top: 8px;">2026-11-03 10:45 — Payment received</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchScreen(screenId) {
+            // Hide all panes
+            document.querySelectorAll('.screen-pane').forEach(pane => pane.classList.remove('active'));
+            document.querySelectorAll('.screen-tab').forEach(tab => tab.classList.remove('active'));
+
+            // Show selected pane
+            document.getElementById(screenId).classList.add('active');
+            event.target.classList.add('active');
+
+            // Update page title
+            const titles = {
+                'home': 'Home',
+                'exceptions-list': 'Exceptions',
+                'exceptions-detail': 'Exception Detail'
+            };
+            document.getElementById('page-title').textContent = titles[screenId];
+        }
+    </script>
+</body>
+</html>
