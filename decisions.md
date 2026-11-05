@@ -948,3 +948,32 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 ## EXE97 · `splash-rm.spec.ts` forces each of TC-157–159's three runs with its own manifest mock, reusing `splash.spec.ts`'s helpers (TASK-45.6) — accepted
 - **Rule.** `beforeEach` emulates `reducedMotion: "reduce"` and holds `/seed/manifest.json` indefinitely (the TC-157/158-run-B/159 precondition: readiness never, or not before the probe). TC-158's run A unroutes the mock so a fresh guest's seeding completes well inside D_rm (1 s), proving the fast-ready path; run B keeps the hold and proves the 5 s ceiling path. TC-159 presses Escape past the 250 ms guard and checks `done` within budget plus the same `want + lag + 50` style slack used in `splash-bar.spec.ts` (kept small since rm has no lag probes of its own).
 - **File boundary.** Per the brief, new assertions live only in `tests/e2e/splash-rm.spec.ts`; `markup.ts` and `splash-bar.spec.ts` (TASK-45.5's territory) are untouched.
+
+## EXE108 · Light normal takes PRD §15 R1's fallback, P ≤ 6.5 %, and the light master is toned to meet it (TASK-46.8 fix round 1, PRD §15 R1 / §9.4, Design §6.1) — accepted (user-approved)
+- **Found.** On the final art, light normal at 1440 read P 7.40 % with the text zone at L\* 92.12, against the 8–15 % band and the 92.1 floor. Darkening the art raises P but pulls the zone below the floor, so the two cannot hold together (EXE105 stop rule).
+- **Rule.** The user chose PRD §15 R1's pre-approved fallback: light normal is capped at a global P ≤ 6.5 % at every width, with no lower bound. Light reduced, dark normal and dark reduced keep their bands. TC-115 (`tests/e2e/heritage-contrast.spec.ts`, `LIGHT_NORMAL_P_MAX`) and its entry in `docs/test-cases-TASK-46.md` say so. Re-grading the master (option b) was declined.
+- **Calibration.** 7.40 % was still above 6.5 %, so `scripts/encode-heritage.ts` now tones the light master before encoding: out = a·in + (1−a)·canvas per channel, pinned at #f7f9f7, with a = `LIGHT_TONE_A` = 0.81. This follows the Design §6.1 method, measured against the target peak with the spec's own sampler. Peak L\* is quantized by 8-bit steps (92.12 → 92.47 → 92.82). a = 0.84 gave P 6.58 % (fails); a = 0.81 gives P 6.16 % at peak L\* 92.47, and the zone floor rises to 93.17. Dark and the `reduced` opacity (0.6) are untouched.
+- **Side effect.** Light reduced follows light normal at about 0.66×, to P 4.08 %. That is inside 4–8 % but only 0.08 above the floor; a lighter tone (a ≤ ~0.78) would push it under. TC-112's colour check now expects the toned value for light (0.81·24 + 0.19·247 ≈ 66 red, against 24 for dark), so it still catches an encoder that ignores the P3 profile (≈ 134).
+
+## EXE109 · Tablet and mobile art boxes are re-sized so narrow widths keep SC2 prominence (TASK-46.8 fix round 1, Design §7, supersedes EXE53's geometry) — accepted (user-approved option c; look-check pending)
+- **Found.** At 768 and 390, P fell below band in both themes (dark normal 6.41 % at 768, 4.11 % at 390). The asset was fine; the box was the cause. At 768 the 300px `cover` box drew the image at about half its desktop scale, so the dense monument bodies sat inside the text zone and under the mask fade (opaque to 55 % of the height), and the outside-zone strips held mostly sky. On desktop the zone covers only the monument tops and the bodies land in the strip below. At 390 the text zone starts about 117px down, under most of the old 172px strip, so the outside sample was empty canvas and fade.
+- **Rule.** `src/app/globals.css`:
+  - **Tablet** (48–64rem): `height: 600px; background-size: auto 600px; background-position: 15% -8px`. This restores desktop scale and keeps the gopuram and Taj side in view.
+  - **Mobile Home strip:** `height: 280px; background-size: auto 300px; background-position: 100% 40px`.
+  - **Desktop:** unchanged.
+  - TC-101b/c now expect 600px and 15 % at tablet.
+- **Measured.** From the real `build:e2e`, no injected CSS, using the TC-115 sampler (the values are the same on every route):
+
+  | Row | P | Peak L\* | Zone L\* |
+  |---|---|---|---|
+  | light normal 768 | 6.16 % | — | 93.17 |
+  | light normal 390 | 5.75 % | — | 95.27 |
+  | light reduced 768 | 4.08 % | — | — |
+  | dark normal 768 | 8.91 % | 13.96 | — |
+  | dark normal 390 | 8.05 % | 13.19 | — |
+  | dark reduced 768 | 5.22 % | 10.66 | — |
+
+- **Rejected.** 300–540px boxes: the zone fell under 92.1 or P fell out of band. Positions 25–38 % at 600px: light normal 6.58 %.
+- **Thin margins.** Dark normal at 390 is 0.05 above 8 %, and light reduced is 0.08 above 4 %.
+- **Open.**
+  - The tablet band is now about twice as tall (600px against 300px). Design §7 still says 300px at 38 %; that approved text was not edited here. It needs the user's look-check and a Design revision.
