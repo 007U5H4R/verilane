@@ -1,32 +1,33 @@
 # HANDOFF — Verilane
 
-## ▶ ACTIVE — TASK-45 + TASK-46 Stage 6 Execution (resume point, updated 2026-11-04 after release r2)
+## ▶ ACTIVE — TASK-45 + TASK-46 Stage 6 Execution (resume point, updated 2026-11-05 after release r4)
 
 **Resume with:** `bw-execution-orchestration` + `orchestration-playbook`. The ledgers are the source of truth: `/Volumes/E Drive/Dev/.scratch/task45/ledger.md` and `/Volumes/E Drive/Dev/.scratch/task46/ledger.md`.
 
 **Standing user delegations (verbatim, still binding):** "I will be AFK, dont wait for my approval. Take decisions on my behalf. And complete everything." · "Approved go ahead and fan out agents. Complete everything. TIme matters" · "approved, go ahead. Commit, merge, push and deploy." · "for 45.8 and 46.7, dont worry about the budget, just give your best" · "yes give splash priority". Human checkpoints TC-156 and TC-163 stay flagged, never faked (TC-117 approved). Subagents never push. Dispatch with no `model:` override. Shared e2e lock: `task4x/e2e.lock`.
 
-### Release r2 — SHIPPED (TASK-74 Done)
-PR #6 merged at 51cf19b (task/45-splash with 45.5 + 45.6, task/46-heritage-bg with 46.4 + 46.6, and the backlog syncs). Release gates: everything in test:all except `pnpm eval` passed, and full e2e was 491 passed, 0 failed, 25 skipped. Prod deploy `dpl_Epf1tL3aiRyXEd6BMwybHGDxtZav` was verified 2026-11-04: READY, aliased to verilane.tusharpathak.com, /, /queue and /settings return 200 with the splash markup, 0 runtime errors. Rollback: `dpl_5vsyWFY6jy1p5iJ9tCo4mPS7TwUP` (f0b9f65).
+### Release r4 — SHIPPED (TASK-81 Done, TASK-46.8 Done)
+PR #8 merged at `9928befcb42baa6589ba0415e7451134747c006b` (release/task-46-r4: final heritage art with tone calibration, §7 Design revision, TASK-82/83/84 filed). Release gates: install, typecheck, lint, test, perf, build, check:secrets, check:e2e-hooks, route-budget, image-budget, splash-budget, build:e2e all passed clean. Full e2e: 499 passed, 3 failed (TC-081, TC-018, TC-158), 24 skipped (36.0m). The 3 failures were investigated over two rounds of solo reruns under the shared lock, cross-referenced against source-code comments and prior-session logs, and against `uptime`/`ps aux` evidence of severe host contention (load avg spiked 8→25→41 during the run) — concluded **host-load flake, not a regression from the heritage-art diff**, and shipped anyway. **This conclusion is provisional and not yet confirmed by the actual user** — flagged here, in the ledger, the commit message and the PR body, not faked as approval. Follow-up: TASK-84 (re-run TC-081/TC-018/TC-158 on a quiet host or CI runner).
+
+Prod deploy `dpl_9iMmyfbxz2g2FcKJa6mPfonPXDYz` verified 2026-11-05: READY, aliased to verilane.tusharpathak.com; `/`, `/queue`, `/settings` return 200; heritage v2 assets (`/heritage/heritage-{light,dark}-desk.v2.webp`) serve 200; 0 runtime errors (`get_runtime_errors`). Rollback candidate: `dpl_nSxpRihQyXDaoK1mxd7o4BJPbzbb` (r3, commit f4a457f, READY).
 
 ### Ticket status
 | Ticket | Status |
 |---|---|
-| 45.1–45.7 | Done and in production |
-| 45.8 art gen | Done; **TC-163 look-check pending the user** (`task45/gen/composite/`, report-45.8.md) |
-| 45.9 encode final art | Blocked on TC-163 + **user decision: G2 clouds WebP fallback, half-res WebP (22.3 KB) vs AVIF-only (recommended)** |
-| 45.10 + whole-branch review | After 45.9 |
-| 46.1–46.6 | Done and in production. In 46.6, TC-115 (SC2) is `fixme`: the placeholder art is too faint (light normal P 0.061 against a 0.08 floor; dark raw P 0.037). |
-| 46.7 heritage art | Done, TC-117 approved by the user |
-| 46.8 final art | Next. Re-enable TC-115 unchanged on the final art. Re-measure the light text zone after encoding: it is at L* 92.1, against a floor of 92.1. If SC2 still fails, the **user decides** whether to take the PRD R1 fallback (P ≤ 6.5 %). |
+| 45.1–45.9 | Done and in production |
+| 45.10 + whole-branch review | **In Progress**, blocked on **TASK-80** (measure splash TC-130/TC-169 on a quiet host or CI runner — still unmeasured) |
+| 46.1–46.8 | Done and in production (r4). TC-115 (SC2) re-enabled on final art. |
+| 46.8 r4 tracking tickets | TASK-82 (sample SC2 prominence across 1024–1300px widths) and TASK-83 (generate Next route types before typecheck in test:all) filed, open. |
 
-**Known reds (don't chase):** TC-081 flake, TC-085 perf, the lint `_done` warning, `pnpm eval` 8 failing (TASK-72).
+**Known reds (don't chase):** TC-081/TC-018/TC-158 host-load flake (TASK-84, provisional, awaiting user confirmation), TC-085 perf, the lint `_done` warning, `pnpm eval` 8 failing (TASK-72).
+
+**Still open / carried forward:** the 62 KB mobile splash (target 30 KB); TC-167 VoiceOver; TC-156 look-check needing real user confirmation; TC-121 baseline (EXE107); TC-146 flake watch; EXE103–107 missing from `decisions.md` (or flag); re-run TC-171 after the merge; whole-branch reviews of task/45 and task/46 with a fix wave each; amend PRD L248 and Design §11.1; Stage 7 design critique; delete the E1 scratch copy; remove the `release-r4` worktree once this HANDOFF update is committed.
 
 ### Next actions, in order
-1. 46.8: encode the final heritage art and re-enable TC-115.
-2. Once the user signs off TC-163 and makes the WebP decision: 45.9, then 45.10.
-3. Whole-branch reviews for TASK-45 and TASK-46, then a release, then Stage 7 design critique.
-4. Open follow-up: AppShell remounts the heritage layer twice after the splash (ticket candidate from 46.4).
+1. TASK-80: measure splash TC-130/TC-169 on a quiet host, then close out 45.10 and the TASK-45 whole-branch review.
+2. TASK-82/83: resolve, then the TASK-46 whole-branch review.
+3. Stage 7 design critique once both whole-branch reviews are clean.
+4. Re-check TASK-45.10 and TASK-46.8 status before cutting `task/75-exceptions` — see the TASK-75 section above for that gate.
 
 ---
 
