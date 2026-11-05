@@ -1,10 +1,10 @@
 ---
 id: TASK-45.6
 title: Add the reduced-motion splash path with a static frame and instant cut
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-02 17:19'
-updated_date: '2026-11-04 13:33'
+updated_date: '2026-11-05 09:31'
 labels:
   - P1
 dependencies:
