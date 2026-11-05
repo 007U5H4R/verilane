@@ -16,7 +16,7 @@
 
 **Decisions log:** TP1–TP3 (Stage 5, in `technical-plan.md` §10) and the earlier D75-1…4 (Stage 4, in `milestones-TASK-75.md`) are still **not appended** to `decisions.md` — that happens as the first commit once the `task/75-exceptions` branch is actually cut (per D75-2/D75-4 pattern).
 
-**Open conflict carried from Stage 4, still unresolved:** **D75-1 True auto-execute** (the user's choice: for `auto_permitted`, the Execute agent writes via `commands.ts` with no human click) **conflicts with frozen Design §4/§11 and Discovery F15/§8.1/§8.3** ("actions executed without approval = 0"). **A1** is the drafted Design/Discovery amendment (5 items, in `milestones-TASK-75.md`) that must be approved before TASK-79.4 starts — not yet done.
+**Gate A1 — APPROVED by the user 2026-11-05 ("A1 Amendment approved").** D75-1 True auto-execute (the Execute agent writes via `commands.ts` with no human click on `auto_permitted`) conflicted with frozen Design §4/§11 and Discovery F15/§8.1/§8.3 ("actions executed without approval = 0"). The 5-item Design/Discovery amendment drafted in `milestones-TASK-75.md` is approved as written. TASK-79.4 is unblocked on this gate (the TASK-45/46 Done gate still applies). Append A1 to `decisions.md` alongside TP1–TP3/D75-1…4 as the first commit on `task/75-exceptions`.
 
 **Gate to Stage 6 (hard blocker, Solution-PRD §2.8 — checked 2026-11-05, NOT yet closed):**
 - **TASK-45.10** ("Collect splash release evidence...") — status **In Progress**.
