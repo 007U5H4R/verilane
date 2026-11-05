@@ -117,14 +117,14 @@
 - **Expected:** `"reduced"`.
 
 ### TC-101 · Mobile fetches heritage art only on Home (F5)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, fada8a8) · **Finding:** — TC-101b/c were updated for EXE115 (600px, 15 % at tablet) at 8a21f0b and passed in the full e2e run (495 pass).
 - **Objective:** No mobile bytes off Home.
 - **Preconditions:** Viewport 390×844.
 - **Steps:** Load `/`, `/queue`, `/drafts` in fresh pages; record heritage requests.
 - **Data:** —
 - **Expected:** `/` requests the theme's `-strip` asset only; `/queue` and `/drafts` request none; `[data-heritage]` is `display:none` there.
-- **Breakpoint guard (TC-101b, fix round R-4):** the heritage band's media conditions are Tailwind's md (48rem) and lg (64rem): mobile is the complement of md and tablet is md up to lg, with no `px` breakpoint. The test reads the conditions from the served CSSOM, because Lightning CSS lowers the source range syntax (`(width < 48rem)` → `not all and (min-width:48rem)`). It also checks the whole-pixel edges on `/queue`: 767 → `display:none`; 768 and 1023 → the 300px box; 1024 → not 300px. A fractional-width red is not possible because Chromium snaps viewports to whole CSS pixels, so the guard fails on the old `max-width:767px` queries instead.
-- **Computed style (TC-101c, R-5):** `/drafts` at 1440 → `reduced`, opacity `0.6`; `/queue` at 800 → `normal`, height `300px`, `background-position` starting `38%`.
+- **Breakpoint guard (TC-101b, fix round R-4):** the heritage band's media conditions are Tailwind's md (48rem) and lg (64rem): mobile is the complement of md and tablet is md up to lg, with no `px` breakpoint. The test reads the conditions from the served CSSOM, because Lightning CSS lowers the source range syntax (`(width < 48rem)` → `not all and (min-width:48rem)`). It also checks the whole-pixel edges on `/queue`: 767 → `display:none`; 768 and 1023 → the 600px box; 1024 → not 600px (EXE115; was 300px). A fractional-width red is not possible because Chromium snaps viewports to whole CSS pixels, so the guard fails on the old `max-width:767px` queries instead.
+- **Computed style (TC-101c, R-5):** `/drafts` at 1440 → `reduced`, opacity `0.6`; `/queue` at 800 → `normal`, height `600px`, `background-position` starting `15%` (EXE115; was 300px at 38%).
 
 ### TC-102 · Forced colors and print fetch nothing (F6)
 - **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F6 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
@@ -232,12 +232,12 @@
 - **Expected:** As TC-113.
 
 ### TC-115 · Prominence stays inside the band per level (SC2)
-- **Rel:** M-46.2 · TKT-46.06 · TASK-46.6 · 46.6.4 · SC2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.06 · TASK-46.6 · 46.6.4 · SC2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, fada8a8) · **Finding:** — TASK-46.8 fix round 1 full e2e: 495 pass, 1 fail, 24 skip. The one fail is TC-146, an unrelated flake (confirmed).
 - **Objective:** Visible but quiet, as designed.
 - **Preconditions:** As TC-113, both themes.
 - **Steps:** Outside the text zone compute P = (L\*canvas − L\*peak)/(L\*canvas − L\*text); inside it, peak L\*.
 - **Data:** PRD §6.2 bands.
-- **Expected:** normal P 8–15 %, reduced P 4–8 %; light text-zone L\* ≥ 92.1; dark normal L\* 13–19.5, reduced 9.5–13.
+- **Expected:** light normal P ≤ 6.5 % (PRD §15 R1 fallback, approved TASK-46.8, EXE114; no lower bound); dark normal P 8–15 %; reduced P 4–8 % in both themes; light text-zone L\* ≥ 92.1; dark peak L\* normal 13–19.5, reduced 9.5–13. Applies at every width (1440, 768, 390).
 
 ### TC-116 · The contrast gate fails a too-dark fixture
 - **Rel:** M-46.2 · TKT-46.06 · TASK-46.6 · 46.6.5 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —

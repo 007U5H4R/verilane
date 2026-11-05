@@ -1019,3 +1019,41 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - **Result (fix round 1 run, host load 10–25).** Control: both injected loops caught (131.6 and 120.1 ms, `pos` 0). TC-169: inline long scripts 0 in 6/6 runs, raw and filtered CLS after exit 0 in 6/6 (natural-exit run included), skip INP [280, 200, 280, 272, 128], median 272 ms > 200: Fail, per EXE110 left to the user as a stop-rule item, threshold unchanged. TC-166/TC-168 passed in both themes and TC-143 passed in both themes (its earlier 3209.9 ms miss of the 3200 ms bound in the first fix-round run, at load 23, did not recur).
 - **Evidence status.** Numbers from this round ran under host load and are not perf evidence. TC-130, TC-170 and TC-169 still need the idle-host re-run.
 - **Gate counts (45.10.6, at fbfcd69).** e2e 497 passed / 25 skipped, rc 0; unit 1835 passed; typecheck clean; lint 0 errors, 1 warning (unrelated `src/components/tour/steps.ts`); eval 8/43 failed (the known TASK-72 red).
+
+## EXE114 · Light normal takes PRD §15 R1's fallback, P ≤ 6.5 %, and the light master is toned to meet it (TASK-46.8 fix round 1, PRD §15 R1 / §9.4, Design §6.1) — accepted (user-approved)
+- **Numbering.** These two entries were EXE108 and EXE109 on `task/46-heritage-bg`. They were renumbered at the r4 merge (TASK-81) because TASK-45.10 had already used EXE108–113 on main. Commit messages fada8a8 and 047446b still say EXE108/EXE109.
+- **Found.** On the final art, light normal at 1440 read P 7.40 % with the text zone at L\* 92.12, against the 8–15 % band and the 92.1 floor. Darkening the art raises P but pulls the zone below the floor, so the two cannot hold together. This tripped the round-1 stop rule; that rule and EXE103–107 were proposed in the TASK-46.8 round-1 report and are not yet recorded in this file.
+- **Rule.** The user chose PRD §15 R1's pre-approved fallback: light normal is capped at a global P ≤ 6.5 % at every width, with no lower bound. Light reduced, dark normal and dark reduced keep their bands. TC-115 (`tests/e2e/heritage-contrast.spec.ts`, `LIGHT_NORMAL_P_MAX`) and its entry in `docs/test-cases-TASK-46.md` say so. Re-grading the master (option b) was declined.
+- **Calibration.** 7.40 % was still above 6.5 %, so `scripts/encode-heritage.ts` now tones the light master before encoding: out = a·in + (1−a)·canvas per channel, pinned at #f7f9f7, with a = `LIGHT_TONE_A` = 0.81. a was calibrated empirically: a sweep (a = 0.84 → 0.81) measured against the rendered peak with the TC-115 sampler, which follows §6.1's verify-the-output rule. It is not §6.1's inverse sRGB→L\* table method. Peak L\* is quantized by 8-bit steps (92.12 → 92.47 → 92.82). a = 0.84 gave P 6.58 % (fails); a = 0.81 gives P 6.16 % at peak L\* 92.47, and the zone floor rises to 93.17. Dark and the `reduced` opacity (0.6) are untouched.
+- **Side effect.** Light reduced follows light normal at about 0.66×, to P 4.08 %. That is inside 4–8 % but only 0.08 above the floor; a lighter tone (a ≤ ~0.78) would push it under. TC-112's colour check now expects the toned value for light (0.81·24 + 0.19·247 ≈ 66 red, against 24 for dark), so it still catches an encoder that ignores the P3 profile (≈ 134).
+
+## EXE115 · Tablet and mobile art boxes are re-sized so narrow widths keep SC2 prominence (TASK-46.8 fix round 1, Design §7, supersedes EXE53's geometry) — accepted (user-approved option c; look-check provisionally passed 2026-11-05, agent call under user delegation, user confirmation still open)
+- **Found.** At 768 and 390, P fell below band in both themes (dark normal 6.41 % at 768, 4.11 % at 390). The asset was fine; the box was the cause. At 768 the 300px `cover` box drew the image at about half its desktop scale, so the dense monument bodies sat inside the text zone and under the mask fade (opaque to 55 % of the height), and the outside-zone strips held mostly sky. On desktop the zone covers only the monument tops and the bodies land in the strip below. At 390 the text zone starts about 117px down, under most of the old 172px strip, so the outside sample was empty canvas and fade.
+- **Rule.** `src/app/globals.css`:
+  - **Tablet** (48–64rem): `height: 600px; background-size: auto 600px; background-position: 15% -8px`. This restores desktop scale and keeps the gopuram and Taj side in view.
+  - **Mobile Home strip:** `height: 280px; background-size: auto 300px; background-position: 100% 40px`.
+  - **Desktop:** unchanged.
+  - TC-101b/c now expect 600px and 15 % at tablet.
+- **Measured.** From the real `build:e2e`, no injected CSS, using the TC-115 sampler (the values are the same on every route):
+
+  | Row | P | Peak L\* | Zone L\* |
+  |---|---|---|---|
+  | light normal 768 | 6.16 % | — | 93.17 |
+  | light normal 390 | 5.75 % | — | 95.27 |
+  | light reduced 768 | 4.08 % | — | — |
+  | dark normal 768 | 8.91 % | 13.96 | — |
+  | dark normal 390 | 8.05 % | 13.19 | — |
+  | dark reduced 768 | 5.22 % | 10.66 | — |
+
+- **Rejected.** 300–540px boxes: the zone fell under 92.1 or P fell out of band. Positions 25–38 % at 600px: light normal 6.58 %.
+- **Why these exact values.** Each value below came from the variant sweep in `.scratch/task46/46.8-fix1/` (`probe-var-*.txt`). Where the only reason is "it passed the sampler", that is stated.
+  - **Tablet `-8px`:** no reason beyond passing the sampler. Every 600px variant (D1, D3, D4, D5) used -8px and only the x position was swept. The offset itself was never varied at 600px; the one 0px variant (D2) was a different size (520px) and failed the zone.
+  - **Tablet `15 %`:** the only x position that passed at 600px. 25 %, 33 % and 38 % gave light normal 6.58 %.
+  - **Mobile 280px box with an `auto 300px` image:** no reason beyond passing the sampler. M1 (280 box, 300 image, 40px) was the only mobile variant that passed every row. The neighbours both failed dark normal's 8 % floor: M2 (240 box, 300 image, 10px) at 7.54 %, and H3 (300 box, 260 image, 60px) at 7.60 %. The image overruns the box by 60px (40 + 300 − 280), and the mask fade hides the bottom of the box. 280 against 300 was not swept on its own.
+  - **Mobile `100% 40px`:** no reason beyond passing the sampler. 100 % was carried over from most of the earlier mobile variants (C–H3). The centred variants failed, F (50 % top, a 240px box) and I2 (50 % 50px, a 240px image, dark normal 6.74 %), but their sizes differed too, so they do not isolate x. 40px was not swept on its own.
+- **Thin margins.** Dark normal at 390 is 0.05 above 8 %, and light reduced is 0.08 above 4 %.
+- **Open.**
+  - The tablet band is now about twice as tall (600px against 300px). Design §7 still says 300px at 38 %; that approved text was not edited here. It needs the user's look-check and a Design revision.
+  - Mobile also departs from Design §7: the Home strip was `clamp(160px, 44vw, 240px)` and is now a fixed 280px. It needs the same look-check and Design revision.
+  - A landscape phone (844×390) falls in the 48–64rem tablet range, so it gets the 600px band on a 390px-tall viewport. It was not sampled and needs the look-check.
+  - Widths from 1024 to about 1300 were not sampled (only 1440, 768 and 390 were). This is a candidate for a follow-up ticket.

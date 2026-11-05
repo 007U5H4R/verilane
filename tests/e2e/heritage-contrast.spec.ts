@@ -40,6 +40,12 @@ const P_BAND: Record<Level, [number, number]> = {
   reduced: [0.04, 0.08],
 };
 
+// PRD §15 R1 fallback, approved by the user in TASK-46.8 (EXE114): light
+// normal cannot hold the 8–15% band and the 92.1 text-zone floor at once, so
+// light normal is capped at a global P ≤ 6.5% instead, with no lower bound.
+// Light reduced and both dark levels keep P_BAND.
+const LIGHT_NORMAL_P_MAX = 0.065;
+
 // PRD §6.2: in the text zone, light art must stay at L* ≥ 92.1 so
 // --text-muted keeps AA (≥4.5:1). Dark has no such floor — "Dark is not
 // constrained by AA inside the normal band. Its limit is purely aesthetic" —
@@ -234,16 +240,11 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 // ── TC-115: SC2, prominence stays inside the band per level ─────────────────
-// FIXME(TASK-46.6): parked pending the user's call on the SC2 escalation
-// in the TASK-46.6 handback report.
-// The committed PLACEHOLDER art misses the plan's bands at the art level,
-// independent of the reduced opacity: light normal P 0.061-0.062 (< 0.08),
-// dark normal P 0.037 and peak L* 9.3 (< 13), dark reduced P 0.019 and peak
-// L* 7.7 (< 9.5). Light reduced at 0.6 (P 0.041, zone L* 94.2) and the light
-// zone floor (92.12) pass. Re-enable once the final art lands (46.8); the
-// bands are the plan's and must not be loosened to make this pass.
+// Re-enabled in TASK-46.8 with the final art. The bands are the plan's, and
+// the only change is PRD §15 R1's pre-approved light-normal ceiling (EXE114).
+// Do not loosen them further to make this pass.
 for (const theme of ["light", "dark"] as const) {
-  test.fixme(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
+  test(`TC-115: prominence stays inside the band per level (${theme}, SC2)`, async ({ browser, baseURL }, info) => {
     test.skip(info.project.name !== "chromium-light", "both themes are forced via localStorage on this one project");
     // Same route × width sweep as TC-113/TC-114, plus per-route screenshotting;
     // well past the default 30s test timeout, so give it room.
@@ -270,9 +271,13 @@ for (const theme of ["light", "dark"] as const) {
           if (outside.length > 0) {
             const { l: peakL } = backgroundAt(outside, peakPercentile);
             const p = prominence(canvasL, peakL, textL);
-            const [lo, hi] = P_BAND[level];
-            expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level})`).toBeGreaterThanOrEqual(lo);
-            expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level})`).toBeLessThanOrEqual(hi);
+            if (theme === "light" && level === "normal") {
+              expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level}, R1 ceiling)`).toBeLessThanOrEqual(LIGHT_NORMAL_P_MAX);
+            } else {
+              const [lo, hi] = P_BAND[level];
+              expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level})`).toBeGreaterThanOrEqual(lo);
+              expect.soft(p, `${url} ${theme} ${width} outside-zone P (level ${level})`).toBeLessThanOrEqual(hi);
+            }
             if (theme === "dark") {
               const [dlo, dhi] = DARK_PEAK_LSTAR[level];
               expect.soft(peakL, `${url} ${theme} ${width} outside-zone peak L* (level ${level})`).toBeGreaterThanOrEqual(dlo);
@@ -287,9 +292,8 @@ for (const theme of ["light", "dark"] as const) {
             const zonePixels = await decodeRegion(png, zone);
             if (zonePixels.length > 0) {
               const { l: zonePeakL } = backgroundAt(zonePixels, 2);
-              // STOP RULE (TASK-46.6 brief): if this fails for level "normal",
-              // do not weaken the assertion or invent a fix — report it. The
-              // PRD's P ≤ 6.5% global fallback (R1) is a user decision.
+              // The floor holds under the R1 ceiling (EXE114). If it fails, do not
+              // weaken it; that needs a user decision (re-grade the master).
               expect.soft(zonePeakL, `${url} ${theme} ${width} text-zone floor (level ${level})`).toBeGreaterThanOrEqual(LIGHT_ZONE_FLOOR_LSTAR);
             }
           }
