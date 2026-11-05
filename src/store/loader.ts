@@ -10,7 +10,7 @@ import { ingest, type Row } from "@/domain/ingest";
 import { asOf, daysBetween } from "@/domain/clock";
 import { match } from "@/domain/match";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
-import { reviewItemsFor } from "@/domain/review";
+import { exceptionsFor } from "@/domain/review";
 import { deriveSignals } from "@/domain/signals";
 import type {
   Dispute,
@@ -20,7 +20,7 @@ import type {
   Match,
   Payment,
   Priority,
-  ReviewItem,
+  Exception,
 } from "@/domain/schema";
 import { simulateExtraction } from "@/ai/simulated";
 import type { VerilaneDb } from "./db";
@@ -150,7 +150,7 @@ function recomputeTables(db: VerilaneDb) {
     db.emails,
     db.extractions,
     db.matches,
-    db.reviewItems,
+    db.exceptions,
     db.disputes,
     db.dataIssues,
     db.priorities,
@@ -181,19 +181,19 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
 
   const byMessage = new Map(extractions.map((x) => [x.message_id, x]));
   const matches: Match[] = [];
-  const reviewItems: ReviewItem[] = [];
+  const exceptions: Exception[] = [];
   const disputes: Dispute[] = [];
   for (const email of emails) {
     const ext = byMessage.get(email.message_id);
     if (!ext) continue;
     const m = match(ext, email, { customers, invoices });
     matches.push(m);
-    reviewItems.push(...reviewItemsFor(m, ext, { invoices, payments }));
+    exceptions.push(...exceptionsFor(m, ext, { invoices, payments }));
     disputes.push(...disputesFor(m, ext, email, invoices));
   }
   await db.matches.clear();
   await db.matches.bulkPut(matches);
-  await syncReviewItems(db, reviewItems);
+  await syncExceptions(db, exceptions);
   await syncDisputes(db, disputes);
   const allDisputes = await db.disputes.toArray();
 
@@ -243,7 +243,7 @@ function disputesFor(m: Match, x: Extraction, email: EmailMessage, invoices: Inv
 
 /**
  * Upserts computed Dispute rows, keeping any existing row's status — unlike
- * `syncReviewItems`, nothing is ever deleted: a Dispute is a permanent
+ * `syncExceptions`, nothing is ever deleted: a Dispute is a permanent
  * workflow record once opened, not a transient suggestion tied to the
  * email that's still present. A manually-opened dispute (`mark_disputed`,
  * no `source_message_id`) is never touched here.
@@ -265,14 +265,14 @@ const EMAIL_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation", "disput
  * the computed email items keeping any existing row's status; drop open
  * email items the data no longer raises; leave closed ones as history.
  */
-async function syncReviewItems(db: VerilaneDb, computed: ReviewItem[]): Promise<void> {
-  const existing = new Map((await db.reviewItems.toArray()).map((r) => [r.review_id, r]));
+async function syncExceptions(db: VerilaneDb, computed: Exception[]): Promise<void> {
+  const existing = new Map((await db.exceptions.toArray()).map((r) => [r.review_id, r]));
   const keep = new Set(computed.map((r) => r.review_id));
   const stale = [...existing.values()]
     .filter((r) => r.status === "open" && EMAIL_REVIEW_KINDS.has(r.kind) && !keep.has(r.review_id))
     .map((r) => r.review_id);
-  await db.reviewItems.bulkDelete(stale);
-  await db.reviewItems.bulkPut(
+  await db.exceptions.bulkDelete(stale);
+  await db.exceptions.bulkPut(
     computed.map((r) => {
       const prev = existing.get(r.review_id);
       return prev ? { ...prev, ...r, status: prev.status } : r;

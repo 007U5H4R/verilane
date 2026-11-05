@@ -30,7 +30,7 @@ export function useRelatedExists(refs: RelatedRefs): RelatedExists | undefined {
       invoiceId ? db.invoices.filter((i) => i.invoice_id === invoiceId).count() : 0,
       disputeId ? db.disputes.where("dispute_id").equals(disputeId).count() : 0,
       draftId ? db.drafts.where("draft_id").equals(draftId).count() : 0,
-      reviewId ? db.reviewItems.where("review_id").equals(reviewId).count() : 0,
+      reviewId ? db.exceptions.where("review_id").equals(reviewId).count() : 0,
     ]);
     return { invoice: invoice > 0, dispute: dispute > 0, draft: draft > 0, review: review > 0 };
   }, [db, invoiceId, disputeId, draftId, reviewId]);

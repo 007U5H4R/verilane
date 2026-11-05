@@ -6,8 +6,8 @@
  */
 "use client";
 import { useLiveQuery } from "dexie-react-hooks";
-import { workflowOf, type StoredReviewItem } from "@/domain/payments/reconcile";
-import type { Customer, EmailMessage, Extraction, Invoice, Match, Payment, ReviewItem } from "@/domain/schema";
+import { workflowOf, type StoredException } from "@/domain/payments/reconcile";
+import { isEmailException, type Customer, type EmailException, type EmailMessage, type Extraction, type Invoice, type Match, type Payment, type Exception } from "@/domain/schema";
 import type { AuditEventRow } from "./db";
 import { useDb } from "./hooks";
 
@@ -20,7 +20,7 @@ export interface ReconciliationData {
   matches: Map<string, Match>;
   extractions: Map<string, Extraction>;
   /** Every reconciliation / uncertain-match item, open or closed. */
-  items: StoredReviewItem[];
+  items: StoredException[];
   /** Audit events about those items, newest first. */
   audit: AuditEventRow[];
 }
@@ -37,11 +37,11 @@ export function useReconciliationData(): ReconciliationData | undefined {
       db.emails.toArray(),
       db.matches.toArray(),
       db.extractions.toArray(),
-      db.reviewItems.toArray(),
+      db.exceptions.toArray(),
       db.audit.toArray(),
     ]);
-    const items: StoredReviewItem[] = (rows as ReviewItem[])
-      .filter((r) => KINDS.has(r.kind))
+    const items: StoredException[] = (rows as Exception[])
+      .filter((r): r is EmailException => KINDS.has(r.kind) && isEmailException(r))
       .map((r) => ({ ...r, ...workflowOf(r as unknown as Record<string, unknown>) }))
       .sort((a, b) => a.message_id.localeCompare(b.message_id) || a.review_id.localeCompare(b.review_id));
     const ids = new Set(items.map((r) => r.review_id));

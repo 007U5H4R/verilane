@@ -5,7 +5,7 @@
  * reads the same on the invoice page and here.
  */
 import type { IntentFilter, LinkedFilter } from "@/domain/emails/listing";
-import type { EmailClass, MatchOutcome, ReviewItemKind, SignalFamily } from "@/domain/schema";
+import type { EmailClass, MatchOutcome, ExceptionKind, SignalFamily } from "@/domain/schema";
 
 export type BadgeVariant = "default" | "high" | "med" | "low" | "disp" | "outline";
 
@@ -52,12 +52,14 @@ export const LINKED_LABEL: Record<LinkedFilter, string> = {
   unlinked: "No linked invoice",
 };
 
-export const REVIEW_KIND_LABEL: Record<ReviewItemKind, string> = {
+export const REVIEW_KIND_LABEL: Record<ExceptionKind, string> = {
   draft: "Draft review",
   uncertain_match: "Uncertain match",
   dispute: "Dispute review",
   missing_info: "Missing information",
   reconciliation: "Payment reconciliation",
+  unallocated_payment: "Unallocated payment",
+  short_payment_pattern: "Short-payment pattern",
 };
 
 export const SIGNAL_LABEL: Record<SignalFamily, string> = {

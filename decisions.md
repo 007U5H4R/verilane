@@ -1150,3 +1150,17 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 ## EXE118 · TASK-75's Stage 5 TP1–TP3 are appended as TP26–TP28 (TASK-79.1) — accepted
 - `decisions.md` already has TP1–TP25 (v1 TP1–TP8, TASK-46 TP9–TP15, TASK-45 TP16–TP25). Appending TASK-75's TP1–TP3 under the same numbers would give two entries per ID.
 - They are appended as **TP26–TP28** (TP1→TP26, TP2→TP27, TP3→TP28), with the original label kept in each heading, the same way TASK-45 appended TP-45.a… as TP16…. `docs/technical-plan.md` §10 and `docs/tickets.md` use the new numbers. Text is otherwise as-is.
+
+## EXE119 · The rename keeps v1's persisted field names, ids and entity key (TASK-79.1) — accepted
+- `ReviewItem` → `Exception` renames the type, Zod schema (`ExceptionSchema`, `ExceptionKindSchema`), row type (`ExceptionRow`), Dexie table (`reviewItems` → `exceptions`, v2), store hook fields and helpers (`exceptionsFor`, `syncExceptions`).
+- **Kept unchanged:** the row fields `review_id` and `linked_review_ids`, the `RV-…` ids, the command entity key `review` (audit subjects `review:<id>`), `REVIEW_KIND_LABEL`, the `src/domain/review.ts` file name, every `data-testid` (`review-item`) and all user-visible copy.
+- **Why:** these are persisted in IndexedDB rows and audit events, or asserted by v1 e2e. Renaming them would need a row rewrite in the v2 upgrade and an audit-subject migration for no user-visible gain. TKT-75.02+ may revisit with its own migration.
+- `Exception` is used as a type/schema name only; it collides with no JS global or lint rule (`DOMException` is distinct), so the `ExceptionItem` fallback was not needed.
+
+## EXE120 · v1 e2e specs read `db.exceptions` instead of `db.reviewItems` (TASK-79.1) — accepted
+- `tests/e2e/home-redesign.spec.ts` (1 line) and `tests/e2e/payments.spec.ts` (4 lines) reach into the Dexie handle via `window.__verilane.db`. The v2 table name changed, so the accessor changes; no assertion, test id, route or copy changed.
+
+## EXE121 · Commits 3 and 5 of TKT-75.01 land together; `message_id` optionality is typed via `EmailException` (TASK-79.1) — accepted
+- Renaming the `reviewItems` table cannot be green without the Dexie v2 upgrade that creates `exceptions`, so the rename and `version(2)` (plus empty `creditNotes` / `policyDecisions`) are one commit, as the brief allows.
+- `ExceptionSchema.message_id` is optional; a Zod `superRefine` requires it for every non-payment kind. Code that reads it (Payments page, Home feed, reconciliation) narrows with `isEmailException()` to `EmailException` (`message_id: string`), and `StoredException` is now `EmailException & Workflow`. For v1 data this filters nothing out (every v1 kind requires the email).
+- The two new kinds get labels in `REVIEW_KIND_LABEL` ("Unallocated payment", "Short-payment pattern"); they are not shown anywhere until TKT-75.02.

@@ -15,7 +15,7 @@ import {
   remainingAfter,
   workflowOf,
   type CaseContext,
-  type StoredReviewItem,
+  type StoredException,
 } from "./reconcile";
 
 const invoices = byId(INVOICES, "invoice_id");
@@ -232,7 +232,7 @@ describe("ledgerStatus and workflowOf", () => {
     expect(ledgerStatus("P-1", new Set(), new Set())).toBe("recorded");
   });
   it("reads only well-formed workflow fields", () => {
-    const row = { workflow_state: "verified", assignee: "boss", verified_payment_id: 7, workflow_note: "n" } as unknown as StoredReviewItem;
+    const row = { workflow_state: "verified", assignee: "boss", verified_payment_id: 7, workflow_note: "n" } as unknown as StoredException;
     expect(workflowOf(row as unknown as Record<string, unknown>)).toEqual({ workflow_state: "verified", workflow_note: "n" });
   });
 });

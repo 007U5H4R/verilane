@@ -14,7 +14,7 @@ import type {
   Invoice,
   Match,
   MatchOutcome,
-  ReviewItem,
+  Exception,
 } from "@/domain/schema";
 
 export interface ThreadMessage {
@@ -24,7 +24,7 @@ export interface ThreadMessage {
   /** Absent when the matcher left no row for this message. */
   match?: Match;
   /** Every review item this message raised, any status. */
-  reviews: ReviewItem[];
+  reviews: Exception[];
   /** Disputes whose source is this message. */
   disputes: Dispute[];
 }
@@ -59,7 +59,7 @@ export interface EmailThread {
   /** Invoices a reviewer was pointed at but no match confirmed (ambiguous / customer-only). */
   candidates: InvoiceLink[];
   disputes: Dispute[];
-  openReviews: ReviewItem[];
+  openReviews: Exception[];
   /** Messages whose extraction was rejected. */
   rejected: number;
 }
@@ -68,7 +68,7 @@ export interface ThreadSources {
   emails: EmailMessage[];
   extractions: Extraction[];
   matches: Match[];
-  reviewItems: ReviewItem[];
+  exceptions: Exception[];
   disputes: Dispute[];
   customers: Customer[];
   invoices: Invoice[];
@@ -94,7 +94,7 @@ function groupBy<T>(rows: T[], key: (row: T) => string | undefined): Map<string,
 export function buildThreads(src: ThreadSources): EmailThread[] {
   const extractions = new Map(src.extractions.map((x) => [x.message_id, x]));
   const matches = new Map(src.matches.map((m) => [m.message_id, m]));
-  const reviews = groupBy(src.reviewItems, (r) => r.message_id);
+  const reviews = groupBy(src.exceptions, (r) => r.message_id);
   const disputes = groupBy(src.disputes, (d) => d.source_message_id);
   const customers = new Map(src.customers.map((c) => [c.customer_id, c]));
   const byContact = new Map<string, string>();

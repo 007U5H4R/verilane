@@ -66,7 +66,7 @@ export {
 } from "./commandConstants";
 
 export type Row = Record<string, unknown>;
-export type TableName = "invoices" | "drafts" | "disputes" | "reviewItems" | "meta";
+export type TableName = "invoices" | "drafts" | "disputes" | "exceptions" | "meta";
 
 
 /**
@@ -139,7 +139,7 @@ const TABLE_FOR: Record<SubjectKind, TableName | null> = {
   invoice: "invoices",
   draft: "drafts",
   dispute: "disputes",
-  review: "reviewItems",
+  review: "exceptions",
   system: null,
 };
 
@@ -559,7 +559,7 @@ const HANDLERS: Record<Action, Handler> = {
   },
 
   dismiss_review: async (ctx) => {
-    const { from, to } = await step(ctx, "review", "reviewItems", ["dismiss"]);
+    const { from, to } = await step(ctx, "review", "exceptions", ["dismiss"]);
     return {
       summary: `Dismissed review item ${ctx.cmd.subject.id}`,
       before: { status: from },
@@ -568,7 +568,7 @@ const HANDLERS: Record<Action, Handler> = {
   },
 
   action_review: async (ctx) => {
-    const { from, to } = await step(ctx, "review", "reviewItems", ["action"]);
+    const { from, to } = await step(ctx, "review", "exceptions", ["action"]);
     return {
       summary: `Actioned review item ${ctx.cmd.subject.id}`,
       before: { status: from },
@@ -920,7 +920,7 @@ async function reconcileFlag(ctx: Ctx): Promise<Effect> {
 
   const before = workflowSnapshot(ctx.row);
   const next = { ...ctx.row, ...extra };
-  await ctx.tx.put("reviewItems", next);
+  await ctx.tx.put("exceptions", next);
   return {
     summary,
     before,
@@ -958,7 +958,7 @@ async function reconcileDecide(ctx: Ctx): Promise<Effect> {
     };
     const note = clippedText(ctx.payload.note);
     if (note !== undefined) extra.workflow_note = note;
-    const { to } = await step(ctx, "review", "reviewItems", ["action"], extra);
+    const { to } = await step(ctx, "review", "exceptions", ["action"], extra);
     return {
       summary: `Verified ${id} against ledger entry ${paymentId}`,
       before,
@@ -970,7 +970,7 @@ async function reconcileDecide(ctx: Ctx): Promise<Effect> {
   if (decision === "reject") {
     const reason = requiredText(ctx.payload.reason, "Give a reason for rejecting the claim.");
     const extra: Row = { workflow_state: "rejected", workflow_note: reason };
-    const { to } = await step(ctx, "review", "reviewItems", ["dismiss"], extra);
+    const { to } = await step(ctx, "review", "exceptions", ["dismiss"], extra);
     return {
       summary: `Rejected payment claim ${id}`,
       before,
@@ -987,7 +987,7 @@ async function reconcileDecide(ctx: Ctx): Promise<Effect> {
       throw new InvalidCommand("Please confirm the link explicitly.");
     }
     const extra: Row = { workflow_state: "verified", linked_invoice_id: proposed };
-    const { to } = await step(ctx, "review", "reviewItems", ["action"], extra);
+    const { to } = await step(ctx, "review", "exceptions", ["action"], extra);
     return {
       summary: `Approved linking ${id} to ${proposed}`,
       before,
@@ -1004,7 +1004,7 @@ async function reconcileDecide(ctx: Ctx): Promise<Effect> {
 /**
  * FS11 (TASK-22): records that a provider's output for one email was
  * rejected. The email itself goes to review as an `uncertain_match` item
- * (`RV-<message_id>-match`, raised by `reviewItemsFor`, since a rejected
+ * (`RV-<message_id>-match`, raised by `exceptionsFor`, since a rejected
  * extraction never matches); this writes the one `validation_failure` audit
  * event that says why. Call it inside the same transaction that stores the
  * rejected row.

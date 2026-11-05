@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { reviewItemsFor, type ReviewLedger } from "./review";
-import { EXTRACTION_SCHEMA_VERSION, ReviewItemSchema, type Extraction, type Invoice, type Match } from "./schema";
+import { exceptionsFor, type ReviewLedger } from "./review";
+import { EXTRACTION_SCHEMA_VERSION, ExceptionSchema, type Extraction, type Invoice, type Match } from "./schema";
 import { paise } from "./money";
 
 function invoice(invoice_id: string, amount_paise: number): Invoice {
@@ -54,10 +54,10 @@ const matched = (invoice_id: string, candidates = [invoice_id], message_id = "E-
   reason: "r",
 });
 
-describe("reviewItemsFor", () => {
+describe("exceptionsFor", () => {
   it("TC-030: a ₹3,00,000 claim against ₹3,40,000 outstanding → reconciliation with both amounts; ledger untouched", () => {
     const before = structuredClone(ledger);
-    const items = reviewItemsFor(matched("INV-042"), ext(), ledger);
+    const items = exceptionsFor(matched("INV-042"), ext(), ledger);
     expect(items).toHaveLength(1);
     const [item] = items;
     expect(item?.kind).toBe("reconciliation");
@@ -68,11 +68,11 @@ describe("reviewItemsFor", () => {
     expect(item?.requires_role).toBe("manager");
     expect(item?.evidence_ids).toContain("E-007-1:emails.json:amounts[0]");
     expect(ledger).toEqual(before);
-    for (const i of items) expect(() => ReviewItemSchema.parse(i)).not.toThrow();
+    for (const i of items) expect(() => ExceptionSchema.parse(i)).not.toThrow();
   });
 
   it("a claim equal to the outstanding still reconciles: the ledger has no payment yet", () => {
-    const items = reviewItemsFor(
+    const items = exceptionsFor(
       matched("INV-042"),
       ext({ amounts: [34_000_000], payment_claim: { paid_on: null, amount_paise: 34_000_000 } }),
       ledger,
@@ -86,11 +86,11 @@ describe("reviewItemsFor", () => {
       ...ledger,
       payments: [{ payment_id: "P-1", invoice_id: "INV-042", paid_on: "2026-10-27", amount_paise: paise(34_000_000) }],
     };
-    expect(reviewItemsFor(matched("INV-042"), ext(), settled)).toEqual([]);
+    expect(exceptionsFor(matched("INV-042"), ext(), settled)).toEqual([]);
   });
 
   it("TC-033 (FS6): a duplicate claim → linked reconciliation items on both invoices", () => {
-    const items = reviewItemsFor(
+    const items = exceptionsFor(
       matched("INV-024", ["INV-023", "INV-024"], "E-016-1"),
       ext({
         message_id: "E-016-1",
@@ -109,7 +109,7 @@ describe("reviewItemsFor", () => {
   });
 
   it("a matched dispute → a Manager dispute item", () => {
-    const items = reviewItemsFor(
+    const items = exceptionsFor(
       matched("INV-042", ["INV-042"], "E-011-1"),
       ext({ message_id: "E-011-1", email_class: "dispute", dispute_type: "incorrect_amount", payment_claim: null }),
       ledger,
@@ -121,7 +121,7 @@ describe("reviewItemsFor", () => {
   });
 
   it("a matched commitment needs no review", () => {
-    const items = reviewItemsFor(
+    const items = exceptionsFor(
       matched("INV-042"),
       ext({ email_class: "commitment", payment_claim: null, commitment_date: "2026-11-06" }),
       ledger,
@@ -133,13 +133,13 @@ describe("reviewItemsFor", () => {
     "every %s outcome → one uncertain_match item with no invoice",
     (outcome) => {
       const m: Match = { message_id: "E-024-1", outcome, candidates: ["INV-024"], reason: "possible transposition of INV-1042" };
-      const items = reviewItemsFor(m, ext({ message_id: "E-024-1", email_class: "commitment", payment_claim: null }), ledger);
+      const items = exceptionsFor(m, ext({ message_id: "E-024-1", email_class: "commitment", payment_claim: null }), ledger);
       expect(items).toHaveLength(1);
       expect(items[0]?.kind).toBe("uncertain_match");
       expect(items[0]?.invoice_id).toBeUndefined();
       expect(items[0]?.escalation_reason).toBe("possible transposition of INV-1042");
       expect(items[0]?.requires_role).toBe("analyst");
-      expect(() => ReviewItemSchema.parse(items[0])).not.toThrow();
+      expect(() => ExceptionSchema.parse(items[0])).not.toThrow();
     },
   );
 });

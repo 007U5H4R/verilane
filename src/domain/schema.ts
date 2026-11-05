@@ -226,7 +226,7 @@ export const ExtractionSchema = z
   });
 export type Extraction = z.infer<typeof ExtractionSchema>;
 
-// --- Match / ReviewItem (Data-Model.md §3–4, TASK-13) ----------------------
+// --- Match / Exception (Data-Model.md §3–4, TASK-13) ----------------------
 
 export const MatchOutcomeSchema = z.enum(["matched", "ambiguous", "customer_only", "unresolved"]);
 export type MatchOutcome = z.infer<typeof MatchOutcomeSchema>;
@@ -243,20 +243,35 @@ export const MatchSchema = z.object({
 });
 export type Match = z.infer<typeof MatchSchema>;
 
-export const ReviewItemKindSchema = z.enum([
+export const ExceptionKindSchema = z.enum([
   "draft",
   "uncertain_match",
   "dispute",
   "missing_info",
   "reconciliation",
+  // TASK-75 (TKT-75.01): raised from the payments ledger, not an email.
+  "unallocated_payment",
+  "short_payment_pattern",
 ]);
-export type ReviewItemKind = z.infer<typeof ReviewItemKindSchema>;
+export type ExceptionKind = z.infer<typeof ExceptionKindSchema>;
 
-export const ReviewItemSchema = z.object({
+/** The kinds raised from payments rather than an email: `message_id` is optional for these only. */
+export const PAYMENT_EXCEPTION_KINDS = ["unallocated_payment", "short_payment_pattern"] as const;
+export type PaymentExceptionKind = (typeof PAYMENT_EXCEPTION_KINDS)[number];
+export function isPaymentExceptionKind(kind: ExceptionKind): kind is PaymentExceptionKind {
+  return (PAYMENT_EXCEPTION_KINDS as readonly string[]).includes(kind);
+}
+
+/**
+ * Persisted in the `exceptions` table (v1: `reviewItems`). Field names
+ * (`review_id`, `linked_review_ids`) and `RV-` ids are kept from v1 so
+ * stored rows, audit subjects and test ids stay valid (EXE119).
+ */
+export const ExceptionSchema = z.object({
   review_id: z.string().min(1),
-  kind: ReviewItemKindSchema,
-  /** The email that raised it. */
-  message_id: z.string().min(1),
+  kind: ExceptionKindSchema,
+  /** The email that raised it. Required for every email-raised kind; optional for payment kinds (refined below). */
+  message_id: z.string().min(1).optional(),
   /** The invoice it concerns, when one is known. */
   invoice_id: z.string().optional(),
   /** Items the same email raised about other invoices (FS6 duplicate pair). */
@@ -270,8 +285,18 @@ export const ReviewItemSchema = z.object({
   /** Reconciliation only: the email's claim and the ledger's outstanding, side by side. */
   email_amount_paise: z.number().int().nonnegative().brand<"Paise">().optional(),
   ledger_outstanding_paise: paiseAmount.optional(),
+}).superRefine((x, ctx) => {
+  if (x.message_id === undefined && !isPaymentExceptionKind(x.kind)) {
+    ctx.addIssue({ code: "custom", path: ["message_id"], message: `${x.kind} exceptions need the email that raised them` });
+  }
 });
-export type ReviewItem = z.infer<typeof ReviewItemSchema>;
+export type Exception = z.infer<typeof ExceptionSchema>;
+
+/** An exception raised by an email (every v1 kind): `message_id` is always set (the refinement above). */
+export type EmailException = Exception & { message_id: string };
+export function isEmailException(x: Exception): x is EmailException {
+  return !isPaymentExceptionKind(x.kind) && x.message_id !== undefined;
+}
 
 // --- Drafts and the nine pre-approval checks (TASK-15) ---------------------
 

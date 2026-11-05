@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classify } from "./classify";
 import { extractTokens } from "./extract";
-import { reviewItemsFor } from "./review";
+import { exceptionsFor } from "./review";
 import { EXTRACTION_SCHEMA_VERSION, type Extraction, type Invoice, type Match } from "./schema";
 import { paise } from "./money";
 
@@ -176,7 +176,7 @@ describe("classify — payment claim amount (R15)", () => {
       candidates: ["INV-042"],
       reason: "r",
     };
-    const [item] = reviewItemsFor(match, extraction, { invoices: [invoice], payments: [] });
+    const [item] = exceptionsFor(match, extraction, { invoices: [invoice], payments: [] });
     expect(item?.validation_status).toBe("conflict");
     expect(item?.email_amount_paise).toBe(30_000_000);
     expect(item?.ledger_outstanding_paise).toBe(34_000_000);

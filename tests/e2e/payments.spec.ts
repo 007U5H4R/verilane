@@ -12,7 +12,7 @@ async function openPayments(page: Page, path = "/payments") {
 
 async function openItemCounts(page: Page) {
   return page.evaluate(async () => {
-    const items = await window.__verilane!.db.reviewItems.where("status").equals("open").toArray();
+    const items = await window.__verilane!.db.exceptions.where("status").equals("open").toArray();
     return {
       reconciliation: items.filter((r) => r.kind === "reconciliation").length,
       // TASK-38: the Payments page groups reconciliation items into one case per email.
@@ -96,7 +96,7 @@ test("TC-034 / R14: an unmatched item with no invoice link still opens its email
       candidates: [],
       reason: "Sender unknown@nowhere.test is not a known customer contact",
     });
-    await db.reviewItems.put({
+    await db.exceptions.put({
       review_id: "RV-E-900-1-match",
       message_id: email.message_id,
       kind: "uncertain_match",
@@ -168,7 +168,7 @@ test("TASK-38: an Analyst escalates a claim to a Manager without touching the le
   await dialog.getByRole("button", { name: "Escalate" }).click();
   await expect(dialog).toBeHidden();
   const item = await page.evaluate(async () => {
-    const items = await window.__verilane!.db.reviewItems.toArray();
+    const items = await window.__verilane!.db.exceptions.toArray();
     return items.find((r) => r.kind === "reconciliation" && r.message_id === "E-007-1");
   });
   expect(item?.workflow_note).toBe("Amount differs from the outstanding; please review.");
@@ -208,7 +208,7 @@ test("TASK-38: a Manager verifies a claim against a ledger entry; the ledger is 
   await confirm.click();
   await expect(dialog).toBeHidden();
   const item = await page.evaluate(async () => {
-    const items = await window.__verilane!.db.reviewItems.toArray();
+    const items = await window.__verilane!.db.exceptions.toArray();
     return items.find((r) => r.kind === "reconciliation" && r.message_id === "E-009-1");
   });
   expect(item?.workflow_state).toBe("verified");

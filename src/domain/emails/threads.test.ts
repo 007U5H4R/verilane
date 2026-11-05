@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Customer, Dispute, EmailMessage, Extraction, Invoice, Match, ReviewItem } from "@/domain/schema";
+import type { Customer, Dispute, EmailMessage, Extraction, Invoice, Match, Exception } from "@/domain/schema";
 import { buildThreads, resolveInvoiceRefs, type ThreadSources } from "./threads";
 
 const email = (thread_id: string, n: number, sent_at: string, from = "ap@acme.test"): EmailMessage => ({
@@ -40,14 +40,14 @@ const customer = (customer_id: string, name: string, contact_emails: string[]): 
 const invoice = (invoice_id: string, invoice_number: string | null): Invoice =>
   ({ row_id: 1, invoice_id, invoice_number, customer_id: "C-1" }) as Invoice;
 
-const review = (message_id: string, over: Partial<ReviewItem> = {}): ReviewItem =>
-  ({ review_id: `R-${message_id}`, kind: "reconciliation", message_id, status: "open", ...over }) as ReviewItem;
+const review = (message_id: string, over: Partial<Exception> = {}): Exception =>
+  ({ review_id: `R-${message_id}`, kind: "reconciliation", message_id, status: "open", ...over }) as Exception;
 
 const dispute = (source_message_id: string, over: Partial<Dispute> = {}): Dispute =>
   ({ dispute_id: `D-${source_message_id}`, customer_id: "C-1", type: "already_paid", source_message_id, status: "new", ...over }) as Dispute;
 
 function sources(over: Partial<ThreadSources> = {}): ThreadSources {
-  return { emails: [], extractions: [], matches: [], reviewItems: [], disputes: [], customers: [], invoices: [], ...over };
+  return { emails: [], extractions: [], matches: [], exceptions: [], disputes: [], customers: [], invoices: [], ...over };
 }
 
 describe("buildThreads", () => {
@@ -77,7 +77,7 @@ describe("buildThreads", () => {
         emails: [m],
         extractions: [x],
         matches: [match],
-        reviewItems: [r1, r2],
+        exceptions: [r1, r2],
         disputes: [d],
         customers: [customer("C-1", "Acme Ltd", [])],
         invoices: [invoice("INV-A", "INV-1012")],

@@ -16,7 +16,7 @@ import type {
   Invoice,
   Match,
   Payment,
-  ReviewItem,
+  Exception,
   VerifiedFact,
 } from "./schema";
 import { OPEN_DISPUTE, type DisputeRecord } from "./signals";
@@ -30,7 +30,7 @@ export interface DraftSources {
   extractions: Extraction[];
   matches: Match[];
   disputes: DisputeRecord[];
-  reviewItems: ReviewItem[];
+  exceptions: Exception[];
 }
 
 /** What is known about one invoice when a draft about it is checked. */
@@ -77,7 +77,7 @@ export function draftContextFor(invoiceId: string, src: DraftSources): DraftCont
 
   const byMessage = new Map(src.extractions.map((x) => [x.message_id, x]));
   const underReview = new Set(
-    src.reviewItems.filter((r) => r.status === "open").map((r) => r.message_id),
+    src.exceptions.filter((r) => r.status === "open").map((r) => r.message_id),
   );
   let ambiguousMatch = false;
   for (const m of src.matches) {
@@ -114,7 +114,7 @@ export function draftContextFor(invoiceId: string, src: DraftSources): DraftCont
     }
   }
 
-  const conflictingPayment = src.reviewItems.some(
+  const conflictingPayment = src.exceptions.some(
     (r) =>
       r.kind === "reconciliation" &&
       r.invoice_id === invoiceId &&

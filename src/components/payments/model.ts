@@ -5,7 +5,7 @@ import {
   kpis,
   type AssessedCase,
   type PaymentsKpis,
-  type StoredReviewItem,
+  type StoredException,
 } from "@/domain/payments/reconcile";
 import type { Customer } from "@/domain/schema";
 import type { AuditEventRow } from "@/store/db";
@@ -17,7 +17,7 @@ export interface PaymentsModel {
   /** Every reconciliation case (one per email), assessed. */
   cases: AssessedCase[];
   /** Open uncertain-match items (one row per item). */
-  unmatched: StoredReviewItem[];
+  unmatched: StoredException[];
   kpis: PaymentsKpis;
   /** Ledger entries a Manager verified a claim against. */
   verifiedIds: Set<string>;

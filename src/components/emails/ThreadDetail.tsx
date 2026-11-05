@@ -8,14 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate, formatDateTime } from "@/domain/clock";
 import { resolveInvoiceRefs, type EmailThread, type ThreadMessage } from "@/domain/emails/threads";
 import { formatInr, paise } from "@/domain/money";
-import type { Extraction, Invoice, ReviewItem } from "@/domain/schema";
+import type { Extraction, Invoice, Exception } from "@/domain/schema";
 import { CLASS_LABEL, CLASS_VARIANT, OUTCOME_LABEL, OUTCOME_VARIANT, REVIEW_KIND_LABEL, SIGNAL_LABEL } from "./labels";
 
 const NA = "Not available.";
 const LINK = "rounded text-brand-strong underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand";
 
 /** Where a review item is worked: reconciliation and uncertain matches live on Payments; the rest on their invoice. */
-function reviewHref(r: ReviewItem): string | null {
+function reviewHref(r: Exception): string | null {
   if (r.kind === "reconciliation") return "/payments#payments-reconcile";
   if (r.kind === "uncertain_match") return "/payments#payments-unmatched";
   return r.invoice_id ? `/invoices/${encodeURIComponent(r.invoice_id)}#ev-communication` : null;

@@ -7,7 +7,7 @@ import { InvalidCommand } from "@/domain/commandConstants";
 import type { Command, DataOps, Row, TableName, Tx } from "@/domain/commands";
 import type { IngestResult } from "@/domain/ingest";
 import { isRole, type Role } from "@/domain/permissions";
-import type { Customer, DataIssue, Invoice, Match, Payment, ReviewItem } from "@/domain/schema";
+import type { Customer, DataIssue, Invoice, Match, Payment, Exception } from "@/domain/schema";
 import { asOf } from "@/domain/clock";
 import type { DraftSources } from "@/domain/validate";
 import type { AuditEventRow, VerilaneDb } from "./db";
@@ -25,7 +25,7 @@ export interface ExecuteOptions {
 const KEY: Record<Exclude<TableName, "invoices">, string> = {
   drafts: "draft_id",
   disputes: "dispute_id",
-  reviewItems: "review_id",
+  exceptions: "review_id",
   meta: "key",
 };
 
@@ -130,7 +130,7 @@ export async function execute(
     ? db.tables
     : [
         // priorities + dataIssues: derived tables a command may touch (R11).
-        ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
+        ...[db.invoices, db.drafts, db.disputes, db.exceptions, db.priorities, db.dataIssues, db.meta, db.audit],
         ...(DRAFT_COMMANDS.has(input.type) || LEDGER_COMMANDS.has(input.type) || RECONCILE_COMMANDS.has(input.type)
           ? DRAFT_READS(db)
           : []),
@@ -163,14 +163,14 @@ const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractio
 /** Everything the nine draft checks read, as of the persisted "today". */
 export async function readDraftSources(db: VerilaneDb): Promise<DraftSources> {
   const stored = (await db.meta.get("asOf"))?.value;
-  const [invoices, customers, payments, extractions, matches, disputes, reviewItems] = await Promise.all([
+  const [invoices, customers, payments, extractions, matches, disputes, exceptions] = await Promise.all([
     db.invoices.toArray(),
     db.customers.toArray(),
     db.payments.toArray(),
     db.extractions.toArray(),
     db.matches.toArray(),
     db.disputes.toArray(),
-    db.reviewItems.toArray(),
+    db.exceptions.toArray(),
   ]);
   return {
     asOf: asOf({ asOf: typeof stored === "string" ? stored : undefined }),
@@ -180,6 +180,6 @@ export async function readDraftSources(db: VerilaneDb): Promise<DraftSources> {
     extractions,
     matches: matches as unknown as Match[],
     disputes,
-    reviewItems: reviewItems as unknown as ReviewItem[],
+    exceptions: exceptions as unknown as Exception[],
   };
 }

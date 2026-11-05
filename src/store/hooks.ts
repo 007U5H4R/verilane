@@ -13,8 +13,8 @@ import type { AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { approvalState } from "@/domain/draft";
 import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, DataIssue, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
-import { DraftSchema, type Draft } from "@/domain/schema";
+import type { Customer, DataIssue, Dispute, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Priority, Exception } from "@/domain/schema";
+import { DraftSchema, isEmailException, type Draft } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
@@ -215,7 +215,7 @@ export interface PaymentsData {
   emails: Map<string, EmailMessage>;
   matches: Map<string, Match>;
   /** Open uncertain-match and reconciliation items, by email then id. */
-  reviewItems: ReviewItem[];
+  exceptions: Exception[];
 }
 
 const PAYMENT_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation"]);
@@ -233,10 +233,10 @@ export function usePaymentsData(): PaymentsData | undefined {
       db.customers.toArray(),
       db.emails.toArray(),
       db.matches.toArray(),
-      db.reviewItems.toArray(),
+      db.exceptions.toArray(),
     ]);
-    const reviewItems = (items as ReviewItem[])
-      .filter((r) => r.status === "open" && PAYMENT_REVIEW_KINDS.has(r.kind))
+    const exceptions = (items as Exception[])
+      .filter((r): r is EmailException => r.status === "open" && PAYMENT_REVIEW_KINDS.has(r.kind) && isEmailException(r))
       .sort((a, b) => a.message_id.localeCompare(b.message_id) || a.review_id.localeCompare(b.review_id));
     return {
       payments: [...payments].sort((a, b) => b.paid_on.localeCompare(a.paid_on)),
@@ -244,7 +244,7 @@ export function usePaymentsData(): PaymentsData | undefined {
       customers: new Map(customers.map((c) => [c.customer_id, c])),
       emails: new Map(emails.map((e) => [e.message_id, e])),
       matches: new Map((matches as Match[]).map((m) => [m.message_id, m])),
-      reviewItems,
+      exceptions,
     };
   }, [db]);
 }

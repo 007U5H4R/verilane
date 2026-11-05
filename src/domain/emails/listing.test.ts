@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Dispute, ReviewItem } from "@/domain/schema";
+import type { Dispute, Exception } from "@/domain/schema";
 import {
   DEFAULT_FILTERS,
   activeFilterCount,
@@ -63,7 +63,7 @@ describe("parseFilters / serializeFilters", () => {
 
 describe("filterThreads", () => {
   const dispute = { dispute_id: "D-1" } as Dispute;
-  const openReview = { review_id: "R-1" } as ReviewItem;
+  const openReview = { review_id: "R-1" } as Exception;
   const threads = [
     thread("T-1", { customer_id: "C-1", customerName: "Acme Ltd", intents: ["dispute"], outcomes: ["matched"], invoices: [{ invoice_id: "INV-A", label: "INV-1012" }], disputes: [dispute] }),
     thread("T-2", { customer_id: "C-2", customerName: "Beta", intents: ["commitment"], outcomes: ["ambiguous"], refs: ["INV-2000"], openReviews: [openReview], rejected: 1 }),
@@ -108,7 +108,7 @@ describe("kpisFor", () => {
   it("counts threads, messages, customers, review, dispute and rejected", () => {
     const k = kpisFor([
       thread("T-1", { customer_id: "C-1", disputes: [{} as Dispute] }),
-      thread("T-2", { customer_id: "C-1", openReviews: [{} as ReviewItem], rejected: 2 }),
+      thread("T-2", { customer_id: "C-1", openReviews: [{} as Exception], rejected: 2 }),
       thread("T-3"),
     ]);
     expect(k).toEqual({ threads: 3, messages: 3, customers: 1, needsReview: 1, linkedToDispute: 1, rejected: 2 });

@@ -244,7 +244,7 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
 
   it("TC-030: the E-007 claim becomes a reconciliation item with both amounts; the ledger is untouched", async () => {
     await ensureSeeded(db, realFetcher());
-    const items = await db.reviewItems.where("kind").equals("reconciliation").toArray();
+    const items = await db.exceptions.where("kind").equals("reconciliation").toArray();
     const e7 = items.find((r) => r.message_id === "E-007-1");
     expect(e7).toMatchObject({
       invoice_id: "INV-042",
@@ -258,16 +258,16 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     await ensureSeeded(db, realFetcher());
     const unmatched = (await db.matches.toArray()).filter((m) => m.outcome !== "matched");
     expect(unmatched.length).toBeGreaterThan(0);
-    const uncertain = await db.reviewItems.where("kind").equals("uncertain_match").toArray();
+    const uncertain = await db.exceptions.where("kind").equals("uncertain_match").toArray();
     expect(uncertain.map((r) => r.message_id).sort()).toEqual(unmatched.map((m) => m.message_id).sort());
   });
 
   it("recompute() keeps a reviewer's decision on an existing item", async () => {
     await ensureSeeded(db, realFetcher());
-    const item = (await db.reviewItems.toArray())[0]!;
-    await db.reviewItems.update(item.review_id, { status: "dismissed" });
+    const item = (await db.exceptions.toArray())[0]!;
+    await db.exceptions.update(item.review_id, { status: "dismissed" });
     await recompute(db);
-    expect((await db.reviewItems.get(item.review_id))?.status).toBe("dismissed");
+    expect((await db.exceptions.get(item.review_id))?.status).toBe("dismissed");
   });
 
   it("R6: recompute() uses meta.asOf as today", async () => {

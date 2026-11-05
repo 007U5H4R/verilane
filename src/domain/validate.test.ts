@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDraft, factsFor, locateFootnotes } from "./draft";
 import { paise } from "./money";
-import type { Customer, Extraction, Invoice, Match, ReviewItem, VerifiedFact } from "./schema";
+import type { Customer, Extraction, Invoice, Match, Exception, VerifiedFact } from "./schema";
 import { draftContextFor, findUnverifiedTokens, validate, type DraftSources, type DraftUnderCheck } from "./validate";
 
 const invoice: Invoice = {
@@ -32,7 +32,7 @@ function sources(over: Partial<DraftSources> = {}): DraftSources {
     extractions: [],
     matches: [],
     disputes: [],
-    reviewItems: [],
+    exceptions: [],
     ...over,
   };
 }
@@ -182,7 +182,7 @@ describe("check 9 (TC-043)", () => {
 
 describe("draftContextFor", () => {
   it("flags an ambiguous match and an open conflicting reconciliation", () => {
-    const item: ReviewItem = {
+    const item: Exception = {
       review_id: "RV-E-7-reconcile",
       kind: "reconciliation",
       message_id: "E-7",
@@ -199,7 +199,7 @@ describe("draftContextFor", () => {
       "INV-A",
       sources({
         matches: [{ message_id: "E-9", outcome: "ambiguous", candidates: ["INV-A", "INV-B"], reason: "" } as Match],
-        reviewItems: [item],
+        exceptions: [item],
       }),
     );
     expect(ctx.ambiguousMatch).toBe(true);
@@ -220,7 +220,7 @@ describe("draftContextFor", () => {
       candidates: ["INV-A"],
       reason: "",
     } as Match;
-    const review = (status: ReviewItem["status"]): ReviewItem => ({
+    const review = (status: Exception["status"]): Exception => ({
       review_id: "RV-E-5-match",
       kind: "uncertain_match",
       message_id: "E-5",
@@ -234,7 +234,7 @@ describe("draftContextFor", () => {
     });
 
     it("fails check 6 while the review item is open", () => {
-      const src = sources({ extractions: [rejected], matches: [customerOnly], reviewItems: [review("open")] });
+      const src = sources({ extractions: [rejected], matches: [customerOnly], exceptions: [review("open")] });
       expect(draftContextFor("INV-A", src).disputed).toContain("E-5");
       expect(failedIds(src)).toContain(6);
     });
@@ -243,13 +243,13 @@ describe("draftContextFor", () => {
       const src = sources({
         extractions: [rejected],
         matches: [{ ...customerOnly, candidates: ["INV-B"] }],
-        reviewItems: [review("open")],
+        exceptions: [review("open")],
       });
       expect(draftContextFor("INV-A", src).disputed).toBeNull();
     });
 
     it("clears once a person has dealt with the review item", () => {
-      const src = sources({ extractions: [rejected], matches: [customerOnly], reviewItems: [review("dismissed")] });
+      const src = sources({ extractions: [rejected], matches: [customerOnly], exceptions: [review("dismissed")] });
       expect(draftContextFor("INV-A", src).disputed).toBeNull();
     });
   });

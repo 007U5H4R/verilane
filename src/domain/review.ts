@@ -7,7 +7,7 @@
  */
 import { paise } from "./money";
 import { outstandingOf } from "./priority";
-import type { Extraction, Invoice, Match, Payment, ReviewItem } from "./schema";
+import type { Extraction, Invoice, Match, Payment, Exception } from "./schema";
 
 export interface ReviewLedger {
   invoices: Invoice[];
@@ -35,7 +35,7 @@ function base(x: Extraction, review_id: string) {
   };
 }
 
-function uncertain(m: Match, x: Extraction): ReviewItem {
+function uncertain(m: Match, x: Extraction): Exception {
   const recommendation =
     m.outcome === "unresolved"
       ? "Identify the sender before linking this email to any invoice"
@@ -50,7 +50,7 @@ function uncertain(m: Match, x: Extraction): ReviewItem {
   };
 }
 
-export function reviewItemsFor(m: Match, x: Extraction, ledger: ReviewLedger): ReviewItem[] {
+export function exceptionsFor(m: Match, x: Extraction, ledger: ReviewLedger): Exception[] {
   if (m.outcome !== "matched" || !m.invoice_id) return [uncertain(m, x)];
   if (x.status !== "valid") return [];
 

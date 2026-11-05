@@ -134,6 +134,22 @@ describe("reset_demo — TC-060", () => {
     expect(events[0]).toMatchObject({ action: "demo_reset", actor_role: "manager" });
   });
 
+  it("clears the v2 tables and reseeds cleanly (TASK-79.1)", async () => {
+    const fresh = await snapshot();
+    const freshExceptions = await db.exceptions.orderBy("review_id").toArray();
+    await db.exceptions.put({ review_id: "RV-STALE", kind: "reconciliation", status: "open" });
+    await db.creditNotes.put({ credit_note_id: "CN-1", invoice_id: "INV-A", amount_paise: 100, created_at: "2026-11-01" });
+    await db.policyDecisions.put({ decision_id: "PD-1", exception_id: "RV-STALE", evaluated_at: "2026-11-01" });
+
+    await resetDemo(db, fetcher);
+
+    expect(await snapshot()).toEqual(fresh);
+    expect(await db.exceptions.orderBy("review_id").toArray()).toEqual(freshExceptions);
+    expect(await db.creditNotes.count()).toBe(0);
+    expect(await db.policyDecisions.count()).toBe(0);
+    expect((await db.audit.toArray()).map((e) => e.action)).toEqual(["demo_reset"]);
+  });
+
   it("reloads an emptied database (the Queue's Load demo data path, R5)", async () => {
     await db.invoices.clear();
     await db.priorities.clear();
