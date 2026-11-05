@@ -1,9 +1,10 @@
 ---
 id: TASK-79.2
 title: Trace an unallocated payment end to end from seed to allocation
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-05 04:43'
+updated_date: '2026-11-05 12:07'
 labels:
   - P1
   - M-75.1
