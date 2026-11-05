@@ -421,11 +421,11 @@ This is a **plain-language, reverse-chronological list** (matching v1 Audit Log,
 
 ---
 
-## 23. Decisions Log (S25–S33 appended to decisions.md on TASK-75's own branch, not before)
+## 23. Decisions Log (S38–S46 appended to decisions.md on TASK-75's own branch, not before)
 
-**See Solution-PRD-TASK-75.md, Appendix A, for S25–S33** — the Solution stage locked all design decisions (entity model, agent architecture, policy engine, NSM computation, routing, sequencing). Stage 3 (this design) captures only the UI/UX expression of those solutions, which has no competing directions per §2 (Core path, one direction, extending v1 unchanged).
+**See Solution-PRD-TASK-75.md, Appendix A, for S38–S46** — the Solution stage locked all design decisions (entity model, agent architecture, policy engine, NSM computation, routing, sequencing). Stage 3 (this design) captures only the UI/UX expression of those solutions, which has no competing directions per §2 (Core path, one direction, extending v1 unchanged).
 
-No new D# entries are appended from Stage 3 (design decisions are already locked in S25–S33; this design simply visualizes them). Per the Solution-PRD's own sequencing note (Appendix A header), S25–S33 are appended to `decisions.md` only once TASK-75's implementation work lands on its own branch — not at this Stage 3 design-approval point, which is still on an unrelated branch (`docs/handoff-task64-shipped`).
+No new D# entries are appended from Stage 3 (design decisions are already locked in S38–S46; this design simply visualizes them). Per the Solution-PRD's own sequencing note (Appendix A header), S38–S46 are appended to `decisions.md` only once TASK-75's implementation work lands on its own branch — not at this Stage 3 design-approval point, which is still on an unrelated branch (`docs/handoff-task64-shipped`).
 
 ---
 

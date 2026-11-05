@@ -138,7 +138,7 @@ M-007 is **Done** when:
 **Inputs:**
 - All commits on `task/75-exceptions` branch (from Stage 6 execution)
 - `technical-plan.md` + `test-cases.md` (above) as specification
-- `decisions.md` entries S25–S33 (appended when branch lands)
+- `decisions.md` entries S38–S46 (appended when branch lands)
 
 **Scope:**
 - All new/amended code paths (src/domain/policy.ts, src/ai/provider.ts, commands.ts amendments, Dexie schema, routes)
