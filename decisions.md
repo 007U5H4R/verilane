@@ -1235,3 +1235,10 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
   - **Mark disputed.** It is shown but always disabled, with a reason. A dispute path from an exception is out of scope here.
   - **Remittance.** It reads "None on file — matched on amount", because the seed has no remittance email for P-012.
   - **Policy Review.** That status is not shown (79.3).
+
+## EXE129 · Amendment A1 approved by user (TASK-79.2 close-out) — accepted
+- The user approved Amendment A1 ("A1 is also approved", 2026-11-05), closing the PENDING status drafted in EXE-adjacent work under TASK-79.1.
+- Design-TASK-75.md §25 is updated from "pending approval" to "approved", with the approval line recorded there.
+- Discovery-PRD-TASK-75.md F15's note is updated to drop "pending" and point at this EXE instead of "until A1 is approved".
+- This unblocks TKT-75.04 (Execute agent true auto-execute on `auto_permitted`), which was gated on A1.
+- **Also recorded here (code-quality fix, not an architectural decision):** `src/components/exceptions/ExceptionCards.tsx`'s row-card grid originally switched to its wide layout at `md:` (768px), but the shell only drops its narrow 72px icon rail at `lg:` (1024px+), causing horizontal scroll at exactly 768px (caught by the TC-75.13/TC-062 e2e gate). Fixed by changing every `md:` prefix in that file to `lg:`, matching the convention already used by `DisputesView`, `LedgerTab` and `ReconciliationTab`. Independently verified by the 79.2 reviewer against those sibling views; no other `md:` usage in the file was affected.

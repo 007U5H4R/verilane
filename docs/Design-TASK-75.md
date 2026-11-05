@@ -448,11 +448,11 @@ No new D# entries are appended from Stage 3 (design decisions are already locked
 
 ---
 
-## 25. Amendment A1 (pending approval)
+## 25. Amendment A1 (approved)
 
-> **Status: PENDING USER APPROVAL — drafted 2026-11-05 in TKT-75.01 (TASK-79.1).**
-> Source: milestones-TASK-75.md "Gate A1", decision D75-1 (true auto-execute on `auto_permitted`). **Blocks TKT-75.04** until the user approves it.
-> Until approval, the frozen values in §4, §6, §11 and §22 stand unchanged. On approval, the items below replace the conflicting text, and the approval is recorded here and in `decisions.md`.
+> **Status: APPROVED by user, 2026-11-05 ("A1 is also approved"). Drafted 2026-11-05 in TKT-75.01 (TASK-79.1).**
+> Source: milestones-TASK-75.md "Gate A1", decision D75-1 (true auto-execute on `auto_permitted`). This unblocks TKT-75.04.
+> The items below now replace the conflicting text in §4, §6, §11 and §22. Recorded here and in `decisions.md` (EXE129).
 
 Why an amendment is needed: D75-1 makes the Execute agent write through `commands.ts` with no human click when Policy returns `auto_permitted` (Solution-PRD §2.3/§7). The frozen design (§4 "Awaiting analyst approval", §11 "Submit for approval" on `auto_permitted`) and Discovery F15 / §8.1 / §8.3 ("a permitted human approves") conflict with that. The freeze (§22) sends new controls back to design review, so this amendment covers them explicitly.
 
@@ -464,7 +464,7 @@ Why an amendment is needed: D75-1 makes the Execute agent write through `command
 | 4 | §6 copy fix | "Normalized Success Metric" → "North Star Metric" (Discovery §8.1 name). |
 | 5 | Discovery F15 / §8.1 / §8.3 | "Approval" is satisfied either by a permitted human or by a versioned `auto_permitted` `PolicyDecision` (standing policy approval). "Actions executed without approval = 0" then means: no write without either. The metric is kept, not dropped. See the matching note in Discovery-PRD-TASK-75.md §4.1 (F15). |
 
-**Approval:** _pending_ (to be recorded with date and the user's words).
+**Approval:** granted by the user, 2026-11-05, "A1 is also approved." Recorded in `decisions.md` as EXE129.
 
 ---
 
