@@ -66,7 +66,7 @@ export {
 } from "./commandConstants";
 
 export type Row = Record<string, unknown>;
-export type TableName = "invoices" | "drafts" | "disputes" | "exceptions" | "meta";
+export type TableName = "invoices" | "drafts" | "disputes" | "exceptions" | "payments" | "meta";
 
 
 /**
@@ -159,6 +159,7 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
   action_review: "review",
   reconcile_flag: "review",
   reconcile_decide: "review",
+  allocate_payment: "review",
   import_csv: "system",
   reset_demo: "system",
   switch_role: "system",
@@ -176,6 +177,8 @@ type Effect = {
   before?: Row;
   after?: Row;
   evidence_ids?: string[];
+  /** Overrides the audited invoice (defaults to the subject row's). */
+  invoice_id?: string;
 };
 
 type Ctx = { cmd: Command; row: Row | undefined; tx: Tx; payload: Row };
@@ -578,6 +581,7 @@ const HANDLERS: Record<Action, Handler> = {
 
   reconcile_flag: (ctx) => reconcileFlag(ctx),
   reconcile_decide: (ctx) => reconcileDecide(ctx),
+  allocate_payment: (ctx) => allocatePayment(ctx),
 
   generate_draft: (ctx) => generateDraft(ctx),
 
@@ -765,13 +769,56 @@ export async function run(cmd: Command, tx: Tx): Promise<AuditEventInput> {
     summary: effect.summary,
     evidence_ids: effect.evidence_ids ?? [],
   };
-  const invoiceId = invoiceIdOf(cmd, row);
+  const invoiceId = effect.invoice_id ?? invoiceIdOf(cmd, row);
   if (invoiceId !== undefined) event.invoice_id = invoiceId;
   if (effect.before) event.before = effect.before;
   if (effect.after) event.after = effect.after;
 
   await tx.audit(event);
   return event;
+}
+
+// --- Payment allocation (TKT-75.02, EXE125) ---------------------------------
+
+/**
+ * Applies an unapplied bank line to the invoice the Analyst picked from the
+ * exception's candidates. One ledger write (the payment's `invoice_id`), the
+ * exception moves open → actioned, then the derived tables are recomputed in
+ * the same transaction, so the invoice's outstanding and its priority (closed
+ * at G1 once settled) change with it. Invoice rows themselves are immutable
+ * source data: their balance and status are always derived.
+ */
+async function allocatePayment(ctx: Ctx): Promise<Effect> {
+  requireOpen(ctx);
+  if (ctx.row?.kind !== "unallocated_payment") {
+    throw new InvalidCommand("Only an unallocated payment can be allocated.");
+  }
+  const paymentId = str(ctx.row.payment_id);
+  const candidates = Array.isArray(ctx.row.candidate_invoice_ids)
+    ? ctx.row.candidate_invoice_ids.filter((c): c is string => typeof c === "string")
+    : [];
+  const invoiceId = str(ctx.payload.invoice_id);
+  if (invoiceId === undefined || !candidates.includes(invoiceId)) {
+    throw new InvalidCommand("Choose one of the candidate invoices for this payment.");
+  }
+  const payment = paymentId === undefined ? undefined : await ctx.tx.get("payments", paymentId);
+  if (!payment) throw new InvalidCommand(`No payment ${paymentId ?? ""} in the ledger.`);
+  if (payment.invoice_id !== null) {
+    throw new InvalidCommand(`Payment ${paymentId} is already applied to an invoice.`);
+  }
+  if (!ctx.tx.data) throw new InvalidCommand("Allocation needs the store's transaction.");
+
+  await ctx.tx.put("payments", { ...payment, invoice_id: invoiceId });
+  const { from, to } = await step(ctx, "review", "exceptions", ["action"], { invoice_id: invoiceId });
+  await ctx.tx.data.recompute();
+
+  return {
+    summary: `Allocated payment ${paymentId} (${formatInr(paise(Number(payment.amount_paise)))}) to ${invoiceId}`,
+    before: { status: from, invoice_id: null },
+    after: { status: to, invoice_id: invoiceId },
+    evidence_ids: Array.isArray(ctx.row.evidence_ids) ? (ctx.row.evidence_ids as string[]) : [],
+    invoice_id: invoiceId,
+  };
 }
 
 // --- Payment reconciliation workflow (TASK-38) ------------------------------

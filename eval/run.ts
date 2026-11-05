@@ -224,6 +224,7 @@ const KEY_OF: Record<TableName, string> = {
   drafts: "draft_id",
   disputes: "dispute_id",
   exceptions: "review_id",
+  payments: "payment_id",
   meta: "key",
 };
 

@@ -1182,3 +1182,16 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - `paymentExceptionsFor(ledger)` (`src/domain/review.ts`) is pure and deterministic. Each payment with `invoice_id === null` gets exactly one exception, id `RV-PAY-<payment_id>`. Its candidates are the open invoices (not paid or written off) whose derived outstanding equals the payment amount, in ledger order. With one candidate, `invoice_id` names it and `validation_status` is `verified`. With none it is `missing`, and with several it is `conflict`; in both cases no invoice is named. `requires_role` is analyst.
 - `ExceptionSchema` gains two optional fields, `payment_id` and `candidate_invoice_ids`. The technical plan's `subject_payment_id` is spelled `payment_id` to match the `Payment` key. No Dexie index change is needed.
 - `recomputeCore` adds these to the same `syncExceptions` call the email kinds use, so there is no second sync path. `unallocated_payment` joins the derived kinds whose stale open rows are dropped. Once a payment is allocated it is no longer unapplied: no new row is computed, and the actioned row stays as history. Recompute is idempotent (TC-75.07, loader.test.ts).
+
+## EXE125 · `allocate_payment` writes one ledger row and re-derives the invoice inside one whole-DB transaction (TASK-79.2) — accepted
+- The new action goes through the one existing pipeline, `run()`. Its subject is the exception (`review:RV-PAY-…`), so `can()` reads `requires_role` from the stored row: an Analyst is denied only on a Manager-escalated item. The handler then:
+  1. requires the item to be open and an `unallocated_payment`;
+  2. requires the chosen `payload.invoice_id` to be in `candidate_invoice_ids` (the Analyst picks; the command never guesses);
+  3. requires the payment to still be unapplied;
+  4. puts the payment with its new `invoice_id` and steps the exception open → actioned with the review machine;
+  5. calls `tx.data.recompute()`.
+
+  `run()` writes the one audit event (`allocate_payment`, "Payment allocated").
+- "Update invoice balance and status" is met by derivation, not by writing the invoice row. Invoices are immutable source rows (`tx.put("invoices")` throws, as in v1). The outstanding is `amount − Σ applied payments`, and the recompute in the same transaction re-ranks the invoice, so INV-F closes at G1.
+- `payments` becomes a `TableName` (tx key `payment_id`). `allocate_payment` joins `WHOLE_DB`, so the nested recompute shares the command's single read-write transaction. A throw before commit rolls back the payment, the exception, the priorities and the audit event together (TC-75.09).
+- `Effect` gains an optional `invoice_id`, so the audit event names the invoice the Analyst chose rather than the exception's suggestion.

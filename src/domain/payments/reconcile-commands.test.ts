@@ -15,6 +15,7 @@ function memTx(exceptions: Row[], invoices: Row[] = INVOICES as unknown as Row[]
     drafts: "draft_id",
     disputes: "dispute_id",
     exceptions: "review_id",
+    payments: "payment_id",
     meta: "key",
   };
   const tables = new Map<TableName, Map<string, Row>>();
