@@ -448,6 +448,26 @@ No new D# entries are appended from Stage 3 (design decisions are already locked
 
 ---
 
+## 25. Amendment A1 (pending approval)
+
+> **Status: PENDING USER APPROVAL — drafted 2026-11-05 in TKT-75.01 (TASK-79.1).**
+> Source: milestones-TASK-75.md "Gate A1", decision D75-1 (true auto-execute on `auto_permitted`). **Blocks TKT-75.04** until the user approves it.
+> Until approval, the frozen values in §4, §6, §11 and §22 stand unchanged. On approval, the items below replace the conflicting text, and the approval is recorded here and in `decisions.md`.
+
+Why an amendment is needed: D75-1 makes the Execute agent write through `commands.ts` with no human click when Policy returns `auto_permitted` (Solution-PRD §2.3/§7). The frozen design (§4 "Awaiting analyst approval", §11 "Submit for approval" on `auto_permitted`) and Discovery F15 / §8.1 / §8.3 ("a permitted human approves") conflict with that. The freeze (§22) sends new controls back to design review, so this amendment covers them explicitly.
+
+| # | Amends | Change |
+|---|---|---|
+| 1 | §4 Stage 3 copy | `auto_permitted` → "Executed by Execute agent · {time} · policy v{n}" (not "Awaiting analyst approval"). |
+| 2 | §11 action bar matrix | `auto_permitted` → resolved, button disabled "Already resolved"; `needs_analyst` → Analyst "Submit for approval" enabled; `needs_manager` → disabled for Analyst ("Manager approval required"), enabled for Manager; `blocked` → disabled with the policy reason. |
+| 3 | §11 new control | Manager-only **"Reverse allocation"** control on a resolved allocation (Discovery F16). This is a new button, which the freeze sends back to design review, so A1 covers it explicitly. It supersedes §11's "No new buttons introduced" for this one control only. |
+| 4 | §6 copy fix | "Normalized Success Metric" → "North Star Metric" (Discovery §8.1 name). |
+| 5 | Discovery F15 / §8.1 / §8.3 | "Approval" is satisfied either by a permitted human or by a versioned `auto_permitted` `PolicyDecision` (standing policy approval). "Actions executed without approval = 0" then means: no write without either. The metric is kept, not dropped. See the matching note in Discovery-PRD-TASK-75.md §4.1 (F15). |
+
+**Approval:** _pending_ (to be recorded with date and the user's words).
+
+---
+
 ## Appendix A — OG Image (Deferred)
 
 TASK-75 is a back-office feature addition; the public OG image (on Verilane's Home/landing page) is out of scope for this design. If a future release wants to surface the "Exception Resolution Workflow" capability in the public preview, OG image design will be a separate Stage 3 decision. For now: **N/A**.
