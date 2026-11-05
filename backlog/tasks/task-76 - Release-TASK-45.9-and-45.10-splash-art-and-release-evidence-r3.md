@@ -1,10 +1,10 @@
 ---
 id: TASK-76
 title: Release TASK-45.9 and 45.10 splash art and release evidence (r3)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-05 04:06'
-updated_date: '2026-11-05 04:06'
+updated_date: '2026-11-05 04:09'
 labels:
   - P2
 dependencies: []
