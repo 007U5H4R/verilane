@@ -1,10 +1,10 @@
 ---
 id: TASK-46.8
 title: Ship final heritage art with tone calibration and release evidence
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-02 16:53'
+updated_date: '2026-11-04 18:29'
 labels:
   - P1
 dependencies:
