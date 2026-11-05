@@ -99,6 +99,16 @@ Confirmed via the real-app geometry capture (`shots2.mjs` output) and the mockup
 | 768 tab | 72/68 | 300px height, `background-position:38% top` |
 | 390 mob | 0/117 (Home) / 0/145 (Drafts, taller header) | `clamp(160,44vw,240)` height, **Home only** — Queue/Drafts show no art on mobile |
 
+**Revision (TASK-46.8, EXE115, 2026-11-05).** The final art was too faint at narrow widths in the original boxes, so tablet and mobile were re-sized. The table above is the Stage 3 spec; these are the shipped values, measured on the built app:
+
+| Viewport | Shipped art box |
+|---|---|
+| ≥1024 desk (1440, 1100 sampled) | unchanged: `clamp(320,42vw,620)` height, `cover`, `50% 0%` (605px at 1440, 462px at 1100) |
+| 768–1023 tab (and 844×390 landscape) | fixed **600px** box, `background-size:auto 600px`, `background-position:15% -8px` (was 300px at 38%) |
+| <768 mob | **280px** box, `auto 300px`, right-aligned, 40px down; still **Home only** (was `clamp(160,44vw,240)`) |
+
+Look-check of 20 shots (5 viewports × Home/Queue × light/dark) passed provisionally on 2026-11-05. This was the agent's call under the user's delegation, and the user has not yet confirmed it. On landscape 844×390 only the top of the 600px band is visible; this reads fine. Widths 1024–1300 are sampled only at 1100 (open item R-4).
+
 ## 8. TASK-45 coordination constraints (for TASK-45's Stage 3 agent)
 
 This section is the authoritative hand-off — read before designing the splash's exit frame.
