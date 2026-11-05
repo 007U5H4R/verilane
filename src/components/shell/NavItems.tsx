@@ -7,6 +7,7 @@ import {
   Inbox,
   FileText,
   ScrollText,
+  TriangleAlert,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +26,8 @@ export type NavItem = {
   disputeCount?: boolean;
   /** Live awaiting-approval draft count (TASK-16.5, T16-4). */
   draftCount?: boolean;
+  /** Live open-exception count, all kinds (TKT-75.02). */
+  exceptionCount?: boolean;
 };
 
 // TASK-38 (Design.md R2): Home / Queue (TASK-49 DES-006: was "Collection Queue") / Disputes / Email
@@ -38,6 +41,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Invoices", href: "/invoices", icon: FileText },
   { label: "Drafts", href: "/drafts", icon: Mail, draftCount: true },
   { label: "Payments", href: "/payments", icon: Wallet },
+  // TKT-75.02 (Design-TASK-75 §7): after Drafts, before Audit Log; no existing item moves (EXE127).
+  { label: "Exceptions", href: "/exceptions", icon: TriangleAlert, exceptionCount: true },
   { label: "Audit Log", href: "/audit", icon: ScrollText, secondary: true },
   { label: "Settings", href: "/settings", icon: Settings, secondary: true },
 ];

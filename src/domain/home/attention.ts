@@ -10,8 +10,9 @@
 import { outstandingOf, type RankItem } from "../priority";
 import type { Paise } from "../money";
 import type { Payment } from "../schema";
+import { EXCEPTION_KIND_LABEL, exceptionHref } from "../exceptions/list";
 
-export type AttentionKey = "high" | "disputed" | "drafts" | "payments";
+export type AttentionKey = "high" | "disputed" | "drafts" | "payments" | "exceptions";
 
 export interface AttentionEntry {
   id: string;
@@ -51,6 +52,15 @@ export interface PaymentReviewLike {
   email_amount_paise?: number;
 }
 
+/** An open payment-originated exception (TKT-75.02): unallocated cash, short-payment pattern. */
+export interface PaymentExceptionLike {
+  review_id: string;
+  kind: "unallocated_payment" | "short_payment_pattern";
+  payment_id?: string;
+  /** The bank line's amount, when the payment is on file. */
+  amount_paise?: number;
+}
+
 export interface AttentionInput {
   items: RankItem[];
   payments: Payment[];
@@ -58,6 +68,8 @@ export interface AttentionInput {
   customerNames: Map<string, string>;
   drafts: DraftLike[];
   reviews: PaymentReviewLike[];
+  /** Open payment exceptions; omitted = none (TC-75.11). */
+  exceptions?: PaymentExceptionLike[];
 }
 
 const NOUNS: Record<AttentionKey, { one: string; many: string; verbOne: string; verbMany: string }> = {
@@ -70,6 +82,7 @@ const NOUNS: Record<AttentionKey, { one: string; many: string; verbOne: string; 
   },
   drafts: { one: "reminder draft", many: "reminder drafts", verbOne: "awaits approval", verbMany: "await approval" },
   payments: { one: "payment email", many: "payment emails", verbOne: "needs review", verbMany: "need review" },
+  exceptions: { one: "payment exception", many: "payment exceptions", verbOne: "needs review", verbMany: "need review" },
 };
 
 export function summaryFor(key: AttentionKey, count: number): string {
@@ -119,9 +132,17 @@ export function attentionGroups(input: AttentionInput): AttentionGroup[] {
       daysOverdue: null,
       href: r.invoice_id !== undefined ? invoiceHref(r.invoice_id) : "/payments",
     })),
+    exceptions: (input.exceptions ?? []).map((x) => ({
+      id: x.review_id,
+      title: EXCEPTION_KIND_LABEL[x.kind],
+      detail: x.payment_id ?? "Payment not available.",
+      amountPaise: x.amount_paise !== undefined ? (x.amount_paise as Paise) : null,
+      daysOverdue: null,
+      href: exceptionHref(x.review_id),
+    })),
   };
 
-  const order: AttentionKey[] = ["high", "disputed", "drafts", "payments"];
+  const order: AttentionKey[] = ["high", "disputed", "drafts", "payments", "exceptions"];
   return order
     .filter((key) => lists[key].length > 0)
     .map((key) => ({

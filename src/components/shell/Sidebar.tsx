@@ -5,6 +5,7 @@ import { Fragment } from "react";
 
 import { LogoCard } from "@/components/shell/LogoCard";
 import { DisputeCount } from "@/components/shell/DisputeCount";
+import { ExceptionCount } from "@/components/shell/ExceptionCount";
 import { DraftCount } from "@/components/shell/DraftCount";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 import { QueueCount } from "@/components/shell/QueueCount";
@@ -80,6 +81,7 @@ export function Sidebar({ activeHref }: { activeHref: string }) {
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {item.liveCount && <QueueCount active={isActive} />}
                 {item.disputeCount && <DisputeCount active={isActive} />}
+                {item.exceptionCount && <ExceptionCount active={isActive} />}
                 {item.draftCount && <DraftCount active={isActive} />}
               </Link>
             </Fragment>

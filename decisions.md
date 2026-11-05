@@ -1203,3 +1203,18 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
   2. **Drafts.** `draftContextFor` sets `paymentClaim` ("unapplied bank line P-…") for a candidate of an open item, so check 7 fails and no draft for it can be approved or sent.
 - On the seed, INV-F is already gated earlier (G3), so the hold is invisible there. TC-75.10 proves G5 with a fixture bank line that matches an otherwise-scored invoice, and that allocating it lifts the hold (the invoice closes at G1).
 - If several invoices match, all of them hold. That is deliberate: a reminder to any of them could chase money that is already in the bank.
+
+## EXE127 · "Exceptions" nav item, open-count badge, row model and Home group (TASK-79.2) — accepted
+- **Nav.** "Exceptions" (`/exceptions`, TriangleAlert) is inserted after Payments, the last primary item, so it sits after Drafts and immediately before the Audit Log divider (Design-TASK-75 §7). No existing item moves or is renamed. Below 768 px it is reached from the "More" sheet (`MORE_HREFS`), like Payments.
+- **Badge.** `useExceptionCount()` counts `db.exceptions` with `status = open`, every kind. It is live and tolerates a missing db like the other nav counts.
+- **Row model.** `buildExceptionRows` (`src/domain/exceptions/list.ts`) is pure and reads stored rows only.
+  - Kind: the label from `EXCEPTION_KIND_LABEL`, now the single definition. `REVIEW_KIND_LABEL` is an alias of it.
+  - Subject: `payment_id · customer` for payment kinds, or `· Unapplied bank line` when there is not exactly one candidate. For email kinds it is `customer · invoice no.`.
+  - Amount: for payment kinds, the bank line's amount. For email kinds, the email's amount if it has one, otherwise the invoice's derived outstanding.
+  - Status: Open / Pending Manager (an open item that requires Manager) / Resolved (actioned) / Dismissed.
+  - Priority: the related invoice's band.
+  - Rows are ordered open first, then by id.
+  - "Policy Review" (§5) is not shown: it belongs to the Policy agent (79.3).
+- **Filters.** The Queue facets (search, priority, invoice status, customer, ageing) apply to the exception's related invoice. A row with no single related invoice drops out when any facet is set. Search matches the subject, the kind label and the ids.
+- **List scope.** `/exceptions` lists *open* exceptions, so an allocated item leaves the list (AC10). All 7 kinds render through the same row; `short_payment_pattern` has no seed row until 79.5, so a 7-kind unit fixture proves it (list.test.ts).
+- **Home.** The task feed gains an "exceptions" group (open payment-originated exceptions, linking to `/exceptions`) after "payments". The existing "payments" group (uncertain matches and reconciliations) is unchanged.

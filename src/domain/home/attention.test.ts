@@ -107,3 +107,33 @@ describe("attentionGroups", () => {
     expect(group!.entries[0]).toMatchObject({ title: "Acme", detail: "INV-1", amountPaise: 900, href: "/invoices/1" });
   });
 });
+
+// TC-75.11 (TKT-75.02): the Overview count includes payment-originated exceptions.
+describe("attentionGroups — payment exceptions", () => {
+  it("adds an exceptions group last, linking each entry to its exception; the payments group is unchanged", () => {
+    const groups = attentionGroups(
+      input({
+        items: [item("1", "high", 40)],
+        reviews: [{ review_id: "R1", kind: "reconciliation", invoice_id: "1", email_amount_paise: 500 }],
+        exceptions: [{ review_id: "RV-PAY-P-012", kind: "unallocated_payment", payment_id: "P-012", amount_paise: 2_500_000 }],
+      }),
+    );
+    expect(groups.map((g) => g.key)).toEqual(["high", "payments", "exceptions"]);
+    expect(groups[1]!.summary).toBe("1 payment email needs review");
+    const exc = groups[2]!;
+    expect(exc.summary).toBe("1 payment exception needs review");
+    expect(exc.entries[0]).toEqual({
+      id: "RV-PAY-P-012",
+      title: "Unallocated payment",
+      detail: "P-012",
+      amountPaise: 2_500_000,
+      daysOverdue: null,
+      href: "/exceptions/RV-PAY-P-012",
+    });
+  });
+
+  it("pluralises and is absent when there are none", () => {
+    expect(summaryFor("exceptions", 2)).toBe("2 payment exceptions need review");
+    expect(attentionGroups(input({ items: [item("1", "high", 40)] })).map((g) => g.key)).toEqual(["high"]);
+  });
+});

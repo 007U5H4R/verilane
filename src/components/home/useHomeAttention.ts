@@ -3,8 +3,8 @@
 import { useContext } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 
-import type { PaymentReviewLike } from "@/domain/home/attention";
-import { isEmailException, type EmailException, type Exception } from "@/domain/schema";
+import type { PaymentExceptionLike, PaymentReviewLike } from "@/domain/home/attention";
+import { isEmailException, isPaymentExceptionKind, type EmailException, type Exception } from "@/domain/schema";
 import { DbContext } from "@/store/hooks";
 
 const PAYMENT_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation"]);
@@ -29,6 +29,29 @@ export function useOpenPaymentReviews(): PaymentReviewLike[] | undefined {
         kind: r.kind as PaymentReviewLike["kind"],
         invoice_id: r.invoice_id,
         email_amount_paise: r.email_amount_paise === undefined ? undefined : Number(r.email_amount_paise),
+      }));
+  }, [db]);
+}
+
+/**
+ * Open payment-originated exceptions (unallocated payments) for the Home
+ * feed's "exceptions" group (TKT-75.02), with the bank line's amount. Live;
+ * tolerates a missing db (returns `undefined`). Sorted by id.
+ */
+export function useOpenPaymentExceptions(): PaymentExceptionLike[] | undefined {
+  const db = useContext(DbContext);
+  return useLiveQuery(async () => {
+    if (!db) return undefined;
+    const rows = (await db.exceptions.where("status").equals("open").toArray()) as Exception[];
+    const payments = new Map((await db.payments.toArray()).map((p) => [p.payment_id, p]));
+    return rows
+      .filter((r) => isPaymentExceptionKind(r.kind))
+      .sort((a, b) => a.review_id.localeCompare(b.review_id))
+      .map((r) => ({
+        review_id: r.review_id,
+        kind: r.kind as PaymentExceptionLike["kind"],
+        payment_id: r.payment_id,
+        amount_paise: r.payment_id !== undefined ? payments.get(r.payment_id)?.amount_paise : undefined,
       }));
   }, [db]);
 }

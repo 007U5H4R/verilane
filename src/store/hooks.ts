@@ -12,9 +12,12 @@ import { AS_OF_KEY } from "@/domain/commandConstants";
 import type { AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { approvalState } from "@/domain/draft";
-import { rank, type RankItem } from "@/domain/priority";
+import { unappliedCashPaise, unappliedPayments } from "@/domain/aggregates";
+import { buildExceptionRows, type ExceptionRow as ExceptionListRow } from "@/domain/exceptions/list";
+import type { Paise } from "@/domain/money";
+import { outstandingOf, rank, type RankItem } from "@/domain/priority";
 import type { Customer, DataIssue, Dispute, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Priority, Exception } from "@/domain/schema";
-import { DraftSchema, isEmailException, type Draft } from "@/domain/schema";
+import { DraftSchema, isEmailException, isPaymentExceptionKind, type Draft } from "@/domain/schema";
 import type { AuditEventRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
@@ -415,4 +418,106 @@ export function useHasOpenDispute(invoiceId: string): boolean | undefined {
         .count()) > 0,
     [db, invoiceId],
   );
+}
+
+/**
+ * How many exceptions are open (every kind), live — for the "Exceptions"
+ * sidebar badge (TKT-75.02, Design-TASK-75 §7). Tolerates a missing db like
+ * `useQueueCount()`; `undefined` while loading.
+ */
+export function useExceptionCount(): number | undefined {
+  const db = useContext(DbContext);
+  return useLiveQuery(async () => (db ? db.exceptions.where("status").equals("open").count() : undefined), [db]);
+}
+
+/** Open exceptions as `/exceptions` rows (TKT-75.02), read from stored rows only. */
+export function useOpenExceptionRows(): ExceptionListRow[] | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const [exceptions, invoices, priorities, payments, customers] = await Promise.all([
+      db.exceptions.where("status").equals("open").toArray(),
+      db.invoices.toArray(),
+      db.priorities.toArray(),
+      db.payments.toArray(),
+      db.customers.toArray(),
+    ]);
+    const priorityByInvoice = new Map(priorities.map((p) => [p.invoice_id, p]));
+    const items: RankItem[] = [];
+    for (const invoice of invoices) {
+      const priority = priorityByInvoice.get(invoice.invoice_id);
+      if (priority) items.push({ invoice, priority });
+    }
+    return buildExceptionRows({
+      // Rows are schema-validated on load; same cast as `usePaymentsData`.
+      exceptions: exceptions as Exception[],
+      items,
+      customers: new Map(customers.map((c) => [c.customer_id, c])),
+      payments,
+    });
+  }, [db]);
+}
+
+export interface ExceptionCandidate {
+  invoice: Invoice;
+  priority?: Priority;
+  customer?: Customer;
+  /** Derived from the ledger (`outstandingOf`), never stored. */
+  outstandingPaise: Paise;
+}
+
+export interface ExceptionDetail {
+  exception: Exception;
+  /** The bank line, for a payment-originated exception. */
+  payment?: Payment;
+  /** Each candidate invoice (payment kinds) or the linked invoice (email kinds). */
+  candidates: ExceptionCandidate[];
+  /** Audit events about this exception (`review:<id>`), newest first. */
+  audit: AuditEventRow[];
+  /** Σ unapplied cash on the ledger (M1: `unappliedCashPaise`). */
+  unappliedCashPaise: Paise;
+  unappliedCount: number;
+}
+
+/** One exception with its evidence, for `/exceptions/[id]`: `undefined` while loading, `null` when not found. */
+export function useException(id: string): ExceptionDetail | undefined | null {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const row = await db.exceptions.get(id);
+    if (!row) return null;
+    const exception = row as Exception;
+    const [payments, invoices, priorities, customers, audit] = await Promise.all([
+      db.payments.toArray(),
+      db.invoices.toArray(),
+      db.priorities.toArray(),
+      db.customers.toArray(),
+      db.audit.where("subject").equals(`review:${id}`).toArray(),
+    ]);
+    const ids = isPaymentExceptionKind(exception.kind)
+      ? (exception.candidate_invoice_ids ?? [])
+      : exception.invoice_id !== undefined
+        ? [exception.invoice_id]
+        : [];
+    const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
+    const priorityById = new Map(priorities.map((p) => [p.invoice_id, p]));
+    const customerById = new Map(customers.map((c) => [c.customer_id, c]));
+    const candidates: ExceptionCandidate[] = [];
+    for (const invoiceId of ids) {
+      const invoice = invoiceById.get(invoiceId);
+      if (!invoice) continue;
+      candidates.push({
+        invoice,
+        priority: priorityById.get(invoiceId),
+        customer: customerById.get(invoice.customer_id),
+        outstandingPaise: outstandingOf(invoice, { payments }),
+      });
+    }
+    return {
+      exception,
+      payment: exception.payment_id !== undefined ? payments.find((p) => p.payment_id === exception.payment_id) : undefined,
+      candidates,
+      audit: audit.sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
+      unappliedCashPaise: unappliedCashPaise(payments),
+      unappliedCount: unappliedPayments(payments).length,
+    };
+  }, [db, id]);
 }

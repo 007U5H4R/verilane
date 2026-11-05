@@ -20,6 +20,7 @@ const GROUP_META: Record<AttentionKey, { dot: string; href: string; linkLabel: (
   },
   drafts: { dot: "bg-brand", href: "/drafts", linkLabel: (n) => `Review all ${n} in Drafts` },
   payments: { dot: "bg-med", href: "/payments", linkLabel: (n) => `Review all ${n} in Payments` },
+  exceptions: { dot: "bg-med", href: "/exceptions", linkLabel: (n) => `Review all ${n} in Exceptions` },
 };
 
 const LINK =
