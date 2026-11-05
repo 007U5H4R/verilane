@@ -1,4 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+import { holdManifest } from "./splash-hold";
 
 // TASK-45.2 · Splash tracer (TC-128, TC-129, TC-131–TC-135); TASK-45.3 adds
 // once per tab, client entry and the R7 pinning (TC-137–TC-141). The splash is
@@ -736,4 +739,110 @@ test.describe("TC-141: readiness hooks are observe-only with the splash off (R7)
     await expect(page.locator("#verilane-app")).toBeAttached();
     expect(await splashState(page)).toBe("off");
   });
+});
+
+// TASK-45.10 · release evidence (TC-166, TC-168).
+
+/** Serious and critical axe violations, one line per node. */
+async function seriousAxe(page: Page, scope?: string) {
+  const builder = new AxeBuilder({ page });
+  if (scope) builder.include(scope);
+  const { violations } = await builder.analyze();
+  const found: string[] = [];
+  for (const v of violations) {
+    if (v.impact !== "serious" && v.impact !== "critical") continue;
+    for (const n of v.nodes) found.push(`${v.id} (${v.impact}) ${n.target.join(" ")}: ${n.any[0]?.message ?? ""}`);
+  }
+  return { found, all: violations.map((v) => `${v.id}:${v.impact}:${v.nodes.length}`) };
+}
+
+test("TC-166: axe finds no serious or critical violations at on, hold and after done", async ({ page, context }) => {
+  test.slow();
+  // Fresh profile: seeding waits on the manifest, held until the hold scan is
+  // done (R-6), so the overlay passes through on (1 s) and hold (after D).
+  const manifest = await holdManifest(context);
+  await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
+
+  // on, at 1 s: the overlay alone (the app behind it is inert and covered).
+  await waitPastT0(page, 1000);
+  expect(await splashState(page)).toBe("on");
+  const onStart = Date.now();
+  const on = await seriousAxe(page, "#verilane-splash");
+  const onScanMs = Date.now() - onStart;
+  // The on window is 1 s to D (5.7 s); a scan slower than that under host load
+  // misses it. The duration is in the message so a failure says which it was.
+  expect(await splashState(page), `still on after the scan (scan took ${onScanMs} ms)`).toBe("on");
+
+  // hold: past D with ready still pending. The bar is revealed by now.
+  await waitForSplash(page, "hold", 15_000);
+  const hold = await seriousAxe(page, "#verilane-splash");
+  expect(await splashState(page), "still hold after the scan").toBe("hold");
+  // Design §7: one status and one progressbar are exposed; the scene is decorative.
+  const overlay = page.locator("#verilane-splash");
+  await expect(overlay.getByRole("status")).toHaveCount(1);
+  await expect(overlay.getByRole("progressbar")).toHaveCount(1);
+  expect(await overlay.locator(".splash-scene").getAttribute("aria-hidden")).toBe("true");
+  manifest.release();
+
+  // done: the whole page, once the app has loaded behind the overlay.
+  await waitForSplash(page, "done", 20_000);
+  await expect(page.getByRole("status", { name: "Loading workspace" })).toHaveCount(0);
+  await expect(page.locator('main a[href^="/invoices/"]').first()).toBeVisible();
+  const done = await seriousAxe(page);
+
+  test.info().annotations.push({
+    type: "TC-166 axe",
+    description: `on: [${on.all.join(", ")}] · hold: [${hold.all.join(", ")}] · done: [${done.all.join(", ")}]`,
+  });
+  expect(on.found, "on").toEqual([]);
+  expect(hold.found, "hold").toEqual([]);
+  expect(done.found, "done").toEqual([]);
+});
+
+test("TC-168: focus never enters the inert app while covered, and the first Tab after exit lands in the app", async ({ page, context }) => {
+  await holdManifest(context, 7000);
+  await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
+  await waitPastT0(page, 300);
+  const where = () =>
+    page.evaluate(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body || a === document.documentElement) return "body";
+      if (a.closest("#verilane-splash")) return "overlay:" + (a.getAttribute("data-splash-skip") !== null ? "skip" : a.tagName);
+      if (a.closest("#verilane-app")) return "app:" + a.tagName;
+      return "other:" + a.tagName;
+    });
+
+  const seen: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press("Tab");
+    seen.push(await where());
+  }
+  const state = await splashState(page);
+  test.info().annotations.push({ type: "TC-168 covered", description: `${state} · ${seen.join(", ")}` });
+  expect(state, "Tab never skips").toMatch(/^(on|hold)$/);
+  expect(await appInert(page)).toBe(true);
+  for (const w of seen) expect(["body", "overlay:skip"], "focus while covered").toContain(w);
+  expect(seen, "Tab reaches Skip").toContain("overlay:skip");
+
+  await page.keyboard.press("Escape");
+  await waitForSplash(page, "done");
+  expect(await appInert(page)).toBe(false);
+  // The app may still be loading; its first control is what the Tab must reach.
+  await expect(page.locator('main a[href^="/invoices/"]').first()).toBeVisible({ timeout: 20_000 });
+  await page.keyboard.press("Tab");
+  const after = await page.evaluate(() => {
+    const app = document.getElementById("verilane-app")!;
+    const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const first = [...app.querySelectorAll<HTMLElement>(sel)].find((el) => el.tabIndex >= 0 && el.checkVisibility());
+    const a = document.activeElement as HTMLElement | null;
+    return {
+      inApp: !!a && app.contains(a),
+      isFirst: !!a && a === first,
+      active: a ? `${a.tagName} ${a.getAttribute("aria-label") ?? a.textContent?.trim().slice(0, 40) ?? ""}` : null,
+      first: first ? `${first.tagName} ${first.getAttribute("aria-label") ?? first.textContent?.trim().slice(0, 40) ?? ""}` : null,
+    };
+  });
+  test.info().annotations.push({ type: "TC-168 after exit", description: JSON.stringify(after) });
+  expect(after.inApp, "focus lands in the app").toBe(true);
+  expect(after.isFirst, `first Tab reaches the app's first control (${after.first})`).toBe(true);
 });

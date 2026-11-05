@@ -42,13 +42,36 @@ async function waitPastT0(page: Page, ms: number) {
 const waitForSplash = (page: Page, state: string, timeout?: number) =>
   page.waitForFunction((s) => document.documentElement.dataset.splash === s, state, { timeout });
 
-/** Open the splash and wait until its logo layers have decoded. */
+/** TASK-45.9: wait until the scene's raster art (the sky plate and each
+ * shown cloud strip) has decoded, so a measurement or capture is on the real
+ * art, not the placeholder gradient. Each layer's first URL is the one the
+ * browser picks here (AVIF); decode() resolves from the same cache entry. */
+async function artLoaded(page: Page) {
+  await page.evaluate(async () => {
+    const layers = ["sky", "cloud-bg", "cloud-fg"]
+      .map((n) => document.querySelector<HTMLElement>(`#verilane-splash .splash-${n}`)!)
+      .filter((el) => getComputedStyle(el).display !== "none");
+    await Promise.all(
+      layers.map((el) => {
+        const url = getComputedStyle(el).backgroundImage.match(/url\("?([^")]+)"?\)/)?.[1];
+        if (!url) throw new Error(`no raster on ${el.className}`);
+        const img = new Image();
+        img.src = url;
+        return img.decode();
+      }),
+    );
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
+}
+
+/** Open the splash and wait until its logo layers and scene art have decoded. */
 async function openSplash(page: Page) {
   await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
   await waitPastT0(page, 0);
   await page.waitForFunction(() =>
     [...document.querySelectorAll<HTMLImageElement>("#verilane-splash img")].every((i) => i.complete && i.naturalWidth > 0),
   );
+  await artLoaded(page);
 }
 
 /** Pause every CSS animation in the overlay; with `at`, seek each to that
@@ -332,6 +355,78 @@ for (const beat of [
   });
 }
 
+// TC-165 (S21): the art never gates a phase. The splash rasters are held
+// 10 s; done still lands at D + 300 ms, and every sampled frame meanwhile
+// shows the dark placeholder gradient (never a blank or light frame).
+// The last sample sits at 4800 ms, 900 ms clear of exit at D = 5700, and the
+// phase is re-read after each screenshot so a slow capture cannot pass or fail
+// on an exit frame.
+test("TC-165: a 10 s delay on the splash art does not move done or blank the scene", async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // the default 250-entry buffer could drop the late raster entries this test reads
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(1000));
+  const held: string[] = [];
+  let released = 0;
+  await page.route(/\/_next\/static\/media\/(sky|clouds-(fg|bg))\.[^/]+\.(avif|webp)$/, async (route) => {
+    held.push(new URL(route.request().url()).pathname);
+    await new Promise((r) => setTimeout(r, 10_000));
+    released++;
+    await route.continue().catch(() => {});
+  });
+  await page.goto(`/queue${FORCE}`, { waitUntil: "domcontentloaded" });
+  await waitPastT0(page, 0);
+  const samples: string[] = [];
+  for (const at of [200, 1500, 3500, 4800]) {
+    await waitPastT0(page, at);
+    expect(released, `art still held at ${at} ms`).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.dataset.splash), `phase at ${at} ms`).toBe("on");
+    const shot = await pixels(page);
+    expect(await page.evaluate(() => document.documentElement.dataset.splash), `phase still "on" after the ${at} ms capture`).toBe("on");
+    // the sky band, clear of the lockup, tower and hills
+    for (const [x, y] of [[40, 40], [720, 60], [1400, 120], [200, 400]] as const) {
+      const p = shot.px(x, y);
+      samples.push(`${at}@${x},${y} ${hex(p)}`);
+      expect(lum(p), `${at} ms (${x},${y}) ${hex(p)} is the dark scene, not blank`).toBeLessThan(0.08);
+      expect(p[1], `${at} ms (${x},${y}) ${hex(p)} is green-led`).toBeGreaterThanOrEqual(Math.max(p[0], p[2]));
+    }
+  }
+  await waitForSplash(page, "done", 15_000);
+  const [ready, done] = await page.evaluate(() => {
+    const t0 = performance.getEntriesByName("splash:painted")[0]!.startTime;
+    return ["splash:ready", "splash:done"].map((n) => {
+      const e = performance.getEntriesByName(n)[0];
+      return e ? e.startTime - t0 : null;
+    });
+  });
+  test.info().annotations.push({
+    type: "TC-165",
+    description: `held ${held.length} (${[...new Set(held)].join(", ")}) · released before done ${released} · ready ${ready?.toFixed(0)} · done ${done?.toFixed(0)} ms · ${samples.join(" · ")}`,
+  });
+  // at 1440 the page requests exactly the AVIF sky and both AVIF clouds
+  expect(
+    [...new Set(held)].map((p) => p.replace(/^.*\/media\/([a-z-]+)\.[^.]+\.(avif|webp)$/, "$1.$2")).sort(),
+    "held exactly the three AVIF rasters",
+  ).toEqual(["clouds-bg.avif", "clouds-fg.avif", "sky.avif"]);
+  expect(released, "no raster was released before done").toBe(0);
+  // page time: once released, every raster's responseEnd is after the splash:done mark
+  await expect.poll(() => released, { timeout: 20_000, message: "held rasters released" }).toBe(held.length);
+  const late = await page.waitForFunction(() => {
+    const done = performance.getEntriesByName("splash:done")[0]!.startTime;
+    const art = performance
+      .getEntriesByType("resource")
+      .filter((e) => /\/_next\/static\/media\/(sky|clouds-(fg|bg))\.[^/]+\.(avif|webp)$/.test(e.name)) as PerformanceResourceTiming[];
+    return art.length === 3 ? art.map((e) => ({ name: e.name.replace(/^.*\/media\//, ""), afterDone: e.responseEnd - done })) : null;
+  }, null, { timeout: 10_000 });
+  for (const e of (await late.jsonValue())!) {
+    expect(e.afterDone, `${e.name} finished ${e.afterDone.toFixed(0)} ms after splash:done`).toBeGreaterThan(0);
+  }
+  expect(ready, "ready landed before D − 250 (fast ready)").not.toBeNull();
+  expect(ready!).toBeLessThan(5700 - 250);
+  expect(Math.abs(done! - 6000), `done ${done!.toFixed(0)} ms vs D + 300`).toBeLessThanOrEqual(200);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 test.describe("TC-155: the Skip intro button", () => {
   async function check(page: Page, coarse: boolean) {
     await openSplash(page);
@@ -393,8 +488,12 @@ test.describe("TC-155: the Skip intro button", () => {
 // EXE83: an SVG <image> loads even inside the display:none overlay, so the
 // sheen mask gets its href only when the splash shows. The app's own logo goes
 // through /_next/image, so a raw request for the file is the splash's alone.
-test("EXE83: the splash logo is not fetched on a load where the splash does not show", async ({ browser, baseURL }) => {
+// R-8 (review-45.9, TASK-45.10): the same holds for the sky and cloud rasters.
+// They are CSS backgrounds of the display:none overlay, so they load only when
+// it shows; the control proves the filter sees them when it does.
+test("EXE83: the splash logo and art are not fetched on a load where the splash does not show", async ({ browser, baseURL }) => {
   const LOGO = "/brand/verilane-logo-light.png";
+  const ART = /\/_next\/static\/media\/(sky|clouds-(fg|bg))\./;
   async function load(show: boolean) {
     const ctx = await browser.newContext({ baseURL, viewport: { width: 1440, height: 900 } });
     await ctx.addInitScript((seen) => {
@@ -411,8 +510,11 @@ test("EXE83: the splash logo is not fetched on a load where the splash does not 
     }, !show);
     const page = await ctx.newPage();
     const hits: string[] = [];
+    const art: string[] = [];
     page.on("request", (r) => {
-      if (new URL(r.url()).pathname === LOGO) hits.push(r.url());
+      const path = new URL(r.url()).pathname;
+      if (path === LOGO) hits.push(r.url());
+      if (ART.test(path)) art.push(path);
     });
     await page.goto(show ? `/queue${FORCE}` : "/queue", { waitUntil: "load" });
     await page.waitForTimeout(800);
@@ -421,17 +523,23 @@ test("EXE83: the splash logo is not fetched on a load where the splash does not 
       href: document.querySelector("#verilane-splash .splash-sheen image")?.getAttribute("href") ?? null,
     }));
     await ctx.close();
-    return { hits, ...state };
+    return { hits, art, ...state };
   }
   const off = await load(false);
   expect(off.splash, "the splash does not show").toMatch(/^(none|done)$/);
   expect(off.href, "no href on the hidden sheen").toBeNull();
   expect(off.hits, "no logo request").toEqual([]);
+  expect(off.art, "no sky or cloud request").toEqual([]);
   // control: the same check sees the request when the splash shows
   const on = await load(true);
   expect(on.splash).toMatch(/^(on|hold|exit|done)$/);
   expect(on.href).toBe(LOGO);
   expect(on.hits.length, "the logo is fetched when the splash shows").toBeGreaterThan(0);
+  // Each layer on its own (R-7): a renamed layer would otherwise drop out of
+  // ART, and the `off` check above would stop guarding it without failing.
+  for (const layer of [/\/sky\./, /\/clouds-fg\./, /\/clouds-bg\./]) {
+    expect(on.art.some((p) => layer.test(p)), `${layer} is fetched when the splash shows (${on.art.join(", ")})`).toBe(true);
+  }
 });
 
 // TC-156: frame captures for the human look-check. They write to the

@@ -8,6 +8,7 @@ import {
   BUDGETS,
   E1_ROUTE_GZIP,
   checkInline,
+  checkBuiltRefs,
   checkRasterRefs,
   checkRasters,
   listRasterFiles,
@@ -45,21 +46,45 @@ describe("checkRasters", () => {
     expect(checkRasters([])).toEqual([]);
   });
 
-  it("caps each sky file at 60 KB and the clouds at 30 KB per format", () => {
+  it("caps the sky at 60 KB per format and the clouds at 30 KB in total (TASK-45.9, TC-164)", () => {
     const res = checkRasters([
       { name: "sky.avif", bytes: 40_000 },
       { name: "sky.webp", bytes: 61 * 1024 },
       { name: "clouds-back.avif", bytes: 10_000 },
       { name: "clouds-front.avif", bytes: 12_000 },
-      { name: "clouds-back.webp", bytes: 20_000 },
-      { name: "clouds-front.webp", bytes: 12_000 },
     ]);
     expect(res).toEqual([
-      { item: "raster sky.avif", bytes: 40_000, limit: 60 * 1024, over: false },
-      { item: "raster sky.webp", bytes: 61 * 1024, limit: 60 * 1024, over: true },
-      { item: "rasters clouds (.avif)", bytes: 22_000, limit: 30 * 1024, over: false },
-      { item: "rasters clouds (.webp)", bytes: 32_000, limit: 30 * 1024, over: true },
+      { item: "rasters sky (.avif)", bytes: 40_000, limit: 60 * 1024, over: false },
+      { item: "rasters sky (.webp)", bytes: 61 * 1024, limit: 60 * 1024, over: true },
+      { item: "rasters clouds (all formats)", bytes: 22_000, limit: 30 * 1024, over: false },
     ]);
+  });
+
+  it("sums every sky file of one format, so two sky files cannot each sit under 60 KB (TASK-45.9)", () => {
+    expect(checkRasters([{ name: "sky.avif", bytes: 40_000 }, { name: "sky-2x.avif", bytes: 30_000 }])).toEqual([
+      { item: "rasters sky (.avif)", bytes: 70_000, limit: 60 * 1024, over: true },
+    ]);
+  });
+
+  it("sums the clouds across formats, so a WebP fallback set cannot slip past the 30 KB cap (TASK-45.9, EXE98)", () => {
+    expect(
+      checkRasters([
+        { name: "clouds-fg.avif", bytes: 12_269 },
+        { name: "clouds-bg.avif", bytes: 11_752 },
+        { name: "clouds-fg.webp", bytes: 9_450 },
+      ]),
+    ).toEqual([{ item: "rasters clouds (all formats)", bytes: 33_471, limit: 30 * 1024, over: true }]);
+  });
+
+  it("passes the shipped finals: sky AVIF + WebP, clouds fg + bg AVIF (TC-164)", () => {
+    const res = checkRasters([
+      { name: "sky.avif", bytes: 49_737 },
+      { name: "sky.webp", bytes: 22_026 },
+      { name: "clouds-fg.avif", bytes: 12_269 },
+      { name: "clouds-bg.avif", bytes: 11_752 },
+    ]);
+    expect(res.every((f) => !f.over)).toBe(true);
+    expect(res.find((f) => f.item === "rasters clouds (all formats)")?.bytes).toBe(24_021);
   });
 
   it("fails a raster it cannot classify as sky or clouds", () => {
@@ -76,13 +101,13 @@ describe("checkRasters", () => {
 describe("checkRasters extensions", () => {
   it("classifies an uppercase extension (sky.AVIF) against the sky cap (R-9)", () => {
     expect(checkRasters([{ name: "sky.AVIF", bytes: BUDGETS.sky + 1 }])).toEqual([
-      { item: "raster sky.AVIF", bytes: BUDGETS.sky + 1, limit: BUDGETS.sky, over: true },
+      { item: "rasters sky (.avif)", bytes: BUDGETS.sky + 1, limit: BUDGETS.sky, over: true },
     ]);
   });
 
   it("classifies a nested file by its path under the folder", () => {
     expect(checkRasters([{ name: "clouds/a.webp", bytes: 10 }, { name: "clouds/b.webp", bytes: 20 }])).toEqual([
-      { item: "rasters clouds (.webp)", bytes: 30, limit: BUDGETS.clouds, over: false },
+      { item: "rasters clouds (all formats)", bytes: 30, limit: BUDGETS.clouds, over: false },
     ]);
   });
 });
@@ -249,5 +274,52 @@ describe("report", () => {
     expect(r.code).toBe(1);
     expect(r.lines.join("\n")).toMatch(/OVER +62464 B .*raster sky\.webp/);
     expect(r.lines.at(-1)).toMatch(/1 item\(s\) over budget: raster sky\.webp \(62464 B\)/);
+  });
+});
+
+describe("checkBuiltRefs (TASK-45.9: the build hashed every splash raster)", () => {
+  const files = ["sky.avif", "sky.webp", "clouds-fg.avif"];
+  const good =
+    '#verilane-splash .splash-sky{background:image-set(url(../media/sky.238e-cvcczsaz.avif) type("image/avif"), url(../media/sky.1l_v5iwf51lrn.webp) type("image/webp")) 62% 70%/cover no-repeat}' +
+    "#verilane-splash .splash-cloud-fg{background:url(../media/clouds-fg.36uox7uoktvrl.avif) 0 0/100% 100% no-repeat}";
+
+  it("passes when each raster is referenced by a content-hashed media URL, naming the URL", () => {
+    expect(checkBuiltRefs(good, files)).toEqual([
+      { item: "built CSS sky.avif -> ../media/sky.238e-cvcczsaz.avif", bytes: 0, limit: 0, over: false },
+      { item: "built CSS sky.webp -> ../media/sky.1l_v5iwf51lrn.webp", bytes: 0, limit: 0, over: false },
+      { item: "built CSS clouds-fg.avif -> ../media/clouds-fg.36uox7uoktvrl.avif", bytes: 0, limit: 0, over: false },
+    ]);
+  });
+
+  it("fails a raster the built CSS never references through a hashed URL", () => {
+    const css = good.replace(/url\(\.\.\/media\/clouds-fg[^)]*\)/, "none");
+    expect(checkBuiltRefs(css, files)).toContainEqual({ item: "built CSS clouds-fg.avif: no hashed media URL", bytes: 0, limit: 0, over: true });
+  });
+
+  it("fails a source path left unresolved in the built CSS (Lightning CSS image-set() string form)", () => {
+    const css = good + '.splash-cloud-bg{background:image-set("../assets/splash/clouds-bg.avif" 1x type("image/avif"))}';
+    expect(checkBuiltRefs(css, files)).toContainEqual({ item: "built CSS: unresolved ../assets/splash/clouds-bg.avif", bytes: 0, limit: 0, over: true });
+  });
+
+  it("fails a hashed URL whose media file the build did not emit", () => {
+    const emitted = new Set(["sky.238e-cvcczsaz.avif", "sky.1l_v5iwf51lrn.webp"]);
+    expect(checkBuiltRefs(good, files, (name) => emitted.has(name))).toContainEqual({
+      item: "built CSS clouds-fg.avif -> ../media/clouds-fg.36uox7uoktvrl.avif: not in .next/static/media",
+      bytes: 0,
+      limit: 0,
+      over: true,
+    });
+  });
+
+  it("reports an unresolved source path once, though image-set() and -webkit-image-set() both carry it", () => {
+    const path = '"../assets/splash/clouds-bg.avif" 1x type("image/avif")';
+    const css = good + `.splash-cloud-bg{background:-webkit-image-set(${path});background:image-set(${path})}`;
+    expect(checkBuiltRefs(css, files).filter((f) => f.item.includes("unresolved"))).toEqual([
+      { item: "built CSS: unresolved ../assets/splash/clouds-bg.avif", bytes: 0, limit: 0, over: true },
+    ]);
+  });
+
+  it("fails when no built CSS carries the splash rules", () => {
+    expect(checkBuiltRefs("", files)).toEqual([{ item: "built CSS: no stylesheet contains #verilane-splash", bytes: 0, limit: 0, over: true }]);
   });
 });

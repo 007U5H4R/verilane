@@ -72,7 +72,7 @@
 - **Expected:** Same node, still connected. The overlay's `data-*`/status text is unchanged by React.
 
 ### TC-130 · `splash:ready` is within ±50 ms of the no-splash baseline
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Pass (2026-11-04, Δ −13.7 ms, EXE45) · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Fail by gate at fbfcd69 under host load (Δ 108.9, 162.7 ms; spread 212 / 152 ms; CI −15.8..277.3 / 30.7..404.9); the 2026-11-04 pass (Δ −13.7 ms, EXE45) at an earlier commit is superseded; idle-host re-run required before release. P0: if Δ > 50 on an idle host, reopen Stage 2 / park as finding (EXE111) · **Finding:** —
 - **Objective:** The splash does not delay readiness.
 - **Preconditions:** `pnpm build:e2e`; `pnpm e2e:splash-perf`; a fresh context per run.
 - **Steps:**
@@ -293,7 +293,7 @@
 - **Expected:** The overlay pixels are identical across themes. After the exit, the app shows its theme with no white flash.
 
 ### TC-154 · Bar fill ≥ 3:1 and text ≥ 4.5:1 against the scene
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass on placeholder art (2026-11-04, 5c9c72a, EXE77; re-run on final art in TASK-45.9) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.3 · Freeze item 1 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass on final art (2026-11-05, 5ceccb0, TASK-45.9; reveal fill 4.90/8.56, status 8.57, skip 4.72, hint 7.43; hold fill-end 3.65 light, fill-start 4.12 light / 4.07 dark) · **Finding:** —
 - **Objective:** WCAG non-text and text contrast.
 - **Preconditions:** splash-on; frames paused at reveal and at hold. Re-run on the final art in TASK-45.9.
 - **Steps:** Sample pixels at the fill start, the fill end, the status text and the skip label against the pixels behind them.
@@ -312,7 +312,7 @@
   - The label swaps per pointer type (Design §18).
 
 ### TC-156 · Frame screenshots match the frozen design beats
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (captured 2026-11-04 at 5c9c72a; pairs listed in the TASK-45.5 report) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (re-captured on final art 2026-11-05 at 5ceccb0; 33 shots at /Volumes/E Drive/Dev/.scratch/task45/45.9/shots/) · **Finding:** —
 - **Objective:** The implementation matches the approved mockup.
 - **Preconditions:** splash-on; `page.clock` at each beat; 1440 / 768 / 375.
 - **Steps:** Capture each beat; review side by side with `.design/exploration/task-45/shots/`.
@@ -344,7 +344,7 @@
 - **Expected:** `done` within 50 ms; `inert` removed.
 
 ### TC-160 · The `splash-budget` gate measures and fails correctly
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.1 · TP-45.g · **Type:** unit · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80; re-run 2026-11-05, 5ceccb0) · **Finding:** —
 - **Objective:** The gate is trustworthy.
 - **Preconditions:** vitest `unit`; injectable readers.
 - **Steps:** Feed under-budget and over-budget inputs: inline bytes, rasters (60/30 KB) and route deltas.
@@ -360,7 +360,7 @@
 - **Expected:** Every route's delta is ≤ 512 B; `route-budget` stays green (`/settings` < 300 KB).
 
 ### TC-162 · Zero splash bytes in shared JS when the splash is off; the inline total is ≤ ≈15 KB gzip
-- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.07 · TASK-45.7 · 45.7.3 · TP-45.g · **Type:** static · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-04, ad6ac80; re-run 2026-11-05, 5ceccb0) · **Finding:** —
 - **Objective:** The runtime and scene live in HTML and CSS, not in JS chunks.
 - **Preconditions:** `pnpm build`. This is re-run after TASK-45.9.
 - **Steps:** Scan `.next/static/chunks` for runtime markers such as `verilane-splash-seen`; run `pnpm splash-budget` for the inline total.
@@ -384,15 +384,15 @@
   - The selection, round count and spend are recorded in HANDOFF.
 
 ### TC-164 · Final rasters are within budget and served hashed
-- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.1, 45.9.3 · S-budget · **Type:** static + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.1, 45.9.3 · S-budget · **Type:** static + e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-05, 5ceccb0; sky 49,737 B AVIF / 22,026 B WebP, clouds 24,021 B AVIF total, all four URLs hashed; requests: see the TC-165 annotation, three hashed /_next/static/media/ AVIF URLs on /queue?__splash=1) · **Finding:** —
 - **Objective:** The art ships cheaply.
 - **Preconditions:** Finals are in `src/assets/splash/`; `pnpm build`.
 - **Steps:** Run `pnpm splash-budget`; load `/?__splash=1` and collect the image requests.
 - **Data:** —
-- **Expected:** Sky ≤ 60 KB and clouds ≤ 30 KB (AVIF, with a WebP fallback within the same caps). The URLs are content-hashed via `image-set()`.
+- **Expected:** Sky ≤ 60 KB per format (AVIF, with a WebP fallback) and clouds ≤ 30 KB total, clouds AVIF-only per user decision 2026-11-04, EXE98. The URLs are content-hashed (the sky via `image-set()`, the clouds via `url()`, EXE101).
 
 ### TC-165 · The splash never waits on the art
-- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.2 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.09 · TASK-45.9 · 45.9.2 · S21 · **Type:** e2e · **Pri:** P1 · **Auto:** Y · **Status:** Pass (2026-11-05, 5ceccb0; 3 rasters held, 0 released before done; done 6004 ms light / 6002 ms dark) · **Finding:** —
 - **Objective:** A slow image does not extend the splash or block readiness.
 - **Preconditions:** splash-on; `page.route` delays the splash rasters by 10 s.
 - **Steps:** Time to `done`, with ready fast.
@@ -400,7 +400,7 @@
 - **Expected:** `done` at D + 300 ms ± 200 ms. The placeholder gradient is visible meanwhile; there is no blank frame.
 
 ### TC-166 · axe finds no serious or critical violations at on, hold and ready
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.1 · a11y · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.1 · a11y · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, e78be28; axe found 0 violations of any impact at `on`, `hold` and after `done`, light and dark; task45/45.10/e2e-new-specs-2.json) · **Finding:** —
 - **Objective:** Overlay accessibility.
 - **Preconditions:** splash-on; `@axe-core/playwright`, already used by the suite.
 - **Steps:** Run axe at `on` (1 s), at `hold` (slow ready) and after `done`.
@@ -408,7 +408,7 @@
 - **Expected:** 0 serious and 0 critical violations. The decorative layers are `aria-hidden`; one status and one progressbar are exposed.
 
 ### TC-167 · Screen-reader pass (VoiceOver, Safari and Chrome)
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.2 · S22, S23 · **Type:** manual · **Pri:** P1 · **Auto:** N · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.2 · S22, S23 · **Type:** manual · **Pri:** P1 · **Auto:** N · **Status:** Pending (human checkpoint: VoiceOver in Safari and Chrome is not automatable and was not run) · **Finding:** —
 - **Objective:** The real assistive-technology experience.
 - **Preconditions:** A production build on :3145 with `?__splash=1`.
 - **Steps:** Load with VO on; listen through the reveal and to ready; skip with VO-Space on the button.
@@ -420,7 +420,7 @@
   - The evidence is recorded in HANDOFF.
 
 ### TC-168 · Focus cannot enter the app while it is covered, and lands in the app after exit
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.3 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.3 · S22 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, e78be28; 10 Tabs while covered alternate Skip and body, app `inert`; after Escape the first Tab lands on the app's first control, "A Verilane home"; task45/45.10/e2e-new-specs-2.json) · **Finding:** —
 - **Objective:** `inert` is correct and is always cleared.
 - **Preconditions:** splash-on.
 - **Steps:** Tab 10× during `on` and record `activeElement`; skip; Tab once.
@@ -428,19 +428,19 @@
 - **Expected:** While covered, focus stays on Skip or body (never inside `#verilane-app`). After exit, the first Tab reaches the app's skip link or first control.
 
 ### TC-169 · Splash-on performance: INP, CLS, long tasks
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · N-perf · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · N-perf · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Fail (INP; fix round 1, 2026-11-05, uncommitted tree on fbfcd69; 4× CPU, warm-up + 5 skip runs + 1 natural-exit run: inline document long scripts >50 ms 0 in 6/6 (EXE113: the earlier splash-only attribution was vacuous, Chromium reports sourceCharPosition 0 for inline scripts; the control proves the stricter gate sees an injected 120 ms loop), raw CLS after exit 0 in 6/6 including the natural exit; skip INP [280, 200, 280, 272, 128], median 272 ms > 200 (EXE110, open stop-rule item for the user); host load 10–25, not perf evidence; idle-host re-run pending; task45/45.10/fix1-specs-2.log) · **Finding:** —
 - **Objective:** The animation stays off the main thread.
 - **Preconditions:** `pnpm e2e:splash-perf`; 4× CPU throttle via CDP.
 - **Steps:** PerformanceObserver on `longtask`, `layout-shift` and `event`, from load until `done` plus one interaction.
 - **Data:** —
 - **Expected:**
-  - No long task attributable to the splash runtime above 50 ms.
+  - No long task attributable to the splash runtime above 50 ms (gated as: no inline document script above 50 ms, EXE113).
   - CLS = 0 when the overlay exits.
   - INP for the skip input is ≤ 200 ms.
   - `splash:ready` Δ is re-checked per TC-130.
 
 ### TC-170 · No-splash Core Web Vitals unchanged against E1
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · R1 · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · R1 · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Inconclusive (point median +28 ms; CI straddles +50); idle re-run pending. (2026-11-05, uncommitted working tree before 83bfeee (EXE109 edit pending) vs E1 cf2c541, 11 interleaved pairs: point estimate within budget, median pair Δ LCP +28 ms (93.5 % CI −28..64), CLS 0 vs 0, first-row ready +36.9 ms (93.5 % CI −46.6..200.6); the spec now takes 21 pairs and logs TC-130's order-statistic CI; idle-host re-run required with TC-130; the R-8 assertion in the EXE83 test (0 splash-art requests with the splash off, ≥ 1 with it on) is this case's request evidence (EXE108, EXE112); task45/45.10/splash-perf.log) · **Finding:** —
 - **Objective:** Returning tabs and non-guests pay nothing.
 - **Preconditions:** A seen flag set (so no splash); the E1 build alongside the branch build.
 - **Steps:** Interleaved A/B, n ≥ 9: LCP, CLS, `splash:ready`.
@@ -448,7 +448,7 @@
 - **Expected:** Median LCP Δ ≤ 50 ms; CLS unchanged; `splash:ready` Δ ≤ 50 ms.
 
 ### TC-171 · Handshake with TASK-46: the heritage panorama shows when the splash is done
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.5 · TASK-46 TC-125 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.5 · TASK-46 TC-125 · **Type:** e2e · **Pri:** P2 · **Auto:** Y · **Status:** Blocked (TC-125 lands with 46.8; re-run after r3 merge) · **Finding:** —
 - **Objective:** The splash's exit target is the TASK-46 background.
 - **Preconditions:** TASK-46 is merged into the branch base; otherwise `Blocked`, with the reason recorded.
 - **Steps:** splash-on; wait for `html[data-splash=done]`; run TASK-46's TC-125 assertion.

@@ -3,12 +3,15 @@
 // Run after `pnpm build`: `pnpm splash-budget` (wired into `test:all` after
 // route-budget, which is unchanged). It measures source, deterministically:
 //   1. gzip-9 of the inline head script + splash.css + splashMarkup() together ≤ 15 KB;
-//   2. rasters in src/assets/splash/ (recursive): each sky file ≤ 60 KB, clouds ≤ 30 KB
-//      per format; every url() in splash.css must name a file in that folder (EXE89);
+//   2. rasters in src/assets/splash/ (recursive): sky ≤ 60 KB per format, clouds
+//      ≤ 30 KB across all formats (TASK-45.9); every url() in splash.css must name a file in that folder (EXE89);
+//   2b. the built CSS references each of those rasters through a content-hashed
+//      _next/static/media URL that exists on disk, and leaves no ../assets/splash/
+//      path unresolved (TASK-45.9);
 //   3. each route's First Load JS (route-budget's own measure) grows ≤ 512 B over E1;
 //   4. no splash runtime/markup marker in .next/static/chunks/*.js (the runtime
 //      lives in server HTML; only the events.ts dispatch may reach shared JS).
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, posix, relative, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 import { SPLASH_SCENE_COPY, splashMarkup } from "../src/lib/splash/markup";
@@ -68,18 +71,25 @@ export function checkInline(parts: { name: string; content: string | Buffer }[],
 
 const RASTER = new Set([".avif", ".webp", ".png", ".jpg", ".jpeg", ".gif"]);
 
-/** Raw file bytes (images go over the wire uncompressed). Sky per file; clouds summed per format. */
+/**
+ * Raw file bytes (images go over the wire uncompressed). TASK-45.9 (TC-164):
+ * the sky is summed per format (≤ 60 KB each, the AVIF and its WebP fallback
+ * are alternatives); the clouds are summed across every format (≤ 30 KB in
+ * total), since they ship AVIF only (EXE98) and a fallback set must still fit.
+ */
 export function checkRasters(files: { name: string; bytes: number }[]): Finding[] {
   const out: Finding[] = [];
-  const clouds = new Map<string, number>();
+  const sky = new Map<string, number>();
+  let clouds: number | null = null;
   for (const f of files) {
     const ext = extname(f.name).toLowerCase();
     if (!RASTER.has(ext)) continue;
-    if (/sky/i.test(f.name)) out.push(finding(`raster ${f.name}`, f.bytes, BUDGETS.sky));
-    else if (/cloud/i.test(f.name)) clouds.set(ext, (clouds.get(ext) ?? 0) + f.bytes);
+    if (/sky/i.test(f.name)) sky.set(ext, (sky.get(ext) ?? 0) + f.bytes);
+    else if (/cloud/i.test(f.name)) clouds = (clouds ?? 0) + f.bytes;
     else out.push({ item: `raster ${f.name} (not sky or clouds)`, bytes: f.bytes, limit: 0, over: true });
   }
-  for (const [ext, bytes] of clouds) out.push(finding(`rasters clouds (${ext})`, bytes, BUDGETS.clouds));
+  for (const [ext, bytes] of sky) out.push(finding(`rasters sky (${ext})`, bytes, BUDGETS.sky));
+  if (clouds !== null) out.push(finding("rasters clouds (all formats)", clouds, BUDGETS.clouds));
   return out;
 }
 
@@ -123,6 +133,41 @@ export function checkRasterRefs(css: string, files: string[]): Finding[] {
     } else {
       out.push({ item, bytes: 0, limit: 0, over: false });
     }
+  }
+  return out;
+}
+
+/**
+ * TASK-45.9: Turbopack rewrites url() in splash.css to a content-hashed
+ * media URL, but Lightning CSS prints a fully parsed image-set() candidate as a
+ * string and that path is never rewritten (it would 404). So the built CSS is
+ * checked: each raster in src/assets/splash/ appears as ../media/<stem>.<hash><ext>
+ * (or /_next/static/media/...) whose file `mediaExists` confirms was emitted,
+ * and no ../assets/splash/ path survives.
+ * Every file in src/assets/splash/ must be referenced: a spare or unused raster
+ * there fails this check, so keep only the art the splash ships.
+ * An assetPrefix or CDN absolute URL (https://cdn/_next/static/media/...) is not
+ * matched; next.config.ts sets none today, and adding one must update this regex.
+ * `css` is every built stylesheet that carries the splash rules, concatenated.
+ * `mediaExists` gets the emitted file name (e.g. sky.238e-cvcczsaz.avif).
+ */
+export function checkBuiltRefs(css: string, files: string[], mediaExists: (name: string) => boolean = () => true): Finding[] {
+  if (!css.includes("#verilane-splash")) {
+    return [{ item: "built CSS: no stylesheet contains #verilane-splash", bytes: 0, limit: 0, over: true }];
+  }
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const out: Finding[] = [];
+  for (const f of files) {
+    const ext = extname(f);
+    const stem = posix.basename(f, ext);
+    const m = css.match(new RegExp(`url\\(\\s*['"]?((?:\\.\\./|/_next/static/)media/${esc(stem)}\\.[A-Za-z0-9_-]+${esc(ext)})`));
+    if (!m) out.push({ item: `built CSS ${f}: no hashed media URL`, bytes: 0, limit: 0, over: true });
+    else if (!mediaExists(posix.basename(m[1]!))) out.push({ item: `built CSS ${f} -> ${m[1]}: not in .next/static/media`, bytes: 0, limit: 0, over: true });
+    else out.push({ item: `built CSS ${f} -> ${m[1]}`, bytes: 0, limit: 0, over: false });
+  }
+  // image-set() and its -webkit-image-set() fallback carry the same path: report it once.
+  for (const path of new Set(Array.from(css.matchAll(/(?:\.\.\/)*assets\/splash\/[^"')\s]+/g), (m) => m[0]))) {
+    out.push({ item: `built CSS: unresolved ${path}`, bytes: 0, limit: 0, over: true });
   }
   return out;
 }
@@ -233,6 +278,14 @@ function main(): void {
   const refs = checkRasterRefs(css.toString("utf-8"), rasters.map((r) => r.name));
   console.log(`info  ${rasters.length} file(s) under ${SPLASH_ASSETS} · ${refs.length} url() ref(s) in splash.css`);
   findings.push(...checkRasters(rasters), ...refs);
+
+  const builtCss = walk(join(root, ".next/static/chunks"))
+    .filter((p) => p.endsWith(".css"))
+    .map((p) => readFileSync(p, "utf-8"))
+    .filter((t) => t.includes("#verilane-splash"))
+    .join("\n");
+  const mediaDir = join(root, ".next/static/media");
+  findings.push(...checkBuiltRefs(builtCss, rasters.map((r) => r.name), (name) => existsSync(join(mediaDir, name))));
 
   findings.push(...checkRouteDeltas(measureRoutes(stats, (p) => readFileSync(join(root, p)))));
 

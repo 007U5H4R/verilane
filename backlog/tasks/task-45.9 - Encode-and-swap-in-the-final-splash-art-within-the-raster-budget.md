@@ -1,10 +1,10 @@
 ---
 id: TASK-45.9
 title: Encode and swap in the final splash art within the raster budget
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-02 17:20'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 19:11'
 labels:
   - P1
 dependencies:

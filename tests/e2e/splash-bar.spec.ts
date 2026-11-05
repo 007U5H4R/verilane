@@ -1,5 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 
+import { holdManifest } from "./splash-hold";
+
 // TASK-45.4 · The splash progress bar (TC-143–TC-150). The bar moves only on
 // real phases (session 35 → provider 65 → seeding 80 → ready/error 100), is
 // revealed at 3.2 s, shows a glint after a 1.5 s stall and a "Still working"
@@ -161,15 +163,6 @@ async function seed(context: BrowserContext) {
   await expect(p.locator("main")).toBeAttached({ timeout: 20_000 });
   await p.waitForFunction(() => performance.getEntriesByName("splash:ready").length > 0, undefined, { timeout: 20_000 });
   await p.close();
-}
-
-/** Hold the seed manifest (the first fetch that gates seeding, or the
- * returning visit's version check) for `ms`. */
-async function holdManifest(context: BrowserContext, ms: number) {
-  await context.route("**/seed/manifest.json", async (route) => {
-    await new Promise((r) => setTimeout(r, ms));
-    await route.continue().catch(() => {});
-  });
 }
 
 test.beforeEach(async ({ context }) => {
