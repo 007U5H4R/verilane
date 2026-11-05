@@ -526,19 +526,20 @@ test("TC-101b: heritage breakpoints are Tailwind's md/lg as served, with no frac
   // The whole-pixel edges either side of each breakpoint.
   const at = async (width: number) => (await loadFresh(browser, baseURL!, theme, { url: "/queue", viewport: { width, height: 900 } })).band;
   expect((await at(767))?.display, "767").toBe("none");
-  expect(await at(768), "768").toMatchObject({ display: "block", height: "300px" });
-  expect(await at(1023), "1023").toMatchObject({ display: "block", height: "300px" });
-  expect((await at(1024))?.height, "1024").not.toBe("300px");
+  // The tablet box is a fixed 600px (EXE109); desktop's clamp reads 430px at 1024.
+  expect(await at(768), "768").toMatchObject({ display: "block", height: "600px" });
+  expect(await at(1023), "1023").toMatchObject({ display: "block", height: "600px" });
+  expect((await at(1024))?.height, "1024").not.toBe("600px");
 });
 
 // R-5: the computed strength and the tablet box, not just the attribute.
-test("TC-101c: reduced routes are quieter and tablet uses the 300px box at 38% (R-5)", async ({ browser, baseURL }, info) => {
+test("TC-101c: reduced routes are quieter and tablet uses the 600px box at 15% (R-5, EXE109)", async ({ browser, baseURL }, info) => {
   const theme = schemeOf(info);
   const drafts = await loadFresh(browser, baseURL!, theme, { url: "/drafts", viewport: { width: 1440, height: 900 } });
   expect(drafts.band).toMatchObject({ level: "reduced", display: "block", opacity: "0.6" });
   const queue = await loadFresh(browser, baseURL!, theme, { url: "/queue", viewport: { width: 800, height: 900 } });
-  expect(queue.band).toMatchObject({ level: "normal", display: "block", opacity: "1", height: "300px" });
-  expect(queue.band?.position).toMatch(/^38% /);
+  expect(queue.band).toMatchObject({ level: "normal", display: "block", opacity: "1", height: "600px" });
+  expect(queue.band?.position).toMatch(/^15% /);
 });
 
 test("TC-103: a route at level off renders an inert layer and fetches nothing (SC9)", async ({ browser, baseURL }, info) => {

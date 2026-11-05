@@ -255,23 +255,32 @@
 /* Breakpoints are Tailwind's md (48rem) and lg (64rem) in range syntax, so
    they meet the layout's own with no fractional-width gap (R-4): max-width
    767px left 767.5px on the mobile layout with the desktop art.
-   Tablet: the desktop asset beside the 72px rail, shifted so the gopuram and
-   Taj stay in view, in a fixed 300px box (EXE53). */
+   Tablet: the desktop asset beside the 72px rail at desktop scale (EXE109,
+   superseding EXE53's 300px cover box at 38%). At 300px the art drew at half
+   scale, so the monument bodies fell inside the text zone and the fade cut
+   them, and SC2 prominence dropped below band. A 600px box with the image 600px
+   tall puts the monument tops behind the text zone, as on desktop. */
 @media (48rem <= width < 64rem) {
   [data-heritage] {
-    height: 300px;
-    background-position: 38% top;
+    height: 600px;
+    background-size: auto 600px;
+    background-position: 15% -8px;
   }
 }
 /* Mobile: Home only, as a short strip. Every other route renders the box
-   display:none, so it fetches nothing (F5). */
+   display:none, so it fetches nothing (F5). The strip is drawn 300px tall,
+   right-aligned and 40px down, in a 280px box (EXE109): the text zone starts
+   about 117px down, so a shorter cover box left only empty canvas and fade
+   beside and below it. */
 @media (width < 48rem) {
   [data-heritage] {
     display: none;
   }
   [data-heritage][data-level="normal"][data-home] {
     display: block;
-    height: clamp(160px, 44vw, 240px);
+    height: 280px;
+    background-size: auto 300px;
+    background-position: 100% 40px;
     background-image: image-set(
       url("/heritage/heritage-light-strip.v2.avif") type("image/avif"),
       url("/heritage/heritage-light-strip.v2.webp") type("image/webp")
