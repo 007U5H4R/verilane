@@ -526,19 +526,20 @@ test("TC-101b: heritage breakpoints are Tailwind's md/lg as served, with no frac
   // The whole-pixel edges either side of each breakpoint.
   const at = async (width: number) => (await loadFresh(browser, baseURL!, theme, { url: "/queue", viewport: { width, height: 900 } })).band;
   expect((await at(767))?.display, "767").toBe("none");
-  expect(await at(768), "768").toMatchObject({ display: "block", height: "300px" });
-  expect(await at(1023), "1023").toMatchObject({ display: "block", height: "300px" });
-  expect((await at(1024))?.height, "1024").not.toBe("300px");
+  // The tablet box is a fixed 600px (EXE115); desktop's clamp reads 430px at 1024.
+  expect(await at(768), "768").toMatchObject({ display: "block", height: "600px" });
+  expect(await at(1023), "1023").toMatchObject({ display: "block", height: "600px" });
+  expect((await at(1024))?.height, "1024").not.toBe("600px");
 });
 
 // R-5: the computed strength and the tablet box, not just the attribute.
-test("TC-101c: reduced routes are quieter and tablet uses the 300px box at 38% (R-5)", async ({ browser, baseURL }, info) => {
+test("TC-101c: reduced routes are quieter and tablet uses the 600px box at 15% (R-5, EXE115)", async ({ browser, baseURL }, info) => {
   const theme = schemeOf(info);
   const drafts = await loadFresh(browser, baseURL!, theme, { url: "/drafts", viewport: { width: 1440, height: 900 } });
   expect(drafts.band).toMatchObject({ level: "reduced", display: "block", opacity: "0.6" });
   const queue = await loadFresh(browser, baseURL!, theme, { url: "/queue", viewport: { width: 800, height: 900 } });
-  expect(queue.band).toMatchObject({ level: "normal", display: "block", opacity: "1", height: "300px" });
-  expect(queue.band?.position).toMatch(/^38% /);
+  expect(queue.band).toMatchObject({ level: "normal", display: "block", opacity: "1", height: "600px" });
+  expect(queue.band?.position).toMatch(/^15% /);
 });
 
 test("TC-103: a route at level off renders an inert layer and fetches nothing (SC9)", async ({ browser, baseURL }, info) => {
@@ -643,4 +644,58 @@ test("TC-107b: Save-Data skips the preload: no other-theme request and no data-i
   expect(seen.filter((p) => p.includes(`heritage-${other(theme)}-`))).toEqual([]);
   expect(t.idleAt).toBeNull();
   expect(idleAttr).toBeNull();
+});
+
+// TASK-46.8 · TC-125 (SC7): the splash hands off to a finished background.
+// Cold cinematic load (`?__splash=1`, motion allowed, the splash-on
+// preconditions from splash.spec.ts). An init script stamps the moment
+// html[data-splash] first reads "done" (epoch ms, the page's clock); the band's
+// own art request must have finished by then, on the browser's network clock.
+type SplashWindow = Window & { __splashDoneAt?: number };
+
+test("TC-125: the heritage art is complete when the splash hands off (SC7)", async ({ browser, baseURL }, info) => {
+  const theme = schemeOf(info);
+  const context = await browser.newContext({ baseURL, colorScheme: theme, serviceWorkers: "block", viewport: { width: 1440, height: 900 } });
+  await context.addInitScript(() => {
+    try {
+      window.localStorage.setItem("verilane-session", "guest");
+      window.sessionStorage.removeItem("verilane-splash-seen");
+    } catch {
+      // Storage blocked: the splash stays off and the "painted" check fails loudly.
+    }
+    const w = window as SplashWindow;
+    // Observe `document` with subtree: <html> may not exist yet when this runs.
+    new MutationObserver(() => {
+      if (w.__splashDoneAt === undefined && document.documentElement?.dataset.splash === "done") {
+        w.__splashDoneAt = performance.timeOrigin + performance.now();
+      }
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-splash"] });
+  });
+  const page = await context.newPage();
+  const finished: { path: string; endAt: number }[] = [];
+  page.on("requestfinished", (r) => {
+    if (!r.url().includes("/heritage/")) return;
+    const t = r.timing();
+    finished.push({ path: new URL(r.url()).pathname, endAt: t.responseEnd >= 0 ? t.startTime + t.responseEnd : Number.NaN });
+  });
+  await page.goto("/?__splash=1");
+  await page.waitForFunction(() => document.documentElement.dataset.splash === "done", undefined, { timeout: 20_000 });
+  const painted = await page.evaluate(() => performance.getEntriesByName("splash:painted").length);
+  const doneAt = await page.evaluate(() => (window as SplashWindow).__splashDoneAt ?? null);
+  const own = `heritage-${theme}-desk.`;
+  await expect.poll(() => finished.filter((f) => f.path.includes(own)).length, { message: "the band's art request finished" }).toBeGreaterThan(0);
+  const art = finished.find((f) => f.path.includes(own))!;
+  const decoded = await page.evaluate(async (path) => {
+    const img = new Image();
+    img.src = path;
+    await img.decode();
+    return img.naturalWidth;
+  }, art.path);
+  await context.close();
+
+  info.annotations.push({ type: "tc-125", description: JSON.stringify({ art, doneAt, leadMs: doneAt === null ? null : doneAt - art.endAt }) });
+  expect(painted, "the cinematic splash ran").toBe(1);
+  expect(doneAt, "data-splash reached done").not.toBeNull();
+  expect(art.endAt, `${art.path} finished before or at hand-off`).toBeLessThanOrEqual(doneAt!);
+  expect(decoded).toBeGreaterThan(0);
 });

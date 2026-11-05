@@ -2,7 +2,7 @@
 // Guard (TASK-46.5 · TC-109–TC-111 · N1): fail if any heritage desk asset is
 // over 60 KB, any strip asset is over 25 KB, or any of the 8 expected files is
 // missing (so an empty directory can't pass). Reads the path-B asset directory
-// chosen by the TKT-46.02 verdict (EXE55): public/heritage/*.v1.{avif,webp}.
+// chosen by the TKT-46.02 verdict (EXE55): public/heritage/*.v2.{avif,webp}.
 // Run: `pnpm image-budget [dir]` (dir defaults to public/heritage; wired into
 // `test:all` right after `route-budget`).
 import { readdirSync, statSync } from "node:fs";
@@ -12,7 +12,7 @@ export const DESK_BUDGET = 60 * 1024;
 export const STRIP_BUDGET = 25 * 1024;
 
 /** Path-B filename version; bumped by hand on each art change (EXE55/EXE56). */
-export const ASSET_VERSION = "v1";
+export const ASSET_VERSION = "v2";
 export const ASSET_DIR = join("public", "heritage");
 
 export const EXPECTED: readonly string[] = (["light", "dark"] as const).flatMap((theme) =>
