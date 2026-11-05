@@ -117,7 +117,7 @@
 - **Expected:** `"reduced"`.
 
 ### TC-101 · Mobile fetches heritage art only on Home (F5)
-- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-04, 0895326) · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.03 · TASK-46.3 · 46.3.5 · F5 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, fada8a8) · **Finding:** — TC-101b/c were updated for EXE109 (600px, 15 % at tablet) at 8a21f0b and passed in the full e2e run (495 pass).
 - **Objective:** No mobile bytes off Home.
 - **Preconditions:** Viewport 390×844.
 - **Steps:** Load `/`, `/queue`, `/drafts` in fresh pages; record heritage requests.
@@ -232,7 +232,7 @@
 - **Expected:** As TC-113.
 
 ### TC-115 · Prominence stays inside the band per level (SC2)
-- **Rel:** M-46.2 · TKT-46.06 · TASK-46.6 · 46.6.4 · SC2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (TASK-46.8 fix round 1, e2e 495/1 fail/24 skip, 1 fail is TC-146, unrelated flake confirmed) · **Finding:** —
+- **Rel:** M-46.2 · TKT-46.06 · TASK-46.6 · 46.6.4 · SC2 · **Type:** e2e · **Pri:** P0 · **Auto:** Y · **Status:** Pass (2026-11-05, fada8a8) · **Finding:** — TASK-46.8 fix round 1 full e2e: 495 pass, 1 fail, 24 skip. The one fail is TC-146, an unrelated flake (confirmed).
 - **Objective:** Visible but quiet, as designed.
 - **Preconditions:** As TC-113, both themes.
 - **Steps:** Outside the text zone compute P = (L\*canvas − L\*peak)/(L\*canvas − L\*text); inside it, peak L\*.

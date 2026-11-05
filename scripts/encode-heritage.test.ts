@@ -86,6 +86,11 @@ async function check(files: string[], theme: "light" | "dark", deskW: number, de
 const ENCODE_TIMEOUT = 120_000;
 
 describe("encodeHeritage", () => {
+  it("pins LIGHT_TONE_A at 0.81, the value calibrated against TC-115's light-normal ceiling (EXE108)", () => {
+    // Changing it moves light normal and light reduced P; re-run the TC-115 sampler and update EXE108 first.
+    expect(LIGHT_TONE_A).toBe(0.81);
+  });
+
   it("TC-112: writes 4 files — desk 2400×1029 and strip 1200×480, AVIF + WebP, no ICC/EXIF", async () => {
     const out = join(dir, "default");
     const files = await encodeHeritage(master, "light", { out });
