@@ -10,7 +10,7 @@ import { ingest, type Row } from "@/domain/ingest";
 import { asOf, daysBetween } from "@/domain/clock";
 import { match } from "@/domain/match";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
-import { exceptionsFor } from "@/domain/review";
+import { exceptionsFor, paymentExceptionsFor } from "@/domain/review";
 import { deriveSignals } from "@/domain/signals";
 import type {
   Dispute,
@@ -192,6 +192,7 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
     exceptions.push(...exceptionsFor(m, ext, { invoices, payments }));
     disputes.push(...disputesFor(m, ext, email, invoices));
   }
+  exceptions.push(...paymentExceptionsFor({ invoices, payments }));
   await db.matches.clear();
   await db.matches.bulkPut(matches);
   await syncExceptions(db, exceptions);
@@ -259,18 +260,19 @@ async function syncDisputes(db: VerilaneDb, computed: Dispute[]): Promise<void> 
   );
 }
 
-const EMAIL_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation", "dispute"]);
+/** Kinds recompute derives (email kinds, plus unallocated_payment from the ledger, EXE124). */
+const DERIVED_EXCEPTION_KINDS = new Set(["uncertain_match", "reconciliation", "dispute", "unallocated_payment"]);
 
 /**
  * Review items are workflow rows: a person may action or dismiss one. Upsert
- * the computed email items keeping any existing row's status; drop open
- * email items the data no longer raises; leave closed ones as history.
+ * the computed items keeping any existing row's status; drop open derived
+ * items the data no longer raises; leave closed ones as history.
  */
 async function syncExceptions(db: VerilaneDb, computed: Exception[]): Promise<void> {
   const existing = new Map((await db.exceptions.toArray()).map((r) => [r.review_id, r]));
   const keep = new Set(computed.map((r) => r.review_id));
   const stale = [...existing.values()]
-    .filter((r) => r.status === "open" && EMAIL_REVIEW_KINDS.has(r.kind) && !keep.has(r.review_id))
+    .filter((r) => r.status === "open" && DERIVED_EXCEPTION_KINDS.has(r.kind) && !keep.has(r.review_id))
     .map((r) => r.review_id);
   await db.exceptions.bulkDelete(stale);
   await db.exceptions.bulkPut(

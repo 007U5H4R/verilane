@@ -151,7 +151,7 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
 
     expect(await db.customers.count()).toBe(10);
     expect(await db.invoices.count()).toBe(50);
-    expect(await db.payments.count()).toBe(11);
+    expect(await db.payments.count()).toBe(12); // P-012: unapplied bank line (TKT-75.02)
     expect(await db.emails.count()).toBeGreaterThanOrEqual(25);
     expect(await db.priorities.count()).toBe(50);
 
@@ -260,6 +260,24 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     expect(unmatched.length).toBeGreaterThan(0);
     const uncertain = await db.exceptions.where("kind").equals("uncertain_match").toArray();
     expect(uncertain.map((r) => r.message_id).sort()).toEqual(unmatched.map((m) => m.message_id).sort());
+  });
+
+  it("TC-75.07: one unallocated_payment exception per unapplied payment, stable across recomputes", async () => {
+    await ensureSeeded(db, realFetcher());
+    const unapplied = (await db.payments.toArray()).filter((p) => p.invoice_id === null);
+    const first = await db.exceptions.where("kind").equals("unallocated_payment").toArray();
+    expect(first.map((x) => x.payment_id).sort()).toEqual(unapplied.map((p) => p.payment_id).sort());
+    expect(first.find((x) => x.payment_id === "P-012")).toMatchObject({
+      review_id: "RV-PAY-P-012",
+      invoice_id: "INV-F",
+      candidate_invoice_ids: ["INV-F"],
+      status: "open",
+    });
+    const total = await db.exceptions.count();
+    await recompute(db);
+    await recompute(db);
+    expect(await db.exceptions.count()).toBe(total);
+    expect(await db.exceptions.where("kind").equals("unallocated_payment").toArray()).toEqual(first);
   });
 
   it("recompute() keeps a reviewer's decision on an existing item", async () => {

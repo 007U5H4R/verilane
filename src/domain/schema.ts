@@ -287,6 +287,10 @@ export const ExceptionSchema = z.object({
   /** Reconciliation only: the email's claim and the ledger's outstanding, side by side. */
   email_amount_paise: z.number().int().nonnegative().brand<"Paise">().optional(),
   ledger_outstanding_paise: paiseAmount.optional(),
+  /** Payment kinds only: the bank line that raised it (TKT-75.02, EXE124). */
+  payment_id: z.string().min(1).optional(),
+  /** Payment kinds only: open invoices the payment could settle, in ledger order. */
+  candidate_invoice_ids: z.array(z.string()).optional(),
 }).superRefine((x, ctx) => {
   if (x.message_id === undefined && !isPaymentExceptionKind(x.kind)) {
     ctx.addIssue({ code: "custom", path: ["message_id"], message: `${x.kind} exceptions need the email that raised them` });

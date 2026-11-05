@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { exceptionsFor, type ReviewLedger } from "./review";
-import { EXTRACTION_SCHEMA_VERSION, ExceptionSchema, type Extraction, type Invoice, type Match } from "./schema";
+import { exceptionsFor, paymentExceptionsFor, type ReviewLedger } from "./review";
+import { EXTRACTION_SCHEMA_VERSION, ExceptionSchema, type Extraction, type Invoice, type Match, type Payment } from "./schema";
 import { paise } from "./money";
 
 function invoice(invoice_id: string, amount_paise: number): Invoice {
@@ -142,4 +142,70 @@ describe("exceptionsFor", () => {
       expect(() => ExceptionSchema.parse(items[0])).not.toThrow();
     },
   );
+});
+
+// TC-75.07 (TKT-75.02): one unallocated_payment exception per unapplied
+// payment, deterministic, with the open invoices whose outstanding equals
+// the payment as candidates.
+describe("paymentExceptionsFor — TC-75.07", () => {
+  const pay = (payment_id: string, invoice_id: string | null, amount: number): Payment => ({
+    payment_id,
+    invoice_id,
+    paid_on: "2026-10-29",
+    amount_paise: paise(amount),
+  });
+  const invoices = [
+    invoice("INV-001", 2_500_000),
+    invoice("INV-002", 4_000_000),
+    invoice("INV-003", 4_000_000),
+    { ...invoice("INV-004", 9_900_000), status: "paid" as const },
+    { ...invoice("INV-005", 9_900_000), status: "written_off" as const },
+  ];
+
+  it("raises one open, verified exception naming the single candidate", () => {
+    const out = paymentExceptionsFor({ invoices, payments: [pay("P-012", null, 2_500_000)] });
+    expect(out).toEqual([
+      {
+        review_id: "RV-PAY-P-012",
+        kind: "unallocated_payment",
+        payment_id: "P-012",
+        invoice_id: "INV-001",
+        candidate_invoice_ids: ["INV-001"],
+        linked_review_ids: [],
+        recommendation: "Allocate this payment to INV-001 after checking the bank line",
+        evidence_ids: ["P-012:payments.csv:amount_paise", "P-012:payments.csv:invoice_id"],
+        validation_status: "verified",
+        escalation_reason: "Bank line has no invoice; its amount matches exactly one open invoice",
+        requires_role: "analyst",
+        status: "open",
+      },
+    ]);
+    for (const x of out) expect(ExceptionSchema.safeParse(x).success).toBe(true);
+  });
+
+  it("is deterministic: the same ledger gives the same exceptions", () => {
+    const ledger = { invoices, payments: [pay("P-1", null, 2_500_000), pay("P-2", null, 4_000_000)] };
+    expect(paymentExceptionsFor(ledger)).toEqual(paymentExceptionsFor(structuredClone(ledger)));
+  });
+
+  it("ignores applied payments and never offers a closed invoice", () => {
+    expect(paymentExceptionsFor({ invoices, payments: [pay("P-1", "INV-001", 2_500_000)] })).toEqual([]);
+    const [x] = paymentExceptionsFor({ invoices, payments: [pay("P-9", null, 9_900_000)] });
+    expect(x).toMatchObject({ candidate_invoice_ids: [], validation_status: "missing" });
+    expect(x?.invoice_id).toBeUndefined();
+  });
+
+  it("an invoice already settled by an applied payment is not a candidate", () => {
+    const [x] = paymentExceptionsFor({
+      invoices,
+      payments: [pay("P-1", "INV-001", 2_500_000), pay("P-2", null, 2_500_000)],
+    });
+    expect(x?.candidate_invoice_ids).toEqual([]);
+  });
+
+  it("two equal candidates: conflict, no invoice picked", () => {
+    const [x] = paymentExceptionsFor({ invoices, payments: [pay("P-2", null, 4_000_000)] });
+    expect(x).toMatchObject({ candidate_invoice_ids: ["INV-002", "INV-003"], validation_status: "conflict" });
+    expect(x?.invoice_id).toBeUndefined();
+  });
 });
