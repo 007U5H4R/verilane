@@ -1,10 +1,10 @@
 ---
 id: TASK-46.8
 title: Ship final heritage art with tone calibration and release evidence
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-02 16:40'
-updated_date: '2026-11-04 18:29'
+updated_date: '2026-11-05 09:06'
 labels:
   - P1
 dependencies:
@@ -31,3 +31,9 @@ TKT-46.08: final swap plus SC4/SC7/CLS/LCP/axe/offline evidence
 <!-- SECTION:PLAN:BEGIN -->
 Stage 5 (draft at gate, 2026-11-02): docs/technical-plan-TASK-46.md Part B steps 46.8.1-46.8.6 · TC-119-TC-125
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Shipped r4, PR #8 merged to main at 9928bef, prod deploy dpl_9iMmyfbxz2g2FcKJa6mPfonPXDYz verified READY. /, /queue, /settings 200; heritage v2 assets served; 0 runtime errors. TC-081/TC-018/TC-158 e2e flakes investigated as host-load, not regression (TASK-84 filed, provisional, awaiting user confirmation).
+<!-- SECTION:NOTES:END -->
