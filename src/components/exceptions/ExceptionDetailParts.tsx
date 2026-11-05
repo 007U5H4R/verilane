@@ -10,7 +10,7 @@ import { EXCEPTION_KIND_LABEL, exceptionStatusLabel } from "@/domain/exceptions/
 import { formatInr } from "@/domain/money";
 import type { Permission } from "@/domain/permissions";
 import { isPaymentExceptionKind } from "@/domain/schema";
-import type { AuditEventRow } from "@/store/db";
+import type { AuditEventRow, PolicyDecisionRow } from "@/store/db";
 import type { ExceptionCandidate, ExceptionDetail } from "@/store/hooks";
 import { cn } from "@/lib/cn";
 
@@ -18,8 +18,24 @@ import { cn } from "@/lib/cn";
  * `/exceptions/[id]` parts (TKT-75.02, Design-TASK-75 §8, §10, §11, §13, §14):
  * payment evidence, invoice facts per candidate, the audit trail (newest
  * first) and the action bar. Presentational only; the route supplies data.
- * No agent blocks or Policy card (79.3/79.4).
+ *
+ * TKT-75.03 (Design-TASK-75 §4, §9) adds, as clearly separated sections:
+ * the Stage 1 (Recommend Agent) and Stage 2 (Policy Agent) blocks, and the
+ * always-shown Policy Decision sidebar card. No Stage 3 (Execute) block —
+ * out of scope here (79.4).
  */
+
+const VERDICT_LABEL: Record<string, string> = {
+  auto_permitted: "Auto-permitted",
+  needs_analyst: "Needs analyst review",
+  needs_manager: "Needs manager review",
+  blocked: "Blocked",
+};
+
+function verdictLabel(verdict: string | undefined): string {
+  if (verdict === undefined) return "Unknown";
+  return VERDICT_LABEL[verdict] ?? verdict;
+}
 
 const CARD = "flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card";
 const PROVENANCE = "break-words font-mono text-xs text-text-muted";
@@ -56,9 +72,19 @@ export interface ExceptionDetailContentProps {
   permission: Permission;
   busy: boolean;
   onSubmit: () => void;
+  /** Stage 2 (TKT-75.03): `undefined` while loading, `null` not yet evaluated. */
+  policyDecision?: PolicyDecisionRow | null | undefined;
 }
 
-export function ExceptionDetailContent({ detail, selected, onSelect, permission, busy, onSubmit }: ExceptionDetailContentProps) {
+export function ExceptionDetailContent({
+  detail,
+  selected,
+  onSelect,
+  permission,
+  busy,
+  onSubmit,
+  policyDecision,
+}: ExceptionDetailContentProps) {
   const x = detail.exception;
   const payment = isPaymentExceptionKind(x.kind);
   const blocker = allocateBlocker(detail, selected, permission);
@@ -100,8 +126,13 @@ export function ExceptionDetailContent({ detail, selected, onSelect, permission,
               {x.escalation_reason !== "" && <p className="text-sm text-text-muted">{x.escalation_reason}</p>}
             </section>
           )}
+          {payment && <RecommendAgentBlock recommendation={detail.recommendation} />}
+          {payment && <PolicyAgentBlock policyDecision={policyDecision} />}
         </div>
-        <AuditTrail events={detail.audit} />
+        <div className="flex min-w-0 flex-col gap-4">
+          {payment && <PolicyDecisionCard policyDecision={policyDecision} />}
+          <AuditTrail events={detail.audit} />
+        </div>
       </div>
 
       <div
@@ -258,6 +289,109 @@ function CandidateFacts({
             );
           })}
         </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Stage 1 (Design-TASK-75 §4): the Recommend agent's verified claims, each
+ * with a source reference, plus its recommendation text and confidence.
+ * `undefined` recommendation means the exception kind isn't payment-shaped
+ * (no Stage 1 to show); `!ok` is the F13 cannot-recommend case.
+ */
+function RecommendAgentBlock({ recommendation }: { recommendation: ExceptionDetail["recommendation"] }) {
+  if (recommendation === undefined) return null;
+  return (
+    <section className={CARD} aria-labelledby="stage-recommend" data-testid="stage-recommend">
+      <h2 id="stage-recommend" className="font-semibold text-text">
+        1. Recommend Agent
+      </h2>
+      {recommendation.ok ? (
+        <>
+          <ul className="flex flex-col gap-1 text-sm text-text">
+            {recommendation.value.facts.map((f) => (
+              <li key={f.claimId} className="flex min-w-0 flex-wrap items-baseline gap-2">
+                <span>{f.value}</span>
+                <span className={PROVENANCE}>Source: {f.evidenceId}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-text">{recommendation.value.recommendation_text}</p>
+          <p className="text-xs text-text-muted">
+            Confidence: {recommendation.value.confidence === "high" ? "high (exact match)" : "low (ambiguous match)"}
+          </p>
+        </>
+      ) : (
+        <p className="text-sm text-text-muted">Cannot recommend: {recommendation.error.reason}</p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Stage 2 (Design-TASK-75 §4): the Policy agent's verdict + reason +
+ * config_version — "no raw gate list, just the outcome and why".
+ * `undefined` means the Policy evaluation is still loading; `null` means
+ * it hasn't run yet for this exception.
+ */
+function PolicyAgentBlock({ policyDecision }: { policyDecision: PolicyDecisionRow | null | undefined }) {
+  return (
+    <section className={CARD} aria-labelledby="stage-policy" data-testid="stage-policy">
+      <h2 id="stage-policy" className="font-semibold text-text">
+        2. Policy Agent
+      </h2>
+      {policyDecision === undefined && <p className="text-sm text-text-muted">Evaluating…</p>}
+      {policyDecision === null && <p className="text-sm text-text-muted">Not yet evaluated.</p>}
+      {policyDecision && (
+        <>
+          <p className="text-sm text-text">
+            Policy verdict: {verdictLabel(policyDecision.verdict)}
+            {policyDecision.reason ? ` — ${policyDecision.reason}` : ""}
+          </p>
+          <p className="text-xs text-text-muted">
+            Policy version: {policyDecision.config_version ?? "—"} · Evaluated at:{" "}
+            {typeof policyDecision.evaluated_at === "string" ? formatDateTime(policyDecision.evaluated_at) : "—"}
+          </p>
+          {policyDecision.model_policy_conflict && (
+            <p className="text-sm text-amber-700" data-testid="policy-conflict">
+              Recommend and Policy disagreed — the Policy verdict governs (FS22).
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Policy Decision sidebar card (Design-TASK-75 §9): `POL-{id}`, always
+ * shown, even before any Execute action — a `detail-card` with the verdict,
+ * one-line reason, decision id, policy version and evaluation timestamp.
+ */
+function PolicyDecisionCard({ policyDecision }: { policyDecision: PolicyDecisionRow | null | undefined }) {
+  return (
+    <section className={cn(CARD, "h-fit")} aria-labelledby="policy-decision-card" data-testid="policy-decision-card">
+      <h2 id="policy-decision-card" className="font-semibold text-text">
+        Policy Decision
+      </h2>
+      {policyDecision === undefined && <p className="text-sm text-text-muted">Evaluating…</p>}
+      {policyDecision === null && <p className="text-sm text-text-muted">Not yet evaluated.</p>}
+      {policyDecision && (
+        <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[13px]">
+          <dt className="text-text-muted">Verdict</dt>
+          <dd className="text-text">{verdictLabel(policyDecision.verdict)}</dd>
+          <dt className="text-text-muted">Reason</dt>
+          <dd className="text-text">{policyDecision.reason ?? "—"}</dd>
+          <dt className="text-text-muted">Decision ID</dt>
+          <dd className="break-all font-mono text-[11px] text-text-muted">{policyDecision.decision_id}</dd>
+          <dt className="text-text-muted">Policy version</dt>
+          <dd className="text-[11px] text-text-muted">{policyDecision.config_version ?? "—"}</dd>
+          <dt className="text-text-muted">Evaluated</dt>
+          <dd className="text-[11px] text-text-muted">
+            {typeof policyDecision.evaluated_at === "string" ? formatDateTime(policyDecision.evaluated_at) : "—"}
+          </dd>
+        </dl>
       )}
     </section>
   );

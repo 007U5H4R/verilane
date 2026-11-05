@@ -16,9 +16,15 @@ import { unappliedCashPaise, unappliedPayments } from "@/domain/aggregates";
 import { buildExceptionRows, type ExceptionRow as ExceptionListRow } from "@/domain/exceptions/list";
 import type { Paise } from "@/domain/money";
 import { outstandingOf, rank, type RankItem } from "@/domain/priority";
+import {
+  evaluatePolicyForException,
+  latestPolicyDecisionForException,
+} from "@/domain/policy";
+import { recommendForException, type RecommendedFacts } from "@/domain/recommend";
+import type { Rejected, Result } from "@/domain/result";
 import type { Customer, DataIssue, Dispute, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Priority, Exception } from "@/domain/schema";
 import { DraftSchema, isEmailException, isPaymentExceptionKind, type Draft } from "@/domain/schema";
-import type { AuditEventRow, VerilaneDb } from "./db";
+import type { AuditEventRow, PolicyDecisionRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
 export const DbContext = createContext<VerilaneDb | null>(null);
@@ -476,6 +482,12 @@ export interface ExceptionDetail {
   /** Σ unapplied cash on the ledger (M1: `unappliedCashPaise`). */
   unappliedCashPaise: Paise;
   unappliedCount: number;
+  /**
+   * Stage 1 (Recommend Agent, TKT-75.03/F15): verified facts over the
+   * already-fetched `payments`/`invoices`/candidate customer — pure, no I/O.
+   * `undefined` for a non-payment-exception kind (Recommend is payment-only).
+   */
+  recommendation?: Result<RecommendedFacts, Rejected>;
 }
 
 /** One exception with its evidence, for `/exceptions/[id]`: `undefined` while loading, `null` when not found. */
@@ -511,13 +523,48 @@ export function useException(id: string): ExceptionDetail | undefined | null {
         outstandingPaise: outstandingOf(invoice, { payments }),
       });
     }
+    const recommendation = isPaymentExceptionKind(exception.kind)
+      ? recommendForException(exception, payments, invoices, candidates[0]?.customer)
+      : undefined;
     return {
       exception,
       payment: exception.payment_id !== undefined ? payments.find((p) => p.payment_id === exception.payment_id) : undefined,
       candidates,
-      audit: audit.sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
+      // Human-action trail only (v1 copy: "No actions yet." until someone acts,
+      // TASK-79.3/EXE130 correction): Policy's own `policy_evaluated` audit
+      // write stays in `db.audit` for anyone querying the table directly, but
+      // is excluded here so it never counts as a "No actions yet." breaker.
+      // The Stage 1/2 blocks + Policy Decision card are what makes an agent
+      // stage visible on this page.
+      audit: audit.filter((e) => e.action !== "policy_evaluated").sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
       unappliedCashPaise: unappliedCashPaise(payments),
       unappliedCount: unappliedPayments(payments).length,
+      recommendation,
     };
   }, [db, id]);
+}
+
+/** The latest PolicyDecision for `exceptionId` (Stage 2, TKT-75.03), live.
+ * `undefined` while loading; `null` once loaded with no decision yet — the
+ * detail page's trigger uses that distinction to evaluate exactly once. */
+export function usePolicyDecision(exceptionId: string): PolicyDecisionRow | null | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => (await latestPolicyDecisionForException(db, exceptionId)) ?? null, [db, exceptionId]);
+}
+
+/**
+ * Triggers Stage 2 (Policy) on demand, from a detail-page view only — never
+ * from `loader.ts`'s global `recompute()` (EXE130: eager evaluation during
+ * `recompute()` wrote a PolicyDecision/audit row for the seeded
+ * `RV-PAY-P-012` exception on every `ensureSeeded()`, breaking pre-existing
+ * `allocatePayment.test.ts`/`startTour.test.ts` assertions that assume a
+ * clean post-seed audit log; this is a wiring choice, not a schema limit).
+ * No-op for a closed exception or one Recommend can't evaluate (F13).
+ */
+export async function ensurePolicyEvaluated(db: VerilaneDb, detail: ExceptionDetail): Promise<void> {
+  const { exception, payment, recommendation } = detail;
+  if (!isPaymentExceptionKind(exception.kind) || exception.status !== "open") return;
+  const amountPaise = payment?.amount_paise ?? 0;
+  const confidence = recommendation?.ok ? recommendation.value.confidence : undefined;
+  await evaluatePolicyForException(db, exception, amountPaise, confidence);
 }

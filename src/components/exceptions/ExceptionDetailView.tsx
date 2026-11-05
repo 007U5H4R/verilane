@@ -1,11 +1,19 @@
 "use client";
 
-import { Component, useContext, useState, type ReactNode } from "react";
+import { Component, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-import { DbContext, useCan, useException, useExecute, type ExceptionDetail } from "@/store/hooks";
+import {
+  DbContext,
+  ensurePolicyEvaluated,
+  useCan,
+  useException,
+  useExecute,
+  usePolicyDecision,
+  type ExceptionDetail,
+} from "@/store/hooks";
 import { ExceptionDetailContent, ExceptionDetailError, ExceptionDetailSkeleton } from "./ExceptionDetailParts";
 
 /**
@@ -66,14 +74,47 @@ function NotFound() {
   );
 }
 
-function ExceptionBody({ id }: { id: string }) {
-  const detail = useException(id);
-  if (detail === undefined) return <ExceptionDetailSkeleton />;
-  if (detail === null) return <NotFound />;
-  return <LoadedException detail={detail} />;
+/**
+ * Stage 2's one trigger point (TKT-75.03/EXE130): evaluating Policy here,
+ * on an actual page view, confines the side effect to the browser — never
+ * `loader.ts`'s `recompute()`, which also runs during `ensureSeeded()` and
+ * every store test's setup. The `evaluatedFor` ref makes this a one-shot per
+ * `id`, since `usePolicyDecision` keeps resolving `null` for the instant
+ * between the write and the live query re-reading it.
+ */
+function usePolicyEvaluationTrigger(id: string, detail: ExceptionDetail | undefined | null) {
+  const db = useContext(DbContext);
+  const policyDecision = usePolicyDecision(id);
+  const evaluatedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!db || !detail || policyDecision !== null) return;
+    if (evaluatedFor.current === id) return;
+    evaluatedFor.current = id;
+    void ensurePolicyEvaluated(db, detail).catch((err: unknown) => {
+      console.error("[verilane] policy evaluation failed", err);
+      evaluatedFor.current = null; // allow a retry on the next render
+    });
+  }, [db, id, detail, policyDecision]);
+
+  return policyDecision;
 }
 
-function LoadedException({ detail }: { detail: ExceptionDetail }) {
+function ExceptionBody({ id }: { id: string }) {
+  const detail = useException(id);
+  const policyDecision = usePolicyEvaluationTrigger(id, detail);
+  if (detail === undefined) return <ExceptionDetailSkeleton />;
+  if (detail === null) return <NotFound />;
+  return <LoadedException detail={detail} policyDecision={policyDecision} />;
+}
+
+function LoadedException({
+  detail,
+  policyDecision,
+}: {
+  detail: ExceptionDetail;
+  policyDecision: ReturnType<typeof usePolicyDecision>;
+}) {
   const x = detail.exception;
   const only = detail.candidates.length === 1 ? detail.candidates[0]!.invoice.invoice_id : null;
   const [picked, setPicked] = useState<string | null>(null);
@@ -107,6 +148,7 @@ function LoadedException({ detail }: { detail: ExceptionDetail }) {
       permission={permission}
       busy={busy}
       onSubmit={() => void submit()}
+      policyDecision={policyDecision}
     />
   );
 }
