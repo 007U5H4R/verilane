@@ -663,11 +663,12 @@ test("TC-125: the heritage art is complete when the splash hands off (SC7)", asy
       // Storage blocked: the splash stays off and the "painted" check fails loudly.
     }
     const w = window as SplashWindow;
+    // Observe `document` with subtree: <html> may not exist yet when this runs.
     new MutationObserver(() => {
-      if (w.__splashDoneAt === undefined && document.documentElement.dataset.splash === "done") {
+      if (w.__splashDoneAt === undefined && document.documentElement?.dataset.splash === "done") {
         w.__splashDoneAt = performance.timeOrigin + performance.now();
       }
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-splash"] });
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-splash"] });
   });
   const page = await context.newPage();
   const finished: { path: string; endAt: number }[] = [];
