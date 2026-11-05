@@ -1,10 +1,10 @@
 ---
 id: TASK-45.10
 title: 'Collect splash release evidence for a11y, performance, breakpoints and e2e'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-02 17:20'
-updated_date: '2026-11-02 17:41'
+updated_date: '2026-11-04 19:11'
 labels:
   - P1
 dependencies:
