@@ -23,6 +23,10 @@ export const MISSING = {
   review: "Insufficient evidence — human review required.",
 } as const;
 
+/** Shown where a ledger entry's invoice would be when it has none
+ * (`invoice_id: null`, unapplied cash, TASK-79.1). v1 data never has one. */
+export const UNAPPLIED_LABEL = "Unapplied";
+
 /** How many days either side of a quoted payment date a ledger entry may sit. */
 export const DATE_WINDOW_DAYS = 3;
 
@@ -262,6 +266,7 @@ export function candidatesFor(
   if (!c.customerId) return [];
   const out: Candidate[] = [];
   for (const p of payments) {
+    if (p.invoice_id === null) continue; // unapplied cash has no invoice, so no customer to match (TASK-79.1)
     const inv = invoices.get(p.invoice_id);
     if (!inv || inv.customer_id !== c.customerId) continue; // never across customers
     const sameInvoice = c.invoiceId !== undefined && p.invoice_id === c.invoiceId;

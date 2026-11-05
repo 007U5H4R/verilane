@@ -112,6 +112,7 @@ export async function ensureSeeded(
 function buildCustomerHistory(invoices: Invoice[], payments: Payment[]): Map<string, number> {
   const paymentsByInvoice = new Map<string, Payment[]>();
   for (const payment of payments) {
+    if (payment.invoice_id === null) continue; // unapplied cash is no invoice's history (TASK-79.1)
     const list = paymentsByInvoice.get(payment.invoice_id) ?? [];
     list.push(payment);
     paymentsByInvoice.set(payment.invoice_id, list);

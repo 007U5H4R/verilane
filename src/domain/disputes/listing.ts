@@ -147,7 +147,7 @@ export function buildCases(src: DisputeSources): DisputeCase[] {
       amountPaise,
       amountNote,
       paymentClaimed,
-      ledgerPayments: src.payments.filter((p) => invoiceIds.includes(p.invoice_id)),
+      ledgerPayments: src.payments.filter((p) => p.invoice_id !== null && invoiceIds.includes(p.invoice_id)),
       createdAt,
       age: ageDays(createdAt, src.asOf),
       events,

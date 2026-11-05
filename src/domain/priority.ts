@@ -45,13 +45,24 @@ export interface RankCtx {
   payments: Payment[];
 }
 
-/** Outstanding = amount − Σpayments. Exported so the Queue row (TASK-7.8)
+/** A payment with no invoice (`invoice_id: null`, TASK-79.1) is unapplied
+ * cash: it reduces no invoice's outstanding and is totalled separately
+ * (`unappliedCashPaise` in aggregates.ts), never dropped (TC-003). */
+export function isUnapplied(p: Payment): p is Payment & { invoice_id: null } {
+  return p.invoice_id === null;
+}
+
+/** Σ payments applied to one invoice. Unapplied (null) payments never match. */
+export function appliedPaiseOf(invoiceId: string, payments: readonly Payment[]): Paise {
+  return payments
+    .filter((p) => !isUnapplied(p) && p.invoice_id === invoiceId)
+    .reduce((sum, p) => addPaise(sum, p.amount_paise), ZERO_PAISE);
+}
+
+/** Outstanding = amount − Σ applied payments. Exported so the Queue row (TASK-7.8)
  * shows the same figure `rank()`'s tie-break already uses. */
 export function outstandingOf(inv: Invoice, ctx: RankCtx): Paise {
-  const paid = ctx.payments
-    .filter((p) => p.invoice_id === inv.invoice_id)
-    .reduce((sum, p) => addPaise(sum, p.amount_paise), ZERO_PAISE);
-  return subPaise(inv.amount_paise, paid);
+  return subPaise(inv.amount_paise, appliedPaiseOf(inv.invoice_id, ctx.payments));
 }
 
 function daysOverdueOf(inv: Invoice, ctx: PriorityCtx): number | null {

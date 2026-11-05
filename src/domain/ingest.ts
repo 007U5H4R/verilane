@@ -275,6 +275,7 @@ export function ingest(raw: IngestInput): IngestResult {
 
   const paymentsByInvoice = new Map<string, number>();
   for (const payment of payments) {
+    if (payment.invoice_id === null) continue; // unapplied cash pays no invoice (TASK-79.1)
     paymentsByInvoice.set(
       payment.invoice_id,
       (paymentsByInvoice.get(payment.invoice_id) ?? 0) + payment.amount_paise,

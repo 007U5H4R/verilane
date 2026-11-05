@@ -54,7 +54,9 @@ export type Invoice = z.infer<typeof InvoiceSchema>;
 
 export const PaymentSchema = z.object({
   payment_id: z.string(),
-  invoice_id: z.string(),
+  // null = unapplied cash: received but not yet allocated to an invoice
+  // (TASK-79.1, TC-003). Every reader handles null explicitly.
+  invoice_id: z.string().nullable(),
   paid_on: isoDate,
   amount_paise: paiseAmount, // partial payments allowed (FS8).
 });

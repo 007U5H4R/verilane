@@ -5,6 +5,7 @@
  */
 import Dexie, { liveQuery } from "dexie";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { paise } from "@/domain/money";
 import { openDb, type VerilaneDb } from "./db";
 
 let opened: VerilaneDb | undefined;
@@ -172,6 +173,22 @@ describe("Dexie v1 → v2 upgrade (TASK-79.1, TC-001)", () => {
     expect(db.creditNotes.schema.indexes.map((i) => i.name).sort()).toEqual(["created_at", "invoice_id"]);
     expect(db.policyDecisions.schema.primKey.name).toBe("decision_id");
     expect(db.policyDecisions.schema.indexes.map((i) => i.name).sort()).toEqual(["evaluated_at", "exception_id"]);
+  });
+
+  it("stores a null-invoice payment; the invoice_id index skips it and an explicit filter finds it (TC-003)", async () => {
+    const { db } = await openDb(`db-test-null-invoice-${Math.random()}`);
+    opened = db;
+    await db.payments.bulkAdd([
+      { payment_id: "P1", invoice_id: null, paid_on: "2026-09-10", amount_paise: paise(45_000) },
+      { payment_id: "P2", invoice_id: "INV-001", paid_on: "2026-09-11", amount_paise: paise(50_000) },
+      { payment_id: "P3", invoice_id: "INV-001", paid_on: "2026-09-12", amount_paise: paise(30_000) },
+    ]);
+    expect(await db.payments.count()).toBe(3); // nothing dropped
+    const applied = await db.payments.where("invoice_id").equals("INV-001").toArray();
+    expect(applied.reduce((s, p) => s + p.amount_paise, 0)).toBe(80_000);
+    const unapplied = await db.payments.filter((p) => p.invoice_id === null).toArray();
+    expect(unapplied.map((p) => p.payment_id)).toEqual(["P1"]);
+    expect((await db.payments.get("P1"))?.invoice_id).toBeNull(); // no coercion to "null" / ""
   });
 
   it("a fresh v2 db opens with the new tables empty", async () => {

@@ -34,7 +34,7 @@ import { cn } from "@/lib/cn";
 const CaseActions = dynamic(() => import("./CaseActions").then((m) => m.CaseActions));
 const BulkBar = dynamic(() => import("./BulkBar").then((m) => m.BulkBar));
 import { caseAudit, type PaymentsModel } from "./model";
-import { CARD, Field, INPUT, LINK, Pager, SELECT, useUrlState } from "./parts";
+import { CARD, Field, INPUT, InvoiceRef, LINK, Pager, SELECT, useUrlState } from "./parts";
 import { StatusPill, TONE } from "./tone";
 
 const PAGE_SIZE = 4;
@@ -356,9 +356,11 @@ function CandidateRow({ k, model }: { k: Candidate; model: PaymentsModel }) {
         <span className="font-mono text-text">{k.payment.payment_id}</span>
         <span className="tabular-nums font-medium text-text">{formatInr(paise(k.payment.amount_paise))}</span>
         <span className="text-text-muted">{formatDate(k.payment.paid_on)}</span>
-        <Link href={`/invoices/${k.payment.invoice_id}`} className={cn(LINK, "text-xs")}>
-          {model.data.invoices.get(k.payment.invoice_id)?.invoice_number ?? k.payment.invoice_id}
-        </Link>
+        <InvoiceRef
+          invoiceId={k.payment.invoice_id}
+          label={k.payment.invoice_id === null ? undefined : model.data.invoices.get(k.payment.invoice_id)?.invoice_number}
+          className="text-xs"
+        />
       </div>
       <p className="text-xs text-text-muted">{tierLabel}</p>
       <dl className="grid grid-cols-2 gap-x-3 text-xs sm:grid-cols-5">
@@ -528,7 +530,7 @@ function RecentLedger({ model, onViewLedger }: { model: PaymentsModel; onViewLed
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {recent.map((p) => {
-            const inv = model.data.invoices.get(p.invoice_id);
+            const inv = p.invoice_id === null ? undefined : model.data.invoices.get(p.invoice_id);
             const cust = inv ? model.data.customers.get(inv.customer_id) : undefined;
             const st = LEDGER_STATUS_META[ledgerStatus(p.payment_id, model.verifiedIds, model.candidateIds)];
             return (
@@ -540,9 +542,7 @@ function RecentLedger({ model, onViewLedger }: { model: PaymentsModel; onViewLed
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
                   <span>
                     {formatDate(p.paid_on)} ·{" "}
-                    <Link href={`/invoices/${p.invoice_id}`} className={LINK}>
-                      {inv?.invoice_number ?? p.invoice_id}
-                    </Link>
+                    <InvoiceRef invoiceId={p.invoice_id} label={inv?.invoice_number} />
                   </span>
                   <StatusPill tone={st.tone}>{st.label}</StatusPill>
                 </div>

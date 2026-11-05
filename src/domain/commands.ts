@@ -948,7 +948,8 @@ async function reconcileDecide(ctx: Ctx): Promise<Effect> {
     if (!payment) {
       throw new InvalidCommand(`No ledger entry ${paymentId}; only a recorded payment can be verified.`);
     }
-    if (payment.invoice_id !== str(ctx.row?.invoice_id)) {
+    // An unapplied payment (invoice_id null, TASK-79.1) is recorded against no invoice.
+    if (payment.invoice_id === null || payment.invoice_id !== str(ctx.row?.invoice_id)) {
       throw new InvalidCommand(`${paymentId} is not recorded against this invoice.`);
     }
     const extra: Row = {

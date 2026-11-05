@@ -106,6 +106,13 @@ describe("candidatesFor — matching hierarchy", () => {
     ).toEqual([]);
   });
 
+  it("an unapplied ledger entry (invoice_id null, TASK-79.1) is never a candidate and does not crash", () => {
+    const p: Payment = { payment_id: "P-U", invoice_id: null, paid_on: "2026-10-20", amount_paise: paise(5_000_000) };
+    expect(
+      candidatesFor({ invoiceId: "INV-024", customerId: "C-004", amount: paise(5_000_000) }, [p], invoices),
+    ).toEqual([]);
+  });
+
   it("amount alone is never enough: no invoice means nothing is linkable", () => {
     const out = candidatesFor({ customerId: "C-004", amount: paise(5_000_000) }, PAYMENTS, invoices);
     expect(out.length).toBeGreaterThan(0);

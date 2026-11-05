@@ -25,7 +25,7 @@ async function homeFacts(page: Page) {
       db.disputes.toArray(),
     ]);
     const paid = new Map<string, number>();
-    for (const p of payments) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
+    for (const p of payments) if (p.invoice_id !== null) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
     const open = priorities.filter((p) => p.band !== "closed");
     const openIds = new Set(open.map((p) => p.invoice_id));
     const overdue = open.map((p) => p.days_overdue).filter((d): d is number => d !== null && d > 0);

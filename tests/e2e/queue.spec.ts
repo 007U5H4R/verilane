@@ -25,7 +25,7 @@ async function seedFacts(page: Page) {
       db.payments.toArray(),
     ]);
     const paid = new Map<string, number>();
-    for (const p of payments) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
+    for (const p of payments) if (p.invoice_id !== null) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
     return {
       total: priorities.length,
       high: priorities.filter((p) => p.band === "high").length,
@@ -95,7 +95,7 @@ test("TC-015: search, band facet, sort by outstanding and page 2 match the seed"
     const db = window.__verilane!.db;
     const [invoices, payments] = await Promise.all([db.invoices.toArray(), db.payments.toArray()]);
     const paid = new Map<string, number>();
-    for (const p of payments) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
+    for (const p of payments) if (p.invoice_id !== null) paid.set(p.invoice_id, (paid.get(p.invoice_id) ?? 0) + p.amount_paise);
     return Object.fromEntries(invoices.map((i) => [i.invoice_id, i.amount_paise - (paid.get(i.invoice_id) ?? 0)]));
   });
   expect([...page1, ...page2].map((id) => outstandingById[id])).toEqual(facts.outstandingDesc);
