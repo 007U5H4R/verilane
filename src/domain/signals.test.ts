@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deriveSignals, type SignalInput } from "./signals";
-import { EXTRACTION_SCHEMA_VERSION, type Extraction, type Match } from "./schema";
+import { EXTRACTION_SCHEMA_VERSION, type Exception, type Extraction, type Match } from "./schema";
 
 function ext(message_id: string, overrides: Partial<Extraction> = {}): Extraction {
   return {
@@ -135,5 +135,34 @@ describe("deriveSignals", () => {
       }),
     );
     expect(s.disputed?.size ?? 0).toBe(0);
+  });
+});
+
+describe("deriveSignals — related unapplied cash holds reminders (TC-75.10)", () => {
+  const unallocated = (status: Exception["status"], candidates: string[]): Exception => ({
+    review_id: "RV-PAY-P-9",
+    kind: "unallocated_payment",
+    payment_id: "P-9",
+    candidate_invoice_ids: candidates,
+    linked_review_ids: [],
+    recommendation: "",
+    evidence_ids: [],
+    validation_status: candidates.length === 1 ? "verified" : "conflict",
+    escalation_reason: "",
+    requires_role: "analyst",
+    status,
+  });
+
+  it("an open unallocated_payment holds every candidate at G5, cited by the bank line", () => {
+    const s = deriveSignals(input({ exceptions: [unallocated("open", ["INV-1", "INV-2"])] }));
+    expect(s.holdReconcile?.get("INV-1")).toBe("P-9:payments.csv:invoice_id");
+    expect(s.holdReconcile?.get("INV-2")).toBe("P-9:payments.csv:invoice_id");
+  });
+
+  it("an actioned or dismissed one holds nothing", () => {
+    for (const status of ["actioned", "dismissed"] as const) {
+      const s = deriveSignals(input({ exceptions: [unallocated(status, ["INV-1"])] }));
+      expect(s.holdReconcile?.has("INV-1")).toBe(false);
+    }
   });
 });

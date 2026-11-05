@@ -1195,3 +1195,11 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
 - "Update invoice balance and status" is met by derivation, not by writing the invoice row. Invoices are immutable source rows (`tx.put("invoices")` throws, as in v1). The outstanding is `amount − Σ applied payments`, and the recompute in the same transaction re-ranks the invoice, so INV-F closes at G1.
 - `payments` becomes a `TableName` (tx key `payment_id`). `allocate_payment` joins `WHOLE_DB`, so the nested recompute shares the command's single read-write transaction. A throw before commit rolls back the payment, the exception, the priorities and the audit event together (TC-75.09).
 - `Effect` gains an optional `invoice_id`, so the audit event names the invoice the Analyst chose rather than the exception's suggestion.
+
+## EXE126 · Related unapplied cash holds its candidate invoices at G5 and blocks drafts until allocated (TASK-79.2) — accepted
+- AC8 asks that an invoice with related unapplied cash gets no reminder until the cash is allocated. "Related" means the invoice is one of an open `unallocated_payment` exception's `candidate_invoice_ids`, i.e. its outstanding equals the bank line's amount.
+- Two places enforce it, both reusing existing paths rather than adding a new gate:
+  1. **Priority.** `deriveSignals` takes the stored exceptions (optional input) and adds every candidate to `holdReconcile`, cited by `<payment_id>:payments.csv:invoice_id`. The invoice ranks at G5 "Reconcile payment", which the queue never reminds. The loader passes the exceptions as stored after `syncExceptions`, so an actioned or dismissed item holds nothing.
+  2. **Drafts.** `draftContextFor` sets `paymentClaim` ("unapplied bank line P-…") for a candidate of an open item, so check 7 fails and no draft for it can be approved or sent.
+- On the seed, INV-F is already gated earlier (G3), so the hold is invisible there. TC-75.10 proves G5 with a fixture bank line that matches an otherwise-scored invoice, and that allocating it lifts the hold (the invoice closes at G1).
+- If several invoices match, all of them hold. That is deliberate: a reminder to any of them could chase money that is already in the bank.

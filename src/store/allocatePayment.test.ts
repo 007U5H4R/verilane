@@ -3,6 +3,7 @@
  * TC-75.08 `allocate_payment` — one rw transaction: can() → payment.invoice_id
  *   set → invoice balance/status re-derived → exception actioned → one audit event.
  * TC-75.09 failure injection — a throw before commit leaves no partial state.
+ * TC-75.10 reminder exclusion — related unapplied cash holds the invoice at G5 until allocated.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { InvalidCommand, PermissionDenied } from "@/domain/commands";
 import { outstandingOf } from "@/domain/priority";
 import { VerilaneDb } from "./db";
-import { ensureSeeded, type Fetcher } from "./loader";
+import { ensureSeeded, recompute, type Fetcher } from "./loader";
 import { execute, type CommandInput } from "./tx";
 
 const EXC = "RV-PAY-P-012";
@@ -130,5 +131,43 @@ describe("allocate_payment failure injection — TC-75.09", () => {
     expect(err).toBe(boom);
     // …and none of it survives the rollback.
     expect(await snapshot()).toEqual(before);
+  });
+});
+
+describe("reminder exclusion — TC-75.10", () => {
+  it("on the seed, INV-F is never sent a reminder while P-012 is unapplied", async () => {
+    // INV-F is already gated earlier (G3); the hold is recorded, never a reminder.
+    const p = (await db.priorities.get("INV-F"))!;
+    expect(["G1", "G2", "G3", "G4", "G5"]).toContain(p.gate);
+  });
+
+  it("an otherwise-remindable invoice with related unapplied cash is held at G5 until allocation", async () => {
+    // Fixture: a new bank line whose amount matches exactly one invoice that
+    // would otherwise be scored for a reminder (no gate before G5).
+    const payments = await db.payments.toArray();
+    const invoices = await db.invoices.toArray();
+    const priorities = new Map((await db.priorities.toArray()).map((x) => [x.invoice_id, x]));
+    const outs = new Map(invoices.map((i) => [i.invoice_id, outstandingOf(i, { payments })]));
+    const target = invoices.find((i) => {
+      const gate = priorities.get(i.invoice_id)?.gate;
+      const out = outs.get(i.invoice_id)!;
+      const unique = [...outs.values()].filter((o) => o === out).length === 1;
+      return out > 0 && unique && !["G1", "G2", "G3", "G4", "G5"].includes(gate ?? "");
+    });
+    expect(target, "seed has a remindable invoice with a unique outstanding").toBeDefined();
+    const id = target!.invoice_id;
+
+    await db.payments.put({ payment_id: "P-T10", invoice_id: null, paid_on: "2026-10-29", amount_paise: outs.get(id)! });
+    await recompute(db);
+    expect(await db.exceptions.get("RV-PAY-P-T10")).toMatchObject({ status: "open", candidate_invoice_ids: [id] });
+    expect(await db.priorities.get(id)).toMatchObject({
+      gate: "G5",
+      band: "hold_reconcile",
+      recommended_action: "Reconcile payment",
+    });
+    expect((await db.priorities.get(id))!.reason).toContain("[P-T10:payments.csv:invoice_id]");
+
+    await execute(db, allocate(id, "RV-PAY-P-T10"));
+    expect(await db.priorities.get(id)).toMatchObject({ gate: "G1", band: "closed" });
   });
 });

@@ -207,6 +207,38 @@ describe("draftContextFor", () => {
     expect(ctx.outstanding).toBe(34_000_000);
   });
 
+  describe("related unapplied cash blocks drafts until allocated (TC-75.10)", () => {
+    const unallocated = (status: Exception["status"], candidates = ["INV-A"]): Exception => ({
+      review_id: "RV-PAY-P-9",
+      kind: "unallocated_payment",
+      payment_id: "P-9",
+      candidate_invoice_ids: candidates,
+      linked_review_ids: [],
+      recommendation: "",
+      evidence_ids: [],
+      validation_status: "verified",
+      escalation_reason: "",
+      requires_role: "analyst",
+      status,
+    });
+
+    it("fails check 7 while the payment exception is open", () => {
+      const src = sources({ exceptions: [unallocated("open")] });
+      expect(draftContextFor("INV-A", src).paymentClaim).toBe("unapplied bank line P-9");
+      expect(failedIds(src)).toContain(7);
+    });
+
+    it("does not block an invoice that is not a candidate", () => {
+      const src = sources({ exceptions: [unallocated("open", ["INV-B"])] });
+      expect(draftContextFor("INV-A", src).paymentClaim).toBeNull();
+    });
+
+    it("clears once the payment is allocated", () => {
+      const src = sources({ exceptions: [unallocated("actioned")] });
+      expect(draftContextFor("INV-A", src).paymentClaim).toBeNull();
+    });
+  });
+
   describe("FS11: a rejected extraction under review blocks drafts (TASK-22, TC-071)", () => {
     const rejected = extraction("E-5", "unknown", {
       status: "rejected",

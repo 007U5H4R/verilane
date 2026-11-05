@@ -7,7 +7,7 @@
  */
 import { daysBetween } from "./clock";
 import type { PrioritySignals } from "./priority";
-import type { Extraction, Match } from "./schema";
+import type { Exception, Extraction, Match } from "./schema";
 
 /** Days after the promised date a commitment still holds the invoice (G7). */
 export const PROMISE_GRACE_DAYS = 3;
@@ -29,6 +29,9 @@ export interface SignalInput {
   extractions: Extraction[];
   matches: Match[];
   disputes: DisputeRecord[];
+  /** Stored exceptions: an open `unallocated_payment` holds its candidate
+   * invoices at G5 until the cash is allocated (TKT-75.02, EXE126). */
+  exceptions?: Exception[];
 }
 
 const evidenceId = (x: Extraction, field: string) => `${x.message_id}:emails.json:${field}`;
@@ -89,6 +92,13 @@ export function deriveSignals(input: SignalInput): PrioritySignals {
       default:
         break;
     }
+  }
+
+  // Related unapplied cash (TKT-75.02): a reminder could chase money that is
+  // already in the bank, so every candidate invoice holds until allocated.
+  for (const x of input.exceptions ?? []) {
+    if (x.kind !== "unallocated_payment" || x.status !== "open" || !x.payment_id) continue;
+    for (const id of x.candidate_invoice_ids ?? []) setOnce(holdReconcile, id, `${x.payment_id}:payments.csv:invoice_id`);
   }
 
   for (const [invoiceId, p] of latestPromise) {

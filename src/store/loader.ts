@@ -199,7 +199,14 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
   await syncDisputes(db, disputes);
   const allDisputes = await db.disputes.toArray();
 
-  const signals = deriveSignals({ asOf: today, extractions, matches, disputes: allDisputes });
+  const storedExceptions = (await db.exceptions.toArray()) as unknown as Exception[];
+  const signals = deriveSignals({
+    asOf: today,
+    extractions,
+    matches,
+    disputes: allDisputes,
+    exceptions: storedExceptions,
+  });
   const customerHistory = buildCustomerHistory(invoices, payments);
   const ctx: PriorityCtx = { asOf: today, payments, customerHistory, signals, dataIssues };
 

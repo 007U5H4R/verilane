@@ -114,6 +114,14 @@ export function draftContextFor(invoiceId: string, src: DraftSources): DraftCont
     }
   }
 
+  // Related unapplied cash (TKT-75.02, EXE126): no reminder while a bank line
+  // that may settle this invoice is still unallocated.
+  for (const x of src.exceptions) {
+    if (x.kind === "unallocated_payment" && x.status === "open" && x.candidate_invoice_ids?.includes(invoiceId)) {
+      paymentClaim ??= `unapplied bank line ${x.payment_id}`;
+    }
+  }
+
   const conflictingPayment = src.exceptions.some(
     (r) =>
       r.kind === "reconciliation" &&
