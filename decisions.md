@@ -1260,3 +1260,30 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - **Validated, then one rw transaction.** The verdict enum, a non-blank `gate_id` and a known `config_version` (`KNOWN_POLICY_CONFIG_VERSIONS`) are checked before any write. An injected out-of-enum verdict (TC-75.16) persists nothing. An unknown config version is rejected up front, and the unreachable guard is gone. The prior-row read, the decision row and both audit events commit in one `db.transaction("rw", …)`, so a failed audit write rolls the decision back.
 - **The page has error and closed states.** `policyInputsFor()` returns an err when the bank line is missing; it never evaluates `amount ?? 0`. `ensurePolicyEvaluated()` returns a `Result`, and a rejection or a thrown write shows as "Policy couldn’t evaluate: …" (`data-testid="policy-error"`). The trigger fires once per `id|fingerprint`, so it never loops on retries. Closed exceptions intentionally get no new decision. When a closed exception has none, the page says "Not evaluated — this exception was closed before Policy ran." rather than "Not yet evaluated." forever.
 - **A partially missing candidate set is rejected.** If any candidate invoice is no longer on the ledger, Recommend returns `Rejected` and names the missing invoice. It no longer upgrades confidence based on the subset that remains.
+
+## EXE140 · Allocation reversal is a `reopen` transition plus a sticky `reversed` marker (TASK-79.6) — accepted
+- The `review` machine gains one edge, `actioned → open` (`reopen`). `dismissed` stays terminal, and `reopen` from `open` or `dismissed` throws `IllegalTransition` (TC-75.34).
+- `reverse_allocation` is the inverse of `allocate_payment` (EXE125), in one rw transaction over every table (`WHOLE_DB`):
+  - the payment's `invoice_id` goes back to null;
+  - the exception is put as `open`, with `reopen_reason: "reversed"` and `reversed: true`;
+  - `tx.data.recompute()` re-derives outstanding, status and priority.
+- The invoice rows are never written.
+- Exception schema: two optional fields, `reopen_reason` (enum `reversed`) and `reversed` (boolean). No Dexie schema change, because neither field is indexed, so `db.ts` is untouched.
+- **The `reversed` marker is sticky.** A later re-allocation keeps it, and `allocatePayment` is untouched (conflict hygiene). That is the signal NSM (TKT-75.07) needs: the item was resolved wrongly at least once. `reopen_reason` also survives a re-allocation. If NSM needs "currently reopened", it should read `status`, not `reopen_reason`.
+- **Preconditions:**
+  - kind must be `unallocated_payment`;
+  - status must be `actioned`, enforced through the transition itself;
+  - the payment must exist and be applied to the item's `invoice_id`;
+  - there must be an `allocate_payment` audit event on the subject.
+- Anything else is refused before any write.
+
+## EXE141 · An Analyst's reversal attempt is refused and audited, in its own transaction (TASK-79.6, FS21) — accepted
+- `run()` throws `PermissionDenied` before any write, and the command's transaction rolls back. A refusal written inside that transaction would roll back with it.
+- So `execute()` catches `PermissionDenied`. For actions in `AUDITED_REFUSALS` (only `reverse_allocation`), it opens a second rw transaction and writes one `permission_denied` event via `recordRefusal()`. That event carries the subject, the role, the subject's `invoice_id`, and `after: {refused_action, reason}`. `execute()` then rethrows, so the caller still sees the denial.
+- v1 denials are unchanged: still refused, still not audited. Widening the set is a one-line change, but it would change v1 audit counts, so it is left for a deliberate decision.
+- `permission_denied` is a new `AuditAction` with its own `ACTION_META` row: category `review`, so it is not counted as an approval.
+
+## EXE142 · The reversal audit names the allocation event; the exception's `invoice_id` is cleared (TASK-79.6) — accepted
+- `Tx` gains an optional `latestAudit(subject, action)`. The store implements it with the existing `subject` index on `audit`. The reversal records `reverses_event_id` (the `allocate_payment` event's `event_id`) in `after`, and the event number in the summary. This makes the link explicit, and it does not rely on audit ordering at read time.
+- The reopened exception's `invoice_id` is deleted, not left at the reversed invoice. With several candidates, the loader's `syncExceptions` merge keeps fields that the computed row lacks, so a stale `invoice_id` would otherwise survive. With one candidate, the recompute sets it back to that candidate, which matches the pre-allocation row.
+
