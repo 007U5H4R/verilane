@@ -109,6 +109,26 @@ describe("recommendForException — F13 cannot-recommend", () => {
     expect(result.error.reason).toMatch(/no longer on the ledger/i);
   });
 
+  it("m4: one of two candidates is no longer on the ledger: rejected, never upgraded to high confidence", () => {
+    const invoices = [invoice("INV-002", 4_000_000)];
+    const payments = [pay("P-012", null, 4_000_000)];
+    const result = recommendForException(
+      exception({ candidate_invoice_ids: ["INV-002", "INV-003"] }),
+      payments,
+      invoices,
+      customer,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.reason).toMatch(/INV-003/);
+  });
+
+  it("every candidate is no longer on the ledger: rejected", () => {
+    const payments = [pay("P-012", null, 2_500_000)];
+    const result = recommendForException(exception(), payments, [], customer);
+    expect(result.ok).toBe(false);
+  });
+
   it("a non-payment exception kind is rejected (Recommend is payment-exception only)", () => {
     const result = recommendForException(
       exception({ kind: "uncertain_match", message_id: "E-1" }),

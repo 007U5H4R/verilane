@@ -67,15 +67,21 @@ export function recommendForException(
   }
 
   const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
+  // Every candidate must still be on the ledger: dropping a missing one would
+  // shrink an ambiguous match to a single "high-confidence" one (m4), so the
+  // whole recommendation is unverifiable instead.
+  const missing = candidateIds.filter((id) => !invoiceById.has(id));
+  if (missing.length === candidateIds.length) {
+    return err("Cannot recommend: the candidate invoices are no longer on the ledger.");
+  }
+  if (missing.length > 0) {
+    return err(`Cannot recommend: candidate invoice ${missing.join(", ")} is no longer on the ledger.`);
+  }
   const candidateInvoices: Invoice[] = [];
   for (const id of candidateIds) {
-    const invoice = invoiceById.get(id);
-    if (!invoice) continue;
+    const invoice = invoiceById.get(id)!;
     candidateInvoices.push(invoice);
     if (invoice.invoice_number) add("invoice_number", invoice.invoice_number, `${id}:invoices.csv:invoice_number`);
-  }
-  if (candidateInvoices.length === 0) {
-    return err("Cannot recommend: the candidate invoices are no longer on the ledger.");
   }
   if (customer) add("customer_name", customer.name, `${customer.customer_id}:customers.csv:name`);
 
