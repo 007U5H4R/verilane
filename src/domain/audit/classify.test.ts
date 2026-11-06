@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { ACTIONS } from "@/domain/permissions";
 import { ACTION_META, MODULES, actorOf, actorType, describe as describeEvent, isAuditAction, labelFor } from "./classify";
 
-const EXTRA = ["import_rejected", "demo_reset", "validation_failure", "autopilot_held"] as const;
+const EXTRA = [
+  "import_rejected",
+  "demo_reset",
+  "validation_failure",
+  "autopilot_held",
+  "recommend_generated",
+  "policy_evaluated",
+] as const;
 const ALL = [...ACTIONS, ...EXTRA];
 
 describe("audit classification (central mapping)", () => {

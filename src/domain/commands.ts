@@ -74,7 +74,15 @@ export type TableName = "invoices" | "drafts" | "disputes" | "exceptions" | "pay
  * rejected import is logged as `import_rejected` and a reset as
  * `demo_reset` (TKT-14, TC-057 / TC-060).
  */
-export type AuditAction = Action | "import_rejected" | "demo_reset" | "validation_failure" | "autopilot_held";
+export type AuditAction =
+  | Action
+  | "import_rejected"
+  | "demo_reset"
+  | "validation_failure"
+  | "autopilot_held"
+  // TKT-75.03: written by the Recommend/Policy agents (`policy.ts`), not a user command.
+  | "recommend_generated"
+  | "policy_evaluated";
 
 
 export interface Command {

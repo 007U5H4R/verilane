@@ -103,6 +103,8 @@ export const ACTION_META: Record<AuditAction, ActionMeta> = {
   set_autopilot: { label: "Autopilot policy changed", tone: "neutral", icon: "role", module: "settings", category: "workspace", actor: "human" },
   autopilot_send: { label: "Auto-sent by Copilot", tone: "success", icon: "send", module: "drafts", category: "approval", actor: "copilot" },
   autopilot_held: { label: "Held for review by Copilot", tone: "warning", icon: "blocked", module: "drafts", category: "approval", actor: "copilot" },
+  recommend_generated: { label: "Recommend Agent generated facts", tone: "info", icon: "review", module: "payments", category: "review", actor: "system" },
+  policy_evaluated: { label: "Policy Agent evaluated exception", tone: "info", icon: "review", module: "payments", category: "review", actor: "system" },
 };
 
 /**
