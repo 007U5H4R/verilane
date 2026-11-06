@@ -27,7 +27,10 @@ test("TC-75.13: allocate P-012 to INV-F from /exceptions; it leaves the open lis
   await expect(page).toHaveURL(new RegExp(`/exceptions/${ID}$`));
   await expect(page.getByTestId("payment-evidence")).toContainText("P-012");
   await expect(page.getByTestId("unapplied-cash")).toContainText("₹25,000.00");
-  await expect(page.getByTestId("exception-audit")).toContainText("No actions yet.");
+  // AC6 (fix r1 M1/EXE131): opening the page runs Recommend → Policy, and both
+  // agent stages land on the audit trail before anyone acts.
+  await expect(page.getByTestId("exception-audit")).toContainText("Policy Agent evaluated exception (verdict:");
+  await expect(page.getByTestId("exception-audit")).toContainText("Recommend Agent generated facts");
 
   await page.getByTestId("candidate-INV-F").check();
   await page.getByTestId("exception-submit").click();

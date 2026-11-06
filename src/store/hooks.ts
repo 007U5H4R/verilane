@@ -17,11 +17,13 @@ import { buildExceptionRows, type ExceptionRow as ExceptionListRow } from "@/dom
 import type { Paise } from "@/domain/money";
 import { outstandingOf, rank, type RankItem } from "@/domain/priority";
 import {
+  POLICY_CONFIG_VERSION,
   evaluatePolicyForException,
   latestPolicyDecisionForException,
+  policyInputFingerprint,
 } from "@/domain/policy";
 import { recommendForException, type RecommendedFacts } from "@/domain/recommend";
-import type { Rejected, Result } from "@/domain/result";
+import { err, ok, type Rejected, type Result } from "@/domain/result";
 import type { Customer, DataIssue, Dispute, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Priority, Exception } from "@/domain/schema";
 import { DraftSchema, isEmailException, isPaymentExceptionKind, type Draft } from "@/domain/schema";
 import type { AuditEventRow, PolicyDecisionRow, VerilaneDb } from "./db";
@@ -530,13 +532,9 @@ export function useException(id: string): ExceptionDetail | undefined | null {
       exception,
       payment: exception.payment_id !== undefined ? payments.find((p) => p.payment_id === exception.payment_id) : undefined,
       candidates,
-      // Human-action trail only (v1 copy: "No actions yet." until someone acts,
-      // TASK-79.3/EXE130 correction): Policy's own `policy_evaluated` audit
-      // write stays in `db.audit` for anyone querying the table directly, but
-      // is excluded here so it never counts as a "No actions yet." breaker.
-      // The Stage 1/2 blocks + Policy Decision card are what makes an agent
-      // stage visible on this page.
-      audit: audit.filter((e) => e.action !== "policy_evaluated").sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
+      // The full trail, agents included (TASK-79.3 fix r1 M1/EXE131): the
+      // Recommend + Policy system events are part of the AC6 audit trail.
+      audit: audit.sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
       unappliedCashPaise: unappliedCashPaise(payments),
       unappliedCount: unappliedPayments(payments).length,
       recommendation,
@@ -552,6 +550,34 @@ export function usePolicyDecision(exceptionId: string): PolicyDecisionRow | null
   return useLiveQuery(async () => (await latestPolicyDecisionForException(db, exceptionId)) ?? null, [db, exceptionId]);
 }
 
+/** What Stage 2 (Policy) would be evaluated with for this detail, or why it can't be. */
+export interface PolicyInputs {
+  amountPaise: number;
+  confidence: RecommendedFacts["confidence"] | undefined;
+  /** `policyInputFingerprint` of these inputs — a stored decision whose
+   * `input_fingerprint` differs is stale and must be re-evaluated (M2). */
+  fingerprint: string;
+}
+
+/**
+ * `ok(null)` when Policy doesn't apply: a non-payment exception, or a closed
+ * one — closed exceptions intentionally get no new decision (their outcome is
+ * already on the audit trail; evaluating after the fact would invent a gate
+ * that never ran). `err` when the bank line is missing: never evaluate an
+ * amount of 0 in its place (m2).
+ */
+export function policyInputsFor(detail: ExceptionDetail): Result<PolicyInputs | null, Rejected> {
+  const { exception, payment, recommendation } = detail;
+  if (!isPaymentExceptionKind(exception.kind) || exception.status !== "open") return ok(null);
+  if (!payment) {
+    return err(`the bank line ${exception.payment_id ?? "(none)"} for this exception is no longer on the ledger.`);
+  }
+  const amountPaise = payment.amount_paise;
+  const confidence = recommendation?.ok ? recommendation.value.confidence : undefined;
+  const fingerprint = policyInputFingerprint({ exception, amountPaise, confidence }, POLICY_CONFIG_VERSION);
+  return ok({ amountPaise, confidence, fingerprint });
+}
+
 /**
  * Triggers Stage 2 (Policy) on demand, from a detail-page view only — never
  * from `loader.ts`'s global `recompute()` (EXE130: eager evaluation during
@@ -559,12 +585,24 @@ export function usePolicyDecision(exceptionId: string): PolicyDecisionRow | null
  * `RV-PAY-P-012` exception on every `ensureSeeded()`, breaking pre-existing
  * `allocatePayment.test.ts`/`startTour.test.ts` assertions that assume a
  * clean post-seed audit log; this is a wiring choice, not a schema limit).
- * No-op for a closed exception or one Recommend can't evaluate (F13).
+ * Idempotent per input fingerprint (the domain call writes nothing when the
+ * latest decision already matches). `ok(null)` when Policy doesn't apply;
+ * `err` for a missing bank line, a rejected evaluation or a thrown write —
+ * the page shows that as an error state instead of "Not yet evaluated." (m2).
  */
-export async function ensurePolicyEvaluated(db: VerilaneDb, detail: ExceptionDetail): Promise<void> {
-  const { exception, payment, recommendation } = detail;
-  if (!isPaymentExceptionKind(exception.kind) || exception.status !== "open") return;
-  const amountPaise = payment?.amount_paise ?? 0;
-  const confidence = recommendation?.ok ? recommendation.value.confidence : undefined;
-  await evaluatePolicyForException(db, exception, amountPaise, confidence);
+export async function ensurePolicyEvaluated(
+  db: VerilaneDb,
+  detail: ExceptionDetail,
+): Promise<Result<PolicyDecisionRow | null, Rejected>> {
+  const inputs = policyInputsFor(detail);
+  if (!inputs.ok) return inputs;
+  if (inputs.value === null) return ok(null);
+  const { recommendation } = detail;
+  try {
+    return await evaluatePolicyForException(db, detail.exception, inputs.value.amountPaise, inputs.value.confidence, {
+      recommendation: recommendation?.ok ? recommendation.value : undefined,
+    });
+  } catch (e) {
+    return err(e instanceof Error ? e.message : String(e));
+  }
 }

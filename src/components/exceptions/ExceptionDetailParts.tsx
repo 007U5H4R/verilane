@@ -74,6 +74,12 @@ export interface ExceptionDetailContentProps {
   onSubmit: () => void;
   /** Stage 2 (TKT-75.03): `undefined` while loading, `null` not yet evaluated. */
   policyDecision?: PolicyDecisionRow | null | undefined;
+  /** Why Stage 2 couldn't evaluate (missing bank line, rejected evaluation,
+   * failed write) — shown instead of "Not yet evaluated." (fix r1 m2). */
+  policyError?: string | null;
+  /** The stored decision's inputs no longer match the exception's: it's hidden
+   * while Policy re-evaluates, so a stale verdict is never shown (fix r1 M2). */
+  policyStale?: boolean;
 }
 
 export function ExceptionDetailContent({
@@ -84,6 +90,8 @@ export function ExceptionDetailContent({
   busy,
   onSubmit,
   policyDecision,
+  policyError = null,
+  policyStale = false,
 }: ExceptionDetailContentProps) {
   const x = detail.exception;
   const payment = isPaymentExceptionKind(x.kind);
@@ -127,10 +135,14 @@ export function ExceptionDetailContent({
             </section>
           )}
           {payment && <RecommendAgentBlock recommendation={detail.recommendation} />}
-          {payment && <PolicyAgentBlock policyDecision={policyDecision} />}
+          {payment && (
+            <PolicyAgentBlock policyDecision={policyDecision} error={policyError} stale={policyStale} closed={x.status !== "open"} />
+          )}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
-          {payment && <PolicyDecisionCard policyDecision={policyDecision} />}
+          {payment && (
+            <PolicyDecisionCard policyDecision={policyDecision} error={policyError} stale={policyStale} closed={x.status !== "open"} />
+          )}
           <AuditTrail events={detail.audit} />
         </div>
       </div>
@@ -335,14 +347,49 @@ function RecommendAgentBlock({ recommendation }: { recommendation: ExceptionDeta
  * `undefined` means the Policy evaluation is still loading; `null` means
  * it hasn't run yet for this exception.
  */
-function PolicyAgentBlock({ policyDecision }: { policyDecision: PolicyDecisionRow | null | undefined }) {
+interface PolicyStateProps {
+  policyDecision: PolicyDecisionRow | null | undefined;
+  error: string | null;
+  stale: boolean;
+  closed: boolean;
+}
+
+/**
+ * The non-verdict Stage 2 states, shared by the Stage block and the sidebar
+ * card. Returns `null` when there's a current decision to render. Precedence:
+ * error → stale (re-evaluating) → loading → none. A closed exception with no
+ * decision intentionally never gets one (`policyInputsFor`), so it says so
+ * rather than "Not yet evaluated." forever (fix r1 m2).
+ */
+function PolicyState({ policyDecision, error, stale, closed, testid }: PolicyStateProps & { testid?: string }) {
+  if (error !== null) {
+    return (
+      <p role="alert" className="rounded-md bg-high-bg px-3 py-2 text-sm text-high" data-testid={testid}>
+        Policy couldn’t evaluate: {error}
+      </p>
+    );
+  }
+  if (stale) return <p className="text-sm text-text-muted">Re-evaluating — the inputs changed since the last decision…</p>;
+  if (policyDecision === undefined) return <p className="text-sm text-text-muted">Evaluating…</p>;
+  if (policyDecision === null) {
+    return (
+      <p className="text-sm text-text-muted">
+        {closed ? "Not evaluated — this exception was closed before Policy ran." : "Not yet evaluated."}
+      </p>
+    );
+  }
+  return null;
+}
+
+function PolicyAgentBlock(props: PolicyStateProps) {
+  const { policyDecision: row } = props;
+  const policyDecision = props.error === null && !props.stale ? row : null;
   return (
     <section className={CARD} aria-labelledby="stage-policy" data-testid="stage-policy">
       <h2 id="stage-policy" className="font-semibold text-text">
         2. Policy Agent
       </h2>
-      {policyDecision === undefined && <p className="text-sm text-text-muted">Evaluating…</p>}
-      {policyDecision === null && <p className="text-sm text-text-muted">Not yet evaluated.</p>}
+      <PolicyState {...props} testid="policy-error" />
       {policyDecision && (
         <>
           <p className="text-sm text-text">
@@ -369,14 +416,15 @@ function PolicyAgentBlock({ policyDecision }: { policyDecision: PolicyDecisionRo
  * shown, even before any Execute action — a `detail-card` with the verdict,
  * one-line reason, decision id, policy version and evaluation timestamp.
  */
-function PolicyDecisionCard({ policyDecision }: { policyDecision: PolicyDecisionRow | null | undefined }) {
+function PolicyDecisionCard(props: PolicyStateProps) {
+  const { policyDecision: row } = props;
+  const policyDecision = props.error === null && !props.stale ? row : null;
   return (
     <section className={cn(CARD, "h-fit")} aria-labelledby="policy-decision-card" data-testid="policy-decision-card">
       <h2 id="policy-decision-card" className="font-semibold text-text">
         Policy Decision
       </h2>
-      {policyDecision === undefined && <p className="text-sm text-text-muted">Evaluating…</p>}
-      {policyDecision === null && <p className="text-sm text-text-muted">Not yet evaluated.</p>}
+      <PolicyState {...props} />
       {policyDecision && (
         <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[13px]">
           <dt className="text-text-muted">Verdict</dt>

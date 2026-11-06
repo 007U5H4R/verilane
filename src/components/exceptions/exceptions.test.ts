@@ -264,6 +264,25 @@ describe("/exceptions/[id] — Stage 2 Policy Agent + sidebar card (TKT-75.03, D
     expect((out.match(/Not yet evaluated\./g) ?? []).length).toBe(2);
   });
 
+  it("m2 error state: the evaluation failed — reason shown in an alert, never 'Not yet evaluated.'", () => {
+    const out = content(detail(), { policyDecision: null, policyError: "the bank line is no longer on the ledger." });
+    expect(out).toContain('data-testid="policy-error"');
+    expect(out).toContain("Policy couldn’t evaluate: the bank line is no longer on the ledger.");
+    expect(out).not.toContain("Not yet evaluated.");
+  });
+
+  it("m2 closed exception with no decision: says so, never 'Not yet evaluated.'", () => {
+    const out = content(detail({ exception: { ...exception, status: "actioned" } }), { policyDecision: null });
+    expect(out).not.toContain("Not yet evaluated.");
+    expect((out.match(/Not evaluated — this exception was closed before Policy ran\./g) ?? []).length).toBe(2);
+  });
+
+  it("M2 stale decision: hidden while Policy re-evaluates (a stale verdict is never shown)", () => {
+    const out = content(detail(), { policyDecision: policyDecision(), policyStale: true });
+    expect(out).not.toContain("Auto-permitted");
+    expect((out.match(/Re-evaluating — the inputs changed since the last decision…/g) ?? []).length).toBe(2);
+  });
+
   it("auto_permitted: verdict, reason, POL-{id}, policy version, evaluated timestamp — no conflict warning", () => {
     const out = content(detail(), { policyDecision: policyDecision() });
     expect(out).toContain("Policy verdict: Auto-permitted");
