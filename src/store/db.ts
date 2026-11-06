@@ -4,7 +4,7 @@
  * recomputed from source + workflow tables by `loader.recompute()` — never
  * written to directly by commands.
  */
-import Dexie, { type DexieOptions, type Table } from "dexie";
+import Dexie, { type DexieOptions, type Table, type Transaction } from "dexie";
 import type {
   Customer,
   DataIssue,
@@ -81,8 +81,34 @@ export interface PolicyDecisionRow {
   amount_paise?: number;
   /** FS22: Recommend's own confidence disagreed with this verdict. */
   model_policy_conflict?: boolean;
+  /** The inputs this verdict was decided on (`policyInputFingerprint`, EXE131):
+   * a mismatch means the decision is stale and a new row must be appended. */
+  input_fingerprint?: string;
   [key: string]: unknown;
 }
+
+/**
+ * Transactions allowed to clear `policyDecisions` — only `reset_demo`'s
+ * (`tx.ts` `resetToSeed`), which wipes the whole demo. Keyed by Dexie
+ * transaction so the permission dies with it (TC-005, EXE131).
+ */
+const resettingTxs = new WeakSet<Transaction>();
+
+/** Lets the current transaction (and its children) clear `policyDecisions`. */
+export function allowPolicyDecisionReset(): void {
+  const tx = Dexie.currentTransaction;
+  if (!tx) throw new Error("allowPolicyDecisionReset() must run inside a transaction.");
+  resettingTxs.add(tx);
+}
+
+function isResetting(tx: Transaction | undefined): boolean {
+  for (let t: Transaction | undefined = tx; t; t = (t as Transaction & { parent?: Transaction }).parent) {
+    if (resettingTxs.has(t)) return true;
+  }
+  return false;
+}
+
+const APPEND_ONLY = "policyDecisions is append-only (R7): re-evaluate by adding a new row.";
 
 export interface AuditEventRow {
   event_id?: number;
@@ -147,6 +173,15 @@ export class VerilaneDb extends Dexie {
         const rows = await tx.table("reviewItems").toArray();
         await tx.table("exceptions").bulkAdd(rows);
       });
+    // R7/TC-005: append-only enforced at the store, not by convention. A
+    // `put()` over an existing key fires `updating`; `clear()` fires
+    // `deleting` per row, hence the reset_demo-only bypass.
+    this.policyDecisions.hook("updating", () => {
+      throw new Error(APPEND_ONLY);
+    });
+    this.policyDecisions.hook("deleting", (_key, _obj, tx) => {
+      if (!isResetting(tx)) throw new Error(APPEND_ONLY);
+    });
   }
 }
 

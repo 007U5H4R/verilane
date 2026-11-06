@@ -10,7 +10,7 @@ import { isRole, type Role } from "@/domain/permissions";
 import type { Customer, DataIssue, Invoice, Match, Payment, Exception } from "@/domain/schema";
 import { asOf } from "@/domain/clock";
 import type { DraftSources } from "@/domain/validate";
-import type { AuditEventRow, VerilaneDb } from "./db";
+import { allowPolicyDecisionReset, type AuditEventRow, type VerilaneDb } from "./db";
 import type { recompute as Recompute } from "./loader";
 import { SEED_VERSION_KEY } from "./seedVersion";
 
@@ -93,6 +93,7 @@ function dexieDataOps(db: VerilaneDb, recompute: typeof Recompute): DataOps {
       if (!isIngestResult(seed)) throw new InvalidCommand("Reset needs the demo seed.");
       // The role is a viewer preference, not demo data: it survives a reset.
       const role = await db.meta.get("role");
+      allowPolicyDecisionReset(); // the one sanctioned clear of the append-only table (TC-005)
       await Promise.all(db.tables.map((t) => t.clear()));
       if (role) await db.meta.put(role);
       await db.customers.bulkAdd(seed.customers);

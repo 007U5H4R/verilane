@@ -200,3 +200,40 @@ describe("Dexie v1 → v2 upgrade (TASK-79.1, TC-001)", () => {
     expect(await db.policyDecisions.count()).toBe(0);
   });
 });
+
+/**
+ * TC-005 (TASK-79.3 fix round 1, M4): `policyDecisions` is append-only at
+ * the store, not by convention — Dexie `updating`/`deleting` hooks throw, so
+ * `update()`, a `put()` over an existing key, `delete()` and a bare
+ * `clear()` all fail and leave the row untouched. Only `reset_demo` may
+ * clear the table (covered in dataCommands.test.ts, TC-060).
+ */
+describe("policyDecisions append-only enforcement (TC-005)", () => {
+  const ROW = {
+    decision_id: "POL-001",
+    exception_id: "EX-001",
+    evaluated_at: "2026-11-05T00:00:00.000Z",
+    verdict: "auto_permitted",
+  };
+
+  it("allows insert and read", async () => {
+    const { db } = await openDb(`db-test-append-${Math.random()}`);
+    opened = db;
+    await db.policyDecisions.add(ROW);
+    expect(await db.policyDecisions.get("POL-001")).toEqual(ROW);
+  });
+
+  it("rejects update(), put() over an existing key, delete() and clear(); the row is unchanged", async () => {
+    const { db } = await openDb(`db-test-append-reject-${Math.random()}`);
+    opened = db;
+    await db.policyDecisions.add(ROW);
+
+    await expect(db.policyDecisions.update("POL-001", { verdict: "needs_manager" })).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.put({ ...ROW, verdict: "needs_manager" })).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.delete("POL-001")).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.clear()).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.where("exception_id").equals("EX-001").delete()).rejects.toThrow(/append-only/);
+
+    expect(await db.policyDecisions.toArray()).toEqual([ROW]);
+  });
+});
