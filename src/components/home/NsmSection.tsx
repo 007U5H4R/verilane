@@ -30,7 +30,7 @@ export function NsmSection({
   return (
     <section
       data-testid="home-nsm"
-      data-state={state}
+      data-nsm-state={state}
       aria-labelledby="home-nsm-title"
       aria-busy={state === "loading" ? true : undefined}
       className="flex min-w-0 flex-col gap-1 rounded-[10px] border-l-4 border-brand bg-brand-tint p-4 break-words"

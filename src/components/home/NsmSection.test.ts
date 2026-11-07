@@ -36,7 +36,7 @@ const result = (valuePaise: number, resolvedCount: number): NsmResult => ({
 });
 
 const render = (props: Parameters<typeof NsmSection>[0]) => renderToStaticMarkup(createElement(NsmSection, props));
-const stateOf = (html: string) => /data-state="([a-z]+)"/.exec(html)?.[1];
+const stateOf = (html: string) => /data-nsm-state="([a-z]+)"/.exec(html)?.[1];
 
 describe("NsmSection — working (TC-75.44)", () => {
   const html = render({ result: result(12_345_600, 2), online: true });
@@ -62,6 +62,11 @@ describe("NsmSection — working (TC-75.44)", () => {
     expect(html).toMatch(/<h2[^>]*class="[^"]*text-\[11px\][^"]*uppercase[^"]*text-text-muted/);
     expect(html).toMatch(/data-testid="home-nsm-value"[^>]*class="[^"]*font-display[^"]*text-\[24px\][^"]*text-brand\b/);
     expect(html).toMatch(/data-testid="home-nsm-label"[^>]*class="[^"]*text-\[13px\][^"]*text-text-muted/);
+  });
+
+  it("never adds a page-level data-state hook (Home e2e specs locate [data-state=working] strictly)", () => {
+    for (const h of [html, render({ result: result(0, 0), online: true }), render({ result: undefined, online: true })])
+      expect(h).not.toContain("data-state=");
   });
 
   it("is labelled by its heading for assistive tech", () => {

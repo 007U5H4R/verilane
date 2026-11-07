@@ -1387,6 +1387,7 @@ All guardrails are computed from the same session as the NSM (EXE170). A rate is
   - working: the figure plus "N exceptions resolved this session".
   - Offline adds a note, "Offline — computed from this device's data.", because the figure is computed locally and stays valid.
   - The page-level skeleton and empty states (`HomeSkeleton`, `NoAttention`) do not include the NSM.
+- **State hook.** The section exposes its state as `data-nsm-state`, not `data-state`. Home e2e specs locate the page with a strict `[data-state="working"]`, so a second match would break them. A unit test pins this.
 - **Exceptions card.** It already shipped in TKT-75.02 (EXE127). It is now pinned at the component level by `TaskFeed.test.ts`.
 - **Deviations.**
   - **Font.** Design §6 asks for an Iowan serif value, but `--font-display` is Inter in this codebase. The value uses `font-display`, the same as the KPI values, so it still "matches KPI values".
