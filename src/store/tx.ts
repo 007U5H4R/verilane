@@ -4,6 +4,8 @@
  * state write and its audit event commit together or not at all.
  */
 import { InvalidCommand, PermissionDenied } from "@/domain/commandConstants";
+import type { ExecuteAgentInput, PolicyFacts, PolicyTx } from "@/domain/commands";
+import type * as Policy from "@/domain/policy";
 import type { Command, DataOps, Row, TableName, Tx } from "@/domain/commands";
 import type { IngestResult } from "@/domain/ingest";
 import { isRole, type Role } from "@/domain/permissions";
@@ -219,4 +221,67 @@ export async function readDraftSources(db: VerilaneDb): Promise<DraftSources> {
     disputes,
     exceptions: exceptions as unknown as Exception[],
   };
+}
+
+// --- Execute agent + policy-gated submit (TKT-75.04, EXE180–EXE182) ---------
+
+/** `dexieTx` plus the persisted policy facts Execute and the gated submit read. */
+function dexiePolicyTx(db: VerilaneDb, recompute: typeof Recompute, policy: typeof Policy): PolicyTx {
+  return {
+    ...dexieTx(db, recompute),
+    async policyFacts(exceptionId) {
+      const [latest, history] = await Promise.all([
+        policy.latestPolicyDecisionForException(db, exceptionId),
+        db.audit.where("subject").equals(`review:${exceptionId}`).toArray(),
+      ]);
+      return { latest, history: history as unknown as PolicyFacts["history"] };
+    },
+  };
+}
+
+/**
+ * Stage 3 (D75-1): runs the Execute agent for one exception in ONE rw
+ * transaction over every table — the decision read, the staleness check and
+ * the allocation commit together (EXE125's scope for allocate_payment).
+ */
+export async function executeAgent(db: VerilaneDb, input: ExecuteAgentInput, opts: ExecuteOptions = {}) {
+  const [{ runExecuteAgent }, { recompute }, policy] = await Promise.all([
+    import("@/domain/commands"),
+    import("./loader"),
+    import("@/domain/policy"),
+  ]);
+  return db.transaction("rw", db.tables, async () => {
+    const outcome = await runExecuteAgent(input, dexiePolicyTx(db, recompute, policy));
+    await opts.beforeCommit?.();
+    return outcome;
+  });
+}
+
+/**
+ * The human "Submit for approval" on `/exceptions/[id]` (A1 matrix): the
+ * allocation gated by the persisted verdict. A refusal rolls the command back,
+ * then is audited in its own transaction (FS21) and rethrown.
+ */
+export async function submitAllocationGated(db: VerilaneDb, input: CommandInput, expectedFingerprint: string) {
+  const [{ runPolicyGated, recordRefusal }, { recompute }, policy] = await Promise.all([
+    import("@/domain/commands"),
+    import("./loader"),
+    import("@/domain/policy"),
+  ]);
+  try {
+    return await db.transaction("rw", db.tables, async () => {
+      const actor = await currentRole(db);
+      return runPolicyGated({ ...input, actor }, expectedFingerprint, dexiePolicyTx(db, recompute, policy));
+    });
+  } catch (e) {
+    if (e instanceof PermissionDenied) {
+      // One FS21 format with reverse_allocation (recordRefusal, EXE141/EXE182).
+      await db.transaction("rw", db.tables, async () => {
+        const actor = await currentRole(db);
+        const latest = await policy.latestPolicyDecisionForException(db, input.subject.id);
+        await recordRefusal({ ...input, actor }, e, dexieTx(db, recompute), latest ? { decision_id: latest.decision_id } : undefined);
+      });
+    }
+    throw e;
+  }
 }

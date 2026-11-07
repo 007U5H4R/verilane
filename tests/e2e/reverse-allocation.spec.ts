@@ -20,8 +20,7 @@ async function allocate(page: Page) {
   await open(page, `/exceptions/${ID}`);
   // 79.3 (EXE131): the agent stages land on the trail before anyone acts.
   await expect(page.getByTestId("exception-audit")).toContainText("Policy Agent evaluated exception (verdict:");
-  await page.getByTestId("candidate-INV-F").check();
-  await page.getByTestId("exception-submit").click();
+  // TKT-75.04 (EXE184): P-012 is auto_permitted, so Execute applies it on view.
   await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
 }
 
@@ -242,4 +241,23 @@ test("TC-75.35: switching to Analyst while the confirm dialog is open removes it
   await expect(page.getByTestId("reverse-allocation")).toHaveCount(0);
   await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
   expect((await trail(page)).some((e) => e.action === "reverse_allocation")).toBe(false);
+});
+
+test("TC-75.35 + TKT-75.04 risk (b): after a Manager reversal, Execute does not re-apply on reload (EXE181)", async ({
+  page,
+}) => {
+  await allocate(page);
+  await switchRole(page, "Manager");
+  await page.getByTestId("reverse-allocation-open").click();
+  await page.getByTestId("reverse-allocation-confirm").click();
+  await expect(page.getByTestId("exception-status")).toHaveText("Open");
+
+  // A fresh page view re-runs Policy + Execute; Execute must refuse, writing nothing.
+  await open(page, `/exceptions/${ID}`);
+  await expect(page.getByTestId("exception-status")).toHaveText("Open");
+  await expect(page.getByTestId("reversed-notice")).toBeVisible();
+  const actions = (await trail(page)).map((e) => e.action);
+  expect(actions.filter((a) => a === "allocate_payment")).toHaveLength(1);
+  expect(actions.slice(actions.indexOf("reverse_allocation"))).not.toContain("allocate_payment");
+  expect(await page.evaluate(async () => (await window.__verilane!.db.payments.get("P-012"))?.invoice_id)).toBeNull();
 });

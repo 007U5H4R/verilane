@@ -48,6 +48,8 @@ export interface ExceptionSources {
   items: readonly RankItem[];
   customers: Map<string, Customer>;
   payments: readonly Payment[];
+  /** Latest persisted policy verdict per exception id (review m3, EXE185). */
+  verdicts?: ReadonlyMap<string, string>;
 }
 
 /** The Queue facets the list reuses (sort/page are not used: order is fixed). */
@@ -76,9 +78,19 @@ export function exceptionHref(id: string): string {
   return `/exceptions/${encodeURIComponent(id)}`;
 }
 
-export function exceptionStatusLabel(x: Pick<Exception, "status" | "requires_role">): ExceptionStatusLabel {
+/**
+ * An open item reads "Pending Manager" when its persisted policy verdict is
+ * `needs_manager` (review m3, EXE185), so the badge agrees with Stage 3.
+ * Before Policy has run (no verdict) it falls back to v1's `requires_role`.
+ */
+export function exceptionStatusLabel(
+  x: Pick<Exception, "status" | "requires_role">,
+  // A persisted `PolicyDecisionRow.verdict` (stored loosely as a string).
+  verdict?: string | null,
+): ExceptionStatusLabel {
   if (x.status === "actioned") return "Resolved";
   if (x.status === "dismissed") return "Dismissed";
+  if (verdict != null) return verdict === "needs_manager" ? "Pending Manager" : "Open";
   return x.requires_role === "manager" ? "Pending Manager" : "Open";
 }
 
@@ -131,7 +143,7 @@ export function buildExceptionRows(src: ExceptionSources): ExceptionRow[] {
         subject,
         amountPaise,
         status: x.status,
-        statusLabel: exceptionStatusLabel(x),
+        statusLabel: exceptionStatusLabel(x, src.verdicts?.get(x.review_id)),
         band: priority?.band ?? null,
         invoiceId: invoice ? invoice.invoice_id : null,
         customerId: invoice?.customer_id ?? null,

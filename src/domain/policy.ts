@@ -171,7 +171,8 @@ function decisionSeq(decisionId: string): number {
   return Number.isInteger(n) ? n : 0;
 }
 
-function byEvaluation(a: PolicyDecisionRow, b: PolicyDecisionRow): number {
+/** Evaluation order: `evaluated_at`, then the decision sequence on a tie. */
+export function byEvaluation(a: PolicyDecisionRow, b: PolicyDecisionRow): number {
   return a.evaluated_at.localeCompare(b.evaluated_at) || decisionSeq(a.decision_id) - decisionSeq(b.decision_id);
 }
 

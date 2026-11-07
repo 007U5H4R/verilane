@@ -11,18 +11,23 @@ import {
   policyInputsFor,
   useCan,
   useException,
-  useExecute,
   usePolicyDecision,
+  useRole,
   type ExceptionDetail,
 } from "@/store/hooks";
+import type { ExecuteOutcome } from "@/domain/commands";
+import { isPaymentExceptionKind } from "@/domain/schema";
+import { runExecuteAgentFor } from "@/store/executeAgent";
+import { submitAllocationGated } from "@/store/tx";
 import { ExceptionDetailContent, ExceptionDetailError, ExceptionDetailSkeleton } from "./ExceptionDetailParts";
 import { ReverseAllocationSection } from "./ReverseAllocationSection";
 
 /**
  * `/exceptions/[id]` (TKT-75.02): one exception with payment evidence,
  * candidate invoice facts, the audit trail and the action bar. Allocation
- * goes through the one command path (`execute` → `allocate_payment`, a
- * single rw transaction). No `generateStaticParams`: exception ids exist
+ * goes through the one command path (`allocate_payment`, a single rw
+ * transaction) — since TKT-75.04 via `submitAllocationGated`, which gates it
+ * by the persisted Policy verdict and audits a refusal (FS21). No `generateStaticParams`: exception ids exist
  * only in the browser's IndexedDB, so the id is read with `useParams()`
  * inside `<Suspense>` (the dispute-detail pattern).
  */
@@ -116,14 +121,56 @@ function usePolicyEvaluationTrigger(id: string, detail: ExceptionDetail | undefi
   return { policyDecision, policyError, policyStale: stale && policyError === null };
 }
 
+/**
+ * Stage 3's trigger point (TKT-75.04, EXE180): once Policy has a CURRENT
+ * persisted decision for an open payment exception, run the Execute agent.
+ * It re-reads the decision inside its own transaction and acts only on
+ * `auto_permitted`; other verdicts are handed off with no write. One-shot per
+ * `id|decision|fingerprint`, like the Policy trigger, so a failure isn't
+ * retried in a loop and the live query's re-renders can't double-fire.
+ */
+function useExecuteAgentTrigger(
+  id: string,
+  detail: ExceptionDetail | undefined | null,
+  policy: ReturnType<typeof usePolicyEvaluationTrigger>,
+) {
+  const db = useContext(DbContext);
+  const attemptedFor = useRef<string | null>(null);
+  const [result, setResult] = useState<{ key: string; outcome?: ExecuteOutcome | null; error?: string } | null>(null);
+  const decision = policy.policyDecision;
+  const open = !!detail && detail.exception.status === "open" && isPaymentExceptionKind(detail.exception.kind);
+  const key =
+    open && decision && !policy.policyStale && policy.policyError === null
+      ? `${id}|${decision.decision_id}|${decision.input_fingerprint ?? ""}`
+      : null;
+
+  useEffect(() => {
+    if (!db || !detail || key === null || attemptedFor.current === key) return;
+    attemptedFor.current = key;
+    void runExecuteAgentFor(db, detail).then((r) => {
+      if (!r.ok) {
+        console.error("[verilane] execute agent failed", r.error.reason);
+        setResult({ key, error: r.error.reason });
+        return;
+      }
+      setResult({ key, outcome: r.value });
+      if (r.value?.kind === "executed") toast.success(String(r.value.event.summary));
+    });
+  }, [db, detail, key]);
+
+  const current = result !== null && result.key === key ? result : null;
+  return { executeOutcome: current?.outcome, executeError: current?.error ?? null };
+}
+
 function ExceptionBody({ id }: { id: string }) {
   const detail = useException(id);
   const policy = usePolicyEvaluationTrigger(id, detail);
+  const execute = useExecuteAgentTrigger(id, detail, policy);
   if (detail === undefined) return <ExceptionDetailSkeleton />;
   if (detail === null) return <NotFound />;
   return (
     <>
-      <LoadedException detail={detail} policy={policy} />
+      <LoadedException detail={detail} policy={policy} execute={execute} />
       {/* TKT-75.06: its own section below the action bar, not part of it (EXE143). */}
       <ReverseAllocationSection detail={detail} />
     </>
@@ -133,27 +180,31 @@ function ExceptionBody({ id }: { id: string }) {
 function LoadedException({
   detail,
   policy,
+  execute,
 }: {
   detail: ExceptionDetail;
   policy: ReturnType<typeof usePolicyEvaluationTrigger>;
+  execute: ReturnType<typeof useExecuteAgentTrigger>;
 }) {
   const x = detail.exception;
   const only = detail.candidates.length === 1 ? detail.candidates[0]!.invoice.invoice_id : null;
   const [picked, setPicked] = useState<string | null>(null);
   const selected = picked ?? only;
   const [busy, setBusy] = useState(false);
-  const execute = useExecute();
+  const db = useContext(DbContext);
+  const role = useRole();
   const permission = useCan("allocate_payment", { kind: "review", id: x.review_id, requires_role: x.requires_role });
 
   async function submit() {
-    if (selected === null) return;
+    const inputs = policyInputsFor(detail);
+    if (selected === null || !db || !inputs.ok || inputs.value === null) return;
     setBusy(true);
     try {
-      const event = await execute({
-        type: "allocate_payment",
-        subject: { kind: "review", id: x.review_id },
-        payload: { invoice_id: selected },
-      });
+      const event = await submitAllocationGated(
+        db,
+        { type: "allocate_payment", subject: { kind: "review", id: x.review_id }, payload: { invoice_id: selected } },
+        inputs.value.fingerprint,
+      );
       toast.success(String(event.summary ?? "Payment allocated."));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn’t allocate this payment.");
@@ -173,6 +224,15 @@ function LoadedException({
       policyDecision={policy.policyDecision}
       policyError={policy.policyError}
       policyStale={policy.policyStale}
+      policyGate={{
+        decision: policy.policyDecision,
+        stale: policy.policyStale,
+        error: policy.policyError,
+        role,
+        executeRefused: execute.executeOutcome?.kind === "refused",
+      }}
+      executeOutcome={execute.executeOutcome}
+      executeError={execute.executeError}
     />
   );
 }

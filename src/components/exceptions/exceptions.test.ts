@@ -14,7 +14,14 @@ import type { Exception, Invoice } from "@/domain/schema";
 import type { PolicyDecisionRow } from "@/store/db";
 import type { ExceptionDetail } from "@/store/hooks";
 import { ExceptionCards, ExceptionsEmpty, ExceptionsError, ExceptionsLoading } from "./ExceptionCards";
-import { ExceptionDetailContent, ExceptionDetailError, allocateBlocker } from "./ExceptionDetailParts";
+import { formatDateTime } from "@/domain/clock";
+import {
+  ExceptionDetailContent,
+  ExceptionDetailError,
+  allocateBlocker,
+  executeStage,
+  type PolicyGate,
+} from "./ExceptionDetailParts";
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 
@@ -306,5 +313,110 @@ describe("/exceptions/[id] — Stage 2 Policy Agent + sidebar card (TKT-75.03, D
     });
     expect(out).toContain('data-testid="policy-conflict"');
     expect(out).toContain("Recommend and Policy disagreed — the Policy verdict governs (FS22).");
+  });
+});
+
+describe("/exceptions/[id] — TC-75.24 action-bar matrix (A1 row 2) + Stage 3 Execute block (TKT-75.04)", () => {
+  const pol = (over: Partial<PolicyDecisionRow> = {}): PolicyDecisionRow => ({
+    decision_id: "POL-RV-PAY-P-012-1",
+    exception_id: "RV-PAY-P-012",
+    evaluated_at: "2026-11-05T00:00:00.000Z",
+    config_version: "policy-v1",
+    verdict: "auto_permitted",
+    reason: "Amount is ≤ ₹5,00,000 and the match is unambiguous.",
+    input_fingerprint: "fp",
+    ...over,
+  });
+  const gate = (over: Partial<PolicyGate> = {}): PolicyGate => ({
+    decision: pol(),
+    stale: false,
+    error: null,
+    role: "analyst",
+    executeRefused: false,
+    ...over,
+  });
+  const closed = detail({ exception: { ...exception, status: "actioned", invoice_id: "INV-F" } });
+  const executedAudit = {
+    event_id: 41,
+    action: "allocate_payment",
+    subject: "review:RV-PAY-P-012",
+    summary: "Allocated payment P-012 (₹25,000.00) to INV-F · policy policy-v1 (POL-RV-PAY-P-012-1)",
+    at: "2026-11-05T09:30:00.000Z",
+    actor_label: "Execute Agent",
+    after: { policy_decision_id: "POL-RV-PAY-P-012-1", config_version: "policy-v1" },
+  };
+
+  it("auto_permitted resolved → disabled 'Already resolved'", () => {
+    expect(allocateBlocker(closed, "INV-F", ALLOWED, gate())).toBe("Already resolved");
+  });
+  it("auto_permitted still open → disabled while the Execute agent applies it; enabled once Execute refused it", () => {
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate())).toBe("Execute agent is applying this allocation");
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ executeRefused: true }))).toBeNull();
+  });
+  it("needs_analyst → Analyst 'Submit for approval' enabled", () => {
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ decision: pol({ verdict: "needs_analyst" }) }))).toBeNull();
+  });
+  it("needs_manager → disabled for Analyst 'Manager approval required', enabled for Manager", () => {
+    const g = { decision: pol({ verdict: "needs_manager", reason: "Low confidence." }) };
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate(g))).toBe("Manager approval required");
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ ...g, role: "manager" }))).toBeNull();
+  });
+  it("blocked → disabled with the policy reason, for every role", () => {
+    const g = { decision: pol({ verdict: "blocked", reason: "No safe recommendation to evaluate." }) };
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate(g))).toBe("No safe recommendation to evaluate.");
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ ...g, role: "manager" }))).toBe("No safe recommendation to evaluate.");
+  });
+  it("no decision yet, a stale one, or a policy error → disabled until Policy has a current verdict", () => {
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ decision: undefined }))).toBe("Waiting for the policy decision");
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ decision: null }))).toBe("Waiting for the policy decision");
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ stale: true }))).toBe("Waiting for the policy decision");
+    expect(allocateBlocker(detail(), "INV-F", ALLOWED, gate({ error: "x" }))).toBe("Policy couldn’t evaluate this item");
+  });
+  it("the bar renders the matrix reason with the button disabled", () => {
+    const out = content(detail(), { policyGate: gate({ decision: pol({ verdict: "needs_manager" }) }) });
+    expect(out).toContain("Manager approval required");
+    expect(out).toMatch(/<button[^>]*data-testid="exception-submit"[^>]*disabled/);
+  });
+
+  it("Stage 3 executed (A1 row 1): 'Executed by Execute agent · {time} · policy v{n}' from the persisted audit", () => {
+    const s = executeStage({ detail: detail({ ...closed, audit: [executedAudit] }), gate: gate() });
+    expect(s.state).toBe("executed");
+    expect(s.status).toBe(`Executed by Execute agent · ${formatDateTime(executedAudit.at)} · policy v1`);
+    const out = content(detail({ ...closed, audit: [executedAudit] }), { policyGate: gate() });
+    expect(out).toContain('data-testid="stage-execute"');
+    expect(out).toContain("3. Execute Agent");
+    expect(out).toContain("Executed by Execute agent · ");
+    expect(out).toContain("POL-RV-PAY-P-012-1");
+  });
+  it.each([
+    ["needs_analyst", "analyst", /^Ready to allocate/, /Analyst/],
+    ["needs_manager", "analyst", /^Pending manager hand-off/, /Manager/],
+    ["blocked", "manager", /^Not executable/, /No write/],
+  ] as const)("Stage 3 %s → status + what happens next", (verdict, role, status, next) => {
+    const s = executeStage({ detail: detail(), gate: gate({ decision: pol({ verdict }), role }) });
+    expect(s.status).toMatch(status);
+    expect(s.next).toMatch(next);
+  });
+  it("Stage 3 auto_permitted open → applying; refused → reason + a human takes it", () => {
+    expect(executeStage({ detail: detail(), gate: gate() }).state).toBe("applying");
+    const r = executeStage({
+      detail: detail(),
+      gate: gate({ executeRefused: true }),
+      outcome: { kind: "refused", reason: "A Manager reversed this allocation; it stays with a human." },
+    });
+    expect(r.state).toBe("refused");
+    expect(r.status).toContain("A Manager reversed this allocation");
+  });
+  it("Stage 3 loading / error / closed-by-a-person states", () => {
+    expect(executeStage({ detail: detail(), gate: gate({ decision: undefined }) }).state).toBe("waiting");
+    expect(executeStage({ detail: detail(), gate: gate({ error: "x" }) }).state).toBe("error");
+    expect(executeStage({ detail: detail(), gate: gate(), error: "disk full" }).state).toBe("error");
+    const human = executeStage({ detail: detail({ ...closed, audit: [{ ...executedAudit, actor_label: "Analyst" }] }), gate: gate() });
+    expect(human.state).toBe("resolved");
+    expect(human.status).not.toContain("Executed by Execute agent");
+  });
+  it("no Stage 3 block for a non-payment exception", () => {
+    const out = content(detail({ exception: { ...exception, kind: "dispute" } }), { policyGate: gate() });
+    expect(out).not.toContain('data-testid="stage-execute"');
   });
 });

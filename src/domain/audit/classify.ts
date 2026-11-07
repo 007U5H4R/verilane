@@ -124,6 +124,20 @@ const EXTRACTION_REJECTED: ActionMeta = {
   actor: "system",
 };
 
+/**
+ * TKT-75.04: an `allocate_payment` written by the Execute agent (label
+ * `EXECUTE_LABEL`, "Execute Agent") on an `auto_permitted` PolicyDecision is
+ * automated, not a person's click — same action, system actor.
+ */
+const EXECUTE_ALLOCATED: ActionMeta = {
+  label: "Execute Agent allocated payment",
+  tone: "success",
+  icon: "review",
+  module: "payments",
+  category: "review",
+  actor: "system",
+};
+
 const UNKNOWN_META: Omit<ActionMeta, "label"> = {
   tone: "neutral",
   icon: "unknown",
@@ -148,6 +162,9 @@ export interface ClassifiableEvent {
 export function describe(event: ClassifiableEvent): ActionMeta & { known: boolean } {
   if (event.action === "validation_failure" && event.subject_kind === "review") {
     return { ...EXTRACTION_REJECTED, known: true };
+  }
+  if (event.action === "allocate_payment" && event.actor_label === "Execute Agent") {
+    return { ...EXECUTE_ALLOCATED, known: true };
   }
   if (isAuditAction(event.action)) return { ...ACTION_META[event.action], known: true };
   return { ...UNKNOWN_META, label: event.action.replace(/_/g, " "), known: false };

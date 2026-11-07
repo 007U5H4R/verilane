@@ -28,6 +28,9 @@ import {
   type ImportKind,
 } from "./commandConstants";
 import { formatInr, paise } from "./money";
+import { POLICY_VERDICTS, policyInputFingerprint, type PolicyVerdict } from "./policy";
+import type { RecommendConfidence } from "./recommend";
+import type { PolicyDecisionRow } from "@/store/db";
 import {
   can,
   isRole,
@@ -84,6 +87,7 @@ export type AuditAction =
   | "recommend_generated"
   | "policy_evaluated"
   // TKT-75.06: a refused attempt at a command in AUDITED_REFUSALS (FS21, EXE141).
+  // TKT-75.04 writes the same action for a policy-gated refusal (EXE182).
   | "permission_denied";
 
 
@@ -895,11 +899,15 @@ export const AUDITED_REFUSALS: ReadonlySet<Action> = new Set<Action>(["reverse_a
  * Records a refused command as one `permission_denied` event. The store runs
  * it in its own transaction after the command's has rolled back, so nothing
  * the command would have written survives — only the refusal.
+ *
+ * TKT-75.04 (EXE182): a policy-gated `allocate_payment` refusal uses this same
+ * format, passing the PolicyDecision it was refused against as `policy`.
  */
 export async function recordRefusal(
   cmd: Command,
   denied: PermissionDenied,
   tx: Tx,
+  policy?: { decision_id: string },
 ): Promise<AuditEventInput> {
   const table = TABLE_FOR[cmd.subject.kind];
   const row = table ? await tx.get(table, cmd.subject.id) : undefined;
@@ -912,10 +920,13 @@ export async function recordRefusal(
     subject_kind: cmd.subject.kind,
     subject_id: cmd.subject.id,
     summary: `Refused ${cmd.type.replace(/_/g, " ")} on ${cmd.subject.id}: ${denied.reason}`,
-    after: { refused_action: cmd.type, reason: denied.reason },
-    evidence_ids: [],
+    after: policy
+      ? { refused_action: cmd.type, reason: denied.reason, policy_decision_id: policy.decision_id }
+      : { refused_action: cmd.type, reason: denied.reason },
+    evidence_ids: policy ? [policy.decision_id] : [],
   };
-  const invoiceId = invoiceIdOf(cmd, row);
+  // An unallocated payment has no invoice yet; the refused target is the one named.
+  const invoiceId = invoiceIdOf(cmd, row) ?? str(cmd.payload?.invoice_id);
   if (invoiceId !== undefined) event.invoice_id = invoiceId;
   await tx.audit(event);
   return event;
@@ -1273,4 +1284,207 @@ async function generateDraft(ctx: Ctx): Promise<Effect> {
     after: { draft_id: draftId, status: "generated", failed_checks: failed },
     evidence_ids: [...new Set(facts.map((f) => f.evidenceId))],
   };
+}
+
+// --- Execute agent (TKT-75.04, D75-1, EXE180–EXE182) -------------------------
+//
+// Stage 3. Execute never computes a verdict: it reads the latest PERSISTED
+// PolicyDecision (R6) and, only for `auto_permitted`, writes through `run()`
+// (R11) — the same `allocate_payment` handler, permission check and single
+// audit event a human submit uses. The audit keeps action `allocate_payment`
+// (so reversal and the NSM find it) and is re-labelled to the agent, citing
+// the decision id and config_version.
+
+/** The audit `actor_label` of every Execute-agent write. */
+export const EXECUTE_LABEL = "Execute Agent";
+
+/** What Execute and the gated submit read, inside the command's transaction. */
+export interface PolicyFacts {
+  /** The latest persisted PolicyDecision for the exception, if any. */
+  latest: PolicyDecisionRow | undefined;
+  /** The exception's audit events (`review:<id>`), any order. */
+  history: Array<{ event_id?: number; action: string; after?: Row }>;
+}
+
+/** `Tx` plus the persisted policy facts; `src/store/tx.ts` implements it. */
+export interface PolicyTx extends Tx {
+  policyFacts(exceptionId: string): Promise<PolicyFacts>;
+}
+
+export interface ExecuteAgentInput {
+  subject: { kind: "review"; id: string };
+  /** `policyInputsFor(detail).fingerprint`: the inputs as the caller sees them
+   * now. A latest decision with another fingerprint is stale (risk a). */
+  expected_fingerprint: string;
+  /** Any verdict the caller holds in memory. Deliberately ignored (R6). */
+  observed?: unknown;
+}
+
+export type HandoffQueue = "analyst" | "manager" | "blocked";
+
+/** Where a non-permitted verdict goes instead of a write. */
+export const HANDOFF_QUEUE: Record<Exclude<PolicyVerdict, "auto_permitted">, HandoffQueue> = {
+  needs_analyst: "analyst",
+  needs_manager: "manager",
+  blocked: "blocked",
+};
+
+export type ExecuteOutcome =
+  | { kind: "executed"; decision_id: string; config_version: string; event: AuditEventInput }
+  | { kind: "handed_off"; decision_id: string; verdict: PolicyVerdict; queue: HandoffQueue; reason: string }
+  | { kind: "refused"; reason: string }
+  | { kind: "not_applicable"; reason: string };
+
+/**
+ * Risk (b), EXE181: true when an `allocate_payment` event in `history` has a
+ * later event whose `after.reverses_event_id` points at it. Paired by id, not
+ * by a sticky `reversed` flag on the exception.
+ */
+export function hasReversedAllocation(history: PolicyFacts["history"]): boolean {
+  const allocations = new Set(
+    history.filter((e) => e.action === "allocate_payment" && typeof e.event_id === "number").map((e) => e.event_id),
+  );
+  return history.some((e) => {
+    const target = e.after?.reverses_event_id;
+    return typeof target === "number" && allocations.has(target);
+  });
+}
+
+/** A stored decision with every field Execute relies on present and in-enum. */
+interface ActionableDecision {
+  decision_id: string;
+  config_version: string;
+  verdict: PolicyVerdict;
+  reason: string;
+  confidence: RecommendConfidence | undefined;
+  input_fingerprint: string;
+}
+
+const CONFIDENCES: readonly unknown[] = ["high", "low"] satisfies RecommendConfidence[];
+
+/** `undefined` for a malformed row: it is refused, never acted on. */
+function actionable(d: PolicyDecisionRow): ActionableDecision | undefined {
+  const { decision_id, config_version, verdict, reason, confidence, input_fingerprint } = d;
+  if (typeof config_version !== "string" || typeof reason !== "string" || typeof input_fingerprint !== "string") {
+    return undefined;
+  }
+  if (!(POLICY_VERDICTS as readonly unknown[]).includes(verdict)) return undefined;
+  if (confidence !== null && confidence !== undefined && !CONFIDENCES.includes(confidence)) return undefined;
+  return {
+    decision_id,
+    config_version,
+    verdict: verdict as PolicyVerdict,
+    reason,
+    confidence: (confidence ?? undefined) as RecommendConfidence | undefined,
+    input_fingerprint,
+  };
+}
+
+type CurrentDecision =
+  | { ok: true; row: Row; decision: ActionableDecision; facts: PolicyFacts }
+  | { ok: false; closed: boolean; reason: string };
+
+/**
+ * The persisted decision Execute or a gated submit may act on, or why none.
+ * Stale (risk a) when its fingerprint differs from the caller's current
+ * inputs OR from the inputs re-read inside this transaction (amount,
+ * candidates, kind) — so a row written before an import is never trusted.
+ */
+async function currentDecision(id: string, expected: string, tx: PolicyTx): Promise<CurrentDecision> {
+  const row = await tx.get("exceptions", id);
+  if (!row) return { ok: false, closed: true, reason: `No review ${id}.` };
+  if (row.status !== "open") return { ok: false, closed: true, reason: "Already resolved" };
+  if (row.kind !== "unallocated_payment") {
+    return { ok: false, closed: true, reason: "Only an unallocated payment can be allocated." };
+  }
+  const facts = await tx.policyFacts(id);
+  if (!facts.latest) return { ok: false, closed: false, reason: "No policy decision yet; nothing to execute." };
+  const decision = actionable(facts.latest);
+  if (!decision) return { ok: false, closed: false, reason: `Policy decision ${facts.latest.decision_id} is malformed.` };
+  const paymentId = str(row.payment_id);
+  const payment = paymentId === undefined ? undefined : await tx.get("payments", paymentId);
+  if (!payment) return { ok: false, closed: false, reason: `No payment ${paymentId ?? ""} in the ledger.` };
+  const now = policyInputFingerprint(
+    {
+      exception: { kind: "unallocated_payment", candidate_invoice_ids: row.candidate_invoice_ids as string[] | undefined },
+      amountPaise: Number(payment.amount_paise),
+      confidence: decision.confidence,
+    },
+    decision.config_version,
+  );
+  if (decision.input_fingerprint !== expected || decision.input_fingerprint !== now) {
+    return { ok: false, closed: false, reason: `Policy decision ${decision.decision_id} is out of date; re-evaluate first.` };
+  }
+  return { ok: true, row, decision, facts };
+}
+
+/** Re-labels the one audit event `run()` writes as the Execute agent's. */
+function asExecuteAgent(tx: PolicyTx, decision: ActionableDecision): Tx {
+  return {
+    ...tx,
+    async audit(e) {
+      await tx.audit({
+        ...e,
+        actor_label: EXECUTE_LABEL,
+        summary: `${e.summary} · policy ${decision.config_version} (${decision.decision_id})`,
+        after: { ...e.after, policy_decision_id: decision.decision_id, config_version: decision.config_version },
+        evidence_ids: [decision.decision_id, ...e.evidence_ids.filter((x) => x !== decision.decision_id)],
+      });
+    },
+  };
+}
+
+/**
+ * Stage 3. Acts on the persisted verdict only: `auto_permitted` allocates the
+ * single candidate through `run()`; every other verdict is handed off with
+ * the policy's reason and writes nothing. The actor is the Analyst role —
+ * Execute's authority is capped at what an Analyst may do (as Copilot's is),
+ * and the audit label names the agent.
+ */
+export async function runExecuteAgent(input: ExecuteAgentInput, tx: PolicyTx): Promise<ExecuteOutcome> {
+  const current = await currentDecision(input.subject.id, input.expected_fingerprint, tx);
+  if (!current.ok) return { kind: current.closed ? "not_applicable" : "refused", reason: current.reason };
+  const { row, decision, facts } = current;
+  if (decision.verdict !== "auto_permitted") {
+    return {
+      kind: "handed_off",
+      decision_id: decision.decision_id,
+      verdict: decision.verdict,
+      queue: HANDOFF_QUEUE[decision.verdict],
+      reason: decision.reason,
+    };
+  }
+  if (hasReversedAllocation(facts.history)) {
+    return { kind: "refused", reason: "A Manager reversed this allocation; it stays with a human." };
+  }
+  const candidates = Array.isArray(row.candidate_invoice_ids) ? row.candidate_invoice_ids : [];
+  if (candidates.length !== 1 || typeof candidates[0] !== "string") {
+    return { kind: "refused", reason: "Execute allocates only a single-candidate match." };
+  }
+  const event = await run(
+    { type: "allocate_payment", actor: "analyst", subject: input.subject, payload: { invoice_id: candidates[0] } },
+    asExecuteAgent(tx, decision),
+  );
+  return { kind: "executed", decision_id: decision.decision_id, config_version: decision.config_version, event };
+}
+
+/**
+ * The human "Submit for approval" path (A1 matrix, EXE182): `run()` gated by
+ * the persisted verdict. `blocked` refuses every role with the policy reason;
+ * `needs_manager` refuses an Analyst. Throws `PermissionDenied` (the caller
+ * audits it, FS21) or `InvalidCommand` for a missing or stale decision.
+ */
+export async function runPolicyGated(cmd: Command, expected: string, tx: PolicyTx): Promise<AuditEventInput> {
+  if (cmd.type !== "allocate_payment" || cmd.subject.kind !== "review") return run(cmd, tx);
+  const current = await currentDecision(cmd.subject.id, expected, tx);
+  if (!current.ok) {
+    if (current.closed) return run(cmd, tx); // run() gives the precise refusal (closed, wrong kind)
+    throw new InvalidCommand(current.reason);
+  }
+  const { decision } = current;
+  if (decision.verdict === "blocked") throw new PermissionDenied(cmd.type, decision.reason);
+  if (decision.verdict === "needs_manager" && cmd.actor !== "manager") {
+    throw new PermissionDenied(cmd.type, "Manager approval required");
+  }
+  return run(cmd, tx);
 }
