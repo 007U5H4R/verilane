@@ -8,7 +8,8 @@
  * - draft: `generated → (edited →)* validated | blocked → approved →
  *   sent_simulated`, `→ rejected` from any pre-approved state; any edit returns
  *   the draft to validation.
- * - review: `open → actioned | dismissed`.
+ * - review: `open → actioned | dismissed`; `actioned → open` (`reopen`) only
+ *   when a Manager reverses an applied allocation (TKT-75.06, EXE140).
  */
 
 type Table = Record<string, Record<string, string>>;
@@ -50,7 +51,8 @@ const TABLES = {
   },
   review: {
     open: { action: "actioned", dismiss: "dismissed" },
-    actioned: {},
+    // TKT-75.06: reversing an allocation reopens the item (reason `reversed`).
+    actioned: { reopen: "open" },
     dismissed: {},
   },
 } satisfies Record<string, Table>;

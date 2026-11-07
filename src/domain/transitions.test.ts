@@ -42,6 +42,8 @@ const LEGAL: Record<Machine, Array<[from: string, event: string, to: string]>> =
     review: [
       ["open", "action", "actioned"],
       ["open", "dismiss", "dismissed"],
+      // TKT-75.06 (TC-75.34): a Manager reverses an allocation → the item reopens.
+      ["actioned", "reopen", "open"],
     ],
   };
 
@@ -87,6 +89,12 @@ describe("transitions (TC-036)", () => {
     expect(() => transition("draft", "validated", "nope")).toThrow(
       IllegalTransition,
     );
+  });
+
+  it("review reopen (TC-75.34): only an actioned item reopens", () => {
+    expect(transition("review", "actioned", "reopen")).toBe("open");
+    expect(() => transition("review", "open", "reopen")).toThrow(IllegalTransition);
+    expect(() => transition("review", "dismissed", "reopen")).toThrow(IllegalTransition);
   });
 
   it("IllegalTransition carries a readable message and the pair", () => {

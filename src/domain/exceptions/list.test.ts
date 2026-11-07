@@ -128,6 +128,22 @@ describe("buildExceptionRows — TC-75.11", () => {
     expect(exceptionStatusLabel(exc({ review_id: "a", kind: "draft", status: "dismissed" }))).toBe("Dismissed");
   });
 
+  it("review m3 (EXE185): an open item's Pending Manager badge comes from the policy verdict, not requires_role", () => {
+    const open = exc({ review_id: "a", kind: "unallocated_payment" });
+    expect(exceptionStatusLabel(open, "needs_manager")).toBe("Pending Manager");
+    expect(exceptionStatusLabel({ ...open, requires_role: "manager" }, "needs_analyst")).toBe("Open");
+    expect(exceptionStatusLabel({ ...open, requires_role: "manager" }, "auto_permitted")).toBe("Open");
+    // Resolved / Dismissed win over any verdict; no verdict yet → v1's requires_role.
+    expect(exceptionStatusLabel({ ...open, status: "actioned" }, "needs_manager")).toBe("Resolved");
+    expect(exceptionStatusLabel({ ...open, requires_role: "manager" }, null)).toBe("Pending Manager");
+  });
+
+  it("review m3: queue rows take the verdict map's latest verdict for the badge", () => {
+    const verdicts = new Map([["RV-PAY-P-1", "needs_manager" as const]]);
+    const rows = buildExceptionRows({ ...src(sevenKinds), verdicts });
+    expect(rows.find((r) => r.id === "RV-PAY-P-1")?.statusLabel).toBe("Pending Manager");
+  });
+
   it("encodes ids in the href", () => {
     expect(exceptionHref("RV/1 x")).toBe("/exceptions/RV%2F1%20x");
   });

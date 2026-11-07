@@ -1260,3 +1260,151 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - **Validated, then one rw transaction.** The verdict enum, a non-blank `gate_id` and a known `config_version` (`KNOWN_POLICY_CONFIG_VERSIONS`) are checked before any write. An injected out-of-enum verdict (TC-75.16) persists nothing. An unknown config version is rejected up front, and the unreachable guard is gone. The prior-row read, the decision row and both audit events commit in one `db.transaction("rw", …)`, so a failed audit write rolls the decision back.
 - **The page has error and closed states.** `policyInputsFor()` returns an err when the bank line is missing; it never evaluates `amount ?? 0`. `ensurePolicyEvaluated()` returns a `Result`, and a rejection or a thrown write shows as "Policy couldn’t evaluate: …" (`data-testid="policy-error"`). The trigger fires once per `id|fingerprint`, so it never loops on retries. Closed exceptions intentionally get no new decision. When a closed exception has none, the page says "Not evaluated — this exception was closed before Policy ran." rather than "Not yet evaluated." forever.
 - **A partially missing candidate set is rejected.** If any candidate invoice is no longer on the ledger, Recommend returns `Rejected` and names the missing invoice. It no longer upgrades confidence based on the subset that remains.
+
+## EXE140 · Allocation reversal is a `reopen` transition plus a sticky `reversed` marker (TASK-79.6) — accepted
+- The `review` machine gains one edge, `actioned → open` (`reopen`). `dismissed` stays terminal, and `reopen` from `open` or `dismissed` throws `IllegalTransition` (TC-75.34).
+- `reverse_allocation` is the inverse of `allocate_payment` (EXE125), in one rw transaction over every table (`WHOLE_DB`):
+  - the payment's `invoice_id` goes back to null;
+  - the exception is put as `open`, with `reopen_reason: "reversed"` and `reversed: true`;
+  - `tx.data.recompute()` re-derives outstanding, status and priority.
+- The invoice rows are never written.
+- Exception schema: two optional fields, `reopen_reason` (enum `reversed`) and `reversed` (boolean). No Dexie schema change, because neither field is indexed, so `db.ts` is untouched.
+- **The `reversed` marker is sticky.** A later re-allocation keeps it, and `allocatePayment` is untouched (conflict hygiene). That is the signal NSM (TKT-75.07) needs: the item was resolved wrongly at least once. `reopen_reason` also survives a re-allocation. If NSM needs "currently reopened", it should read `status`, not `reopen_reason`.
+- **Preconditions:**
+  - kind must be `unallocated_payment`;
+  - status must be `actioned`, enforced through the transition itself;
+  - the payment must exist and be applied to the item's `invoice_id`;
+  - there must be an `allocate_payment` audit event on the subject.
+- Anything else is refused before any write.
+  - The latest `allocate_payment` event must also name that same invoice (review m5).
+- **NSM must not read the marker on its own (review m1).**
+  - `reversed` is per item and sticky. An item that is allocated, reversed, then correctly re-allocated stays `reversed: true` forever.
+  - So NSM ("value closed and not later reversed") must pair audit events: credit an `allocate_payment` event unless a `reverse_allocation` event names it in `after.reverses_event_id`.
+  - On an actioned item, `reopen_reason` is stale by design.
+
+## EXE141 · An Analyst's reversal attempt is refused and audited, in its own transaction (TASK-79.6, FS21) — accepted
+- `run()` throws `PermissionDenied` before any write, and the command's transaction rolls back. A refusal written inside that transaction would roll back with it.
+- So `execute()` catches `PermissionDenied`. For actions in `AUDITED_REFUSALS` (only `reverse_allocation`), it opens a second rw transaction and writes one `permission_denied` event via `recordRefusal()`. That event carries the subject, the role, the subject's `invoice_id`, and `after: {refused_action, reason}`. `execute()` then rethrows, so the caller still sees the denial.
+- v1 denials are unchanged: still refused, still not audited. Widening the set would change v1 audit counts, so it is left for a deliberate decision (see the known limit below).
+- `permission_denied` is a new `AuditAction` with its own `ACTION_META` row: category `review`, so it is not counted as an approval.
+- **A failed refusal audit never replaces the denial (review M1).**
+  - The refusal transaction has its own try/catch.
+  - On failure, it `console.error`s the audit error and attaches it as `cause` on the `PermissionDenied`.
+  - It then always rethrows the original `PermissionDenied`, and nothing is persisted.
+- **The refusal records the role the command ran as (review m6).** That role is read once, inside the command's transaction, and passed through. It is not read again, so a role switch from another tab in between cannot mislabel the actor.
+- **Known limit (review m7):** the `permission_denied` `ACTION_META` row hard-codes `module: "payments"`.
+  - That is correct while the set is only `reverse_allocation`.
+  - Widening `AUDITED_REFUSALS` takes two changes: add to the set, then derive the module from `after.refused_action`, or a refused draft action would show under Payments.
+- **Amended (TASK-79.4 integration, EXE182): one refusal format for both writers.** Both `reverse_allocation` refusals (via `execute()`) and policy-gated `allocate_payment` refusals (via `submitAllocationGated()`) are audited by `recordRefusal()`. The summary is "Refused {action words} on {id}: {reason}". The event carries the `invoice_id`: the subject's, or for an unallocated payment the target invoice named in the payload. A policy refusal also adds the PolicyDecision id, both in `evidence_ids` and as `after.policy_decision_id`. `allocate_payment` is not added to `AUDITED_REFUSALS`; only the gated path audits it. A raw `execute()` allocate denial is still a v1, unaudited denial.
+
+## EXE142 · The reversal audit names the allocation event; the exception's `invoice_id` is cleared (TASK-79.6) — accepted
+- `Tx` gains an optional `latestAudit(subject, action)`. The store implements it with the existing `subject` index on `audit`. The reversal records `reverses_event_id` (the `allocate_payment` event's `event_id`) in `after`, and the event number in the summary. This makes the link explicit, and it does not rely on audit ordering at read time.
+- The reopened exception's `invoice_id` is deleted, not left at the reversed invoice. With several candidates, the loader's `syncExceptions` merge keeps fields that the computed row lacks, so a stale `invoice_id` would otherwise survive. With one candidate, the recompute sets it back to that candidate, which matches the pre-allocation row.
+
+
+## EXE143 · The "Reverse allocation" control is its own Manager-only section with a confirm step, and stays enabled offline (TASK-79.6, TKT-75.06) — accepted
+- **Placement.** `ReverseAllocationSection` mounts in `ExceptionBody`, below `LoadedException`, as its own card. It is not part of the action bar (`role="group"` "Exception actions"), which 79.4 owns. The only change to `ExceptionDetailView.tsx` is the one `return` line in `ExceptionBody`.
+- **Role.** Hidden for an Analyst, per the ticket ("no dead control"). The server-side guard (EXE141) still refuses and audits a direct attempt. Visibility uses `useCan("reverse_allocation", …)`, the same rule the command checks.
+- **When it shows.** Only for an `unallocated_payment` that is `actioned`, whose payment is still applied to the exception's `invoice_id` (`reversibleAllocation()`). Once reversed, any role sees an "Allocation reversed" notice while the item is open with `reopen_reason: "reversed"`.
+- **Confirm step.** An `AlertDialog` names the payment, the amount and the invoice, and lists the effects. Its buttons are Cancel and a destructive "Reverse allocation". It is capped at `calc(100% - 2rem)` wide so it fits at 375px.
+- **Screen states.**
+  - Loading: the detail page's skeleton (the section is not rendered).
+  - Empty: the section is absent (nothing to reverse, or not a Manager).
+  - Error: an inline `role="alert"` in the dialog, plus a toast. Nothing is written, because the command runs in one transaction.
+  - Working: both buttons read "Reversing…" and are disabled, and the dialog can't be dismissed.
+- **Offline.** The control stays enabled. The reversal is a local IndexedDB write with no network or sync dependency, the same as allocation, which also stays enabled. Reset and import are paused because they need the network. The shell's offline banner still shows.
+
+## EXE180 · Execute agent: persisted verdict only, writes through `run()`, triggered on page view; risk (a) closed by a double fingerprint check (TASK-79.4) — accepted
+- **One write path.** `runExecuteAgent()` in `commands.ts` (additive) reads the latest *persisted* `PolicyDecisionRow` through a `PolicyTx.policyFacts()` read inside the command's transaction, and only for `auto_permitted` calls `run({type:"allocate_payment"})` — the same handler, permission check and one audit event a human submit uses (R6, R11). Any in-memory verdict the caller holds (`observed`) is ignored (TC-75.21). Every other verdict returns `handed_off` with its queue (`needs_analyst`→analyst, `needs_manager`→manager, `blocked`→blocked) and the policy's reason, and writes nothing (TC-75.23).
+- **Actor.** `actor_role` stays `analyst`: Execute's authority is capped at what an Analyst may do, as Copilot's is. The audit event keeps action `allocate_payment` (so reversal and the NSM still find it) and is relabelled `actor_label: "Execute Agent"`, cites the decision id first in `evidence_ids`, and records `after.policy_decision_id` + `after.config_version`; the summary ends `· policy policy-v1 (POL-…)` (TC-75.22). Only a single-candidate match is executed.
+- **Trigger.** Policy evaluation is lazy (EXE130), so Execute runs right after it on the detail page: `runExecuteAgentFor()` (`src/store/executeAgent.ts`) calls `ensurePolicyEvaluated()` then `executeAgent()`, one-shot per `id|decision_id|fingerprint`.
+- **Risk (a), stale latest decision.** `currentDecision()` refuses unless the latest row's `input_fingerprint` equals BOTH the caller's `policyInputsFor(detail).fingerprint` AND a fingerprint recomputed from the exception and payment re-read inside the transaction. The page re-evaluates first, so a changed input gets a fresh row and Execute acts on that; a caller that skips re-evaluation gets `refused`. Test: `executeAgent.test.ts` "risk (a)".
+- Alternative rejected: a `currentPolicyDecision(detail)` helper in `policy.ts` alone — it checks the caller's view but not the in-tx state, so a write between page read and Execute would slip through.
+
+## EXE181 · Risk (b): Execute refuses any exception whose history has a reversed allocation, paired by `reverses_event_id` (TASK-79.4) — accepted
+- Chosen over adding reversal state to the policy fingerprint: the fingerprint is 79.3's and 79.6 is still in flight, and a refusal keeps a Manager-reversed item with a human instead of silently re-applying it.
+- `hasReversedAllocation(history)` is true when an `allocate_payment` event has a later event whose `after.reverses_event_id` is its `event_id`. A sticky `reversed` flag alone does not count, and a reversal pointing at another event does not block. Tests build the shape directly (79.6's command is not on this branch).
+- UI: a `refused` outcome sets `executeRefused`, which re-enables the human submit for an `auto_permitted` item.
+- **Merge note for 79.6:** its reversal audit event must set `after.reverses_event_id` to the reversed allocation's `event_id`.
+
+## EXE182 · Human submit is gated by the persisted verdict; refusals are audited as `permission_denied` (FS21) (TASK-79.4) — accepted
+- `runPolicyGated()` (commands.ts, additive) wraps `run()` for `allocate_payment`: `blocked` refuses every role with the policy reason; `needs_manager` refuses an Analyst with "Manager approval required"; a missing or stale decision is an `InvalidCommand`. `submitAllocationGated()` (tx.ts, additive) writes the refusal in its own transaction, so a refused attempt is on the audit trail.
+- **Amended (integration with 79.6): one FS21 format.** The refusal now goes through 79.6's `recordRefusal()`. The earlier `policyRefusalEvent()` is removed. `reverse_allocation` and gated `allocate_payment` refusals are therefore audited in one format: summary "Refused {action words} on {id}: {reason}", the `invoice_id` (for an unallocated payment, the target invoice from the payload), and `after: {refused_action, reason}`. A policy refusal also carries the PolicyDecision id, in `evidence_ids` and as `after.policy_decision_id`. See the EXE141 amendment.
+- `permission_denied` joined `AuditAction`/`ACTION_META`. **Merge note:** the row is identical to 79.6's. The merge kept one copy; git auto-merged two, and the merge commit deleted the duplicate.
+
+## EXE183 · Action-bar matrix (A1 §25 row 2) and the Stage 3 Execute block (TASK-79.4) — accepted
+- `allocateBlocker(d, selected, permission, gate?)` keeps v1's checks first (closed → "Already resolved", non-payment, permission), then applies the gate: policy error → "Policy couldn’t evaluate this item"; no or stale decision → "Waiting for the policy decision"; `blocked` → the policy reason; `needs_manager` + Analyst → "Manager approval required"; `auto_permitted` (not refused) → "Execute agent is applying this allocation". The last two strings are additions to A1's matrix for the transient states between page load and Execute finishing; A1's four rows are unchanged.
+- Stage 3 is its own `<section data-testid="stage-execute" data-execute-state=…>` after the Policy block. Copy: executed → "Executed by Execute agent · {time} · policy v{n}" (`policy-v1` displayed as "policy v1"); `needs_analyst` → "Ready to allocate — handed to the Analyst queue."; `needs_manager` → "Pending manager hand-off."; `blocked` → "Not executable — {reason}"; each with a "Next:" line. A person's resolution shows "Already resolved — no Execute action.".
+- The page imports `EXECUTE_LABEL` as a type only, so the detail bundle doesn't pull in commands.ts.
+
+## EXE184 · Raw `execute()` stays ungated; TC-75.13's P-012 e2e now expects auto-execution (TASK-79.4) — accepted
+- `execute()` in tx.ts is unchanged (additive-only constraint); the detail page now submits through `submitAllocationGated()`. Any other caller of `execute({type:"allocate_payment"})` bypasses the verdict gate — a known limit to close when the allocate call sites are consolidated.
+- Seeded P-012 is `auto_permitted`, so opening its detail page now allocates it via Execute. The first TC-75.13 e2e no longer clicks submit: it asserts the Stage 3 "Executed by Execute agent · … · policy v1" copy, the single `allocate_payment` event labelled "Execute Agent" with `config_version: "policy-v1"`, the persisted INV-F allocation, and the disabled "Already resolved" bar.
+
+## EXE185 · An open item's "Pending Manager" badge comes from the persisted policy verdict (TASK-79.4, review m3) — accepted
+- `exceptionStatusLabel(x, verdict?)`: Resolved / Dismissed first. For an open item with a verdict, `needs_manager` reads "Pending Manager" and any other verdict reads "Open". With no verdict yet (Policy has not run) it falls back to v1's `requires_role`. The header and Stage 3 now agree on a G3/G4 `needs_manager` item whose `requires_role` is unset.
+- Header: the verdict comes from the page's policy gate and is ignored while the decision is stale. Queue: `useOpenExceptionRows` reads `policyDecisions` and keeps the latest per exception, using `byEvaluation` (now exported from policy.ts) as the order.
+- Testids and the v1 label strings are unchanged.
+
+## EXE170 · The North Star Metric is computed from paired audit events of the current session (TASK-79.7, TKT-75.07) — accepted
+- **NSM** = Σ value (paise) of payment exceptions closed by an approved action and not later reversed or reopened, in the current session. `computeNsm()` in `src/domain/nsm.ts` is pure (rows in, numbers out). No number is seeded, and the Home figure on a fresh seed is ₹0.
+- **Session.** The session is every audit event after the last `demo_reset` or `set_as_of` event, in `event_id` order. With no boundary event (the first seed writes none), the whole log is the session. `import_csv` is not a boundary.
+- **Closings are generic.** `CLOSING_VALUE` maps a closing action to the value it resolves. Today that is only `allocate_payment`, valued at the exception's bank line `amount_paise`. TKT-75.05's write-off is meant to be one more entry, e.g. `approve_write_off: (c) => num(c.event.after?.amount_paise)`, with no other change to the function. A closing counts only on a subject `review:<id>` that names a current payment exception (`isPaymentExceptionKind`).
+- **Events are paired; the `reversed` marker is not used** (coordinator input from the 79.6 review, EXE140). A closing is cancelled by:
+  - a later in-session event whose `after.reverses_event_id` names it (EXE142); or
+  - any other later in-session event on the same subject with `after.status === "open"`, which cancels the latest closing that still stands.
+  Per subject, only the latest closing that still stands counts. So allocate → reverse → correct re-allocate counts once, at the re-allocated value, although the exception still carries `reversed: true`.
+- **A defensive row check.** The counted closing also needs the exception's current `status === "actioned"`. This guards against a reopen that bypassed the audit; it is not the primary rule (see the "pairs events, not row state" test).
+- **Approved** (A1 item 5) means one of:
+  - the actor is human (`actorType()`), since the store audits only writes that `can()` allowed;
+  - the action is `autopilot_send`, under the Manager's standing policy (v1 TASK-41);
+  - the event carries a `policy_decision_id` whose PolicyDecision verdict is `auto_permitted`.
+  An unapproved closing is not counted.
+- **Assumption, to be re-checked on rebase.** The field name `policy_decision_id` is assumed for TKT-75.04's auto-executed writes. If 79.4 names it differently, only `isApproved()` changes. *Resolved by EXE173: the field is `after.policy_decision_id`, and the approval order changed.*
+
+## EXE171 · NSM guardrails: precise definitions (TASK-79.7, TKT-75.07, Discovery §8.1) — accepted
+All guardrails are computed from the same session as the NSM (EXE170). A rate is `null` when its denominator is 0, never 0/0 or NaN.
+- **Reversal/reopen rate.** The share of closings that a later in-session reversal or reopen cancelled: `reversedOrReopened ÷ closings`. Closings are counted whether approved or not. Lower is better.
+- **Inappropriate-reminder rate.** The share of reminder sends whose invoice should not have been chased: `inappropriateReminders ÷ reminderSends`. Sends are `approve_draft` and `autopilot_send`. An invoice is inappropriate if it is `paid`, has an open dispute (`OPEN_DISPUTE`), or is a candidate invoice of an open `unallocated_payment` exception. Target 0. **Limitation:** this is judged against current state, not the state at send time; a point-in-time version needs a snapshot on the send event.
+- **Actions without approval.** The count of closings plus sends that are not approved under EXE170's rule. Target 0.
+- **Median raised→resolved.** The median, in ms, of (resolved − raised) over counted closings.
+  - resolved = the closing event's `at`;
+  - raised = the latest in-session reopen on that subject, else the session boundary's `at`.
+  When neither is known (no boundary, first seed), the closing counts toward `resolutionTimesUnmeasured`, and the median is `null` if nothing was measured.
+- **Escalation rate.** `escalated ÷ evaluated`.
+  - evaluated = exceptions with at least one in-session `policy_evaluated` event whose `evidence_ids` names a known PolicyDecision;
+  - escalated = those whose latest such verdict is `needs_manager`.
+
+## EXE172 · Home NSM section and Exceptions card (TASK-79.7, TC-75.43/44) — accepted, with deviations
+- **Placement.** `NsmSection` sits between the KPI strip and the task-feed grid (Design §6), in its own `home-block-nsm` error boundary. It loads and fails independently of the KPI, feed and chart blocks. `computeNsm` runs during render, so a throw reaches the boundary. `?__block_error=nsm` forces the error state under `NEXT_PUBLIC_E2E=1`, following the TC-056 pattern.
+- **Heading and label.**
+  - The heading is "North Star Metric" (A1 item 4), an 11px uppercase muted `h2` that labels the section.
+  - The literal `NSM_LABEL` "Simulated — one demo session = one analyst-week" is shown in every state, including loading and error (TC-75.43).
+- **States.**
+  - loading: a skeleton bar with `aria-busy`;
+  - empty: ₹0.00 and "No exceptions resolved yet this session.";
+  - error: an inline `ErrorState` with Retry, inside the section;
+  - working: the figure plus "N exceptions resolved this session".
+  - Offline adds a note, "Offline — computed from this device's data.", because the figure is computed locally and stays valid.
+  - The page-level skeleton and empty states (`HomeSkeleton`, `NoAttention`) do not include the NSM.
+- **State hook.** The section exposes its state as `data-nsm-state`, not `data-state`. Home e2e specs locate the page with a strict `[data-state="working"]`, so a second match would break them. A unit test pins this.
+- **Exceptions card.** It already shipped in TKT-75.02 (EXE127). It is now pinned at the component level by `TaskFeed.test.ts`.
+- **Deviations.**
+  - **Font.** Design §6 asks for an Iowan serif value, but `--font-display` is Inter in this codebase. The value uses `font-display`, the same as the KPI values, so it still "matches KPI values".
+  - **Border and radius.** Design §6 says "10px radius, 14px border left"; the mockup has a 1px border all round with a 14px radius. This uses a 10px radius and a 4px left border in `--brand`, the brief's reading. A 14px-wide border would crowd the 375px layout.
+  - **Card order.** Design §6 orders the cards High | Exceptions | Disputes | Drafts, but the feed keeps its existing order (high, disputed, drafts, payments, exceptions). Reordering would change v1 feed order and the existing e2e expectations.
+  - **Description copy.** It is the label, then "Value of payment exceptions resolved by an approved action and not reversed." The mockup's "correctly resolved" is replaced by the operational definition.
+- **Follow-ups.**
+  - Placement of the label on the `/exceptions` list page (79.4 touches that page).
+  - TC-75.41–45 rows missing from `docs/test-cases.md`.
+  - Surfacing the guardrails in the UI (computed, not yet shown).
+  - A point-in-time inappropriate-reminder check (EXE171).
+
+## EXE173 · NSM approval reads the Execute agent's real row shape; "paid" includes outstanding <= 0 (TASK-79.7 review fix r1, amends EXE170/171) — accepted
+- **Where the decision lives.** 79.4's `asExecuteAgent` writes an `allocate_payment` row through `run()` as the Analyst (`actor_role: "analyst"`), labelled `actor_label: "Execute Agent"`. The decision is in `after.policy_decision_id` (with `after.config_version`) and first in `evidence_ids`. There is no top-level `policy_decision_id`. `isApproved()` reads `after.policy_decision_id`.
+- **Decision first, classifier never, for agent rows.** A row that names a decision in `after.policy_decision_id`, or is labelled "Execute Agent", is approved only when that decision's verdict is `auto_permitted`. No id, an unknown id, `needs_manager` and `blocked` are all unapproved: the closing does not count, and it adds 1 to `actionsWithoutApproval`. `actorType()` is not consulted for these rows because, on this base, an Analyst-run Execute row classifies as human.
+  - Only rows with neither fall back to EXE170's other two rules (`autopilot_send`, or a human actor).
+  - A Manager's approval of a `needs_manager` item (`runPolicyGated`) carries no decision id, so it stays human-approved.
+  - `permission_denied` rows can carry a decision id, but they are not closings or sends, so they are never judged.
+- **"Paid" for the inappropriate-reminder guardrail** (EXE171) is the source status `paid` **or** derived outstanding <= 0. Outstanding is `amount_paise` minus the payments applied to the invoice, the same closed test as `priority.ts` G1; unapplied cash never matches. `NsmInput.invoices` now carries `amount_paise`, which the Dexie rows already have.
+- **Unchanged.** The guardrail is still judged against current state, not send-time state (EXE171 limitation). This is now also stated in code.
