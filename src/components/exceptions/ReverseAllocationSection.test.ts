@@ -12,7 +12,7 @@ import { paise } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import type { Exception } from "@/domain/schema";
 import type { ExceptionDetail } from "@/store/hooks";
-import { ReverseAllocationPanel, reversibleAllocation } from "./ReverseAllocationSection";
+import { canOfferReversal, ReverseAllocationPanel, reversibleAllocation } from "./ReverseAllocationSection";
 
 const resolved: Exception = {
   review_id: "RV-PAY-P-012",
@@ -84,5 +84,12 @@ describe("Reverse allocation section — TC-75.35", () => {
       expect(out).toContain("Allocation reversed");
       expect(out).not.toContain('data-testid="reverse-allocation-open"');
     }
+  });
+
+  it("the confirm dialog is offered only to a role that may reverse (review r2 m4)", () => {
+    expect(canOfferReversal(detail(), MANAGER)).toBe(true);
+    expect(canOfferReversal(detail(), ANALYST)).toBe(false);
+    expect(canOfferReversal(detail({ status: "open", invoice_id: undefined }), MANAGER)).toBe(false);
+    expect(canOfferReversal(detail({}, null), MANAGER)).toBe(false);
   });
 });

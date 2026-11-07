@@ -40,6 +40,16 @@ export function reversibleAllocation(
   return { paymentId: p.payment_id, invoiceId, amountPaise: p.amount_paise };
 }
 
+/**
+ * Whether the confirm dialog may be mounted at all: there is something to
+ * reverse AND the role may reverse it (review r2 m4). A role switch to
+ * Analyst while the dialog is open unmounts it rather than leaving a
+ * Manager-only dialog in front of an Analyst.
+ */
+export function canOfferReversal(d: ExceptionDetail, permission: Permission): boolean {
+  return permission.allowed && reversibleAllocation(d) !== null;
+}
+
 // Its own block under the action bar, aligned to the detail page's max width.
 const CARD = "mx-auto mt-4 flex w-full max-w-6xl min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card";
 
@@ -136,7 +146,7 @@ export function ReverseAllocationSection({ detail }: { detail: ExceptionDetail }
           setOpen(true);
         }}
       />
-      {allocation !== null && (
+      {allocation !== null && canOfferReversal(detail, permission) && (
         <AlertDialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
           <AlertDialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg" data-testid="reverse-allocation-dialog">
             <AlertDialogHeader>
