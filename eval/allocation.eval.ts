@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import Papa from "papaparse";
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 import { ingest, type Row } from "@/domain/ingest";
 import {
   ALLOCATION_THRESHOLDS,
@@ -43,8 +43,11 @@ const seedCases: AllocationCase[] = SEED_ALLOCATION_LABELS.map((label) => ({
 function gate(set: string, cases: AllocationCase[]): void {
   describe(`${set} allocation-recommendation accuracy (TC-75.40)`, () => {
     let score: AllocationScore;
-    test("scores every labelled bank line", () => {
+    // Scored once before any test, so each test can run (or be filtered) on its own (review m6).
+    beforeAll(() => {
       score = scoreAllocation(cases);
+    });
+    test("scores every labelled bank line", () => {
       const { tp, fp, tn, fn } = score.confusion;
       console.info(
         `allocation ${set}: unambiguous correct ${score.unambiguous_correct.passed}/${score.unambiguous_correct.total}` +
@@ -74,12 +77,28 @@ gate("seed", seedCases);
 gate("held-out", HELDOUT_ALLOCATION_CASES);
 
 describe("allocation scorer self-check (TC-75.40)", () => {
-  test("an auto-pick of an ambiguous line is counted as a false positive and fails the gate", () => {
-    // A mislabelled case (an FS14 tie labelled as auto) proves the scorer can
-    // fail: Policy escalates it, so the unambiguous gate misses with an FN.
+  // Each check feeds the scorer a deliberately mislabelled case, proving the
+  // gate can fail in both directions.
+  test("an escalated line labelled as auto is counted as a false negative and fails the unambiguous gate", () => {
+    // An FS14 tie labelled as auto: Policy escalates it, so the unambiguous gate misses with an FN.
     const tie = HELDOUT_ALLOCATION_CASES.find((c) => c.id === "H-TIE-2")!;
     const score = scoreAllocation([{ ...tie, ambiguous: false, expected: { verdict: "auto_permitted", invoice_id: "INV-201" } }]);
     expect(score.confusion.fn).toBe(1);
+    expect(score.unambiguous_correct.rate).toBe(0);
+  });
+
+  test("an auto-pick of a line labelled ambiguous is counted as a false positive and fails the ambiguous gate (review m7)", () => {
+    // A unique small match that Policy auto-permits, labelled as ambiguous.
+    const unique = HELDOUT_ALLOCATION_CASES.find((c) => c.id === "H-UNIQUE-SMALL")!;
+    const score = scoreAllocation([{ ...unique, ambiguous: true, expected: { verdict: "needs_manager" } }]);
+    expect(score.confusion.fp).toBe(1);
+    expect(score.ambiguous_escalated.rate).toBe(0);
+  });
+
+  test("an auto-pick of the wrong invoice is counted as a false positive and fails the unambiguous gate (review m7)", () => {
+    const unique = HELDOUT_ALLOCATION_CASES.find((c) => c.id === "H-UNIQUE-SMALL")!;
+    const score = scoreAllocation([{ ...unique, expected: { verdict: "auto_permitted", invoice_id: "INV-202" } }]);
+    expect(score.confusion.fp).toBe(1);
     expect(score.unambiguous_correct.rate).toBe(0);
   });
 });
