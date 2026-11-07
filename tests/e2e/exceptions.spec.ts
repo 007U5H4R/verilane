@@ -26,7 +26,8 @@ test("TC-75.13: allocate P-012 to INV-F from /exceptions; it leaves the open lis
   await row.getByRole("link", { name: `Review Unallocated payment ${ID}` }).click();
   await expect(page).toHaveURL(new RegExp(`/exceptions/${ID}$`));
   await expect(page.getByTestId("payment-evidence")).toContainText("P-012");
-  await expect(page.getByTestId("unapplied-cash")).toContainText("₹25,000.00");
+  // TKT-75.08 added FS14–FS17 (P-013..P-016), so the ledger holds five unapplied lines.
+  await expect(page.getByTestId("unapplied-cash")).toContainText("₹5,32,500.00 across 5 bank lines");
   // AC6 (fix r1 M1/EXE131): opening the page runs Recommend → Policy, and both
   // agent stages land on the audit trail before anyone acts.
   await expect(page.getByTestId("exception-audit")).toContainText("Policy Agent evaluated exception (verdict:");
