@@ -263,7 +263,7 @@ export async function executeAgent(db: VerilaneDb, input: ExecuteAgentInput, opt
  * then is audited in its own transaction (FS21) and rethrown.
  */
 export async function submitAllocationGated(db: VerilaneDb, input: CommandInput, expectedFingerprint: string) {
-  const [{ runPolicyGated, policyRefusalEvent }, { recompute }, policy] = await Promise.all([
+  const [{ runPolicyGated, recordRefusal }, { recompute }, policy] = await Promise.all([
     import("@/domain/commands"),
     import("./loader"),
     import("@/domain/policy"),
@@ -275,11 +275,11 @@ export async function submitAllocationGated(db: VerilaneDb, input: CommandInput,
     });
   } catch (e) {
     if (e instanceof PermissionDenied) {
-      await db.transaction("rw", [db.audit, db.meta, db.policyDecisions], async () => {
+      // One FS21 format with reverse_allocation (recordRefusal, EXE141/EXE182).
+      await db.transaction("rw", db.tables, async () => {
         const actor = await currentRole(db);
         const latest = await policy.latestPolicyDecisionForException(db, input.subject.id);
-        const event = policyRefusalEvent({ ...input, actor }, e.reason, new Date().toISOString(), latest?.decision_id);
-        await db.audit.add(event as unknown as AuditEventRow);
+        await recordRefusal({ ...input, actor }, e, dexieTx(db, recompute), latest ? { decision_id: latest.decision_id } : undefined);
       });
     }
     throw e;

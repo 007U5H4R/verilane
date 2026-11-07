@@ -899,11 +899,15 @@ export const AUDITED_REFUSALS: ReadonlySet<Action> = new Set<Action>(["reverse_a
  * Records a refused command as one `permission_denied` event. The store runs
  * it in its own transaction after the command's has rolled back, so nothing
  * the command would have written survives — only the refusal.
+ *
+ * TKT-75.04 (EXE182): a policy-gated `allocate_payment` refusal uses this same
+ * format, passing the PolicyDecision it was refused against as `policy`.
  */
 export async function recordRefusal(
   cmd: Command,
   denied: PermissionDenied,
   tx: Tx,
+  policy?: { decision_id: string },
 ): Promise<AuditEventInput> {
   const table = TABLE_FOR[cmd.subject.kind];
   const row = table ? await tx.get(table, cmd.subject.id) : undefined;
@@ -916,10 +920,13 @@ export async function recordRefusal(
     subject_kind: cmd.subject.kind,
     subject_id: cmd.subject.id,
     summary: `Refused ${cmd.type.replace(/_/g, " ")} on ${cmd.subject.id}: ${denied.reason}`,
-    after: { refused_action: cmd.type, reason: denied.reason },
-    evidence_ids: [],
+    after: policy
+      ? { refused_action: cmd.type, reason: denied.reason, policy_decision_id: policy.decision_id }
+      : { refused_action: cmd.type, reason: denied.reason },
+    evidence_ids: policy ? [policy.decision_id] : [],
   };
-  const invoiceId = invoiceIdOf(cmd, row);
+  // An unallocated payment has no invoice yet; the refused target is the one named.
+  const invoiceId = invoiceIdOf(cmd, row) ?? str(cmd.payload?.invoice_id);
   if (invoiceId !== undefined) event.invoice_id = invoiceId;
   await tx.audit(event);
   return event;
@@ -1480,20 +1487,4 @@ export async function runPolicyGated(cmd: Command, expected: string, tx: PolicyT
     throw new PermissionDenied(cmd.type, "Manager approval required");
   }
   return run(cmd, tx);
-}
-
-/** The FS21 audit row for a refused attempt; same shape as TKT-75.06's. */
-export function policyRefusalEvent(cmd: Command, reason: string, at: string, decisionId?: string): AuditEventInput {
-  return {
-    at,
-    actor_role: cmd.actor,
-    actor_label: ROLE_LABEL[cmd.actor],
-    action: "permission_denied",
-    subject: `${cmd.subject.kind}:${cmd.subject.id}`,
-    subject_kind: cmd.subject.kind,
-    subject_id: cmd.subject.id,
-    summary: `Refused ${cmd.type}: ${reason}`,
-    after: { refused_action: cmd.type, reason },
-    evidence_ids: decisionId ? [decisionId] : [],
-  };
 }

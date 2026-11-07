@@ -271,9 +271,16 @@ describe("TC-75.24 (unit) the human submit is gated by the persisted verdict", (
     expect(refusals[0]).toMatchObject({
       actor_role: "analyst",
       subject: `review:${EXC}`,
-      after: { refused_action: "allocate_payment", reason: "Manager approval required" },
+      // One FS21 format with 79.6's reverse_allocation refusal (recordRefusal).
+      summary: `Refused allocate payment on ${EXC}: Manager approval required`,
+      invoice_id: "INV-F",
+      after: {
+        refused_action: "allocate_payment",
+        reason: "Manager approval required",
+        policy_decision_id: decision.decision_id,
+      },
     });
-    expect(refusals[0]!.evidence_ids).toContain(decision.decision_id);
+    expect(refusals[0]!.evidence_ids).toEqual([decision.decision_id]);
   });
 
   it("needs_manager + Manager: allocates", async () => {
@@ -300,7 +307,15 @@ describe("TC-75.24 (unit) the human submit is gated by the persisted verdict", (
     await db.meta.put({ key: "role", value: "manager" });
     await expect(submit(fingerprint)).rejects.toThrow(decision.reason);
     expect((await payment()).invoice_id).toBeNull();
-    expect(await db.audit.where("action").equals("permission_denied").count()).toBe(1);
+    const refusals = await db.audit.where("action").equals("permission_denied").toArray();
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]).toMatchObject({
+      actor_role: "manager",
+      summary: `Refused allocate payment on ${EXC}: ${decision.reason}`,
+      invoice_id: "INV-F",
+      after: { refused_action: "allocate_payment", policy_decision_id: decision.decision_id },
+    });
+    expect(refusals[0]!.evidence_ids).toEqual([decision.decision_id]);
   });
 
   it("a stale decision: refused, nothing written", async () => {
