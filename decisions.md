@@ -1360,7 +1360,7 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
   - the action is `autopilot_send`, under the Manager's standing policy (v1 TASK-41);
   - the event carries a `policy_decision_id` whose PolicyDecision verdict is `auto_permitted`.
   An unapproved closing is not counted.
-- **Assumption, to be re-checked on rebase.** The field name `policy_decision_id` is assumed for TKT-75.04's auto-executed writes. If 79.4 names it differently, only `isApproved()` changes.
+- **Assumption, to be re-checked on rebase.** The field name `policy_decision_id` is assumed for TKT-75.04's auto-executed writes. If 79.4 names it differently, only `isApproved()` changes. *Resolved by EXE173: the field is `after.policy_decision_id`, and the approval order changed.*
 
 ## EXE171 · NSM guardrails: precise definitions (TASK-79.7, TKT-75.07, Discovery §8.1) — accepted
 All guardrails are computed from the same session as the NSM (EXE170). A rate is `null` when its denominator is 0, never 0/0 or NaN.
@@ -1399,3 +1399,12 @@ All guardrails are computed from the same session as the NSM (EXE170). A rate is
   - TC-75.41–45 rows missing from `docs/test-cases.md`.
   - Surfacing the guardrails in the UI (computed, not yet shown).
   - A point-in-time inappropriate-reminder check (EXE171).
+
+## EXE173 · NSM approval reads the Execute agent's real row shape; "paid" includes outstanding <= 0 (TASK-79.7 review fix r1, amends EXE170/171) — accepted
+- **Where the decision lives.** 79.4's `asExecuteAgent` writes an `allocate_payment` row through `run()` as the Analyst (`actor_role: "analyst"`), labelled `actor_label: "Execute Agent"`. The decision is in `after.policy_decision_id` (with `after.config_version`) and first in `evidence_ids`. There is no top-level `policy_decision_id`. `isApproved()` reads `after.policy_decision_id`.
+- **Decision first, classifier never, for agent rows.** A row that names a decision in `after.policy_decision_id`, or is labelled "Execute Agent", is approved only when that decision's verdict is `auto_permitted`. No id, an unknown id, `needs_manager` and `blocked` are all unapproved: the closing does not count, and it adds 1 to `actionsWithoutApproval`. `actorType()` is not consulted for these rows because, on this base, an Analyst-run Execute row classifies as human.
+  - Only rows with neither fall back to EXE170's other two rules (`autopilot_send`, or a human actor).
+  - A Manager's approval of a `needs_manager` item (`runPolicyGated`) carries no decision id, so it stays human-approved.
+  - `permission_denied` rows can carry a decision id, but they are not closings or sends, so they are never judged.
+- **"Paid" for the inappropriate-reminder guardrail** (EXE171) is the source status `paid` **or** derived outstanding <= 0. Outstanding is `amount_paise` minus the payments applied to the invoice, the same closed test as `priority.ts` G1; unapplied cash never matches. `NsmInput.invoices` now carries `amount_paise`, which the Dexie rows already have.
+- **Unchanged.** The guardrail is still judged against current state, not send-time state (EXE171 limitation). This is now also stated in code.
