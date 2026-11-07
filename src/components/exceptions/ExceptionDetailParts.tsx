@@ -260,7 +260,7 @@ function PaymentEvidence({ detail }: { detail: ExceptionDetail }) {
           <dt className="text-text-muted">Invoice</dt>
           <dd className="text-text">{p.invoice_id ?? "Unapplied"}</dd>
           <dt className="text-text-muted">Remittance</dt>
-          <dd className="text-text">None on file — matched on amount</dd>
+          <dd className="break-all text-text">{p.remittance_reference ?? "None on file — matched on amount"}</dd>
         </dl>
       ) : (
         <p className="text-sm text-text-muted">Bank line {x.payment_id ?? ""} is no longer on the ledger.</p>

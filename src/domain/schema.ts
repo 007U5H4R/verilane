@@ -59,6 +59,11 @@ export const PaymentSchema = z.object({
   invoice_id: z.string().nullable(),
   paid_on: isoDate,
   amount_paise: paiseAmount, // partial payments allowed (FS8).
+  // TASK-79.8 (EXE160): who the bank says paid, and the reference the
+  // remittance cites, both verbatim. Optional: absent when the bank line
+  // carries neither (a v1 row is unchanged). Never fuzzy-matched.
+  payer_customer_id: z.string().min(1).optional(),
+  remittance_reference: z.string().min(1).optional(),
 });
 export type Payment = z.infer<typeof PaymentSchema>;
 
@@ -317,6 +322,8 @@ export const VerifiedFactKindSchema = z.enum([
   "due_date",
   "days_overdue",
   "contact",
+  // TASK-79.8 (EXE162): the reference a bank line cites, kept verbatim.
+  "remittance_reference",
 ]);
 export type VerifiedFactKind = z.infer<typeof VerifiedFactKindSchema>;
 

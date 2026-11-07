@@ -26,7 +26,6 @@ test("TC-75.13: allocate P-012 to INV-F from /exceptions; it leaves the open lis
   await row.getByRole("link", { name: `Review Unallocated payment ${ID}` }).click();
   await expect(page).toHaveURL(new RegExp(`/exceptions/${ID}$`));
   await expect(page.getByTestId("payment-evidence")).toContainText("P-012");
-  await expect(page.getByTestId("unapplied-cash")).toContainText("₹25,000.00");
   // AC6 (fix r1 M1/EXE131): opening the page runs Recommend → Policy, and both
   // agent stages land on the audit trail before anyone acts.
   await expect(page.getByTestId("exception-audit")).toContainText("Policy Agent evaluated exception (verdict:");
@@ -37,6 +36,10 @@ test("TC-75.13: allocate P-012 to INV-F from /exceptions; it leaves the open lis
   await expect(page.getByTestId("execute-status")).toContainText(/Executed by Execute agent · .+ · policy v1/);
   await expect(page.getByText("Allocated payment P-012 (₹25,000.00) to INV-F").first()).toBeVisible();
   await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
+  // TKT-75.08 added FS14–FS17 (P-013..P-016). Execute allocates P-012 on page
+  // open, so the settled total is the four FS lines, ₹5,07,500.00. Asserted
+  // after "Resolved" so it never races the auto-allocation (review I2).
+  await expect(page.getByTestId("unapplied-cash")).toContainText("₹5,07,500.00 across 4 bank lines");
   await expect(page.getByTestId("exception-audit")).toContainText("Allocated payment P-012 (₹25,000.00) to INV-F");
   await expect(page.getByTestId("exception-submit")).toBeDisabled();
   await expect(page.getByTestId("exception-submit-reason")).toHaveText("Already resolved");

@@ -128,6 +128,23 @@ describe("toCsv / parseImport — TC-059 round-trip", () => {
     expect(back.value.dataIssues).toEqual([]);
   });
 
+  it("round-trips a bank line's optional payer and remittance reference (TKT-75.08, EXE160)", () => {
+    const rows = [
+      { payment_id: "P-900", invoice_id: null, paid_on: "2026-10-01", amount_paise: 100, payer_customer_id: "C-004" },
+      { payment_id: "P-901", invoice_id: null, paid_on: "2026-10-02", amount_paise: 200, remittance_reference: "INV-1O37" },
+    ];
+    const csv = toCsv("payments", rows);
+    expect(csv.split(/\r?\n/)[0]).toBe("payment_id,invoice_id,paid_on,amount_paise,payer_customer_id,remittance_reference");
+    const back = parseImport("payments", csv);
+    if (!back.ok) throw new Error(JSON.stringify(back.error));
+    expect(back.value.rows).toEqual(rows);
+  });
+
+  it("a payments export with no payer or remittance reference keeps the 4-column header (TKT-75.08 review m9)", () => {
+    const csv = toCsv("payments", [{ payment_id: "P-900", invoice_id: null, paid_on: "2026-10-01", amount_paise: 100 }]);
+    expect(csv.split(/\r?\n/)[0]).toBe("payment_id,invoice_id,paid_on,amount_paise");
+  });
+
   it("exports workflow tables with a header row and escaped cells", () => {
     const csv = toCsv("audit", [
       { event_id: 1, action: "add_note", subject: "invoice:INV-001", summary: 'Note: "hi", there' },

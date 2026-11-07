@@ -68,7 +68,8 @@ describe("allocate_payment — TC-75.08", () => {
     expect(await db.priorities.get("INV-F")).toMatchObject({ gate: "G1", band: "closed" });
     // Exception actioned, kept as history (recompute does not re-raise or delete it).
     expect(await db.exceptions.get(EXC)).toMatchObject({ status: "actioned", invoice_id: "INV-F" });
-    expect(await db.exceptions.where("kind").equals("unallocated_payment").count()).toBe(1);
+    // P-012 plus FS14–FS17's P-013..P-016 (TKT-75.08).
+    expect(await db.exceptions.where("kind").equals("unallocated_payment").count()).toBe(5);
     // Exactly one audit event.
     const audit = await db.audit.toArray();
     expect(audit).toHaveLength(1);

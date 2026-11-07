@@ -170,6 +170,25 @@ describe("/exceptions/[id] — TC-75.12", () => {
     expect(out).toContain("Unapplied cash on the ledger: ₹25,000.00 across 1 bank line");
   });
 
+  it("payment evidence: Remittance shows the cited reference verbatim, and the no-reference copy only when there is none (TASK-79.8 review M2)", () => {
+    const cited = content(
+      detail({
+        payment: {
+          payment_id: "P-015",
+          invoice_id: null,
+          paid_on: "2026-10-28",
+          amount_paise: paise(8_800_000),
+          remittance_reference: "INV-1O37",
+        },
+      }),
+    );
+    expect(cited).toMatch(/Remittance<\/dt><dd[^>]*>INV-1O37<\/dd>/);
+    expect(cited).not.toContain("None on file");
+
+    const none = content(detail());
+    expect(none).toMatch(/Remittance<\/dt><dd[^>]*>None on file — matched on amount<\/dd>/);
+  });
+
   it("invoice facts for each candidate: id, customer, outstanding, days overdue", () => {
     const out = content(detail());
     expect(out).toContain("VL-1006");

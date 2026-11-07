@@ -83,7 +83,7 @@ test("TC-075: manifest declares standalone install metadata and the SW registers
   await swControlled(page);
   const scriptURL = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? "");
   expect(scriptURL).toMatch(/\/sw\.js$/);
-  expect(await cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
+  expect(await cacheKeys(page)).toEqual([`verilane-${SEED_MANIFEST.seedVersion}`]);
 });
 
 test("TC-075c: /sw.js is served uncached with a strict CSP (T24-10)", async ({ page }) => {
@@ -159,12 +159,12 @@ async function cachedUrls(page: Page): Promise<string[]> {
 }
 
 test("TC-077: a seed version bump evicts the old cache and serves the new seed", async ({ page, context }) => {
-  const bumpedVersion = "2026-10-30.1-tc077";
+  const bumpedVersion = `${SEED_MANIFEST.seedVersion}-tc077`;
   await page.goto("/queue");
   await swControlled(page);
-  await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
+  await expect.poll(() => cacheKeys(page)).toEqual([`verilane-${SEED_MANIFEST.seedVersion}`]);
   // First-run seeding must have recorded the old version before the bump.
-  await expect.poll(() => storedSeedVersion(page)).toBe("2026-10-30.1");
+  await expect.poll(() => storedSeedVersion(page)).toBe(SEED_MANIFEST.seedVersion);
 
   await routeBumpedManifest(context, bumpedVersion);
   await page.reload();
@@ -206,8 +206,8 @@ test("TC-077: a seed version bump evicts the old cache and serves the new seed",
 test("TC-077b: a bump whose seed files fail is not adopted and never serves stale seed", async ({ page, context }) => {
   await page.goto("/queue");
   await swControlled(page);
-  await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
-  await expect.poll(() => storedSeedVersion(page)).toBe("2026-10-30.1");
+  await expect.poll(() => cacheKeys(page)).toEqual([`verilane-${SEED_MANIFEST.seedVersion}`]);
+  await expect.poll(() => storedSeedVersion(page)).toBe(SEED_MANIFEST.seedVersion);
 
   const swErrors: string[] = [];
   page.on("console", (msg) => {
@@ -221,7 +221,7 @@ test("TC-077b: a bump whose seed files fail is not adopted and never serves stal
   // T24-6: the failure reaches the page instead of vanishing inside the SW.
   await expect.poll(() => swErrors.length).toBeGreaterThan(0);
   // The half-built cache is dropped; the consistent old one stays.
-  await expect.poll(() => cacheKeys(page)).toEqual(["verilane-2026-10-30.1"]);
+  await expect.poll(() => cacheKeys(page)).toEqual([`verilane-${SEED_MANIFEST.seedVersion}`]);
   // The 404 surfaces; the SW never answers with the old cached payments.csv.
   const status = await page.evaluate(() => fetch("/seed/payments.csv").then((r) => r.status));
   expect(status).toBe(404);
