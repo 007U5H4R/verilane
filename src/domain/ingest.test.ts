@@ -248,3 +248,31 @@ describe("ingest — R9 a bad row is an invalid DataIssue, never a throw", () =>
     ]);
   });
 });
+
+// TASK-79.8 (EXE160): a bank line may name its payer and cite a remittance
+// reference. Both are optional: a blank cell leaves the field absent, so a
+// v1 payment row parses to the same object as before.
+describe("ingest — payment payer and remittance reference (EXE160)", () => {
+  const ingestPayment = (row: Row) =>
+    ingest({ invoices: [], customers: [], payments: [row], emails: [] }).payments;
+
+  it("keeps payer_customer_id and remittance_reference verbatim when present", () => {
+    const [p] = ingestPayment(
+      paymentRow({ invoice_id: "", payer_customer_id: "C-004", remittance_reference: "INV-1O37" }),
+    );
+    expect(p).toEqual({
+      payment_id: "P-001",
+      invoice_id: null,
+      paid_on: "2026-09-10",
+      amount_paise: 40000,
+      payer_customer_id: "C-004",
+      remittance_reference: "INV-1O37",
+    });
+  });
+
+  it("leaves both fields absent when the cells are blank or the columns are missing", () => {
+    const v1 = { payment_id: "P-001", invoice_id: "INV-001", paid_on: "2026-09-10", amount_paise: 40000 };
+    expect(ingestPayment(paymentRow())).toEqual([v1]);
+    expect(ingestPayment(paymentRow({ payer_customer_id: "", remittance_reference: "" }))).toEqual([v1]);
+  });
+});

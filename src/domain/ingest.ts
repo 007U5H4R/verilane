@@ -48,6 +48,12 @@ function nullableField(row: Row, key: string): string | null {
   return value === "" ? null : value;
 }
 
+/** `{ [key]: value }` when the cell is non-blank, else `{}`: an optional field stays absent (EXE160). */
+function optionalField<K extends string>(row: Row, key: K): Partial<Record<K, string>> {
+  const value = nullableField(row, key);
+  return value === null ? {} : ({ [key]: value } as Record<K, string>);
+}
+
 const KNOWN_STATUSES = new Set(InvoiceStatusSchema.options.map((s) => s.toLowerCase()));
 
 function normalizeStatus(statusRaw: string): InvoiceStatus {
@@ -136,6 +142,8 @@ function ingestPayments(rows: Row[], dataIssues: DataIssue[]): Payment[] {
         invoice_id: nullableField(row, "invoice_id"),
         paid_on: field(row, "paid_on"),
         amount_paise: strictInt(field(row, "amount_paise")),
+        ...optionalField(row, "payer_customer_id"),
+        ...optionalField(row, "remittance_reference"),
       };
       return validRow(PaymentSchema, candidate, candidate.payment_id, dataIssues);
     })
