@@ -72,7 +72,7 @@
 - **Expected:** Same node, still connected. The overlay's `data-*`/status text is unchanged by React.
 
 ### TC-130 · `splash:ready` is within ±50 ms of the no-splash baseline
-- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Fail by gate at fbfcd69 under host load (Δ 108.9, 162.7 ms; spread 212 / 152 ms; CI −15.8..277.3 / 30.7..404.9); the 2026-11-04 pass (Δ −13.7 ms, EXE45) at an earlier commit is superseded; idle-host re-run required before release. P0: if Δ > 50 on an idle host, reopen Stage 2 / park as finding (EXE111) · **Finding:** —
+- **Rel:** M-45.1 · TKT-45.02 · TASK-45.2 · 45.2.9 · RK2, S34 · **Type:** perf · **Pri:** P0 · **Auto:** Y (`@perf`) · **Status:** Fail by gate at fbfcd69 under host load (Δ 108.9, 162.7 ms; spread 212 / 152 ms; CI −15.8..277.3 / 30.7..404.9); the 2026-11-04 pass (Δ −13.7 ms, EXE45) at an earlier commit is superseded. **User decision 2026-11-05 ("no need"): no idle-host confirmation run; Stage 2 is not reopened.** Accepted as an unresolved host-load-contaminated measurement, not a proven regression. TASK-80 closed; see EXE111 · **Finding:** —
 - **Objective:** The splash does not delay readiness.
 - **Preconditions:** `pnpm build:e2e`; `pnpm e2e:splash-perf`; a fresh context per run.
 - **Steps:**
@@ -312,7 +312,7 @@
   - The label swaps per pointer type (Design §18).
 
 ### TC-156 · Frame screenshots match the frozen design beats
-- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Pending look-check (re-captured on final art 2026-11-05 at 5ceccb0; 33 shots at /Volumes/E Drive/Dev/.scratch/task45/45.9/shots/) · **Finding:** —
+- **Rel:** M-45.2 · TKT-45.05 · TASK-45.5 · 45.5.5 · Design §18 · **Type:** visual · **Pri:** P2 · **Auto:** Partial (capture Y, judgement N) · **Status:** Approved by the user 2026-11-05 ("looks good") on the final-art recapture at 5ceccb0 · **Finding:** —
 - **Objective:** The implementation matches the approved mockup.
 - **Preconditions:** splash-on; `page.clock` at each beat; 1440 / 768 / 375.
 - **Steps:** Capture each beat; review side by side with `.design/exploration/task-45/shots/`.
@@ -372,7 +372,7 @@
 ## M-45.3 · Art and release evidence
 
 ### TC-163 · Generated sky and cloud art meets the asset spec
-- **Rel:** M-45.3 · TKT-45.08 · TASK-45.8 · 45.8.2 · Design §11.1 · **Type:** manual · **Pri:** P1 · **Auto:** N · **Status:** Not run · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.08 · TASK-45.8 · 45.8.2 · Design §11.1 · **Type:** manual · **Pri:** P1 · **Auto:** N · **Status:** Approved by the user 2026-11-05 ("looks good"); G1-r2-b sky, G2-r2-a clouds, AVIF-only clouds · **Finding:** —
 - **Objective:** The paid art is usable before encoding.
 - **Preconditions:** A user-approved round, with its cost stated first (max 3 rounds per asset).
 - **Steps:** Check each candidate against the rubric in scratch `gen/rubric.md`.
@@ -408,7 +408,7 @@
 - **Expected:** 0 serious and 0 critical violations. The decorative layers are `aria-hidden`; one status and one progressbar are exposed.
 
 ### TC-167 · Screen-reader pass (VoiceOver, Safari and Chrome)
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.2 · S22, S23 · **Type:** manual · **Pri:** P1 · **Auto:** N · **Status:** Pending (human checkpoint: VoiceOver in Safari and Chrome is not automatable and was not run) · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.2 · S22, S23 · **Type:** manual · **Pri:** P1 · **Auto:** N · **Status:** Waived by the user 2026-11-05 ("TC-167 voiceover not required") · **Finding:** —
 - **Objective:** The real assistive-technology experience.
 - **Preconditions:** A production build on :3145 with `?__splash=1`.
 - **Steps:** Load with VO on; listen through the reveal and to ready; skip with VO-Space on the button.
@@ -428,7 +428,7 @@
 - **Expected:** While covered, focus stays on Skip or body (never inside `#verilane-app`). After exit, the first Tab reaches the app's skip link or first control.
 
 ### TC-169 · Splash-on performance: INP, CLS, long tasks
-- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · N-perf · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Fail (INP; fix round 1, 2026-11-05, uncommitted tree on fbfcd69; 4× CPU, warm-up + 5 skip runs + 1 natural-exit run: inline document long scripts >50 ms 0 in 6/6 (EXE113: the earlier splash-only attribution was vacuous, Chromium reports sourceCharPosition 0 for inline scripts; the control proves the stricter gate sees an injected 120 ms loop), raw CLS after exit 0 in 6/6 including the natural exit; skip INP [280, 200, 280, 272, 128], median 272 ms > 200 (EXE110, open stop-rule item for the user); host load 10–25, not perf evidence; idle-host re-run pending; task45/45.10/fix1-specs-2.log) · **Finding:** —
+- **Rel:** M-45.3 · TKT-45.10 · TASK-45.10 · 45.10.4 · N-perf · **Type:** perf · **Pri:** P1 · **Auto:** Y (`@perf`) · **Status:** Fail (INP; fix round 1, 2026-11-05, uncommitted tree on fbfcd69; 4× CPU, warm-up + 5 skip runs + 1 natural-exit run: inline document long scripts >50 ms 0 in 6/6 (EXE113: the earlier splash-only attribution was vacuous, Chromium reports sourceCharPosition 0 for inline scripts; the control proves the stricter gate sees an injected 120 ms loop), raw CLS after exit 0 in 6/6 including the natural exit; skip INP [280, 200, 280, 272, 128], median 272 ms > 200 (EXE110); host load 10–25, not perf evidence). **User decision 2026-11-05 ("no need"): no idle-host confirmation run; accepted as-is, no Stage 2 reopen.** TASK-80 closed; task45/45.10/fix1-specs-2.log · **Finding:** —
 - **Objective:** The animation stays off the main thread.
 - **Preconditions:** `pnpm e2e:splash-perf`; 4× CPU throttle via CDP.
 - **Steps:** PerformanceObserver on `longtask`, `layout-shift` and `event`, from load until `done` plus one interaction.

@@ -6,12 +6,21 @@
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { afterAll, describe, expect, it } from "vitest";
 import { generateIcons, ICON_SPECS, MARK_CROP, renderIcon } from "./make-icons";
 
 const SCRATCH_ROOT = "/Volumes/E Drive/Dev/.scratch";
+function scratchRoot(): string {
+  try {
+    mkdirSync(SCRATCH_ROOT, { recursive: true });
+    return SCRATCH_ROOT;
+  } catch {
+    return tmpdir(); // not on the dev machine (e.g. CI) — use the OS temp dir
+  }
+}
 const LOGO_PATH = join(process.cwd(), "public", "brand", "verilane-logo.png");
 
 const created: string[] = [];
@@ -77,8 +86,8 @@ describe("make-icons", () => {
   });
 
   it("writes every spec's file to the output directory", async () => {
-    mkdirSync(SCRATCH_ROOT, { recursive: true });
-    const dir = mkdtempSync(join(SCRATCH_ROOT, "verilane-icons-"));
+    const base = scratchRoot();
+    const dir = mkdtempSync(join(base, "verilane-icons-"));
     created.push(dir);
 
     await generateIcons(dir);
