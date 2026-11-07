@@ -32,12 +32,14 @@ test("TC-75.13: allocate P-012 to INV-F from /exceptions; it leaves the open lis
   await expect(page.getByTestId("exception-audit")).toContainText("Policy Agent evaluated exception (verdict:");
   await expect(page.getByTestId("exception-audit")).toContainText("Recommend Agent generated facts");
 
-  await page.getByTestId("candidate-INV-F").check();
-  await page.getByTestId("exception-submit").click();
+  // TKT-75.04 (EXE184): P-012 is auto_permitted (one candidate, ≤ ₹5,00,000),
+  // so the Execute agent allocates it through run() — no human click.
+  await expect(page.getByTestId("execute-status")).toContainText(/Executed by Execute agent · .+ · policy v1/);
   await expect(page.getByText("Allocated payment P-012 (₹25,000.00) to INV-F").first()).toBeVisible();
   await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
   await expect(page.getByTestId("exception-audit")).toContainText("Allocated payment P-012 (₹25,000.00) to INV-F");
   await expect(page.getByTestId("exception-submit")).toBeDisabled();
+  await expect(page.getByTestId("exception-submit-reason")).toHaveText("Already resolved");
 
   // Persisted, not just on screen: one ledger row now applies P-012 to INV-F.
   const stored = await page.evaluate(async () => {
@@ -49,6 +51,13 @@ test("TC-75.13: allocate P-012 to INV-F from /exceptions; it leaves the open lis
   });
   expect(stored.payment?.invoice_id).toBe("INV-F");
   expect(stored.exception?.status).toBe("actioned");
+  const allocations = await page.evaluate(async () =>
+    (await window.__verilane!.db.audit.where("subject").equals("review:RV-PAY-P-012").toArray()).filter(
+      (e) => e.action === "allocate_payment",
+    ),
+  );
+  expect(allocations).toHaveLength(1); // the lazy evaluation never double-writes
+  expect(allocations[0]).toMatchObject({ actor_label: "Execute Agent", after: { config_version: "policy-v1" } });
 
   await page.getByRole("link", { name: "← Back to exceptions" }).click();
   await expect(page).toHaveURL(/\/exceptions$/);
@@ -120,3 +129,87 @@ for (const href of ["/exceptions", `/exceptions/${ID}`]) {
     expect(overflow).toEqual([]);
   });
 }
+
+// TKT-75.04 · TC-75.24: the action bar follows the persisted verdict (A1 §25
+// row 2). A second candidate makes the match ambiguous → needs_manager: an
+// Analyst is refused with the reason, a Manager can submit; Stage 3 says
+// what happens next. Execute never writes for it.
+async function setRole(page: Page, role: "Manager" | "Analyst"): Promise<void> {
+  const button = page.getByRole("group", { name: "Role" }).getByRole("button", { name: role });
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+}
+
+async function makeAmbiguous(page: Page) {
+  await open(page, "/exceptions");
+  await page.evaluate(async () => {
+    await window.__verilane!.db.exceptions.update("RV-PAY-P-012", { candidate_invoice_ids: ["INV-F", "INV-A"] });
+  });
+}
+
+test("TC-75.24: needs_manager — Analyst disabled with the reason, Manager submits; Execute writes nothing", async ({
+  page,
+}) => {
+  await makeAmbiguous(page);
+  await open(page, `/exceptions/${ID}`);
+  await expect(page.getByTestId("exception-audit")).toContainText("Policy Agent evaluated exception (verdict: needs_manager)");
+  const stage = page.getByTestId("stage-execute");
+  await expect(stage).toHaveAttribute("data-execute-state", "manager");
+  await expect(page.getByTestId("execute-status")).toHaveText("Pending manager hand-off.");
+  await expect(stage).toContainText("Next:");
+
+  await page.getByTestId("candidate-INV-F").check();
+  await expect(page.getByTestId("exception-submit")).toBeDisabled();
+  await expect(page.getByTestId("exception-submit-reason")).toHaveText("Manager approval required");
+  expect(await page.evaluate(async () => (await window.__verilane!.db.payments.get("P-012"))?.invoice_id)).toBeNull();
+
+  await setRole(page, "Manager");
+  await page.getByTestId("candidate-INV-F").check();
+  await expect(page.getByTestId("exception-submit")).toBeEnabled();
+  await page.getByTestId("exception-submit").click();
+  await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
+  const stored = await page.evaluate(async () => ({
+    invoice: (await window.__verilane!.db.payments.get("P-012"))?.invoice_id,
+    labels: (await window.__verilane!.db.audit.where("subject").equals("review:RV-PAY-P-012").toArray())
+      .filter((e) => e.action === "allocate_payment")
+      .map((e) => e.actor_label),
+  }));
+  expect(stored.invoice).toBe("INV-F");
+  expect(stored.labels).toEqual(["Manager"]); // a human, not the Execute agent
+  await setRole(page, "Analyst");
+});
+
+test("TC-75.24: the Stage 3 block and action bar fit 375 and 768, and stay readable offline", async ({ page, context }) => {
+  await makeAmbiguous(page);
+  const overflow: string[] = [];
+  for (const vp of [
+    { width: 375, height: 812 },
+    { width: 768, height: 1024 },
+  ]) {
+    await page.setViewportSize(vp);
+    await open(page, `/exceptions/${ID}`);
+    await expect(page.getByTestId("stage-execute")).toBeVisible();
+    await expect(page.getByTestId("exception-submit")).toBeVisible();
+    const m = await page.evaluate(() => {
+      const wide = (id: string) => {
+        const el = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+        return el ? el.scrollWidth > el.clientWidth + 1 : true;
+      };
+      return {
+        page: document.documentElement.scrollWidth > window.innerWidth,
+        stage: wide("stage-execute"),
+        bar: wide("exception-submit-reason"),
+      };
+    });
+    for (const [k, v] of Object.entries(m)) if (v) overflow.push(`${k} @${vp.width}`);
+  }
+  expect(overflow).toEqual([]);
+
+  await context.setOffline(true);
+  try {
+    await expect(page.getByText("You're offline — viewing cached data; some actions are paused")).toBeVisible();
+    await expect(page.getByTestId("stage-execute")).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
