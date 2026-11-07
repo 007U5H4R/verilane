@@ -1320,14 +1320,18 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - FS15 (an overpayment) needs to know whose open balance the line exceeds. FS16 (a mistyped reference) needs the cited reference on file so it can be shown verbatim and never fuzzy-matched. Nothing else reads these fields.
 - `toCsv("payments")` writes the two columns after `IMPORT_COLUMNS`, but only when some row has a value. A v1 export stays byte-identical, and TC-059's round trip keeps the new fields. The header check still requires only the v1 columns.
 
-## EXE161 · FS14–FS17 are appended seed bank lines P-013…P-016; SEED_VERSION is not bumped (TASK-79.8) — accepted
+## EXE161 · FS14–FS17 are appended seed bank lines P-013…P-016, and SEED_VERSION is bumped to 2026-11-07.1 (TASK-79.8) — accepted
 - The four bank lines are appended after P-012, so no earlier row or PRNG draw moves.
   - P-013: ₹48,000, payer C-009. It ties INV-019 and INV-020.
   - P-014: ₹3,10,000, payer C-004, whose open balance is ₹2,90,000.
   - P-015: ₹88,000, citing "INV-1O37" with a letter O. INV-037 (INV-1037) is the amount match.
   - P-016: ₹61,500, untraceable.
 - Invoice, customer and thread counts and every priority are unchanged. Payments go from 12 to 16, exceptions from 23 to 27, and unapplied cash from ₹25,000.00 on 1 line to ₹5,32,500.00 on 5. TC-75.13's e2e unapplied-cash assertion is updated to match.
-- `SEED_VERSION` stays put, as it did for P-012 in TKT-75.02. Bumping it would change the PWA cache key and `loader.test.ts`'s pinned version for a fixture-only change. A browser that already loaded the seed needs Settings → Reset to see the new lines.
+- `SEED_VERSION` is bumped from `2026-10-30.1` to `2026-11-07.1` (review M1). Without the bump, existing browsers would never see the new lines:
+  - the service worker serves `/seed/*` cache-first under `verilane-<seedVersion>`;
+  - `adoptManifest` refetches only when that cache name changes.
+  - With the bump, a browser that already holds the old seed gets the usual "New demo data available" prompt (TC-014) and never a silent wipe.
+- `scripts/seed.test.ts` now pins a sha256 of the generated data files for each `SEED_VERSION`. Changing seed content without bumping the version and adding a pin fails the unit suite. The e2e PWA specs read the version from `public/seed/manifest.json` rather than hard-coding it.
 
 ## EXE162 · Recommend never auto-picks a line whose cited reference names no candidate, and proposes only the matched portion of an overpayment (TASK-79.8, fix to TASK-79.3) — accepted, pending 79.3 reconciliation
 - **The defect, found by the fixtures:**

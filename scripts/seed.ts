@@ -57,7 +57,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const SEED_VERSION = "2026-10-30.1";
+export const SEED_VERSION = "2026-11-07.1";
 export const SEED_AS_OF = "2026-10-30";
 const PRNG_SEED = 20261030;
 

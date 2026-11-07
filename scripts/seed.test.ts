@@ -3,13 +3,14 @@
  * scratch dirs on the E Drive, are byte-identical to each other and to the
  * committed `public/seed/` files.
  */
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import Papa from "papaparse";
 import { afterAll, describe, expect, it } from "vitest";
 import { ingest, type Row } from "../src/domain/ingest";
 import { isUnapplied, outstandingOf } from "../src/domain/priority";
-import { INVOICES, PAYMENT_FIXTURES, THREADS, writeSeed, type SeedFiles } from "./seed";
+import { generateSeed, INVOICES, PAYMENT_FIXTURES, SEED_VERSION, THREADS, writeSeed, type SeedFiles } from "./seed";
 
 const SCRATCH_ROOT = "/Volumes/E Drive/Dev/.scratch";
 const FILES: (keyof SeedFiles)[] = [
@@ -24,6 +25,33 @@ const created: string[] = [];
 
 afterAll(() => {
   for (const dir of created) rmSync(dir, { recursive: true, force: true });
+});
+
+/**
+ * The service worker caches `/seed/*` cache-first under `verilane-<seedVersion>`,
+ * and `adoptManifest` refetches only when that cache name changes (EXE161). A
+ * seed content change without a SEED_VERSION bump would never reach a browser
+ * that already has the old seed. Each version pins the sha256 of its data
+ * files; changing the content means bumping SEED_VERSION and adding a pin.
+ */
+const SEED_CONTENT_PINS: Record<string, string> = {
+  "2026-10-30.1": "8e827f2b9caeccd5a869a4d9a8d24245464a61a4ec0231563fdf1782d9e2bd76",
+  "2026-11-07.1": "c77264d71341227f7e178f51334d4919b78b4c80b6fc3cc59770dfa277212e52", // FS14–FS17 (TKT-75.08)
+};
+
+function seedContentHash(files: SeedFiles): string {
+  const h = createHash("sha256");
+  for (const name of ["customers.csv", "invoices.csv", "payments.csv", "emails.json"] as const) {
+    h.update(`${name}\n`).update(files[name]).update("\n");
+  }
+  return h.digest("hex");
+}
+
+describe("seed — content changes require a SEED_VERSION bump (EXE161)", () => {
+  it("the generated data files match the content pinned for the current SEED_VERSION", () => {
+    expect(SEED_CONTENT_PINS[SEED_VERSION], `no content pin for SEED_VERSION ${SEED_VERSION}`).toBeDefined();
+    expect(seedContentHash(generateSeed())).toBe(SEED_CONTENT_PINS[SEED_VERSION]);
+  });
 });
 
 describe("seed — TC-012 determinism", () => {

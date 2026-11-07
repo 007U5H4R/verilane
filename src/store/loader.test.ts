@@ -156,7 +156,7 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
     expect(await db.priorities.count()).toBe(50);
 
     const meta = await db.meta.get("seedVersion");
-    expect(meta?.value).toBe("2026-10-30.1");
+    expect(meta?.value).toBe("2026-11-07.1");
 
     // FS1 (missing invoice_number) + FS2 (missing due_date) + FS8 (conflicting
     // outstanding_amount) + FS10 (unrecognized status_raw) each raised.
