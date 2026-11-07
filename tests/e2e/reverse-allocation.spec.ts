@@ -184,3 +184,62 @@ test("TC-75.35: the reverse section is usable offline and does not scroll horizo
     await context.setOffline(false);
   }
 });
+
+test("TC-75.35: a failed reversal keeps the dialog open with the error, writes nothing, and can be retried (review r2 m3)", async ({
+  page,
+}) => {
+  await allocate(page);
+  await switchRole(page, "Manager");
+  await page.getByTestId("reverse-allocation-open").click();
+  const dialog = page.getByRole("alertdialog", { name: "Reverse this allocation?" });
+  await expect(dialog).toBeVisible();
+
+  // Force the command's rw transaction to abort: the audit write throws.
+  await page.evaluate(() => {
+    const w = window as unknown as { __failAudit?: () => never };
+    w.__failAudit = () => {
+      throw new Error("Forced audit failure (TC-75.35 m3)");
+    };
+    window.__verilane!.db.audit.hook("creating", w.__failAudit);
+  });
+  await dialog.getByTestId("reverse-allocation-confirm").click();
+
+  await expect(dialog.getByTestId("reverse-allocation-error")).toContainText("Forced audit failure");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("reverse-allocation-confirm")).toBeEnabled();
+  await page.screenshot({ path: `${SHOTS}/error.png` });
+  const stored = await page.evaluate(async () => ({
+    payment: await window.__verilane!.db.payments.get("P-012"),
+    exception: await window.__verilane!.db.exceptions.get("RV-PAY-P-012"),
+  }));
+  expect(stored.payment?.invoice_id).toBe("INV-F");
+  expect(stored.exception?.status).toBe("actioned");
+  expect((await trail(page)).some((e) => e.action === "reverse_allocation")).toBe(false);
+
+  // Recovery: lift the fault and retry from the same dialog.
+  await page.evaluate(() => {
+    const w = window as unknown as { __failAudit?: () => never };
+    window.__verilane!.db.audit.hook("creating").unsubscribe(w.__failAudit!);
+  });
+  await dialog.getByTestId("reverse-allocation-confirm").click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("exception-status")).toHaveText("Open");
+  await expect(page.getByTestId("reversed-notice")).toBeVisible();
+});
+
+test("TC-75.35: switching to Analyst while the confirm dialog is open removes it (review r2 m4)", async ({ page }) => {
+  await allocate(page);
+  await switchRole(page, "Manager");
+  await page.getByTestId("reverse-allocation-open").click();
+  const dialog = page.getByRole("alertdialog", { name: "Reverse this allocation?" });
+  await expect(dialog).toBeVisible();
+
+  // The role switcher sits behind the modal overlay; switch the way another tab would.
+  await page.evaluate(() =>
+    window.__verilane!.execute({ type: "switch_role", subject: { kind: "system", id: "workspace" }, payload: { role: "analyst" } }),
+  );
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("reverse-allocation")).toHaveCount(0);
+  await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
+  expect((await trail(page)).some((e) => e.action === "reverse_allocation")).toBe(false);
+});
