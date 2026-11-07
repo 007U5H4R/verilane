@@ -1,9 +1,10 @@
 ---
 id: TASK-79.6
 title: Let a Manager reverse an applied allocation
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-05 04:43'
+updated_date: '2026-11-06 09:10'
 labels:
   - P1
   - M-75.2
