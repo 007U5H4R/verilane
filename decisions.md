@@ -1346,7 +1346,7 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - **Known follow-ups, out of scope here:**
   - The policy input fingerprint uses the exception's (empty) candidate list for FS15, not Recommend's.
   - G3's reason text says "Ambiguous match".
-  - The detail page's FS15 candidate list and its "Remittance: None on file" copy do not reflect the new fields.
+  - The detail page's FS15 candidate list does not reflect the new fields. (Its Remittance field now shows the cited reference verbatim, review M2.)
 
 ## EXE163 · The allocation-recommendation accuracy gate is a separate eval file, outside report.json (TASK-79.8) — accepted
 - `eval/allocation.ts` is a pure scorer. `eval/allocation.eval.ts` is the TC-75.40 gate. It runs in `pnpm eval` with the rest of `eval/**/*.eval.ts`.
