@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime } from "@/domain/clock";
 import { EXCEPTION_KIND_LABEL, exceptionStatusLabel } from "@/domain/exceptions/list";
+import type { EXECUTE_LABEL, ExecuteOutcome } from "@/domain/commands";
 import { formatInr } from "@/domain/money";
-import type { Permission } from "@/domain/permissions";
+import type { Permission, Role } from "@/domain/permissions";
 import { isPaymentExceptionKind } from "@/domain/schema";
 import type { AuditEventRow, PolicyDecisionRow } from "@/store/db";
 import type { ExceptionCandidate, ExceptionDetail } from "@/store/hooks";
@@ -21,8 +22,10 @@ import { cn } from "@/lib/cn";
  *
  * TKT-75.03 (Design-TASK-75 §4, §9) adds, as clearly separated sections:
  * the Stage 1 (Recommend Agent) and Stage 2 (Policy Agent) blocks, and the
- * always-shown Policy Decision sidebar card. No Stage 3 (Execute) block —
- * out of scope here (79.4).
+ * always-shown Policy Decision sidebar card.
+ *
+ * TKT-75.04 (A1, EXE183) adds the Stage 3 (Execute Agent) block as its own
+ * section and gates the action bar by the persisted Policy verdict.
  */
 
 const VERDICT_LABEL: Record<string, string> = {
@@ -53,14 +56,49 @@ export function ExceptionDetailError({ onRetry }: { onRetry: () => void }) {
 }
 
 /**
+ * What the action bar and Stage 3 know about the persisted Policy verdict
+ * (TKT-75.04). `decision` is `undefined` while loading, `null` before Policy
+ * has run; `stale` means its inputs no longer match the exception's.
+ */
+export interface PolicyGate {
+  decision: PolicyDecisionRow | null | undefined;
+  stale: boolean;
+  error: string | null;
+  role: Role;
+  /** Execute declined to auto-apply this `auto_permitted` item (e.g. a
+   * Manager reversed it), so it is a human's to submit. */
+  executeRefused: boolean;
+}
+
+/** Type-checked against `commands.ts` without bundling it into the page. */
+const EXECUTE_ACTOR: typeof EXECUTE_LABEL = "Execute Agent";
+
+/**
  * Why "Submit for approval" is disabled, or `null` when it can run
  * (§11 disabled-with-reason). `permission` is `can("allocate_payment", …)`.
+ * With `gate`, the A1 matrix (§25 row 2) applies on top: `blocked` → the
+ * policy reason; `needs_manager` → "Manager approval required" unless the
+ * role is Manager; `auto_permitted` → the Execute agent's, not a click.
+ * `submitAllocationGated` re-checks all of it against the stored decision.
  */
-export function allocateBlocker(d: ExceptionDetail, selected: string | null, permission: Permission): string | null {
+export function allocateBlocker(
+  d: ExceptionDetail,
+  selected: string | null,
+  permission: Permission,
+  gate?: PolicyGate,
+): string | null {
   const x = d.exception;
   if (x.status !== "open") return "Already resolved";
   if (!isPaymentExceptionKind(x.kind)) return "Review this item in Inbox";
   if (!permission.allowed) return "Manager approval required";
+  if (gate) {
+    if (gate.error !== null) return "Policy couldn’t evaluate this item";
+    if (!gate.decision || gate.stale) return "Waiting for the policy decision";
+    const { verdict, reason } = gate.decision;
+    if (verdict === "blocked") return reason ?? "Blocked by policy";
+    if (verdict === "needs_manager" && gate.role !== "manager") return "Manager approval required";
+    if (verdict === "auto_permitted" && !gate.executeRefused) return "Execute agent is applying this allocation";
+  }
   if (selected === null || !(x.candidate_invoice_ids ?? []).includes(selected)) return "Choose an invoice";
   return null;
 }
@@ -80,6 +118,12 @@ export interface ExceptionDetailContentProps {
   /** The stored decision's inputs no longer match the exception's: it's hidden
    * while Policy re-evaluates, so a stale verdict is never shown (fix r1 M2). */
   policyStale?: boolean;
+  /** TKT-75.04: the A1 action-bar gate and Stage 3 inputs. */
+  policyGate?: PolicyGate;
+  /** The Execute agent's last outcome for this item (`undefined` = not run). */
+  executeOutcome?: ExecuteOutcome | null;
+  /** Execute failed to run (a rejected transaction) — shown in Stage 3. */
+  executeError?: string | null;
 }
 
 export function ExceptionDetailContent({
@@ -92,10 +136,13 @@ export function ExceptionDetailContent({
   policyDecision,
   policyError = null,
   policyStale = false,
+  policyGate,
+  executeOutcome,
+  executeError = null,
 }: ExceptionDetailContentProps) {
   const x = detail.exception;
   const payment = isPaymentExceptionKind(x.kind);
-  const blocker = allocateBlocker(detail, selected, permission);
+  const blocker = allocateBlocker(detail, selected, permission, policyGate);
   const reasonId = `submit-reason-${x.review_id}`;
 
   return (
@@ -137,6 +184,9 @@ export function ExceptionDetailContent({
           {payment && <RecommendAgentBlock recommendation={detail.recommendation} />}
           {payment && (
             <PolicyAgentBlock policyDecision={policyDecision} error={policyError} stale={policyStale} closed={x.status !== "open"} />
+          )}
+          {payment && policyGate && (
+            <ExecuteAgentBlock stage={executeStage({ detail, gate: policyGate, outcome: executeOutcome, error: executeError })} />
           )}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
@@ -466,6 +516,108 @@ function AuditTrail({ events }: { events: readonly AuditEventRow[] }) {
           ))}
         </ol>
       )}
+    </section>
+  );
+}
+
+// --- Stage 3: Execute Agent (TKT-75.04, A1 row 1, Design-TASK-75 §4) -------
+
+export type ExecuteStageState =
+  | "waiting"
+  | "applying"
+  | "executed"
+  | "resolved"
+  | "ready"
+  | "manager"
+  | "blocked"
+  | "refused"
+  | "error";
+
+export interface ExecuteStage {
+  state: ExecuteStageState;
+  /** The §4 status line. */
+  status: string;
+  /** What happens next. */
+  next: string;
+  decisionId?: string;
+}
+
+function policyVersion(v: unknown): string {
+  return typeof v === "string" ? v.replace(/^policy-/, "") : "—";
+}
+
+/**
+ * The Stage 3 status, derived from persisted facts only: an executed item is
+ * read from its audit event (actor "Execute Agent"), never from memory.
+ */
+export function executeStage({
+  detail,
+  gate,
+  outcome,
+  error = null,
+}: {
+  detail: ExceptionDetail;
+  gate: PolicyGate;
+  outcome?: ExecuteOutcome | null;
+  error?: string | null;
+}): ExecuteStage {
+  const x = detail.exception;
+  if (x.status !== "open") {
+    const ran = detail.audit.find((e) => e.action === "allocate_payment" && e.actor_label === EXECUTE_ACTOR);
+    if (ran) {
+      const after = (ran.after ?? {}) as Record<string, unknown>;
+      const at = typeof ran.at === "string" ? formatDateTime(ran.at) : "—";
+      return {
+        state: "executed",
+        status: `Executed by Execute agent · ${at} · policy ${policyVersion(after.config_version)}`,
+        next: "Nothing — the allocation and its audit event were written in one transaction. A Manager can reverse it.",
+        decisionId: typeof after.policy_decision_id === "string" ? after.policy_decision_id : undefined,
+      };
+    }
+    return { state: "resolved", status: "Already resolved — no Execute action.", next: "Nothing; a person closed this item." };
+  }
+  if (error !== null) return { state: "error", status: `Execute couldn’t run: ${error}`, next: "Reload the page to retry. Nothing was written." };
+  if (gate.error !== null) {
+    return { state: "error", status: "Execute is waiting — Policy couldn’t evaluate this item.", next: "Nothing will be written until Policy has a verdict." };
+  }
+  if (!gate.decision || gate.stale) {
+    return { state: "waiting", status: "Waiting for the Policy decision…", next: "Execute acts only on a current, persisted verdict." };
+  }
+  const d = gate.decision;
+  const decisionId = d.decision_id;
+  switch (d.verdict) {
+    case "auto_permitted":
+      if (outcome?.kind === "refused") {
+        return { state: "refused", status: `Not auto-executed: ${outcome.reason}`, next: "An Analyst can submit it for approval.", decisionId };
+      }
+      return { state: "applying", status: "Ready to allocate — the Execute agent is applying it…", next: "The allocation and its audit event are written in one transaction.", decisionId };
+    case "needs_analyst":
+      return { state: "ready", status: "Ready to allocate — handed to the Analyst queue.", next: "An Analyst chooses the invoice and submits it for approval. Execute made no write.", decisionId };
+    case "needs_manager":
+      return { state: "manager", status: "Pending manager hand-off.", next: `A Manager reviews and submits it; Analysts can’t apply it. Execute made no write. ${d.reason ?? ""}`.trim(), decisionId };
+    case "blocked":
+      return { state: "blocked", status: `Not executable — ${d.reason ?? "blocked by policy"}`, next: "No write will be made until the inputs change and Policy re-evaluates.", decisionId };
+    default:
+      return { state: "error", status: "Unknown policy verdict — nothing executed.", next: "Nothing will be written.", decisionId };
+  }
+}
+
+function ExecuteAgentBlock({ stage }: { stage: ExecuteStage }) {
+  const alert = stage.state === "error";
+  return (
+    <section className={CARD} aria-labelledby="stage-execute" data-testid="stage-execute" data-execute-state={stage.state}>
+      <h2 id="stage-execute" className="font-semibold text-text">
+        3. Execute Agent
+      </h2>
+      <p
+        role={alert ? "alert" : "status"}
+        className={cn("break-words text-sm", alert ? "rounded-md bg-high-bg px-3 py-2 text-high" : "text-text")}
+        data-testid="execute-status"
+      >
+        {stage.status}
+      </p>
+      <p className="break-words text-sm text-text-muted">Next: {stage.next}</p>
+      {stage.decisionId && <p className={PROVENANCE}>Policy decision: {stage.decisionId}</p>}
     </section>
   );
 }
