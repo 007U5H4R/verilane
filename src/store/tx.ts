@@ -3,7 +3,7 @@
  * Runs the pure command core inside ONE Dexie read-write transaction, so the
  * state write and its audit event commit together or not at all.
  */
-import { InvalidCommand } from "@/domain/commandConstants";
+import { InvalidCommand, PermissionDenied } from "@/domain/commandConstants";
 import type { Command, DataOps, Row, TableName, Tx } from "@/domain/commands";
 import type { IngestResult } from "@/domain/ingest";
 import { isRole, type Role } from "@/domain/permissions";
@@ -55,6 +55,14 @@ function dexieTx(db: VerilaneDb, recompute: typeof Recompute): Tx {
     now: () => new Date().toISOString(),
     data: dexieDataOps(db, recompute),
     draftSources: () => readDraftSources(db),
+    // TKT-75.06: the reversal names the allocation event it undoes.
+    async latestAudit(subject, action) {
+      return (await db.audit
+        .where("subject")
+        .equals(subject)
+        .filter((e) => e.action === action)
+        .last()) as unknown as (Row & { event_id: number }) | undefined;
+    },
   };
 }
 
@@ -116,7 +124,8 @@ function dexieDataOps(db: VerilaneDb, recompute: typeof Recompute): DataOps {
 
 /** Commands that rewrite source or derived tables need every table in scope. */
 // allocate_payment writes a ledger row, then re-derives every table (EXE125).
-const WHOLE_DB: ReadonlySet<string> = new Set(["import_csv", "reset_demo", "set_as_of", "allocate_payment"]);
+// reverse_allocation is its inverse (TKT-75.06).
+const WHOLE_DB: ReadonlySet<string> = new Set(["import_csv", "reset_demo", "set_as_of", "allocate_payment", "reverse_allocation"]);
 
 /** The persisted role (`meta.role`), defaulting to Analyst. */
 export async function currentRole(db: VerilaneDb): Promise<Role> {
@@ -141,17 +150,42 @@ export async function execute(
   // TASK-40: the command core and the loader's recompute load on first use,
   // not in every route's first load. Imported before the transaction opens: a
   // non-Dexie await inside it would let Dexie auto-commit early.
-  const [{ run }, { recompute }] = await Promise.all([import("@/domain/commands"), import("./loader")]);
-  return db.transaction(
-    "rw",
-    scope,
-    async () => {
-      const actor = await currentRole(db);
-      const event = await run({ ...input, actor }, dexieTx(db, recompute));
-      await opts.beforeCommit?.();
-      return event;
-    },
-  );
+  const [{ run, AUDITED_REFUSALS, recordRefusal }, { recompute }] = await Promise.all([
+    import("@/domain/commands"),
+    import("./loader"),
+  ]);
+  // The role the command ran as, read once inside its transaction; the
+  // refusal records this role, not a re-read one (m6).
+  let actor: Role | undefined;
+  try {
+    return await db.transaction(
+      "rw",
+      scope,
+      async () => {
+        actor = await currentRole(db);
+        const event = await run({ ...input, actor }, dexieTx(db, recompute));
+        await opts.beforeCommit?.();
+        return event;
+      },
+    );
+  } catch (err) {
+    // FS21 (EXE141): the refused command rolled back; its refusal is audited
+    // in a transaction of its own, then the denial still reaches the caller.
+    if (err instanceof PermissionDenied && AUDITED_REFUSALS.has(input.type) && actor !== undefined) {
+      const deniedAs = actor;
+      try {
+        await db.transaction("rw", [db.invoices, db.drafts, db.disputes, db.exceptions, db.meta, db.audit], () =>
+          recordRefusal({ ...input, actor: deniedAs }, err, dexieTx(db, recompute)),
+        );
+      } catch (auditErr) {
+        // A failed refusal audit must not replace the denial (M1): log it,
+        // keep it on the error, and still throw PermissionDenied.
+        console.error(`Could not record permission_denied for ${input.type}:`, auditErr);
+        err.cause = auditErr;
+      }
+    }
+    throw err;
+  }
 }
 
 /** Draft commands re-run the nine checks, so they also read the ledger (TASK-15). */

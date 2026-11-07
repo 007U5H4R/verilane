@@ -48,6 +48,8 @@ const BASELINE = {
   reconcile_flag: { subject: review({ review_kind: "reconciliation", requires_role: "manager" }), analyst: true, manager: true },
   reconcile_decide: { subject: review({ review_kind: "reconciliation" }), analyst: false, manager: true },
   allocate_payment: { subject: review({ review_kind: "unallocated_payment" }), analyst: true, manager: true },
+  // TKT-75.06 (S45, TC-75.33): reversing an allocation is Manager-only.
+  reverse_allocation: { subject: review({ review_kind: "unallocated_payment" }), analyst: false, manager: true },
   import_csv: { subject: sys, analyst: true, manager: true },
   reset_demo: { subject: sys, analyst: true, manager: true },
   switch_role: { subject: sys, analyst: true, manager: true },

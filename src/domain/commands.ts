@@ -82,7 +82,9 @@ export type AuditAction =
   | "autopilot_held"
   // TKT-75.03: written by the Recommend/Policy agents (`policy.ts`), not a user command.
   | "recommend_generated"
-  | "policy_evaluated";
+  | "policy_evaluated"
+  // TKT-75.06: a refused attempt at a command in AUDITED_REFUSALS (FS21, EXE141).
+  | "permission_denied";
 
 
 export interface Command {
@@ -124,6 +126,9 @@ export interface Tx {
   /** Everything the nine draft checks read (TASK-15); only the store's
    * transaction provides it. */
   draftSources?(): Promise<DraftSources>;
+  /** The newest audit event with `action` on `subject` (TKT-75.06); only the
+   * store's transaction provides it. */
+  latestAudit?(subject: string, action: AuditAction): Promise<(Row & { event_id: number }) | undefined>;
 }
 
 /**
@@ -168,6 +173,7 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
   reconcile_flag: "review",
   reconcile_decide: "review",
   allocate_payment: "review",
+  reverse_allocation: "review",
   import_csv: "system",
   reset_demo: "system",
   switch_role: "system",
@@ -590,6 +596,7 @@ const HANDLERS: Record<Action, Handler> = {
   reconcile_flag: (ctx) => reconcileFlag(ctx),
   reconcile_decide: (ctx) => reconcileDecide(ctx),
   allocate_payment: (ctx) => allocatePayment(ctx),
+  reverse_allocation: (ctx) => reverseAllocation(ctx),
 
   generate_draft: (ctx) => generateDraft(ctx),
 
@@ -827,6 +834,91 @@ async function allocatePayment(ctx: Ctx): Promise<Effect> {
     evidence_ids: Array.isArray(ctx.row.evidence_ids) ? (ctx.row.evidence_ids as string[]) : [],
     invoice_id: invoiceId,
   };
+}
+
+// --- Allocation reversal (TKT-75.06, EXE140–EXE142) -------------------------
+
+/**
+ * The inverse of `allocatePayment`, Manager only. In the same one
+ * transaction: the payment's `invoice_id` goes back to null, the derived
+ * tables are recomputed (so the invoice's outstanding and status come back),
+ * and the exception moves actioned → open (`reopen`) with reason `reversed`
+ * and a sticky `reversed` marker. The audit event names the allocation event
+ * it reverses. Anything else is refused before a write.
+ */
+async function reverseAllocation(ctx: Ctx): Promise<Effect> {
+  const row = ctx.row ?? {};
+  if (row.kind !== "unallocated_payment") {
+    throw new InvalidCommand("Only an allocated payment can be reversed.");
+  }
+  // Throws IllegalTransition unless the item is actioned.
+  const to = transition("review", status(row), "reopen");
+  const paymentId = str(row.payment_id);
+  const invoiceId = str(row.invoice_id);
+  const payment = paymentId === undefined ? undefined : await ctx.tx.get("payments", paymentId);
+  if (!payment) throw new InvalidCommand(`No payment ${paymentId ?? ""} in the ledger.`);
+  if (typeof payment.invoice_id !== "string" || payment.invoice_id !== invoiceId) {
+    throw new InvalidCommand(`Payment ${paymentId} is not applied to the invoice this item allocated it to.`);
+  }
+  if (!ctx.tx.data || !ctx.tx.latestAudit) {
+    throw new InvalidCommand("Reversal needs the store's transaction.");
+  }
+  const subject = `review:${ctx.cmd.subject.id}`;
+  const allocation = await ctx.tx.latestAudit(subject, "allocate_payment");
+  if (!allocation) throw new InvalidCommand(`No allocation of payment ${paymentId} is in the audit log.`);
+  const allocatedTo = (allocation.after as Row | undefined)?.invoice_id;
+  if (allocatedTo !== invoiceId) {
+    throw new InvalidCommand(`The latest allocation of payment ${paymentId} is not to ${invoiceId ?? "this invoice"}.`);
+  }
+
+  await ctx.tx.put("payments", { ...payment, invoice_id: null });
+  // The invoice is the allocation's, not the item's: the recompute re-derives
+  // the candidates (EXE142).
+  const reopened: Row = { ...row, status: to, reopen_reason: "reversed", reversed: true };
+  delete reopened.invoice_id;
+  await ctx.tx.put("exceptions", reopened);
+  await ctx.tx.data.recompute();
+
+  return {
+    summary: `Reversed allocation of payment ${paymentId} (${formatInr(paise(Number(payment.amount_paise)))}) from ${invoiceId} (audit event #${allocation.event_id})`,
+    before: { status: status(row), invoice_id: invoiceId, payment_id: paymentId },
+    after: { status: to, invoice_id: null, reopen_reason: "reversed", reverses_event_id: allocation.event_id },
+    evidence_ids: Array.isArray(row.evidence_ids) ? (row.evidence_ids as string[]) : [],
+    invoice_id: invoiceId,
+  };
+}
+
+/** Commands whose refusal is itself audited (FS21, EXE141); v1 denials are not. */
+export const AUDITED_REFUSALS: ReadonlySet<Action> = new Set<Action>(["reverse_allocation"]);
+
+/**
+ * Records a refused command as one `permission_denied` event. The store runs
+ * it in its own transaction after the command's has rolled back, so nothing
+ * the command would have written survives — only the refusal.
+ */
+export async function recordRefusal(
+  cmd: Command,
+  denied: PermissionDenied,
+  tx: Tx,
+): Promise<AuditEventInput> {
+  const table = TABLE_FOR[cmd.subject.kind];
+  const row = table ? await tx.get(table, cmd.subject.id) : undefined;
+  const event: AuditEventInput = {
+    at: tx.now(),
+    actor_role: cmd.actor,
+    actor_label: ROLE_LABEL[cmd.actor],
+    action: "permission_denied",
+    subject: `${cmd.subject.kind}:${cmd.subject.id}`,
+    subject_kind: cmd.subject.kind,
+    subject_id: cmd.subject.id,
+    summary: `Refused ${cmd.type.replace(/_/g, " ")} on ${cmd.subject.id}: ${denied.reason}`,
+    after: { refused_action: cmd.type, reason: denied.reason },
+    evidence_ids: [],
+  };
+  const invoiceId = invoiceIdOf(cmd, row);
+  if (invoiceId !== undefined) event.invoice_id = invoiceId;
+  await tx.audit(event);
+  return event;
 }
 
 // --- Payment reconciliation workflow (TASK-38) ------------------------------

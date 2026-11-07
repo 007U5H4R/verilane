@@ -94,6 +94,8 @@ export const ACTION_META: Record<AuditAction, ActionMeta> = {
   reconcile_flag: { label: "Reconciliation step", tone: "warning", icon: "flag", module: "payments", category: "review", actor: "human" },
   reconcile_decide: { label: "Reconciliation decided", tone: "info", icon: "review", module: "payments", category: "review", actor: "human" },
   allocate_payment: { label: "Payment allocated", tone: "success", icon: "review", module: "payments", category: "review", actor: "human" },
+  reverse_allocation: { label: "Allocation reversed", tone: "warning", icon: "transition", module: "payments", category: "review", actor: "human" },
+  permission_denied: { label: "Action refused: not permitted", tone: "danger", icon: "blocked", module: "payments", category: "review", actor: "human" },
   import_csv: { label: "CSV imported", tone: "info", icon: "import", module: "settings", category: "data", actor: "human" },
   import_rejected: { label: "CSV rejected", tone: "danger", icon: "import_rejected", module: "settings", category: "data", actor: "human" },
   reset_demo: { label: "Demo reset", tone: "warning", icon: "reset", module: "settings", category: "data", actor: "human" },

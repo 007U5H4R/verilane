@@ -291,6 +291,10 @@ export const ExceptionSchema = z.object({
   payment_id: z.string().min(1).optional(),
   /** Payment kinds only: open invoices the payment could settle, in ledger order. */
   candidate_invoice_ids: z.array(z.string()).optional(),
+  /** TKT-75.06 (EXE140): why the item is open again; set by `reverse_allocation`. */
+  reopen_reason: z.enum(["reversed"]).optional(),
+  /** TKT-75.06 (EXE140): sticky — an allocation on this item was reversed at some point. Not by itself "not correctly resolved": NSM pairs `allocate_payment` events with `reverse_allocation` via `after.reverses_event_id`. */
+  reversed: z.boolean().optional(),
 }).superRefine((x, ctx) => {
   if (x.message_id === undefined && !isPaymentExceptionKind(x.kind)) {
     ctx.addIssue({ code: "custom", path: ["message_id"], message: `${x.kind} exceptions need the email that raised them` });

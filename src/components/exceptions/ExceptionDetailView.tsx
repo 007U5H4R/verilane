@@ -16,6 +16,7 @@ import {
   type ExceptionDetail,
 } from "@/store/hooks";
 import { ExceptionDetailContent, ExceptionDetailError, ExceptionDetailSkeleton } from "./ExceptionDetailParts";
+import { ReverseAllocationSection } from "./ReverseAllocationSection";
 
 /**
  * `/exceptions/[id]` (TKT-75.02): one exception with payment evidence,
@@ -120,7 +121,13 @@ function ExceptionBody({ id }: { id: string }) {
   const policy = usePolicyEvaluationTrigger(id, detail);
   if (detail === undefined) return <ExceptionDetailSkeleton />;
   if (detail === null) return <NotFound />;
-  return <LoadedException detail={detail} policy={policy} />;
+  return (
+    <>
+      <LoadedException detail={detail} policy={policy} />
+      {/* TKT-75.06: its own section below the action bar, not part of it (EXE143). */}
+      <ReverseAllocationSection detail={detail} />
+    </>
+  );
 }
 
 function LoadedException({
