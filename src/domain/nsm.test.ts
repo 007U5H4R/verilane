@@ -34,6 +34,21 @@ const reverse = (review: string, allocation: NsmAuditEvent, min: number) =>
     after: { status: "open", invoice_id: null, reopen_reason: "reversed", reverses_event_id: allocation.event_id },
   });
 
+/**
+ * An Execute-agent allocation exactly as 79.4 writes it (`asExecuteAgent`,
+ * commands.ts on task/79.4-execute): `run()` as the Analyst, re-labelled
+ * "Execute Agent", the decision id inside `after` and first in
+ * `evidence_ids`. Keep this literal in step with that helper.
+ */
+const executeAllocate = (review: string, invoice: string, min: number, decisionId: string) =>
+  allocate(review, invoice, min, {
+    actor_role: "analyst",
+    actor_label: "Execute Agent",
+    summary: `Allocated payment to ${invoice} · policy policy-v1 (${decisionId})`,
+    after: { status: "actioned", invoice_id: invoice, policy_decision_id: decisionId, config_version: "policy-v1" },
+    evidence_ids: [decisionId],
+  });
+
 function input(audit: NsmAuditEvent[], over: Partial<NsmInput> = {}): NsmInput {
   return {
     audit,
@@ -166,15 +181,49 @@ describe("computeNsm — TC-75.41 value of correctly resolved exceptions", () =>
     expect(r.valuePaise).toBe(0);
   });
 
-  it("an auto-executed allocation backed by an auto_permitted PolicyDecision counts", () => {
-    const r0 = reset();
-    const auto = allocate("EXC-1", "INV-1", 5, { actor_role: "system", actor_label: "Policy Agent", policy_decision_id: "POL-EXC-1-1" });
+  it("an Execute-agent allocation (79.4's row shape) backed by an auto_permitted PolicyDecision counts", () => {
     const r = computeNsm(
-      input([r0, auto], {
+      input([reset(), executeAllocate("EXC-1", "INV-1", 5, "POL-EXC-1-1")], {
         policyDecisions: [{ decision_id: "POL-EXC-1-1", exception_id: "EXC-1", verdict: "auto_permitted" }],
       }),
     );
     expect(r.valuePaise).toBe(50_000_00);
+    expect(r.resolvedCount).toBe(1);
+    expect(r.guardrails.actionsWithoutApproval).toBe(0);
+  });
+
+  it("an Execute-agent allocation on a needs_manager decision does not count and is an action without approval", () => {
+    const r = computeNsm(
+      input([reset(), executeAllocate("EXC-1", "INV-1", 5, "POL-EXC-1-1")], {
+        policyDecisions: [{ decision_id: "POL-EXC-1-1", exception_id: "EXC-1", verdict: "needs_manager" }],
+      }),
+    );
+    expect(r.valuePaise).toBe(0);
+    expect(r.resolvedCount).toBe(0);
+    expect(r.guardrails.actionsWithoutApproval).toBe(1);
+  });
+
+  it("an Execute-agent row is judged by its decision, never by the actor classifier: no id, or an unknown id, is unapproved", () => {
+    const r0 = reset(); // first: event ids follow construction order
+    const noId = allocate("EXC-1", "INV-1", 5, { actor_role: "analyst", actor_label: "Execute Agent" });
+    const unknownId = executeAllocate("EXC-2", "INV-2", 6, "POL-MISSING");
+    const r = computeNsm(input([r0, noId, unknownId]));
+    expect(r.valuePaise).toBe(0);
+    expect(r.guardrails.actionsWithoutApproval).toBe(2);
+  });
+
+  it("any row naming a decision goes through the decision check, whatever its label", () => {
+    const r = computeNsm(
+      input(
+        [
+          reset(),
+          allocate("EXC-1", "INV-1", 5, { after: { status: "actioned", invoice_id: "INV-1", policy_decision_id: "POL-EXC-1-1" } }),
+        ],
+        { policyDecisions: [{ decision_id: "POL-EXC-1-1", exception_id: "EXC-1", verdict: "blocked" }] },
+      ),
+    );
+    expect(r.valuePaise).toBe(0);
+    expect(r.guardrails.actionsWithoutApproval).toBe(1);
   });
 
   it("only counts payment-exception subjects that exist", () => {
@@ -243,8 +292,8 @@ describe("computeNsm — TC-75.42 guardrails from the same session", () => {
       input(
         [
           reset(),
-          allocate("EXC-1", "INV-1", 5, { actor_role: "system", actor_label: "Policy Agent", policy_decision_id: "POL-EXC-1-1" }),
-          allocate("EXC-2", "INV-2", 6, { actor_role: "system", actor_label: "Policy Agent", policy_decision_id: "POL-EXC-2-1" }),
+          executeAllocate("EXC-1", "INV-1", 5, "POL-EXC-1-1"),
+          executeAllocate("EXC-2", "INV-2", 6, "POL-EXC-2-1"),
           ev({ action: "approve_draft", subject: "draft:D-1", invoice_id: "INV-1", actor_role: undefined, actor_label: undefined }),
           ev({ action: "autopilot_send", subject: "draft:D-2", invoice_id: "INV-1", actor_label: "Copilot" }),
         ],

@@ -26,10 +26,13 @@ export interface NsmAuditEvent {
   actor_label?: unknown;
   invoice_id?: unknown;
   before?: Row;
+  /**
+   * An Execute-agent write (TKT-75.04, `asExecuteAgent`) carries its
+   * PolicyDecision here as `after.policy_decision_id`; the row has no
+   * top-level decision field.
+   */
   after?: Row;
   evidence_ids?: unknown;
-  /** Set by an auto-executed write (TKT-75.04): the `auto_permitted` decision that approved it. */
-  policy_decision_id?: unknown;
   [key: string]: unknown;
 }
 
@@ -119,16 +122,25 @@ function median(xs: number[]): number | null {
   return s.length % 2 ? hi : ((s[mid - 1] ?? hi) + hi) / 2;
 }
 
+const EXECUTE_LABEL = "Execute Agent";
+
 /**
- * Approved (A1 item 5): a human acting under a recorded role (the store only
- * audits a write `can()` allowed), Copilot's `autopilot_send` under the
- * Manager's standing policy (v1 TASK-41), or a write that names an
- * `auto_permitted` PolicyDecision.
+ * Approved (A1 item 5, EXE173). A row that names a PolicyDecision
+ * (`after.policy_decision_id`) or is labelled "Execute Agent" is judged by that
+ * decision alone: approved only when it is `auto_permitted`. The actor
+ * classifier is never consulted for such a row: 79.4 runs Execute as the
+ * Analyst, so `actorType()` would call it human. Otherwise: Copilot's
+ * `autopilot_send` under the Manager's standing policy (v1 TASK-41), or a
+ * human acting under a recorded role (the store only audits a write `can()`
+ * allowed; a Manager's approval of a `needs_manager` item carries no decision id).
  */
 function isApproved(e: NsmAuditEvent, verdictOf: Map<string, string | undefined>): boolean {
+  const decisionId = e.after?.policy_decision_id;
+  if (typeof decisionId === "string" || e.actor_label === EXECUTE_LABEL) {
+    return typeof decisionId === "string" && verdictOf.get(decisionId) === "auto_permitted";
+  }
   if (e.action === "autopilot_send") return true;
-  if (actorType(e) === "human") return true;
-  return typeof e.policy_decision_id === "string" && verdictOf.get(e.policy_decision_id) === "auto_permitted";
+  return actorType(e) === "human";
 }
 
 interface Closing {
