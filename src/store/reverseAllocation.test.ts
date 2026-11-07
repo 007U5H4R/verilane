@@ -10,7 +10,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InvalidCommand, PermissionDenied } from "@/domain/commands";
 import { outstandingOf } from "@/domain/priority";
 import { IllegalTransition } from "@/domain/transitions";
@@ -21,10 +21,14 @@ import { execute, type CommandInput } from "./tx";
 
 const EXC = "RV-PAY-P-012";
 
-function seedFetcher(): Fetcher {
+/** The real seed; `extraInvoiceRows` are appended to invoices.csv (m3 fixture). */
+function seedFetcher(extraInvoiceRows: string[] = []): Fetcher {
   const dir = join(process.cwd(), "public", "seed");
   const names = ["manifest.json", "invoices.csv", "customers.csv", "payments.csv", "emails.json"];
   const files = Object.fromEntries(names.map((n) => [`/seed/${n}`, readFileSync(join(dir, n), "utf-8")]));
+  if (extraInvoiceRows.length > 0) {
+    files["/seed/invoices.csv"] = `${(files["/seed/invoices.csv"] ?? "").trimEnd()}\n${extraInvoiceRows.join("\n")}\n`;
+  }
   return (async (url: string | URL | Request) => {
     const body = files[String(url)];
     return body === undefined ? new Response(null, { status: 404 }) : new Response(body, { status: 200 });
@@ -42,13 +46,10 @@ let db: VerilaneDb;
 
 const asRole = (role: Role) => db.meta.put({ key: "role", value: role });
 
+/** Every table (m4): the reversal's scope is WHOLE_DB, so any of them could take a partial write. */
 async function snapshot() {
-  return {
-    payments: await db.payments.toArray(),
-    exceptions: await db.exceptions.toArray(),
-    priorities: await db.priorities.toArray(),
-    audit: await db.audit.toArray(),
-  };
+  const entries = await Promise.all(db.tables.map(async (t) => [t.name, await t.toArray()] as const));
+  return Object.fromEntries(entries) as Record<string, unknown[]>;
 }
 
 async function outstandingF() {
@@ -150,6 +151,72 @@ describe("reverse_allocation — TC-75.32", () => {
   });
 });
 
+describe("reverse_allocation preconditions and references — TC-75.32 (m3, m5)", () => {
+  it("refuses when the payment is applied to a different invoice than the item's, nothing written", async () => {
+    await execute(db, allocate);
+    await db.payments.update("P-012", { invoice_id: "INV-049" });
+    await asRole("manager");
+    const before = await snapshot();
+    await expect(execute(db, reverse())).rejects.toBeInstanceOf(InvalidCommand);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("refuses when the allocate_payment audit event is missing, nothing written", async () => {
+    await execute(db, allocate);
+    await db.audit.clear();
+    await asRole("manager");
+    const before = await snapshot();
+    const err = await execute(db, reverse()).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(InvalidCommand);
+    expect((err as Error).message).toMatch(/No allocation of payment P-012/);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("refuses when the latest allocation event names another invoice, nothing written", async () => {
+    await execute(db, allocate);
+    const allocation = (await db.audit.where("action").equals("allocate_payment").first())!;
+    await db.audit.update(allocation.event_id!, { after: { status: "actioned", invoice_id: "INV-049" } });
+    await asRole("manager");
+    const before = await snapshot();
+    await expect(execute(db, reverse())).rejects.toBeInstanceOf(InvalidCommand);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("allocate → reverse → allocate → reverse: the second reversal names the second allocation", async () => {
+    await asRole("manager");
+    await execute(db, allocate);
+    const first = await execute(db, reverse());
+    await execute(db, allocate);
+    const second = await execute(db, reverse());
+    const allocations = await db.audit.where("action").equals("allocate_payment").toArray();
+    expect(allocations).toHaveLength(2);
+    const [firstAllocation, secondAllocation] = allocations;
+    expect(first.after).toMatchObject({ reverses_event_id: firstAllocation?.event_id });
+    expect(second.after).toMatchObject({ reverses_event_id: secondAllocation?.event_id });
+    expect(secondAllocation?.event_id).not.toBe(firstAllocation?.event_id);
+  });
+
+  it("a multi-candidate item reopens with invoice_id cleared and every candidate restored", async () => {
+    // A second open invoice with INV-F's outstanding makes P-012 ambiguous.
+    db.close();
+    await db.delete();
+    db = new VerilaneDb(`verilane-reverse-multi-${Math.random()}`);
+    await ensureSeeded(db, seedFetcher(["51,INV-F2,,C-005,2026-09-25,2026-10-25,2500000,INR,open,,2026-09,PO-4551"]));
+    const seeded = await db.exceptions.get(EXC);
+    expect(seeded?.candidate_invoice_ids).toEqual(["INV-F", "INV-F2"]);
+    expect(seeded?.invoice_id).toBeUndefined();
+
+    await execute(db, allocate);
+    expect((await db.exceptions.get(EXC))?.invoice_id).toBe("INV-F");
+    await asRole("manager");
+    await execute(db, reverse());
+
+    const reopened = await db.exceptions.get(EXC);
+    expect(reopened).toMatchObject({ status: "open", reversed: true, candidate_invoice_ids: ["INV-F", "INV-F2"] });
+    expect(reopened).not.toHaveProperty("invoice_id");
+  });
+});
+
 describe("reverse_allocation failure injection — TC-75.32", () => {
   it("a throw after every write, before commit, leaves no partial state", async () => {
     await execute(db, allocate);
@@ -185,8 +252,8 @@ describe("reverse_allocation refusal — TC-75.33", () => {
     expect(after.exceptions).toEqual(before.exceptions);
     expect(after.priorities).toEqual(before.priorities);
     // Exactly one new audit event: the refusal.
-    expect(after.audit).toHaveLength(before.audit.length + 1);
-    expect(after.audit.at(-1)).toMatchObject({
+    expect(after.audit).toHaveLength((before.audit ?? []).length + 1);
+    expect(after.audit?.at(-1)).toMatchObject({
       action: "permission_denied",
       actor_role: "analyst",
       subject: `review:${EXC}`,
@@ -194,6 +261,46 @@ describe("reverse_allocation refusal — TC-75.33", () => {
       summary: "Refused reverse allocation on RV-PAY-P-012: Only a Manager can reverse an allocation.",
       after: { refused_action: "reverse_allocation", reason: "Only a Manager can reverse an allocation." },
     });
+  });
+
+  it("a failing refusal audit still surfaces PermissionDenied, logs the failure, and persists nothing (M1)", async () => {
+    await execute(db, allocate);
+    const before = await snapshot();
+    const quota = new Error("QuotaExceededError (injected)");
+    const add = vi.spyOn(db.audit, "add").mockRejectedValue(quota);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const err = await execute(db, reverse()).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(PermissionDenied);
+      expect((err as PermissionDenied).reason).toBe("Only a Manager can reverse an allocation.");
+      expect((err as Error).cause).toBe(quota);
+      expect(add).toHaveBeenCalledTimes(1);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("permission_denied"), quota);
+    } finally {
+      add.mockRestore();
+      log.mockRestore();
+    }
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("the refusal records the role that was denied, not a role switched in between (m6)", async () => {
+    await execute(db, allocate);
+    // The role flips to Manager after the denial, before the refusal is written.
+    const realTransaction = db.transaction.bind(db) as (...a: unknown[]) => Promise<unknown>;
+    let calls = 0;
+    const spy = vi.spyOn(db, "transaction").mockImplementation(((...args: unknown[]) => {
+      calls += 1;
+      if (calls === 2) {
+        return db.meta.put({ key: "role", value: "manager" }).then(() => realTransaction(...args));
+      }
+      return realTransaction(...args);
+    }) as typeof db.transaction);
+    try {
+      await expect(execute(db, reverse())).rejects.toBeInstanceOf(PermissionDenied);
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await db.audit.toArray()).at(-1)).toMatchObject({ action: "permission_denied", actor_role: "analyst" });
   });
 
   it("other denials keep v1 behaviour: refused with nothing audited", async () => {
