@@ -1,10 +1,10 @@
 ---
 id: TASK-79.4
 title: Auto-execute auto_permitted decisions and gate the action bar
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-05 04:43'
-updated_date: '2026-11-07 04:44'
+updated_date: '2026-11-07 08:12'
 labels:
   - P1
   - M-75.2
