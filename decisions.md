@@ -1345,3 +1345,56 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - `exceptionStatusLabel(x, verdict?)`: Resolved / Dismissed first. For an open item with a verdict, `needs_manager` reads "Pending Manager" and any other verdict reads "Open". With no verdict yet (Policy has not run) it falls back to v1's `requires_role`. The header and Stage 3 now agree on a G3/G4 `needs_manager` item whose `requires_role` is unset.
 - Header: the verdict comes from the page's policy gate and is ignored while the decision is stale. Queue: `useOpenExceptionRows` reads `policyDecisions` and keeps the latest per exception, using `byEvaluation` (now exported from policy.ts) as the order.
 - Testids and the v1 label strings are unchanged.
+
+## EXE170 · The North Star Metric is computed from paired audit events of the current session (TASK-79.7, TKT-75.07) — accepted
+- **NSM** = Σ value (paise) of payment exceptions closed by an approved action and not later reversed or reopened, in the current session. `computeNsm()` in `src/domain/nsm.ts` is pure (rows in, numbers out). No number is seeded, and the Home figure on a fresh seed is ₹0.
+- **Session.** The session is every audit event after the last `demo_reset` or `set_as_of` event, in `event_id` order. With no boundary event (the first seed writes none), the whole log is the session. `import_csv` is not a boundary.
+- **Closings are generic.** `CLOSING_VALUE` maps a closing action to the value it resolves. Today that is only `allocate_payment`, valued at the exception's bank line `amount_paise`. TKT-75.05's write-off is meant to be one more entry, e.g. `approve_write_off: (c) => num(c.event.after?.amount_paise)`, with no other change to the function. A closing counts only on a subject `review:<id>` that names a current payment exception (`isPaymentExceptionKind`).
+- **Events are paired; the `reversed` marker is not used** (coordinator input from the 79.6 review, EXE140). A closing is cancelled by:
+  - a later in-session event whose `after.reverses_event_id` names it (EXE142); or
+  - any other later in-session event on the same subject with `after.status === "open"`, which cancels the latest closing that still stands.
+  Per subject, only the latest closing that still stands counts. So allocate → reverse → correct re-allocate counts once, at the re-allocated value, although the exception still carries `reversed: true`.
+- **A defensive row check.** The counted closing also needs the exception's current `status === "actioned"`. This guards against a reopen that bypassed the audit; it is not the primary rule (see the "pairs events, not row state" test).
+- **Approved** (A1 item 5) means one of:
+  - the actor is human (`actorType()`), since the store audits only writes that `can()` allowed;
+  - the action is `autopilot_send`, under the Manager's standing policy (v1 TASK-41);
+  - the event carries a `policy_decision_id` whose PolicyDecision verdict is `auto_permitted`.
+  An unapproved closing is not counted.
+- **Assumption, to be re-checked on rebase.** The field name `policy_decision_id` is assumed for TKT-75.04's auto-executed writes. If 79.4 names it differently, only `isApproved()` changes.
+
+## EXE171 · NSM guardrails: precise definitions (TASK-79.7, TKT-75.07, Discovery §8.1) — accepted
+All guardrails are computed from the same session as the NSM (EXE170). A rate is `null` when its denominator is 0, never 0/0 or NaN.
+- **Reversal/reopen rate.** The share of closings that a later in-session reversal or reopen cancelled: `reversedOrReopened ÷ closings`. Closings are counted whether approved or not. Lower is better.
+- **Inappropriate-reminder rate.** The share of reminder sends whose invoice should not have been chased: `inappropriateReminders ÷ reminderSends`. Sends are `approve_draft` and `autopilot_send`. An invoice is inappropriate if it is `paid`, has an open dispute (`OPEN_DISPUTE`), or is a candidate invoice of an open `unallocated_payment` exception. Target 0. **Limitation:** this is judged against current state, not the state at send time; a point-in-time version needs a snapshot on the send event.
+- **Actions without approval.** The count of closings plus sends that are not approved under EXE170's rule. Target 0.
+- **Median raised→resolved.** The median, in ms, of (resolved − raised) over counted closings.
+  - resolved = the closing event's `at`;
+  - raised = the latest in-session reopen on that subject, else the session boundary's `at`.
+  When neither is known (no boundary, first seed), the closing counts toward `resolutionTimesUnmeasured`, and the median is `null` if nothing was measured.
+- **Escalation rate.** `escalated ÷ evaluated`.
+  - evaluated = exceptions with at least one in-session `policy_evaluated` event whose `evidence_ids` names a known PolicyDecision;
+  - escalated = those whose latest such verdict is `needs_manager`.
+
+## EXE172 · Home NSM section and Exceptions card (TASK-79.7, TC-75.43/44) — accepted, with deviations
+- **Placement.** `NsmSection` sits between the KPI strip and the task-feed grid (Design §6), in its own `home-block-nsm` error boundary. It loads and fails independently of the KPI, feed and chart blocks. `computeNsm` runs during render, so a throw reaches the boundary. `?__block_error=nsm` forces the error state under `NEXT_PUBLIC_E2E=1`, following the TC-056 pattern.
+- **Heading and label.**
+  - The heading is "North Star Metric" (A1 item 4), an 11px uppercase muted `h2` that labels the section.
+  - The literal `NSM_LABEL` "Simulated — one demo session = one analyst-week" is shown in every state, including loading and error (TC-75.43).
+- **States.**
+  - loading: a skeleton bar with `aria-busy`;
+  - empty: ₹0.00 and "No exceptions resolved yet this session.";
+  - error: an inline `ErrorState` with Retry, inside the section;
+  - working: the figure plus "N exceptions resolved this session".
+  - Offline adds a note, "Offline — computed from this device's data.", because the figure is computed locally and stays valid.
+  - The page-level skeleton and empty states (`HomeSkeleton`, `NoAttention`) do not include the NSM.
+- **Exceptions card.** It already shipped in TKT-75.02 (EXE127). It is now pinned at the component level by `TaskFeed.test.ts`.
+- **Deviations.**
+  - **Font.** Design §6 asks for an Iowan serif value, but `--font-display` is Inter in this codebase. The value uses `font-display`, the same as the KPI values, so it still "matches KPI values".
+  - **Border and radius.** Design §6 says "10px radius, 14px border left"; the mockup has a 1px border all round with a 14px radius. This uses a 10px radius and a 4px left border in `--brand`, the brief's reading. A 14px-wide border would crowd the 375px layout.
+  - **Card order.** Design §6 orders the cards High | Exceptions | Disputes | Drafts, but the feed keeps its existing order (high, disputed, drafts, payments, exceptions). Reordering would change v1 feed order and the existing e2e expectations.
+  - **Description copy.** It is the label, then "Value of payment exceptions resolved by an approved action and not reversed." The mockup's "correctly resolved" is replaced by the operational definition.
+- **Follow-ups.**
+  - Placement of the label on the `/exceptions` list page (79.4 touches that page).
+  - TC-75.41–45 rows missing from `docs/test-cases.md`.
+  - Surfacing the guardrails in the UI (computed, not yet shown).
+  - A point-in-time inappropriate-reminder check (EXE171).
