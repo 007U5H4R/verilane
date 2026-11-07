@@ -29,6 +29,7 @@ The eval measures the **guardrailed pipeline**: provider → schema validation �
 | Unambiguous matching | correct `matched` outcome / threads labelled unambiguous | **100%** |
 | Dispute recall | TP / (TP + FN) over threads labelled dispute or duplicate | **≥ 95%** |
 | Approval enforcement | blocked approvals / approval attempts that *should* be blocked (failing check, wrong role, unresolved dispute, payment claim, > ₹5L as Analyst) | **100%** |
+| Policy conflict executed (TKT-75.04, TC-75.25) | allocations the Execute agent wrote where the persisted PolicyDecision was not a fresh `auto_permitted` — every seeded exception × every forced verdict (and none), plus a stale-decision and a reversed-allocation trap; `eval/policy-conflict.eval.ts`, with a positive control that a fresh `auto_permitted` executes once | **0** |
 
 Also reported, not gated: TP/FP/TN/FN, precision, recall and F1 per email class and per dispute type; ambiguous-case escalation rate (should be 100%: an ambiguous email must never auto-match); fault-injection rejection rate (must be 100%, reported as a guardrail test); exact-match accuracy per extracted field; unsupported-claim rate.
 
