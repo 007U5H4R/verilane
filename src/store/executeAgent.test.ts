@@ -25,7 +25,7 @@ import {
 import type { RecommendConfidence, RecommendedFacts } from "@/domain/recommend";
 import type { Exception, Payment } from "@/domain/schema";
 import { type AuditEventRow, VerilaneDb } from "./db";
-import { executeAgent, submitAllocationGated } from "./tx";
+import { execute, executeAgent, submitAllocationGated } from "./tx";
 import { runExecuteAgentFor } from "./executeAgent";
 import type { ExceptionDetail } from "./hooks";
 import { ensureSeeded, type Fetcher } from "./loader";
@@ -254,6 +254,30 @@ describe("risk (b): a reversed allocation is not re-applied", () => {
     await db.exceptions.put({ ...(await exception()), reversed: true } as unknown as Exception);
     const out = await executeAgent(db, { subject, expected_fingerprint: fingerprint });
     expect(out.kind).toBe("executed");
+  });
+});
+
+describe("risk (b) end to end with 79.6's real reversal (no fixtures)", () => {
+  it("Execute allocates, a Manager reverses via reverse_allocation, Execute then refuses and writes nothing", async () => {
+    // 1. Execute auto-allocates the seeded auto_permitted P-012.
+    const first = await runExecuteAgentFor(db, await detail("high"));
+    expect(first.ok && first.value?.kind).toBe("executed");
+    expect(await allocations()).toHaveLength(1);
+
+    // 2. A Manager reverses it through the 79.6 command (the control's write path).
+    await db.meta.put({ key: "role", value: "manager" });
+    await execute(db, { type: "reverse_allocation", subject });
+    expect((await exception()).status).toBe("open");
+    expect((await payment()).invoice_id).toBeNull();
+
+    // 3. The reopened item is still auto_permitted; Execute must refuse, not re-apply.
+    const again = await runExecuteAgentFor(db, await detail("high"));
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.value).toMatchObject({ kind: "refused" });
+    expect(await allocations()).toHaveLength(1);
+    expect((await payment()).invoice_id).toBeNull();
+    expect((await exception()).status).toBe("open");
   });
 });
 
