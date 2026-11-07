@@ -15,7 +15,7 @@ import {
   remainingAfter,
   workflowOf,
   type CaseContext,
-  type StoredReviewItem,
+  type StoredException,
 } from "./reconcile";
 
 const invoices = byId(INVOICES, "invoice_id");
@@ -101,6 +101,13 @@ describe("candidatesFor — matching hierarchy", () => {
     const ids = assess("E-009-1").candidates.map((c) => c.payment.payment_id);
     expect(ids).not.toContain("P-001"); // C-007, ₹50,000
     const p: Payment = { payment_id: "P-Z", invoice_id: "INV-024", paid_on: "2026-10-20", amount_paise: paise(5_000_000) };
+    expect(
+      candidatesFor({ invoiceId: "INV-024", customerId: "C-004", amount: paise(5_000_000) }, [p], invoices),
+    ).toEqual([]);
+  });
+
+  it("an unapplied ledger entry (invoice_id null, TASK-79.1) is never a candidate and does not crash", () => {
+    const p: Payment = { payment_id: "P-U", invoice_id: null, paid_on: "2026-10-20", amount_paise: paise(5_000_000) };
     expect(
       candidatesFor({ invoiceId: "INV-024", customerId: "C-004", amount: paise(5_000_000) }, [p], invoices),
     ).toEqual([]);
@@ -232,7 +239,7 @@ describe("ledgerStatus and workflowOf", () => {
     expect(ledgerStatus("P-1", new Set(), new Set())).toBe("recorded");
   });
   it("reads only well-formed workflow fields", () => {
-    const row = { workflow_state: "verified", assignee: "boss", verified_payment_id: 7, workflow_note: "n" } as unknown as StoredReviewItem;
+    const row = { workflow_state: "verified", assignee: "boss", verified_payment_id: 7, workflow_note: "n" } as unknown as StoredException;
     expect(workflowOf(row as unknown as Record<string, unknown>)).toEqual({ workflow_state: "verified", workflow_note: "n" });
   });
 });

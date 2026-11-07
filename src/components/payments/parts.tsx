@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, FileWarning, Inbox, Landmark, Wallet, type LucideIcon } from "lucide-react";
 
 import { formatInrWhole, paise } from "@/domain/money";
-import type { PaymentsKpis } from "@/domain/payments/reconcile";
+import { UNAPPLIED_LABEL, type PaymentsKpis } from "@/domain/payments/reconcile";
 import type { Page } from "@/domain/payments/listing";
 import { showingText } from "@/domain/payments/listing";
 import { cn } from "@/lib/cn";
@@ -19,6 +20,17 @@ export const INPUT =
   "h-9 max-md:h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted outline-none focus-visible:ring-2 focus-visible:ring-interactive";
 export const LINK = "font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-interactive rounded-sm";
 export const CARD = "rounded-xl border border-border bg-surface shadow-card";
+
+/** A ledger entry's invoice: a link when it has one, plain "Unapplied" text
+ * when `invoice_id` is null (TASK-79.1) — never a link to `/invoices/null`. */
+export function InvoiceRef({ invoiceId, label, className }: { invoiceId: string | null; label?: string | null; className?: string }) {
+  if (invoiceId === null) return <span className={className}>{UNAPPLIED_LABEL}</span>;
+  return (
+    <Link href={`/invoices/${invoiceId}`} className={cn(LINK, className)}>
+      {label ?? invoiceId}
+    </Link>
+  );
+}
 
 /* ---------- URL state ---------- */
 

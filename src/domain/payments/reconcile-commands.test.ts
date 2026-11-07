@@ -9,17 +9,18 @@ import { can } from "../permissions";
 import type { DraftSources } from "../validate";
 import { CUSTOMERS, INVOICES, MATCHES, PAYMENTS } from "./fixtures";
 
-function memTx(reviewItems: Row[], invoices: Row[] = INVOICES as unknown as Row[]) {
+function memTx(exceptions: Row[], invoices: Row[] = INVOICES as unknown as Row[]) {
   const keyOf: Record<TableName, string> = {
     invoices: "invoice_id",
     drafts: "draft_id",
     disputes: "dispute_id",
-    reviewItems: "review_id",
+    exceptions: "review_id",
+    payments: "payment_id",
     meta: "key",
   };
   const tables = new Map<TableName, Map<string, Row>>();
   for (const t of Object.keys(keyOf) as TableName[]) tables.set(t, new Map());
-  for (const r of reviewItems) tables.get("reviewItems")?.set(String(r.review_id), r);
+  for (const r of exceptions) tables.get("exceptions")?.set(String(r.review_id), r);
   for (const r of invoices) tables.get("invoices")?.set(String(r.invoice_id), r);
   const audits: AuditEventInput[] = [];
   const puts: TableName[] = [];
@@ -31,7 +32,7 @@ function memTx(reviewItems: Row[], invoices: Row[] = INVOICES as unknown as Row[
     extractions: [],
     matches: MATCHES,
     disputes: [],
-    reviewItems: [],
+    exceptions: [],
   };
   const tx: Tx = {
     async get(table, id) {
@@ -47,7 +48,7 @@ function memTx(reviewItems: Row[], invoices: Row[] = INVOICES as unknown as Row[
     now: () => "2026-10-30T09:00:00.000Z",
     draftSources: async () => src,
   };
-  return { tx, tables, audits, puts, review: (id: string) => tables.get("reviewItems")?.get(id) };
+  return { tx, tables, audits, puts, review: (id: string) => tables.get("exceptions")?.get(id) };
 }
 
 const REC = {
@@ -89,7 +90,7 @@ describe("reconcile_flag (analyst workflow steps)", () => {
     expect(e).toMatchObject({ action: "reconcile_flag", actor_role: "analyst", invoice_id: "INV-034" });
     expect(e.before).toEqual({ workflow_state: null });
     expect(e.after).toMatchObject({ workflow_state: "awaiting_evidence" });
-    expect(m.puts).toEqual(["reviewItems"]);
+    expect(m.puts).toEqual(["exceptions"]);
   });
 
   it("bank verification step", async () => {
@@ -126,7 +127,7 @@ describe("reconcile_flag (analyst workflow steps)", () => {
       requested_partial_paise: 5_000_000,
     });
     expect(e.after).toMatchObject({ requested_partial_paise: 5_000_000, remaining_paise: 10_000_000 });
-    expect(m.puts).toEqual(["reviewItems"]);
+    expect(m.puts).toEqual(["exceptions"]);
     expect(m.tables.get("invoices")?.get("INV-034")).toEqual(INVOICES.find((i) => i.invoice_id === "INV-034"));
   });
 
@@ -190,7 +191,7 @@ describe("reconcile_decide (manager decisions)", () => {
     });
     expect(e).toMatchObject({ action: "reconcile_decide", actor_role: "manager", evidence_ids: ["P-011"] });
     expect(e.before).toMatchObject({ status: "open", workflow_state: "manager_review" });
-    expect(m.puts).toEqual(["reviewItems"]);
+    expect(m.puts).toEqual(["exceptions"]);
     // Already verified: a second decision is refused.
     await expect(run(decide({ decision: "verify", payment_id: "P-011", reference: "x", confirmed: true }), m.tx)).rejects.toThrow(/closed/);
   });

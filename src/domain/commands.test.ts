@@ -20,7 +20,8 @@ function memTx(seed: Partial<Record<TableName, Row[]>> = {}) {
     invoices: "invoice_id",
     drafts: "draft_id",
     disputes: "dispute_id",
-    reviewItems: "review_id",
+    exceptions: "review_id",
+    payments: "payment_id",
     meta: "key",
   };
   const tables = new Map<TableName, Map<string, Row>>();
@@ -54,7 +55,7 @@ const seed = () => ({
     { draft_id: "DR-GEN", invoice_id: "INV-1", status: "generated" },
   ],
   disputes: [{ dispute_id: "D-1", invoice_id: "INV-1", status: "under_review" }],
-  reviewItems: [
+  exceptions: [
     { review_id: "RV-1", kind: "data_issue", status: "open" },
     { review_id: "RV-REC", kind: "reconciliation", status: "open" },
   ],
@@ -225,12 +226,12 @@ describe("run()", () => {
   it("review items: action and dismiss (reconciliation dismiss is Manager-only)", async () => {
     const m = memTx(seed());
     await run(cmd({ type: "action_review", subject: { kind: "review", id: "RV-1" } }), m.tx);
-    expect(m.tables.get("reviewItems")?.get("RV-1")?.status).toBe("actioned");
+    expect(m.tables.get("exceptions")?.get("RV-1")?.status).toBe("actioned");
     await expect(
       run(cmd({ type: "dismiss_review", subject: { kind: "review", id: "RV-REC" } }), m.tx),
     ).rejects.toBeInstanceOf(PermissionDenied);
     await run(cmd({ type: "dismiss_review", subject: { kind: "review", id: "RV-REC" }, actor: "manager" }), m.tx);
-    expect(m.tables.get("reviewItems")?.get("RV-REC")?.status).toBe("dismissed");
+    expect(m.tables.get("exceptions")?.get("RV-REC")?.status).toBe("dismissed");
   });
 
   it("a subject of the wrong kind is invalid", async () => {
@@ -386,7 +387,7 @@ describe("draft commands (TASK-15)", () => {
     extractions: [],
     matches: [],
     disputes: [],
-    reviewItems: [],
+    exceptions: [],
     ...over,
   });
   const ledgerTx = (src: DraftSources = sources()) => {
@@ -525,7 +526,7 @@ describe("draft commands (TASK-15)", () => {
     escalation_reason: "Email and ledger disagree",
     requires_role: "analyst",
     status: "open",
-  } as DraftSources["reviewItems"][number];
+  } as DraftSources["exceptions"][number];
   const ambiguousMatch = {
     message_id: "M-8",
     outcome: "ambiguous",
@@ -536,7 +537,7 @@ describe("draft commands (TASK-15)", () => {
   it("approve_draft re-gates the role on fresh facts: a conflict after submit is Manager-only (T16-1)", async () => {
     const src = sources();
     const m = await validatedDraft(src);
-    src.reviewItems.push(conflictItem);
+    src.exceptions.push(conflictItem);
     const before = m.audits.length;
 
     const err = await approve(m, "analyst").catch((x: unknown) => x);

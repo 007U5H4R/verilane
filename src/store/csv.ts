@@ -86,7 +86,7 @@ const optionalWholeNumber = (what: string) =>
 const RAW_SCHEMA: Record<ImportKind, z.ZodType> = {
   invoices: z.object({
     row_id: required.regex(/^[1-9]\d*$/, "must be a positive whole number"),
-    invoice_id: required,
+    invoice_id: cell, // blank = unapplied cash (EXE123)
     invoice_number: cell,
     customer_id: required,
     invoice_date: isoDate,
@@ -107,7 +107,7 @@ const RAW_SCHEMA: Record<ImportKind, z.ZodType> = {
   }),
   payments: z.object({
     payment_id: required,
-    invoice_id: required,
+    invoice_id: cell, // blank = unapplied cash (EXE123)
     paid_on: isoDate,
     amount_paise: wholeNumber("paise"),
   }),

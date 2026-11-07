@@ -75,7 +75,7 @@ beforeEach(async () => {
       status: "under_review",
     },
   ]);
-  await db.reviewItems.bulkAdd([
+  await db.exceptions.bulkAdd([
     { review_id: "RV-A", kind: "data_issue", status: "open" },
     { review_id: "RV-D", kind: "data_issue", status: "open" },
     { review_id: "RV-REC", kind: "reconciliation", status: "open", requires_role: "manager", invoice_id: "INV-2", message_id: "E-1", ledger_outstanding_paise: 1_000_000 },
@@ -249,19 +249,19 @@ describe("execute() — reconcile commands read the ledger without writing it", 
       subject: { kind: "review", id: "RV-REC" },
       payload: { decision: "verify", payment_id: "P-1", reference: "Statement line 14", confirmed: true },
     });
-    expect(await db.reviewItems.get("RV-REC")).toMatchObject({ status: "actioned", workflow_state: "verified", verified_payment_id: "P-1" });
+    expect(await db.exceptions.get("RV-REC")).toMatchObject({ status: "actioned", workflow_state: "verified", verified_payment_id: "P-1" });
     expect(await db.payments.toArray()).toEqual(before);
   });
 
   it("an Analyst proposes a same-customer link for Manager review", async () => {
     await db.matches.add({ message_id: "E-9", outcome: "customer_only", customer_id: "C-2", candidates: [] } as never);
-    await db.reviewItems.add({ review_id: "RV-UM", kind: "uncertain_match", status: "open", requires_role: "analyst", message_id: "E-9" } as never);
+    await db.exceptions.add({ review_id: "RV-UM", kind: "uncertain_match", status: "open", requires_role: "analyst", message_id: "E-9" } as never);
     await execute(db, {
       type: "reconcile_flag",
       subject: { kind: "review", id: "RV-UM" },
       payload: { step: "request_link", invoice_id: "INV-2" },
     });
-    expect(await db.reviewItems.get("RV-UM")).toMatchObject({ status: "open", workflow_state: "manager_review", proposed_invoice_id: "INV-2" });
+    expect(await db.exceptions.get("RV-UM")).toMatchObject({ status: "open", workflow_state: "manager_review", proposed_invoice_id: "INV-2" });
   });
 });
 

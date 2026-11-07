@@ -23,7 +23,7 @@ import { locateFootnotes } from "@/domain/draft";
 import { ingest, type IngestResult, type Row as CsvRow } from "@/domain/ingest";
 import { match } from "@/domain/match";
 import { MANAGER_APPROVAL_THRESHOLD, type Role } from "@/domain/permissions";
-import { reviewItemsFor } from "@/domain/review";
+import { exceptionsFor } from "@/domain/review";
 import type { Dispute, EmailMessage, Extraction, Invoice, Match, VerifiedFact } from "@/domain/schema";
 import { findUnverifiedTokens, type DraftSources } from "@/domain/validate";
 import {
@@ -181,7 +181,7 @@ async function runThreads(
   const { invoices, customers, payments, emails } = ledger;
   const extractions: Extraction[] = [];
   const matches: Match[] = [];
-  const reviewItems: DraftSources["reviewItems"] = [];
+  const exceptions: DraftSources["exceptions"] = [];
   const disputes: Dispute[] = [];
   const threads: ThreadResult[] = [];
 
@@ -193,7 +193,7 @@ async function runThreads(
     const m = match(x, email, { customers, invoices });
     extractions.push(x);
     matches.push(m);
-    reviewItems.push(...reviewItemsFor(m, x, { invoices, payments }));
+    exceptions.push(...exceptionsFor(m, x, { invoices, payments }));
     disputes.push(...disputesFor(m, x, email, invoices));
     // Every eval thread is a single message; the latest one stands for it.
     latest.set(email.thread_id, {
@@ -213,7 +213,7 @@ async function runThreads(
 
   return {
     threads,
-    sources: { asOf: AS_OF_DATE, invoices, customers, payments, extractions, matches, disputes, reviewItems },
+    sources: { asOf: AS_OF_DATE, invoices, customers, payments, extractions, matches, disputes, exceptions },
   };
 }
 
@@ -223,7 +223,8 @@ const KEY_OF: Record<TableName, string> = {
   invoices: "invoice_id",
   drafts: "draft_id",
   disputes: "dispute_id",
-  reviewItems: "review_id",
+  exceptions: "review_id",
+  payments: "payment_id",
   meta: "key",
 };
 
@@ -236,7 +237,7 @@ function memTx(sources: DraftSources): Tx {
   };
   seed("invoices", sources.invoices);
   seed("disputes", sources.disputes);
-  seed("reviewItems", sources.reviewItems);
+  seed("exceptions", sources.exceptions);
   return {
     get: async (table, id) => {
       const row = tables.get(table)?.get(id);
@@ -478,7 +479,7 @@ export async function runFaults(): Promise<FaultReport> {
         continue;
       }
       r.rejected++;
-      if (sources.reviewItems.some((i) => i.message_id === id && i.status === "open")) r.needs_review++;
+      if (sources.exceptions.some((i) => i.message_id === id && i.status === "open")) r.needs_review++;
       else r.failures.push(`${id}: no open review item`);
 
       const events: AuditEventInput[] = [];

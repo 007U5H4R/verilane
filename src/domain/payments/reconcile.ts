@@ -13,7 +13,7 @@
 import { daysBetween } from "../clock";
 import { extractTokens } from "../extract";
 import { paise, parseInr, type Paise } from "../money";
-import type { Customer, EmailMessage, Extraction, Invoice, Match, Payment, ReviewItem } from "../schema";
+import type { Customer, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Exception } from "../schema";
 
 /** The four strings a missing value may read as (truth rules). */
 export const MISSING = {
@@ -22,6 +22,10 @@ export const MISSING = {
   evidence: "Supporting evidence not available.",
   review: "Insufficient evidence — human review required.",
 } as const;
+
+/** Shown where a ledger entry's invoice would be when it has none
+ * (`invoice_id: null`, unapplied cash, TASK-79.1). v1 data never has one. */
+export const UNAPPLIED_LABEL = "Unapplied";
 
 /** How many days either side of a quoted payment date a ledger entry may sit. */
 export const DATE_WINDOW_DAYS = 3;
@@ -49,7 +53,8 @@ export interface Workflow {
 }
 
 /** A review item as stored: the schema fields plus any workflow fields. */
-export type StoredReviewItem = ReviewItem & Workflow;
+/** Reconciliation works on email-raised exceptions only (`message_id` always set). */
+export type StoredException = EmailException & Workflow;
 
 const isWorkflowState = (v: unknown): v is WorkflowState =>
   (WORKFLOW_STATES as readonly unknown[]).includes(v);
@@ -123,7 +128,7 @@ export function quoteAround(body: string, index: number, length: number): string
 export function claimFrom(input: {
   email: EmailMessage | undefined;
   extraction: Extraction | undefined;
-  item: ReviewItem | undefined;
+  item: Exception | undefined;
   customerName: string | undefined;
 }): Claim {
   const { email, extraction, item, customerName } = input;
@@ -193,7 +198,7 @@ export interface ReconCase {
   /** The email's message id — one case per email. */
   id: string;
   kind: CaseKind;
-  items: StoredReviewItem[];
+  items: StoredException[];
   invoiceIds: string[];
   customerId?: string;
 }
@@ -202,8 +207,8 @@ export interface ReconCase {
  * Groups reconciliation items by the email that raised them: a duplicate
  * pair (two items, one email) is one case, never two (no double counting).
  */
-export function buildCases(items: StoredReviewItem[], matches: Map<string, Match>, invoices: Map<string, Invoice>): ReconCase[] {
-  const byMessage = new Map<string, StoredReviewItem[]>();
+export function buildCases(items: StoredException[], matches: Map<string, Match>, invoices: Map<string, Invoice>): ReconCase[] {
+  const byMessage = new Map<string, StoredException[]>();
   for (const item of items) {
     if (item.kind !== "reconciliation") continue;
     const list = byMessage.get(item.message_id) ?? [];
@@ -261,6 +266,7 @@ export function candidatesFor(
   if (!c.customerId) return [];
   const out: Candidate[] = [];
   for (const p of payments) {
+    if (p.invoice_id === null) continue; // unapplied cash has no invoice, so no customer to match (TASK-79.1)
     const inv = invoices.get(p.invoice_id);
     if (!inv || inv.customer_id !== c.customerId) continue; // never across customers
     const sameInvoice = c.invoiceId !== undefined && p.invoice_id === c.invoiceId;
@@ -333,7 +339,7 @@ export interface CaseFacts {
  */
 export function caseFacts(input: {
   kind: CaseKind;
-  items: StoredReviewItem[];
+  items: StoredException[];
   invoice?: Invoice;
   claimAmount?: Paise;
   outstanding?: Paise;
@@ -407,7 +413,7 @@ export interface PaymentsKpis {
   ledgerTotal: Paise;
 }
 
-export function kpis(cases: Array<{ id: string; open: boolean }>, items: ReviewItem[], payments: Payment[]): PaymentsKpis {
+export function kpis(cases: Array<{ id: string; open: boolean }>, items: Exception[], payments: Payment[]): PaymentsKpis {
   const openCases = new Set(cases.filter((c) => c.open).map((c) => c.id));
   const unmatched = new Set(items.filter((r) => r.kind === "uncertain_match" && r.status === "open").map((r) => r.message_id));
   const unique = new Map(payments.map((p) => [p.payment_id, p]));
@@ -451,7 +457,7 @@ export interface CaseContext {
 
 export interface AssessedCase extends CaseFacts {
   case: ReconCase;
-  head: StoredReviewItem;
+  head: StoredException;
   invoice?: Invoice;
   customer?: Customer;
   email?: EmailMessage;

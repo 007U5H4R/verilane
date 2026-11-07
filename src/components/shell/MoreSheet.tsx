@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/shell/NavItems";
 
-export const MORE_HREFS = ["/emails", "/invoices", "/drafts", "/payments", "/audit", "/settings"];
+export const MORE_HREFS = ["/emails", "/invoices", "/drafts", "/payments", "/exceptions", "/audit", "/settings"];
 const MORE_ITEMS = NAV_ITEMS.filter((item) => MORE_HREFS.includes(item.href));
 
 // TASK-20.1: the bottom tabs' "More" sheet (every route not on a tab).

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { Download, Search, X } from "lucide-react";
 
 import {
@@ -24,11 +23,11 @@ import {
   toCsv,
   type LedgerListRow,
 } from "@/domain/payments/listing";
-import { LEDGER_STATUS_META, MISSING, ledgerStatus, type LedgerStatus } from "@/domain/payments/reconcile";
+import { LEDGER_STATUS_META, MISSING, UNAPPLIED_LABEL, ledgerStatus, type LedgerStatus } from "@/domain/payments/reconcile";
 import type { Customer, Invoice, Payment } from "@/domain/schema";
 import { cn } from "@/lib/cn";
 import type { PaymentsModel } from "./model";
-import { CARD, Field, INPUT, LINK, Pager, SELECT, useUrlState } from "./parts";
+import { CARD, Field, INPUT, InvoiceRef, LINK, Pager, SELECT, useUrlState } from "./parts";
 import { download } from "./download";
 import { StatusPill } from "./tone";
 
@@ -57,7 +56,7 @@ export function LedgerTab({ model }: { model: PaymentsModel }) {
   const all: Row[] = useMemo(
     () =>
       model.data.payments.map((p) => {
-        const invoice = model.data.invoices.get(p.invoice_id);
+        const invoice = p.invoice_id === null ? undefined : model.data.invoices.get(p.invoice_id);
         const customer = invoice ? model.data.customers.get(invoice.customer_id) : undefined;
         return {
           id: p.payment_id,
@@ -65,7 +64,7 @@ export function LedgerTab({ model }: { model: PaymentsModel }) {
           amount: paise(p.amount_paise),
           customerId: invoice?.customer_id,
           status: ledgerStatus(p.payment_id, model.verifiedIds, model.candidateIds),
-          haystack: [p.payment_id, p.invoice_id, invoice?.invoice_number ?? "", customer?.name ?? ""],
+          haystack: [p.payment_id, p.invoice_id ?? UNAPPLIED_LABEL, invoice?.invoice_number ?? "", customer?.name ?? ""],
           payment: p,
           invoice,
           customer,
@@ -94,7 +93,7 @@ export function LedgerTab({ model }: { model: PaymentsModel }) {
         shown.map((r) => [
           r.paidOn,
           r.id,
-          r.invoice?.invoice_number ?? r.payment.invoice_id,
+          r.invoice?.invoice_number ?? r.payment.invoice_id ?? UNAPPLIED_LABEL,
           r.customer?.name ?? MISSING.na,
           ((r.amount as number) / 100).toFixed(2),
           LEDGER_STATUS_META[r.status].label,
@@ -202,9 +201,7 @@ export function LedgerTab({ model }: { model: PaymentsModel }) {
                       <td className="px-4 py-2 text-text">{formatDate(r.paidOn)}</td>
                       <td className="px-4 py-2 font-mono text-text-muted">{r.id}</td>
                       <td className="px-4 py-2">
-                        <Link href={`/invoices/${r.payment.invoice_id}`} className={LINK}>
-                          {r.invoice?.invoice_number ?? r.payment.invoice_id}
-                        </Link>
+                        <InvoiceRef invoiceId={r.payment.invoice_id} label={r.invoice?.invoice_number} />
                       </td>
                       <td className="px-4 py-2 text-text">{r.customer?.name ?? MISSING.na}</td>
                       <td className="px-4 py-2">
@@ -236,9 +233,7 @@ export function LedgerTab({ model }: { model: PaymentsModel }) {
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
                     <span>
                       {formatDate(r.paidOn)} · <span className="font-mono">{r.id}</span> ·{" "}
-                      <Link href={`/invoices/${r.payment.invoice_id}`} className={LINK}>
-                        {r.invoice?.invoice_number ?? r.payment.invoice_id}
-                      </Link>
+                      <InvoiceRef invoiceId={r.payment.invoice_id} label={r.invoice?.invoice_number} />
                     </span>
                     <StatusPill tone={st.tone}>{st.label}</StatusPill>
                   </div>
@@ -274,9 +269,7 @@ export function LedgerTab({ model }: { model: PaymentsModel }) {
               <dd className="text-text">{formatDate(open.paidOn)}</dd>
               <dt className="text-text-muted">Invoice</dt>
               <dd>
-                <Link href={`/invoices/${open.payment.invoice_id}`} className={LINK}>
-                  {open.invoice?.invoice_number ?? open.payment.invoice_id}
-                </Link>
+                <InvoiceRef invoiceId={open.payment.invoice_id} label={open.invoice?.invoice_number} />
               </dd>
               <dt className="text-text-muted">Customer</dt>
               <dd className="text-text">{open.customer?.name ?? MISSING.na}</dd>

@@ -62,6 +62,9 @@ src/
     permissions.ts   # role × action matrix (S4)
     transitions.ts   # allowed state machines (invoice, dispute, draft, review item)
     commands.ts      # the only write path: permission → transition → audit event
+    result.ts        # domain-local Result<T,E>/Rejected (TASK-79.3, EXE130) — never ai/provider.ts's
+    recommend.ts     # Recommend agent: verified facts only, traced via evidence.ts (TASK-79.3, F15/R5)
+    policy.ts        # Policy agent: pure gated rule table, append-only PolicyDecision (TASK-79.3, R5–R7)
   ai/
     provider.ts      # interface: extract(email, ctx) / draft(facts) → validated output
     simulated.ts     # wraps domain/extract + domain/draft
@@ -93,6 +96,18 @@ public/brand/        # verilane-logo.png (unaltered copy of the supplied file)
 | Audit | `commands` | yes | Every command emits exactly one event |
 
 Per A1, financial maths, matching, priority, transitions, permissions and send restrictions never pass through a provider.
+
+### 4.1 Exception review extension: Recommend → Policy → Execute (TASK-79.3, brief §TKT-75.03)
+
+Three further agents extend the same pipeline for an open `Exception` review item. Like `match`/`priority`/`permissions`, Recommend and Policy are pure domain logic — `domain/recommend.ts`, `domain/policy.ts` — and per A1 never pass through `ai/provider.ts`; the only AI-provider seam remains email extraction/classification/draft above.
+
+| Step | Module | Deterministic? | Output on uncertainty |
+|---|---|---|---|
+| Recommend | `domain/recommend.ts` (`recommendForException`) | yes | No candidate → `Rejected("cannot recommend", reason)` (F13); a claim without a source record never reaches Policy (R5) |
+| Policy | `domain/policy.ts` (`decidePolicyVerdict`, `evaluatePolicyForException`) | yes — pure gated rule table over `(kind, amount, confidence, config_version)` | Out-of-enum/malformed verdict rejected via `Result<T,E>`, never persisted |
+| Execute | *(out of scope — TASK-79.4)* | — | — |
+
+Recommend runs lazily inside `useException()`'s live query (pure computation, safe on every render, no I/O). Policy's write runs lazily, only on an actual page view of `/exceptions/[id]` (`usePolicyEvaluationTrigger`) — never from `loader.ts`'s `recompute()`, which also fires during seeding and every store test's setup (EXE130). It is idempotent per input fingerprint: it writes once per distinct `(config_version, kind, amount, candidates, confidence)`, re-evaluates when the inputs change, and records a `recommend_generated` then a `policy_evaluated` system-actor audit event in the same rw transaction as the decision row (EXE131). Policy's verdict is actor-independent (`kind`/`amount`/`confidence` only, no role); `permissions.ts`'s `can()` separately still gates who may act on the exception. `PolicyDecision` rows are append-only and versioned by `config_version` — re-evaluation appends a new row, never an update (R7); when a later Policy verdict disagrees with the Recommend agent's suggestion, Policy's verdict governs and the conflict is shown and logged (FS22).
 
 ## 5. Priority engine (S11), config `priority.v1`
 

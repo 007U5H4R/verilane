@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { DisputeCount } from "@/components/shell/DisputeCount";
+import { ExceptionCount } from "@/components/shell/ExceptionCount";
 import { DraftCount } from "@/components/shell/DraftCount";
 import { LogoCard } from "@/components/shell/LogoCard";
 import { NAV_ITEMS } from "@/components/shell/NavItems";
@@ -34,7 +35,7 @@ export function IconRail({ activeHref }: { activeHref: string }) {
           const Icon = item.icon;
           const firstSecondary = item.secondary && !NAV_ITEMS[i - 1]?.secondary;
           const countId = `rail-count-${item.href.slice(1) || "home"}`;
-          const hasCount = item.liveCount || item.disputeCount || item.draftCount;
+          const hasCount = item.liveCount || item.disputeCount || item.draftCount || item.exceptionCount;
           return (
             <div key={item.href} className="flex flex-col items-center">
               {firstSecondary && <hr aria-hidden="true" className="my-1.5 w-8 border-rail-divider" />}
@@ -55,6 +56,7 @@ export function IconRail({ activeHref }: { activeHref: string }) {
                     <Icon className="size-5" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden />
                     {item.liveCount && <QueueCount compact id={countId} />}
                     {item.disputeCount && <DisputeCount compact id={countId} />}
+                    {item.exceptionCount && <ExceptionCount compact id={countId} />}
                     {item.draftCount && <DraftCount compact id={countId} />}
                   </Link>
                 </TooltipTrigger>

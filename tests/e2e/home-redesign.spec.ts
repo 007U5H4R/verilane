@@ -45,7 +45,7 @@ test("TASK-38: the four forced states render", async ({ page }) => {
 test("TASK-38: the payment-review feed group counts open payment reviews and links to Payments", async ({ page }) => {
   await openHome(page);
   const open = await page.evaluate(async () => {
-    const rows = await window.__verilane!.db.reviewItems.where("status").equals("open").toArray();
+    const rows = await window.__verilane!.db.exceptions.where("status").equals("open").toArray();
     return rows.filter((r) => r.kind === "uncertain_match" || r.kind === "reconciliation").length;
   });
   expect(open, "seed must carry open payment reviews").toBeGreaterThan(0);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDraft, factsFor, locateFootnotes } from "./draft";
 import { paise } from "./money";
-import type { Customer, Extraction, Invoice, Match, ReviewItem, VerifiedFact } from "./schema";
+import type { Customer, Extraction, Invoice, Match, Exception, VerifiedFact } from "./schema";
 import { draftContextFor, findUnverifiedTokens, validate, type DraftSources, type DraftUnderCheck } from "./validate";
 
 const invoice: Invoice = {
@@ -32,7 +32,7 @@ function sources(over: Partial<DraftSources> = {}): DraftSources {
     extractions: [],
     matches: [],
     disputes: [],
-    reviewItems: [],
+    exceptions: [],
     ...over,
   };
 }
@@ -182,7 +182,7 @@ describe("check 9 (TC-043)", () => {
 
 describe("draftContextFor", () => {
   it("flags an ambiguous match and an open conflicting reconciliation", () => {
-    const item: ReviewItem = {
+    const item: Exception = {
       review_id: "RV-E-7-reconcile",
       kind: "reconciliation",
       message_id: "E-7",
@@ -199,12 +199,44 @@ describe("draftContextFor", () => {
       "INV-A",
       sources({
         matches: [{ message_id: "E-9", outcome: "ambiguous", candidates: ["INV-A", "INV-B"], reason: "" } as Match],
-        reviewItems: [item],
+        exceptions: [item],
       }),
     );
     expect(ctx.ambiguousMatch).toBe(true);
     expect(ctx.conflictingPayment).toBe(true);
     expect(ctx.outstanding).toBe(34_000_000);
+  });
+
+  describe("related unapplied cash blocks drafts until allocated (TC-75.10)", () => {
+    const unallocated = (status: Exception["status"], candidates = ["INV-A"]): Exception => ({
+      review_id: "RV-PAY-P-9",
+      kind: "unallocated_payment",
+      payment_id: "P-9",
+      candidate_invoice_ids: candidates,
+      linked_review_ids: [],
+      recommendation: "",
+      evidence_ids: [],
+      validation_status: "verified",
+      escalation_reason: "",
+      requires_role: "analyst",
+      status,
+    });
+
+    it("fails check 7 while the payment exception is open", () => {
+      const src = sources({ exceptions: [unallocated("open")] });
+      expect(draftContextFor("INV-A", src).paymentClaim).toBe("unapplied bank line P-9");
+      expect(failedIds(src)).toContain(7);
+    });
+
+    it("does not block an invoice that is not a candidate", () => {
+      const src = sources({ exceptions: [unallocated("open", ["INV-B"])] });
+      expect(draftContextFor("INV-A", src).paymentClaim).toBeNull();
+    });
+
+    it("clears once the payment is allocated", () => {
+      const src = sources({ exceptions: [unallocated("actioned")] });
+      expect(draftContextFor("INV-A", src).paymentClaim).toBeNull();
+    });
   });
 
   describe("FS11: a rejected extraction under review blocks drafts (TASK-22, TC-071)", () => {
@@ -220,7 +252,7 @@ describe("draftContextFor", () => {
       candidates: ["INV-A"],
       reason: "",
     } as Match;
-    const review = (status: ReviewItem["status"]): ReviewItem => ({
+    const review = (status: Exception["status"]): Exception => ({
       review_id: "RV-E-5-match",
       kind: "uncertain_match",
       message_id: "E-5",
@@ -234,7 +266,7 @@ describe("draftContextFor", () => {
     });
 
     it("fails check 6 while the review item is open", () => {
-      const src = sources({ extractions: [rejected], matches: [customerOnly], reviewItems: [review("open")] });
+      const src = sources({ extractions: [rejected], matches: [customerOnly], exceptions: [review("open")] });
       expect(draftContextFor("INV-A", src).disputed).toContain("E-5");
       expect(failedIds(src)).toContain(6);
     });
@@ -243,13 +275,13 @@ describe("draftContextFor", () => {
       const src = sources({
         extractions: [rejected],
         matches: [{ ...customerOnly, candidates: ["INV-B"] }],
-        reviewItems: [review("open")],
+        exceptions: [review("open")],
       });
       expect(draftContextFor("INV-A", src).disputed).toBeNull();
     });
 
     it("clears once a person has dealt with the review item", () => {
-      const src = sources({ extractions: [rejected], matches: [customerOnly], reviewItems: [review("dismissed")] });
+      const src = sources({ extractions: [rejected], matches: [customerOnly], exceptions: [review("dismissed")] });
       expect(draftContextFor("INV-A", src).disputed).toBeNull();
     });
   });

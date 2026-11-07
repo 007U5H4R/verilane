@@ -14,6 +14,13 @@ describe("NAV_ITEMS counts", () => {
     expect(byHref["/disputes"]?.disputeCount).toBe(true);
     expect(byHref["/drafts"]?.draftCount).toBe(true);
   });
+
+  // TC-75.11 (TKT-75.02): Exceptions sits after Drafts (and Payments), before Audit Log, with a live open count.
+  it("Exceptions uses its live open count", () => {
+    const byHref = Object.fromEntries(NAV_ITEMS.map((i) => [i.href, i]));
+    expect(byHref["/exceptions"]?.exceptionCount).toBe(true);
+    expect(byHref["/exceptions"]?.secondary).toBeFalsy();
+  });
 });
 
 // TASK-38 (Design.md R2): nav order, with Audit Log and Settings below the divider.
@@ -27,6 +34,7 @@ describe("NAV_ITEMS order", () => {
       "Invoices",
       "Drafts",
       "Payments",
+      "Exceptions",
       "Audit Log",
       "Settings",
     ]);

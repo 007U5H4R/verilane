@@ -1,10 +1,10 @@
 /**
- * The Dexie v1 schema (technical-plan.md A3) and `openDb()`. Derived tables
+ * The Dexie schema (v1: technical-plan.md A3; v2: TASK-75 §1.5) and `openDb()`. Derived tables
  * (extractions, matches, priorities, evidence, dataIssues) are always
  * recomputed from source + workflow tables by `loader.recompute()` — never
  * written to directly by commands.
  */
-import Dexie, { type DexieOptions, type Table } from "dexie";
+import Dexie, { type DexieOptions, type Table, type Transaction } from "dexie";
 import type {
   Customer,
   DataIssue,
@@ -46,12 +46,69 @@ export interface DraftRow {
   [key: string]: unknown;
 }
 
-export interface ReviewItemRow {
+export interface ExceptionRow {
   review_id: string;
   kind: string;
   status: string;
   [key: string]: unknown;
 }
+
+/** `creditNotes` (TASK-75, technical-plan §1.3): empty until TKT-75.06 writes one. */
+export interface CreditNoteRow {
+  credit_note_id: string;
+  invoice_id: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+/**
+ * `policyDecisions` (TASK-75, technical-plan §1.4; written by TKT-75.03's
+ * `domain/policy.ts`). Append-only and versioned (R7): a row is `.add()`-ed,
+ * never `.put()`/updated/deleted; re-evaluation appends a new row with the
+ * same `exception_id` and a fresh `decision_id`.
+ */
+export interface PolicyDecisionRow {
+  /** `POL-{exception_id}-{n}`, unique and stable once written. */
+  decision_id: string;
+  exception_id: string;
+  evaluated_at: string;
+  /** The rule table version this row was decided under (R7). */
+  config_version?: string;
+  gate_id?: string;
+  verdict?: string;
+  reason?: string;
+  confidence?: string | null;
+  amount_paise?: number;
+  /** FS22: Recommend's own confidence disagreed with this verdict. */
+  model_policy_conflict?: boolean;
+  /** The inputs this verdict was decided on (`policyInputFingerprint`, EXE131):
+   * a mismatch means the decision is stale and a new row must be appended. */
+  input_fingerprint?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Transactions allowed to clear `policyDecisions` — only `reset_demo`'s
+ * (`tx.ts` `resetToSeed`), which wipes the whole demo. Keyed by Dexie
+ * transaction so the permission dies with it (TC-005, EXE131).
+ */
+const resettingTxs = new WeakSet<Transaction>();
+
+/** Lets the current transaction (and its children) clear `policyDecisions`. */
+export function allowPolicyDecisionReset(): void {
+  const tx = Dexie.currentTransaction;
+  if (!tx) throw new Error("allowPolicyDecisionReset() must run inside a transaction.");
+  resettingTxs.add(tx);
+}
+
+function isResetting(tx: Transaction | undefined): boolean {
+  for (let t: Transaction | undefined = tx; t; t = (t as Transaction & { parent?: Transaction }).parent) {
+    if (resettingTxs.has(t)) return true;
+  }
+  return false;
+}
+
+const APPEND_ONLY = "policyDecisions is append-only (R7): re-evaluate by adding a new row.";
 
 export interface AuditEventRow {
   event_id?: number;
@@ -77,7 +134,9 @@ export class VerilaneDb extends Dexie {
   dataIssues!: Table<DataIssueRow, number>;
   disputes!: Table<DisputeRow, string>;
   drafts!: Table<DraftRow, string>;
-  reviewItems!: Table<ReviewItemRow, string>;
+  exceptions!: Table<ExceptionRow, string>;
+  creditNotes!: Table<CreditNoteRow, string>;
+  policyDecisions!: Table<PolicyDecisionRow, string>;
   audit!: Table<AuditEventRow, number>;
   meta!: Table<MetaRow, string>;
 
@@ -98,6 +157,30 @@ export class VerilaneDb extends Dexie {
       reviewItems: "review_id, kind, status",
       audit: "++event_id, action, subject",
       meta: "key",
+    });
+    // v2 (TASK-79.1 / TKT-75.01): `reviewItems` becomes `exceptions` (same
+    // key and indexes; rows copied, then the old table dropped), plus the
+    // empty `creditNotes` and `policyDecisions` (technical-plan §1.3/§1.4).
+    // Every other table is unchanged. Never edit a shipped version: add v3.
+    this.version(2)
+      .stores({
+        exceptions: "review_id, kind, status",
+        reviewItems: null,
+        creditNotes: "credit_note_id, invoice_id, created_at",
+        policyDecisions: "decision_id, exception_id, evaluated_at",
+      })
+      .upgrade(async (tx) => {
+        const rows = await tx.table("reviewItems").toArray();
+        await tx.table("exceptions").bulkAdd(rows);
+      });
+    // R7/TC-005: append-only enforced at the store, not by convention. A
+    // `put()` over an existing key fires `updating`; `clear()` fires
+    // `deleting` per row, hence the reset_demo-only bypass.
+    this.policyDecisions.hook("updating", () => {
+      throw new Error(APPEND_ONLY);
+    });
+    this.policyDecisions.hook("deleting", (_key, _obj, tx) => {
+      if (!isResetting(tx)) throw new Error(APPEND_ONLY);
     });
   }
 }

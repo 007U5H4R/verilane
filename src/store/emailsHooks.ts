@@ -5,7 +5,7 @@
 "use client";
 import { useLiveQuery } from "dexie-react-hooks";
 import { buildThreads, type EmailThread } from "@/domain/emails/threads";
-import type { Customer, Invoice, Match, ReviewItem } from "@/domain/schema";
+import type { Customer, Invoice, Match, Exception } from "@/domain/schema";
 import { useDb } from "./hooks";
 
 export interface EmailThreadsData {
@@ -20,22 +20,22 @@ export interface EmailThreadsData {
 export function useEmailThreads(): EmailThreadsData | undefined {
   const db = useDb();
   return useLiveQuery(async () => {
-    const [emails, extractions, matches, reviewItems, disputes, customers, invoices] = await Promise.all([
+    const [emails, extractions, matches, exceptions, disputes, customers, invoices] = await Promise.all([
       db.emails.toArray(),
       db.extractions.toArray(),
       db.matches.toArray(),
-      db.reviewItems.toArray(),
+      db.exceptions.toArray(),
       db.disputes.toArray(),
       db.customers.toArray(),
       db.invoices.toArray(),
     ]);
-    // The matches / reviewItems tables are typed loosely in db.ts; the rows are
+    // The matches / exceptions tables are typed loosely in db.ts; the rows are
     // the domain shapes (same cast as usePaymentsData in hooks.ts).
     const threads = buildThreads({
       emails,
       extractions,
       matches: matches as Match[],
-      reviewItems: reviewItems as ReviewItem[],
+      exceptions: exceptions as Exception[],
       disputes,
       customers,
       invoices,

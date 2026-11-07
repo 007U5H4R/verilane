@@ -122,7 +122,7 @@ Before moving to Stage 6 (Execution), verify:
 - [x] `test-cases.md` (33 test cases: TC-001 through TC-033; unit/integration/e2e/eval/manual)
 - [x] `milestones.md` (M-007 Exceptions Suite; dependencies; timeline; exit criteria)
 - [x] `tickets.md` (this file: TASK-79.1 through TASK-79.9 mapping)
-- [x] `decisions.md` entries (TP1–TP3 appended once TASK-75 branch lands)
+- [x] `decisions.md` entries (TP26–TP28, drafted as TP1–TP3, appended once TASK-75 branch lands; EXE118)
 
 ### Technical Completeness
 - [x] Data model specified (Exception, nullable Payment.invoice_id, CreditNote, PolicyDecision, Dexie v2)

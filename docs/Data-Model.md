@@ -41,11 +41,11 @@
 | Field | Type | Notes |
 |---|---|---|
 | payment_id | string | PK |
-| invoice_id | FK | |
+| invoice_id | FK \| null | null = unapplied cash (received, not yet allocated to an invoice; TASK-79.1). A blank CSV cell imports as null (EXE123, TKT-75.02); `allocate_payment` sets it to the chosen invoice (EXE125) |
 | paid_on | date | |
 | amount_paise | int | partial payments allowed (FS8) |
 
-**Derived:** `outstanding_paise = amount_paise − Σ payments`. This is computed and never stored as a source fact. If the CSV also supplies `outstanding_amount`, a mismatch becomes a `DataIssue` (conflict) and the invoice goes to `needs_review`.
+**Derived:** `outstanding_paise = amount_paise − Σ payments applied to this invoice`. This is computed and never stored as a source fact. If the CSV also supplies `outstanding_amount`, a mismatch becomes a `DataIssue` (conflict) and the invoice goes to `needs_review`. An unapplied payment (`invoice_id = null`) never reduces any invoice's outstanding; it is totalled separately as "unapplied cash" (`unappliedCashPaise()`, TC-003) so it is never silently dropped.
 
 ### EmailThread / EmailMessage (`emails.json`, 25 threads)
 | Field | Type | Notes |
@@ -78,8 +78,10 @@ draft_id, invoice_id, version, mode, body, claims[claim_id], checks[9 × {id, pa
 
 State machine: `generated → (edited →)* validated | blocked → approved → sent_simulated`; `→ rejected` from any pre-approved state. Any edit returns the draft to validation (FS12). `approved` requires all 9 checks passing **and** `can(role, "approve", draft)`.
 
-### ReviewItem
-item_id, kind (`draft` · `uncertain_match` · `dispute` · `missing_info` · `reconciliation`), subject ref, recommendation, evidence_ids[], validation_status, escalation_reason, requires_role, status (`open` · `actioned` · `dismissed`).
+### Exception (renamed from ReviewItem, TASK-79.1)
+item_id, kind (`draft` · `uncertain_match` · `dispute` · `missing_info` · `reconciliation` · `unallocated_payment` · `short_payment_pattern`), subject ref, recommendation, evidence_ids[], validation_status, escalation_reason, requires_role, status (`open` · `actioned` · `dismissed`).
+
+`message_id` is optional on the type: required (Zod `superRefine`) for every kind except the two payment kinds above, which can arise with no source email. Entity key, `RV-` ids, `linked_review_ids`, the Dexie table name (`exceptions`) and all user-visible copy/labels are unchanged (EXE119) — only the type and its file names moved from `ReviewItem` to `Exception`.
 
 ### AuditEvent (append-only)
 event_id (monotonic), at, actor_role, actor_label, action, subject ref, summary (finance-manager-readable), before?, after?, evidence_ids[], mode?. No update or delete API exists; Reset clears the whole database and writes a `demo_reset` event as the new first entry.
@@ -96,9 +98,14 @@ event_id (monotonic), at, actor_role, actor_label, action, subject ref, summary 
 | approved draft has 9/9 checks passing at approval time | `commands.approve` re-runs `validate` inside the transaction |
 | provider output used only after schema validation | `ai/provider.ts` returns `Result<Valid, Rejected>`; no other type escapes |
 
-## 6. Storage layout (Dexie, database `verilane`, schema v1)
+## 6. Storage layout (Dexie, database `verilane`, schema v2, TASK-79.1)
 
-`customers`, `invoices`, `payments`, `emails`, `extractions`, `matches`, `priorities`, `evidence`, `dataIssues`, `disputes`, `drafts`, `reviewItems`, `audit`, `meta` (seed version, as-of date override, theme, role).
+`customers`, `invoices`, `payments`, `emails`, `extractions`, `matches`, `priorities`, `evidence`, `dataIssues`, `disputes`, `drafts`, `exceptions`, `audit`, `meta` (seed version, as-of date override, theme, role), plus two new, empty-at-v2 tables:
+
+- **creditNotes** (`credit_note_id, invoice_id, created_at`) — primary key `credit_note_id`, indexed on `invoice_id` and `created_at` (technical-plan §1.4).
+- **policyDecisions** (`decision_id, exception_id, evaluated_at`) — primary key `decision_id`, indexed on `exception_id` and `evaluated_at` (technical-plan §1.3).
+
+**v1 → v2 upgrade** (`version(2).stores(...).upgrade(...)`, `src/store/db.ts`): `exceptions` replaces `reviewItems` (the old table is dropped, `reviewItems: null`); the upgrade copies every v1 `reviewItems` row into `exceptions` unchanged before the drop, so no row is lost. `creditNotes` and `policyDecisions` open empty. Every other v1 table is untouched. Reset (`resetToSeed`) clears `db.tables`, which already covers the new tables.
 
 - **Seed version** in `meta`. If the shipped seed version differs from the stored one, the app offers Reset and does not auto-wipe.
 - **Reset Demo Data** clears every table, reloads the seed, recomputes derived state and logs `demo_reset`.
@@ -107,3 +114,13 @@ event_id (monotonic), at, actor_role, actor_label, action, subject ref, summary 
 ## 7. Seed dataset spec (generated once by a seeded script, committed)
 
 50 invoices / 10 customers / 25 threads, INR, as-of 2026-10-30. Coverage required by the brief and Discovery §9: ≥5 each of duplicate, commitment, confirmation, dispute and missing-data scenarios, plus all ten edge cases (FS1–FS10). A generator script (`scripts/seed.ts`, fixed PRNG seed) produces the CSVs. The output is committed, so the shipped data never depends on re-running the script. A coverage test asserts every required scenario is present.
+
+**Seed coverage added for TKT-75.02 (unapplied cash).** The coverage test is `scripts/seed.test.ts` (TC-75.06).
+
+| Scenario | Seed rows | What it proves |
+|---|---|---|
+| Unapplied bank line | `P-012`: `invoice_id` blank, paid 2026-10-29, ₹25,000 | A blank `invoice_id` imports as null and never reduces any invoice's outstanding. It is counted in unapplied cash (₹25,000 across 1 bank line). |
+| Unique amount match | `INV-F` (C-005) is the only open invoice whose outstanding is ₹25,000 | Recompute raises exactly one `unallocated_payment` exception, `RV-PAY-P-012`, with `candidate_invoice_ids = ["INV-F"]`. It is deterministic and idempotent across reloads (TC-75.07). |
+| Reminder hold | `INV-F` | The invoice is a candidate of an open unallocated item, so its drafts are blocked (check 7). On the seed it already ranks at G3, so the G5 hold is proven by a fixture (TC-75.10, EXE126). |
+
+The seed has no remittance email for P-012, so the detail page shows "None on file — matched on amount". There are no `short_payment_pattern` rows until TKT-75.05.

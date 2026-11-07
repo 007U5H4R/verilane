@@ -12,6 +12,7 @@ const NAV_ROUTES = [
   { href: "/invoices", label: "Invoices" },
   { href: "/drafts", label: "Drafts" },
   { href: "/payments", label: "Payments" },
+  { href: "/exceptions", label: "Exceptions" }, // TKT-75.02 (Design-TASK-75 §7)
   { href: "/audit", label: "Audit Log" },
   { href: "/settings", label: "Settings" },
 ] as const;

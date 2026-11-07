@@ -5,7 +5,8 @@
  * reads the same on the invoice page and here.
  */
 import type { IntentFilter, LinkedFilter } from "@/domain/emails/listing";
-import type { EmailClass, MatchOutcome, ReviewItemKind, SignalFamily } from "@/domain/schema";
+import { EXCEPTION_KIND_LABEL } from "@/domain/exceptions/list";
+import type { EmailClass, MatchOutcome, ExceptionKind, SignalFamily } from "@/domain/schema";
 
 export type BadgeVariant = "default" | "high" | "med" | "low" | "disp" | "outline";
 
@@ -52,13 +53,8 @@ export const LINKED_LABEL: Record<LinkedFilter, string> = {
   unlinked: "No linked invoice",
 };
 
-export const REVIEW_KIND_LABEL: Record<ReviewItemKind, string> = {
-  draft: "Draft review",
-  uncertain_match: "Uncertain match",
-  dispute: "Dispute review",
-  missing_info: "Missing information",
-  reconciliation: "Payment reconciliation",
-};
+// One definition, in the domain (TKT-75.02): the /exceptions list searches it too.
+export const REVIEW_KIND_LABEL: Record<ExceptionKind, string> = EXCEPTION_KIND_LABEL;
 
 export const SIGNAL_LABEL: Record<SignalFamily, string> = {
   dispute: "Dispute",

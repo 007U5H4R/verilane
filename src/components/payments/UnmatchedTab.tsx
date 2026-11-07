@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime } from "@/domain/clock";
 import { can, type Role } from "@/domain/permissions";
-import { MISSING, type StoredReviewItem, type Tone } from "@/domain/payments/reconcile";
+import { MISSING, type StoredException, type Tone } from "@/domain/payments/reconcile";
 import type { Invoice, Match } from "@/domain/schema";
 import { useExecute } from "@/store/hooks";
 import { cn } from "@/lib/cn";
@@ -47,7 +47,7 @@ export function UnmatchedTab({ model, role }: { model: PaymentsModel; role: Role
 
 type DialogId = "assign" | "link" | "irrelevant" | "escalate" | "approve";
 
-function UnmatchedItem({ item, model, role }: { item: StoredReviewItem; model: PaymentsModel; role: Role }) {
+function UnmatchedItem({ item, model, role }: { item: StoredException; model: PaymentsModel; role: Role }) {
   const execute = useExecute();
   const deniedId = useId();
   const email = model.data.emails.get(item.message_id);

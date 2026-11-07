@@ -8,7 +8,7 @@
 
 | Ticket | Title | Type | Priority | P | Milestone | Blocked by | sp |
 |---|---|---|---|---|---|---|---|
-| TKT-75.01 | Cut the branch; append S25–S33; rename ReviewItem→Exception; widen Payment.invoice_id; Dexie v2; draft A1 | chore | High | P1 | M-75.1 | G0 | 5 |
+| TKT-75.01 | Cut the branch; append S38–S46; rename ReviewItem→Exception; widen Payment.invoice_id; Dexie v2; draft A1 | chore | High | P1 | M-75.1 | G0 | 5 |
 | **TKT-75.02** | **Tracer: unallocated payment end-to-end (seed → detect → /exceptions → detail → allocate)** | feature | High | P1 | M-75.1 | 01 | 8 |
 | TKT-75.03 | Recommend + Policy agents with an append-only PolicyDecision on the detail page | feature | High | P1 | M-75.2 | 02 | 5 |
 | TKT-75.04 | Execute agent: auto-execute `auto_permitted`, gate the action bar | feature | High | P1 | M-75.2 | 03, A1 | 3 |
@@ -37,12 +37,12 @@ Total: 9 tickets · 38 sp. Critical path 01 → 02 → 03 → 04 → 05 → 07 �
 
 ## M-75.1 · Foundation and tracer bullet
 
-### TKT-75.01 · Cut the branch; append S25–S33; rename ReviewItem→Exception; widen Payment.invoice_id; Dexie v2; draft A1
+### TKT-75.01 · Cut the branch; append S38–S46; rename ReviewItem→Exception; widen Payment.invoice_id; Dexie v2; draft A1
 - **Type:** chore · **Priority:** High (P1) · **Milestone:** M-75.1 · **Blocked by:** G0 · **sp:** 5
 - **Objective:** make the change easy. Start the branch on a known baseline with the decisions recorded, the renamed entity, and a schema that already carries unapplied cash safely, all with no behaviour change (D75-2, D75-3).
 - **Acceptance criteria:**
   - `task/75-exceptionos` is cut in its own worktree from green `main` after G0. Its `test:all` result (including any known-red gate) is recorded in HANDOFF as the baseline.
-  - Commit 1: TASK-75 docs on the branch. Commit 2: S25–S33 appended to `decisions.md` verbatim from Solution-PRD Appendix A, renumbered if taken, with cross-references updated in the same commit.
+  - Commit 1: TASK-75 docs on the branch. Commit 2: S38–S46 appended to `decisions.md` verbatim from Solution-PRD Appendix A, renumbered if taken, with cross-references updated in the same commit.
   - Commit 3: the A1 amendment is drafted as `Design-TASK-75.md` §25 "Amendment A1 (pending approval)" plus a matching Discovery note. Its content is listed in `milestones-TASK-75.md` → Gate A1. Status: pending user approval.
   - `ReviewItem` → `Exception` (type, schema, store, table, helpers), done with the compiler's help. `ExceptionKind` gains `unallocated_payment` and `short_payment_pattern` (R1). `message_id` becomes optional for payment-originated kinds. Data-issue kinds still require it, enforced by a Zod refinement with a unit test.
   - `Payment.invoice_id` becomes nullable in Zod and Dexie (R2). Every payment aggregation (outstanding balance, payment history, matches, priority inputs, Overview KPIs) handles `null` explicitly. **Regression test:** a fixture containing an unapplied payment yields totals that count it in "unapplied cash", never silently drop it, and nothing crashes.
@@ -57,7 +57,7 @@ Total: 9 tickets · 38 sp. Critical path 01 → 02 → 03 → 04 → 05 → 07 �
 - **Type:** feature · **Priority:** High (P1) · **Milestone:** M-75.1 · **Blocked by:** 01 · **sp:** 8
 - **Objective:** kill the riskiest assumption: a payment-originated exception flows through the existing machinery with no second code path (R1, R3, R11). This is F12 and F13 for the simplest case, an unambiguous single-candidate payment.
 - **Acceptance criteria (the go/no-go):**
-  - `scripts/seed.ts` is extended in place (S30) with at least one unapplied bank line and remittance whose amount matches exactly one open invoice. The seed coverage test fails if that scenario is missing (R9, first scenario).
+  - `scripts/seed.ts` is extended in place (S43) with at least one unapplied bank line and remittance whose amount matches exactly one open invoice. The seed coverage test fails if that scenario is missing (R9, first scenario).
   - Loader recompute detects unapplied payments → one `Exception{kind: unallocated_payment}` per payment, deterministic and idempotent across recomputes.
   - `/exceptions` (new route, R10) uses the row-card list (Design §5: Kind / Subject / Amount / Status / Priority / Action, 64 px cards, Queue filters reused). It lists all seven kinds, including the five pre-existing ones.
   - Sidebar "Exceptions" item at position 7, between Drafts and Audit log, with an open-count badge (Design §7). The Overview count includes the new kind.
@@ -77,7 +77,7 @@ Total: 9 tickets · 38 sp. Critical path 01 → 02 → 03 → 04 → 05 → 07 �
 
 ### TKT-75.03 · Recommend + Policy agents with an append-only PolicyDecision on the detail page
 - **Type:** feature · **Priority:** High (P1) · **Milestone:** M-75.2 · **Blocked by:** 02 · **sp:** 5
-- **Objective:** the AI recommends from verified facts only, and a deterministic gated rule table decides what is allowed (F15, R5–R7, S27/S28).
+- **Objective:** the AI recommends from verified facts only, and a deterministic gated rule table decides what is allowed (F15, R5–R7, S40/S41).
 - **Acceptance criteria:**
   - Recommend agent: output is a set of verified facts, each traced to a source record, following `draft.ts` `factsFor()` (R5). An unverifiable claim never reaches Policy (unit). For the tracer case it recommends the single candidate; with none, it says "cannot recommend" and gives the reason (F13).
   - Policy agent (`domain/policy.ts`): a pure gated rule table over `(Exception, recommendation, config_version, permission matrix)`. Verdicts are `auto_permitted | needs_analyst | needs_manager | blocked`. ≤ ₹5,00,000 and unambiguous → `auto_permitted`; > ₹5,00,000 or ambiguous → `needs_manager` (§7). An out-of-enum or malformed verdict is rejected via `Result<T,E>` and never persisted.
@@ -117,7 +117,7 @@ Total: 9 tickets · 38 sp. Critical path 01 → 02 → 03 → 04 → 05 → 07 �
 
 ### TKT-75.06 · Manager-only reversal of an applied allocation (F16)
 - **Type:** feature · **Priority:** High (P1) · **Milestone:** M-75.2 · **Blocked by:** 02 · **sp:** 3
-- **Objective:** a permitted human can undo an allocation, and the undo is visible to the NSM (F16, FS20, S32).
+- **Objective:** a permitted human can undo an allocation, and the undo is visible to the NSM (F16, FS20, S45).
 - **Acceptance criteria:**
   - `reverse_allocation` action: Manager only (`can()`). An Analyst attempt is refused and audited (FS21).
   - The command, in one transaction: `invoice_id` → null, invoice balance and status restored, exception reopened (new transition `actioned → open` with reason `reversed` added to the exception machine; illegal transitions still throw), audit event with the original allocation's reference.
@@ -144,7 +144,7 @@ Total: 9 tickets · 38 sp. Critical path 01 → 02 → 03 → 04 → 05 → 07 �
 
 ### TKT-75.07 · NSM and guardrails computed live on Home, with the Exceptions task card
 - **Type:** feature · **Priority:** High (P1) · **Milestone:** M-75.3 · **Blocked by:** 05, 06 · **sp:** 3
-- **Objective:** the North Star Metric is computed live from the actions taken in the session and labelled honestly (Discovery §8.1, S29, R8).
+- **Objective:** the North Star Metric is computed live from the actions taken in the session and labelled honestly (Discovery §8.1, S42, R8).
 - **Acceptance criteria:**
   - NSM = Σ value of exceptions closed by an approved action (human or `auto_permitted` per A1) and **not** later reopened or reversed, within the current `AS_OF_DATE` session. It is a pure function with units: an allocation counts; a reversal removes it; a reopen removes it; no seeded outcome numbers.
   - Guardrails are computed from the same session: reversal/reopen rate, inappropriate-reminder rate (target 0), actions executed without approval (target 0), median raised→resolved time, escalation rate.

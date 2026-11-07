@@ -693,21 +693,21 @@ See `milestones.md` and `tickets.md` (Sections 2.3–2.9 below) for full breakdo
 
 ## 10. Decisions Log (Appended to decisions.md on TASK-75's branch)
 
-These entries are appended once this ticket lands on `task/75-exceptions`:
+These entries are appended once this ticket lands on `task/75-exceptionos` (EXE117). Drafted as TP1–TP3; appended as TP26–TP28 because TP1–TP25 were taken (EXE118):
 
-### TP1 · TASK-75: Recommend Agent reuses draft.ts VerifiedFact pattern — approved 2026-11-05
+### TP26 · TASK-75: Recommend Agent reuses draft.ts VerifiedFact pattern — approved 2026-11-05
 
 **Context.** The Recommend agent must output claims that trace back to source records, matching v1's trust model.
 
 **Decision.** Reuse `src/domain/draft.ts`'s existing `factsFor()` pattern and `VerifiedFact` type. No new output format is invented.
 
-### TP2 · TASK-75: Policy Agent is a pure function; verdict is written to DB, never computed on-the-fly — approved 2026-11-05
+### TP27 · TASK-75: Policy Agent is a pure function; verdict is written to DB, never computed on-the-fly — approved 2026-11-05
 
 **Context.** The Execute agent must read a persisted `PolicyDecision`, never infer a verdict from the raw recommendation.
 
 **Decision.** Policy agent writes `PolicyDecision` rows to the `policyDecisions` table (append-only, no deletes). Execute agent reads only the `verdict` field, never the original gate logic.
 
-### TP3 · TASK-75: NSM computation: session total ÷ 1, with "Simulated" label on every display — approved 2026-11-05
+### TP28 · TASK-75: NSM computation: session total ÷ 1, with "Simulated" label on every display — approved 2026-11-05
 
 **Context.** Discovery §8.1 requires NSM "per analyst-week," but demo has no session history.
 

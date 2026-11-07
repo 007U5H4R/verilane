@@ -7,10 +7,10 @@ import { InvalidCommand } from "@/domain/commandConstants";
 import type { Command, DataOps, Row, TableName, Tx } from "@/domain/commands";
 import type { IngestResult } from "@/domain/ingest";
 import { isRole, type Role } from "@/domain/permissions";
-import type { Customer, DataIssue, Invoice, Match, Payment, ReviewItem } from "@/domain/schema";
+import type { Customer, DataIssue, Invoice, Match, Payment, Exception } from "@/domain/schema";
 import { asOf } from "@/domain/clock";
 import type { DraftSources } from "@/domain/validate";
-import type { AuditEventRow, VerilaneDb } from "./db";
+import { allowPolicyDecisionReset, type AuditEventRow, type VerilaneDb } from "./db";
 import type { recompute as Recompute } from "./loader";
 import { SEED_VERSION_KEY } from "./seedVersion";
 
@@ -25,7 +25,8 @@ export interface ExecuteOptions {
 const KEY: Record<Exclude<TableName, "invoices">, string> = {
   drafts: "draft_id",
   disputes: "dispute_id",
-  reviewItems: "review_id",
+  exceptions: "review_id",
+  payments: "payment_id",
   meta: "key",
 };
 
@@ -92,6 +93,7 @@ function dexieDataOps(db: VerilaneDb, recompute: typeof Recompute): DataOps {
       if (!isIngestResult(seed)) throw new InvalidCommand("Reset needs the demo seed.");
       // The role is a viewer preference, not demo data: it survives a reset.
       const role = await db.meta.get("role");
+      allowPolicyDecisionReset(); // the one sanctioned clear of the append-only table (TC-005)
       await Promise.all(db.tables.map((t) => t.clear()));
       if (role) await db.meta.put(role);
       await db.customers.bulkAdd(seed.customers);
@@ -113,7 +115,8 @@ function dexieDataOps(db: VerilaneDb, recompute: typeof Recompute): DataOps {
 }
 
 /** Commands that rewrite source or derived tables need every table in scope. */
-const WHOLE_DB: ReadonlySet<string> = new Set(["import_csv", "reset_demo", "set_as_of"]);
+// allocate_payment writes a ledger row, then re-derives every table (EXE125).
+const WHOLE_DB: ReadonlySet<string> = new Set(["import_csv", "reset_demo", "set_as_of", "allocate_payment"]);
 
 /** The persisted role (`meta.role`), defaulting to Analyst. */
 export async function currentRole(db: VerilaneDb): Promise<Role> {
@@ -130,7 +133,7 @@ export async function execute(
     ? db.tables
     : [
         // priorities + dataIssues: derived tables a command may touch (R11).
-        ...[db.invoices, db.drafts, db.disputes, db.reviewItems, db.priorities, db.dataIssues, db.meta, db.audit],
+        ...[db.invoices, db.drafts, db.disputes, db.exceptions, db.priorities, db.dataIssues, db.meta, db.audit],
         ...(DRAFT_COMMANDS.has(input.type) || LEDGER_COMMANDS.has(input.type) || RECONCILE_COMMANDS.has(input.type)
           ? DRAFT_READS(db)
           : []),
@@ -163,14 +166,14 @@ const DRAFT_READS = (db: VerilaneDb) => [db.customers, db.payments, db.extractio
 /** Everything the nine draft checks read, as of the persisted "today". */
 export async function readDraftSources(db: VerilaneDb): Promise<DraftSources> {
   const stored = (await db.meta.get("asOf"))?.value;
-  const [invoices, customers, payments, extractions, matches, disputes, reviewItems] = await Promise.all([
+  const [invoices, customers, payments, extractions, matches, disputes, exceptions] = await Promise.all([
     db.invoices.toArray(),
     db.customers.toArray(),
     db.payments.toArray(),
     db.extractions.toArray(),
     db.matches.toArray(),
     db.disputes.toArray(),
-    db.reviewItems.toArray(),
+    db.exceptions.toArray(),
   ]);
   return {
     asOf: asOf({ asOf: typeof stored === "string" ? stored : undefined }),
@@ -180,6 +183,6 @@ export async function readDraftSources(db: VerilaneDb): Promise<DraftSources> {
     extractions,
     matches: matches as unknown as Match[],
     disputes,
-    reviewItems: reviewItems as unknown as ReviewItem[],
+    exceptions: exceptions as unknown as Exception[],
   };
 }

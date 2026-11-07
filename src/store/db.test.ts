@@ -5,6 +5,7 @@
  */
 import Dexie, { liveQuery } from "dexie";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { paise } from "@/domain/money";
 import { openDb, type VerilaneDb } from "./db";
 
 let opened: VerilaneDb | undefined;
@@ -105,5 +106,134 @@ describe("openDb (SR9 storage fallback)", () => {
       throw new TypeError("boom");
     });
     await expect(openDb("db-test-bug")).rejects.toThrow();
+  });
+});
+
+/**
+ * TASK-79.1 (TKT-75.01): the v1 → v2 upgrade. A browser that ran v1 holds
+ * its review items in `reviewItems`; v2 copies them to `exceptions`, drops
+ * `reviewItems`, and adds the empty `creditNotes` and `policyDecisions`.
+ */
+describe("Dexie v1 → v2 upgrade (TASK-79.1, TC-001)", () => {
+  /** The shipped v1 schema, frozen here so the test opens a real v1 db. */
+  const V1_STORES = {
+    customers: "customer_id",
+    invoices: "row_id, &invoice_number, customer_id, status",
+    payments: "payment_id, invoice_id",
+    emails: "message_id, thread_id",
+    extractions: "message_id",
+    matches: "message_id, invoice_id",
+    priorities: "invoice_id, band",
+    evidence: "evidence_id, claim_id, source_record_id",
+    dataIssues: "++id, record_id",
+    disputes: "dispute_id, invoice_id, status",
+    drafts: "draft_id, invoice_id, status",
+    reviewItems: "review_id, kind, status",
+    audit: "++event_id, action, subject",
+    meta: "key",
+  };
+
+  it("preserves every v1 row, moves reviewItems to exceptions and adds the new tables", async () => {
+    const name = `db-test-upgrade-${Math.random()}`;
+    const v1 = new Dexie(name);
+    v1.version(1).stores(V1_STORES);
+    await v1.open();
+    // TC-001 data: 2 drafts, 1 dispute, 2 missing_info.
+    const items = [
+      { review_id: "RV-1", kind: "draft", status: "open", message_id: "M-1" },
+      { review_id: "RV-2", kind: "draft", status: "actioned", message_id: "M-2" },
+      { review_id: "RV-3", kind: "dispute", status: "open", message_id: "M-3" },
+      { review_id: "RV-4", kind: "missing_info", status: "dismissed", message_id: "M-4" },
+      { review_id: "RV-5", kind: "missing_info", status: "open", message_id: "M-5" },
+    ];
+    await v1.table("reviewItems").bulkAdd(items);
+    await v1.table("payments").add({ payment_id: "P-1", invoice_id: "INV-1", paid_on: "2026-10-01", amount_paise: 100 });
+    await v1.table("audit").add({ action: "add_note", subject: "invoice:INV-1" });
+    await v1.table("meta").put({ key: "role", value: "manager" });
+    v1.close();
+
+    const { VerilaneDb } = await import("./db");
+    const db = new VerilaneDb(name);
+    opened = db;
+    await db.open();
+
+    expect(db.verno).toBe(2);
+    const names = db.tables.map((t) => t.name);
+    expect(names).not.toContain("reviewItems");
+    expect(names).toEqual(expect.arrayContaining(["exceptions", "creditNotes", "policyDecisions"]));
+    expect(await db.exceptions.orderBy("review_id").toArray()).toEqual(items);
+    expect(await db.exceptions.where("status").equals("open").count()).toBe(3);
+    expect(await db.payments.get("P-1")).toMatchObject({ invoice_id: "INV-1" });
+    expect(await db.audit.count()).toBe(1);
+    expect((await db.meta.get("role"))?.value).toBe("manager");
+    expect(await db.creditNotes.count()).toBe(0);
+    expect(await db.policyDecisions.count()).toBe(0);
+    // The new tables carry their technical-plan §1.3/§1.4 indexes.
+    expect(db.creditNotes.schema.primKey.name).toBe("credit_note_id");
+    expect(db.creditNotes.schema.indexes.map((i) => i.name).sort()).toEqual(["created_at", "invoice_id"]);
+    expect(db.policyDecisions.schema.primKey.name).toBe("decision_id");
+    expect(db.policyDecisions.schema.indexes.map((i) => i.name).sort()).toEqual(["evaluated_at", "exception_id"]);
+  });
+
+  it("stores a null-invoice payment; the invoice_id index skips it and an explicit filter finds it (TC-003)", async () => {
+    const { db } = await openDb(`db-test-null-invoice-${Math.random()}`);
+    opened = db;
+    await db.payments.bulkAdd([
+      { payment_id: "P1", invoice_id: null, paid_on: "2026-09-10", amount_paise: paise(45_000) },
+      { payment_id: "P2", invoice_id: "INV-001", paid_on: "2026-09-11", amount_paise: paise(50_000) },
+      { payment_id: "P3", invoice_id: "INV-001", paid_on: "2026-09-12", amount_paise: paise(30_000) },
+    ]);
+    expect(await db.payments.count()).toBe(3); // nothing dropped
+    const applied = await db.payments.where("invoice_id").equals("INV-001").toArray();
+    expect(applied.reduce((s, p) => s + p.amount_paise, 0)).toBe(80_000);
+    const unapplied = await db.payments.filter((p) => p.invoice_id === null).toArray();
+    expect(unapplied.map((p) => p.payment_id)).toEqual(["P1"]);
+    expect((await db.payments.get("P1"))?.invoice_id).toBeNull(); // no coercion to "null" / ""
+  });
+
+  it("a fresh v2 db opens with the new tables empty", async () => {
+    const { db } = await openDb(`db-test-fresh-v2-${Math.random()}`);
+    opened = db;
+    expect(db.verno).toBe(2);
+    expect(await db.exceptions.count()).toBe(0);
+    expect(await db.creditNotes.count()).toBe(0);
+    expect(await db.policyDecisions.count()).toBe(0);
+  });
+});
+
+/**
+ * TC-005 (TASK-79.3 fix round 1, M4): `policyDecisions` is append-only at
+ * the store, not by convention — Dexie `updating`/`deleting` hooks throw, so
+ * `update()`, a `put()` over an existing key, `delete()` and a bare
+ * `clear()` all fail and leave the row untouched. Only `reset_demo` may
+ * clear the table (covered in dataCommands.test.ts, TC-060).
+ */
+describe("policyDecisions append-only enforcement (TC-005)", () => {
+  const ROW = {
+    decision_id: "POL-001",
+    exception_id: "EX-001",
+    evaluated_at: "2026-11-05T00:00:00.000Z",
+    verdict: "auto_permitted",
+  };
+
+  it("allows insert and read", async () => {
+    const { db } = await openDb(`db-test-append-${Math.random()}`);
+    opened = db;
+    await db.policyDecisions.add(ROW);
+    expect(await db.policyDecisions.get("POL-001")).toEqual(ROW);
+  });
+
+  it("rejects update(), put() over an existing key, delete() and clear(); the row is unchanged", async () => {
+    const { db } = await openDb(`db-test-append-reject-${Math.random()}`);
+    opened = db;
+    await db.policyDecisions.add(ROW);
+
+    await expect(db.policyDecisions.update("POL-001", { verdict: "needs_manager" })).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.put({ ...ROW, verdict: "needs_manager" })).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.delete("POL-001")).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.clear()).rejects.toThrow(/append-only/);
+    await expect(db.policyDecisions.where("exception_id").equals("EX-001").delete()).rejects.toThrow(/append-only/);
+
+    expect(await db.policyDecisions.toArray()).toEqual([ROW]);
   });
 });

@@ -1,33 +1,24 @@
 # HANDOFF — Verilane
 
-## ▶ NEXT — TASK-75 · Verilane v2 (ExceptionOS) · Stage 6 Execution (updated 2026-11-05)
+## ▶ NEXT — TASK-75 · Verilane v2 (ExceptionOS) · Stage 6 Execution (updated 2026-11-05 ~19:25)
 
 **Tier:** Full. This is a scope change against v1, routed through the 11-stage chain only. Do not follow the source prompt's own phases.
 
-**Approved so far (all 2026-11-05):**
-- Stage 1 Discovery: `docs/Discovery-PRD-TASK-75.md` (TASK-75, Done).
-- Stage 2 Solution: `docs/Solution-PRD-TASK-75.md` (TASK-77, Done).
-- Stage 3 Design: `docs/Design-TASK-75.md`, frozen at §22. Mockup: `.design/exploration/task-75/mockup.html`.
-- Stage 4 Problem Breakdown (TASK-78, Done). `docs/milestones-TASK-75.md` and `docs/tickets-TASK-75.md`: 9 vertical-slice tickets, 38 sp, 3 milestones.
-- **Stage 5 Technical Planning — APPROVED 2026-11-05 ("approved go ahead").** Artifacts: `docs/technical-plan.md` (738 lines: data model Dexie v2 migration, Recommend/Policy/Execute agent code, `allocatePaymentCommand()` one-write-path implementation, UI routes, risks, deployment, milestones, decisions TP1–TP3), `docs/test-cases.md` (TC-001–TC-033, 8 named critical gates), `docs/milestones.md` (M-007 Exceptions Suite), `docs/tickets.md` (TASK-79.1–79.9 mapping). User reviewed and approved the plan and timeline (~15 days, 9 tickets, linear critical path).
+**Stage 6 is in progress.** Branch `task/75-exceptionos`, worktree `.claude/worktrees/task-75-exceptionos`. User overrode the Solution-PRD §2.8 gate (TASK-45.10 still In Progress) on 2026-11-05 to start execution anyway.
 
-**Campfire:** parent **TASK-79** "Build the ExceptionOS v2 scope change" (status: To Do). TASK-79.1–79.9 already exist in `backlog/tasks/` (created via the Backlog.md CLI, native IDs, status To Do), with dependency edges matching `tickets.md`/`milestones.md`:
-79.1 schema/prefactor (rename ReviewItem→Exception, nullable `Payment.invoice_id`, Dexie v2, CreditNote/PolicyDecision) → 79.2 **tracer** (unallocated payment end to end, one transaction + audit) → 79.3 Recommend+Policy agents → 79.4 Execute agent + action-bar gating → 79.5 short-payment pattern + credit-note write-off → 79.6 Manager-only reversal → 79.7 NSM + guardrails on Home → 79.8 edge-case fixtures + allocation-accuracy gate (dep: 79.3) → 79.9 release evidence + interview docs (dep: 79.7, 79.8).
+**Source of truth for progress:** `/Volumes/E Drive/Dev/.scratch/task75/ledger.md` — read it before resuming, not this summary.
 
-**Decisions log:** TP1–TP3 (Stage 5, in `technical-plan.md` §10) and the earlier D75-1…4 (Stage 4, in `milestones-TASK-75.md`) are still **not appended** to `decisions.md` — that happens as the first commit once the `task/75-exceptions` branch is actually cut (per D75-2/D75-4 pattern).
+**Status as of this update:**
+- 79.1 (schema/prefactor) — **Done**, reviewed and approved. Commit `1416a6a`.
+- 79.2 (tracer: unallocated payment end-to-end) — **Done**, reviewed and approved (reviewer: APPROVE, one non-blocking doc nit). Verdict: `docs/verdict-TKT-75.02.md` (GO). Close-out commit `5426df1`.
+- **A1 (Design/Discovery amendment, true auto-execute) — APPROVED by user** 2026-11-05 ("A1 is also approved"). Recorded as EXE129. `Design-TASK-75.md` §25 and `Discovery-PRD-TASK-75.md` F15 both updated to reflect approval. TASK-79.4 is unblocked (still waiting on 79.3).
+- Next free EXE: **EXE132** (79.3 used EXE130–131; ranges 140s=79.6, 160s=79.8, 170s=79.7, 180s=79.4 are reserved — see ledger).
+- Wave plan: W1 79.2 (done) → **W2 79.3 then 79.6 (sequential, not parallel — file overlap found on `permissions.ts` and the `/exceptions/[id]` detail page)** → W3 {79.4 ∥ 79.8} → W4 79.5 → W5 79.7 → 79.9. Re-check file overlap before every parallel pair.
+- TASK-87 (CI workflow, unrelated side quest) shipped separately on `main`, merged and deployed — not part of this branch.
 
-**Gate A1 — APPROVED by the user 2026-11-05 ("A1 Amendment approved").** D75-1 True auto-execute (the Execute agent writes via `commands.ts` with no human click on `auto_permitted`) conflicted with frozen Design §4/§11 and Discovery F15/§8.1/§8.3 ("actions executed without approval = 0"). The 5-item Design/Discovery amendment drafted in `milestones-TASK-75.md` is approved as written. TASK-79.4 is unblocked on this gate (the TASK-45/46 Done gate still applies). Append A1 to `decisions.md` alongside TP1–TP3/D75-1…4 as the first commit on `task/75-exceptions`.
+**Read first:** `docs/tickets-TASK-75.md` (ticket ACs, source of truth), `docs/technical-plan.md`, `docs/test-cases.md`, `docs/Design-TASK-75.md`, `decisions.md` (EXE123+).
 
-**Gate to Stage 6 (hard blocker, Solution-PRD §2.8 — checked 2026-11-05, NOT yet closed):**
-- **TASK-45.10** ("Collect splash release evidence...") — status **In Progress**.
-- **TASK-46.8** ("Ship final heritage art...") — status **In Progress**.
-- No `task/75-exceptions` branch may be cut and no TASK-79.x ticket may start work until **both** show **Done** in Campfire. Re-check their status at the start of the next session before cutting the branch — do not assume this has closed since 2026-11-05.
-
-**Stage 6 next (once the TASK-45/46 gate closes):** run `bw-execution-orchestration` + `orchestration-playbook` for TASK-79, starting at TASK-79.1. Cut `task/75-exceptions` from `main` after TASK-45/46 merge. Append the A1 Design/Discovery amendment and TP1–TP3/D75-1…4 to `decisions.md` as the first commit. Start a **fresh session** (`/clear`) first.
-
-**Read first:** `docs/technical-plan.md`, `docs/test-cases.md`, `docs/milestones.md`, `docs/tickets.md`, `docs/Solution-PRD-TASK-75.md`, `docs/Design-TASK-75.md`.
-
-**Committed:** the TASK-75 Stage 1–5 docs, the TASK-75/77/78/79* backlog files and this section were committed to `main` on 2026-11-05 (branch `docs/task75-planning`).
+**Do not re-run Stage 1–5.** Those are approved and closed; this section only tracks Stage 6 execution state.
 
 ## ▶ ACTIVE — TASK-45 + TASK-46 Stage 6 Execution (resume point, updated 2026-11-05 after release r4)
 

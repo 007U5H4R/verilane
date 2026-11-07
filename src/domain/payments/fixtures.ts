@@ -5,7 +5,7 @@
  */
 import { paise } from "../money";
 import type { Customer, EmailMessage, Extraction, Invoice, Match, Payment } from "../schema";
-import type { StoredReviewItem } from "./reconcile";
+import type { StoredException } from "./reconcile";
 
 const inv = (invoice_id: string, invoice_number: string, customer_id: string, amount: number, status: string): Invoice =>
   ({
@@ -143,9 +143,9 @@ const recon = (
   invoice_id: string,
   claim: number | undefined,
   outstanding: number,
-  extra: Partial<StoredReviewItem> = {},
-): StoredReviewItem => {
-  const r: StoredReviewItem = {
+  extra: Partial<StoredException> = {},
+): StoredException => {
+  const r: StoredException = {
     review_id: `RV-${message_id}-reconcile`,
     kind: "reconciliation",
     message_id,
@@ -164,7 +164,7 @@ const recon = (
   return r;
 };
 
-export const REVIEW_ITEMS: StoredReviewItem[] = [
+export const REVIEW_ITEMS: StoredException[] = [
   recon("E-006-1", "INV-D", 12_500_000, 12_500_000),
   recon("E-007-1", "INV-042", 30_000_000, 34_000_000, { validation_status: "conflict" }),
   recon("E-008-1", "INV-033", 7_250_000, 7_250_000),

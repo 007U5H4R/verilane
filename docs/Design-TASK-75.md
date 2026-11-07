@@ -421,11 +421,11 @@ This is a **plain-language, reverse-chronological list** (matching v1 Audit Log,
 
 ---
 
-## 23. Decisions Log (S25–S33 appended to decisions.md on TASK-75's own branch, not before)
+## 23. Decisions Log (S38–S46 appended to decisions.md on TASK-75's own branch, not before)
 
-**See Solution-PRD-TASK-75.md, Appendix A, for S25–S33** — the Solution stage locked all design decisions (entity model, agent architecture, policy engine, NSM computation, routing, sequencing). Stage 3 (this design) captures only the UI/UX expression of those solutions, which has no competing directions per §2 (Core path, one direction, extending v1 unchanged).
+**See Solution-PRD-TASK-75.md, Appendix A, for S38–S46** — the Solution stage locked all design decisions (entity model, agent architecture, policy engine, NSM computation, routing, sequencing). Stage 3 (this design) captures only the UI/UX expression of those solutions, which has no competing directions per §2 (Core path, one direction, extending v1 unchanged).
 
-No new D# entries are appended from Stage 3 (design decisions are already locked in S25–S33; this design simply visualizes them). Per the Solution-PRD's own sequencing note (Appendix A header), S25–S33 are appended to `decisions.md` only once TASK-75's implementation work lands on its own branch — not at this Stage 3 design-approval point, which is still on an unrelated branch (`docs/handoff-task64-shipped`).
+No new D# entries are appended from Stage 3 (design decisions are already locked in S38–S46; this design simply visualizes them). Per the Solution-PRD's own sequencing note (Appendix A header), S38–S46 are appended to `decisions.md` only once TASK-75's implementation work lands on its own branch — not at this Stage 3 design-approval point, which is still on an unrelated branch (`docs/handoff-task64-shipped`).
 
 ---
 
@@ -445,6 +445,26 @@ No new D# entries are appended from Stage 3 (design decisions are already locked
 - ✅ Microcopy principles applied (§20: object + action + result, facts not claims)
 - ✅ Mockup rendered and navigable (`.design/exploration/task-75/mockup.html`)
 - ✅ **USER APPROVAL GIVEN** — "Approved go ahead," 2026-11-05 (§22, Design Freeze)
+
+---
+
+## 25. Amendment A1 (approved)
+
+> **Status: APPROVED by user, 2026-11-05 ("A1 is also approved"). Drafted 2026-11-05 in TKT-75.01 (TASK-79.1).**
+> Source: milestones-TASK-75.md "Gate A1", decision D75-1 (true auto-execute on `auto_permitted`). This unblocks TKT-75.04.
+> The items below now replace the conflicting text in §4, §6, §11 and §22. Recorded here and in `decisions.md` (EXE129).
+
+Why an amendment is needed: D75-1 makes the Execute agent write through `commands.ts` with no human click when Policy returns `auto_permitted` (Solution-PRD §2.3/§7). The frozen design (§4 "Awaiting analyst approval", §11 "Submit for approval" on `auto_permitted`) and Discovery F15 / §8.1 / §8.3 ("a permitted human approves") conflict with that. The freeze (§22) sends new controls back to design review, so this amendment covers them explicitly.
+
+| # | Amends | Change |
+|---|---|---|
+| 1 | §4 Stage 3 copy | `auto_permitted` → "Executed by Execute agent · {time} · policy v{n}" (not "Awaiting analyst approval"). |
+| 2 | §11 action bar matrix | `auto_permitted` → resolved, button disabled "Already resolved"; `needs_analyst` → Analyst "Submit for approval" enabled; `needs_manager` → disabled for Analyst ("Manager approval required"), enabled for Manager; `blocked` → disabled with the policy reason. |
+| 3 | §11 new control | Manager-only **"Reverse allocation"** control on a resolved allocation (Discovery F16). This is a new button, which the freeze sends back to design review, so A1 covers it explicitly. It supersedes §11's "No new buttons introduced" for this one control only. |
+| 4 | §6 copy fix | "Normalized Success Metric" → "North Star Metric" (Discovery §8.1 name). |
+| 5 | Discovery F15 / §8.1 / §8.3 | "Approval" is satisfied either by a permitted human or by a versioned `auto_permitted` `PolicyDecision` (standing policy approval). "Actions executed without approval = 0" then means: no write without either. The metric is kept, not dropped. See the matching note in Discovery-PRD-TASK-75.md §4.1 (F15). |
+
+**Approval:** granted by the user, 2026-11-05, "A1 is also approved." Recorded in `decisions.md` as EXE129.
 
 ---
 

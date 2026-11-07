@@ -12,7 +12,8 @@ function memTx(seed: Partial<Record<TableName, Row[]>>) {
     invoices: "invoice_id",
     drafts: "draft_id",
     disputes: "dispute_id",
-    reviewItems: "review_id",
+    exceptions: "review_id",
+    payments: "payment_id",
     meta: "key",
   };
   const tables = new Map<TableName, Map<string, Row>>();
@@ -54,7 +55,7 @@ const ledger = (payments: DraftSources["payments"]): DraftSources => ({
   extractions: [],
   matches: [],
   disputes: [],
-  reviewItems: [],
+  exceptions: [],
 });
 
 describe("assign_dispute", () => {

@@ -11,7 +11,7 @@
 ## 0. Three findings that shaped the brief and the locked decisions (read first)
 
 1. **v2 is a scope change to the live system, not a new build.** `ReviewItem`, `permissions.ts`, `transitions.ts` and the one-write-path invariant (`src/domain/commands.ts`, S14) already exist and pass their tests today. Discovery §12 deliberately left entity model, agent count, policy design, NSM method and allocation algorithm undecided — this PRD is where those seven decisions plus two confirmations get made, against the concrete code in `src/domain/schema.ts`, `src/store/db.ts`, `src/ai/provider.ts` and `src/domain/draft.ts`, not against a blank slate.
-2. **Decision-log numbering must continue past TASK-45's reserved-but-unappended slots.** `decisions.md` currently ends at S14 (`grep -n "^## S[0-9]" decisions.md`). TASK-45's own Solution-PRD drafted S15–S24 in its Appendix A but defers appending them until `task/45-splash` lands (its Appendix A note, `docs/Solution-PRD-TASK-45.md:390`). To avoid a numbering collision whenever that lands, this PRD's new decisions are numbered **S25 onward** (Appendix A below), appended to `decisions.md` only once TASK-75's own work lands on its branch — same deferred-append pattern.
+2. **Decision-log numbering must continue past TASK-45's reserved-but-unappended slots.** `decisions.md` currently ends at S14 (`grep -n "^## S[0-9]" decisions.md`). TASK-45's own Solution-PRD drafted S15–S24 in its Appendix A but defers appending them until `task/45-splash` lands (its Appendix A note, `docs/Solution-PRD-TASK-45.md:390`). To avoid a numbering collision whenever that lands, this PRD's new decisions were drafted as S25 onward. By the time TASK-75's branch was cut, TASK-45/46 had used S15–S37, so they were appended to `decisions.md` as **S38–S46** (TASK-79.1; S25→S38 … S33→S46, same order) and every reference in the TASK-75 docs uses the new numbers (Appendix A below).
 3. **TASK-45/46 must finish before any v2 code, and the user chose "finish" over "park."** Discovery §7 flagged this as a sequencing risk requiring a Stage 2 decision. The remaining TASK-45/46 work (45.9 art encode → 45.10 release evidence → whole-branch review → release; 46.8 final heritage art) is small, isolated from v2's domain/schema surface, and already close to done per `HANDOFF.md`. The user confirmed: finish first (§2.8). **No v2 ticket from Stage 4 onward may start work until TASK-45 and TASK-46 are both Done.**
 
 ---
@@ -50,7 +50,7 @@ TASK-75 extends the live Verilane domain, not a parallel implementation. `Review
 | Two agents: Recommend+Policy combined, Execute separate | a middle cost; still one fewer hand-off/state surface than three | Not chosen |
 | **Three separate agents — Recommend, Policy, Execute — each with its own state and hand-off record** | most new surface: three state shapes, two hand-off record types (`recommendation_ref`, `PolicyDecision`), the most new code and the most new eval surface | **Chosen (user's explicit, twice-confirmed decision)** |
 
-- **Cost named, per "Honesty over agreement":** this is the biggest of the three options. It triples the number of distinct agent states to test and reason about versus the single-pipeline option, and the Policy agent's gated rule table is new surface with its own exhaustive-unit-test obligation (mirroring `permissions.ts`'s existing bar). The user was shown this tradeoff explicitly in a follow-up question during Stage 2 and reaffirmed the choice (Appendix A, S27).
+- **Cost named, per "Honesty over agreement":** this is the biggest of the three options. It triples the number of distinct agent states to test and reason about versus the single-pipeline option, and the Policy agent's gated rule table is new surface with its own exhaustive-unit-test obligation (mirroring `permissions.ts`'s existing bar). The user was shown this tradeoff explicitly in a follow-up question during Stage 2 and reaffirmed the choice (Appendix A, S40).
 - **Shape:** `Recommend` agent reads an `Exception` and produces a `recommendation_ref` (the existing verified-facts pattern from `src/domain/draft.ts`, reused rather than reinvented — each recommended action traces to a ledger cell). `Policy` agent reads the recommendation and the exception, runs the gated rule table (§2.4) against the permission matrix, and writes a `PolicyDecision`. `Execute` agent reads only the `PolicyDecision`'s `verdict` — never the Recommend agent's raw output directly — and, if `auto_permitted`, calls the existing `commands.ts` write path; otherwise it hands the `Exception` to the Analyst/Manager queue per `requires_role`.
 - This keeps the trust boundary where S14 already draws it: financial writes still happen only through `commands.ts`'s one transaction (permission check → allowed transition → audit event), regardless of how many agents produced the recommendation that led there.
 
@@ -93,7 +93,7 @@ TASK-75 extends the live Verilane domain, not a parallel implementation. `Review
 Per §0.3. **Gate:** no Stage 4+ ticket for TASK-75 starts work until both TASK-45 and TASK-46 show Done in Campfire.
 
 ### 2.9 F16 reversal permission → confirmed Manager-only
-Matches the existing >₹5,00,000/ambiguous/write-off permission tier (Discovery §2); keeps the reversal/reopen-rate guardrail meaningful. No design change from Discovery — recorded here as a locked confirmation (Appendix A, S32).
+Matches the existing >₹5,00,000/ambiguous/write-off permission tier (Discovery §2); keeps the reversal/reopen-rate guardrail meaningful. No design change from Discovery — recorded here as a locked confirmation (Appendix A, S45).
 
 ## 3. Scope (smallest useful increment)
 
@@ -161,7 +161,7 @@ Matches the existing >₹5,00,000/ambiguous/write-off permission tier (Discovery
 - **Storage:** new Dexie tables (`creditNotes`, `policyDecisions`) and the renamed `exceptions` table are added as a Dexie schema version bump, not a breaking change to existing tables; existing demo data survives a Reset.
 
 ## 9. Known tradeoffs and risks (honest)
-- **Three-agent cost (S27/§2.3).** This is more code, more state, and more eval surface than the recommended single-pipeline option, for a demo-scale system. The user accepted this explicitly, twice, for the architectural story it tells a Senior PM interviewer (Discovery §1's success audience). Mitigation: the Execute agent still only ever writes through the existing, already-hardened `commands.ts` path — the multi-agent split adds reasoning/audit surface, not a new trust boundary.
+- **Three-agent cost (S40/§2.3).** This is more code, more state, and more eval surface than the recommended single-pipeline option, for a demo-scale system. The user accepted this explicitly, twice, for the architectural story it tells a Senior PM interviewer (Discovery §1's success audience). Mitigation: the Execute agent still only ever writes through the existing, already-hardened `commands.ts` path — the multi-agent split adds reasoning/audit surface, not a new trust boundary.
 - **Renaming `ReviewItem` → `Exception` touches every existing consumer of that table/type.** This is a rename, not a new concept, but it is a mechanical risk: every call site must be caught by the TS compiler and by the existing `reviewItems`-table tests, which must be updated in the same change rather than left half-migrated.
 - **Nullable `Payment.invoice_id` is a widening change to a field every payment-aggregation query assumes is present.** Each such query (outstanding-balance calc, payment history views) must be audited for a `null`-handling gap; a missed one would silently drop unapplied payments from totals rather than crash, which is the dangerous failure mode to test for explicitly (R2).
 - **Sequencing dependency on TASK-45/46.** If either slips past its current near-done state, TASK-75's own Stage 4 start slips with it; this PRD does not relitigate that call, only records it (§2.8).
@@ -177,55 +177,55 @@ Matches the existing >₹5,00,000/ambiguous/write-off permission tier (Discovery
 - [x] **7. Sequencing:** TASK-45/46 finish before any v2 code starts (§2.8).
 - [x] **8. F16 reversal:** confirmed Manager-only (§2.9).
 - [x] **9. Docs to update:** `Architecture.md`, `Data-Model.md`, `AI-Evaluation.md` as named in §5.
-- [x] **decisions.md:** S25–S33 (Appendix A) appended once TASK-75's work lands on its branch.
+- [x] **decisions.md:** S38–S46 (Appendix A) appended once TASK-75's work lands on its branch.
 
 ---
 
-## Appendix A — decision-log entries to append to root `decisions.md` (status: pending user sign-off above; not yet appended)
-IDs continue the existing sequence. `decisions.md` currently ends at S14; TASK-45's Appendix A reserves S15–S24 but has not appended them yet (`docs/Solution-PRD-TASK-45.md:390`). TASK-75's entries are therefore numbered **S25 onward** to avoid a collision whenever TASK-45's land first. Append on TASK-75's own branch, not before.
+## Appendix A — decision-log entries to append to root `decisions.md` (appended to `decisions.md` on `task/75-exceptionos`, TASK-79.1)
+IDs continue the existing sequence. `decisions.md` currently ends at S14; TASK-45's Appendix A reserves S15–S24 but has not appended them yet (`docs/Solution-PRD-TASK-45.md:390`). TASK-75's entries were therefore drafted as S25 onward. **Renumbered S38–S46 on append (TASK-79.1):** TASK-45/46 had since used S25–S37, so S25→S38 … S33→S46 in the same order; the headings below carry the new numbers. Appended on TASK-75's own branch.
 
-## S25 · TASK-75: evolve ReviewItem into Exception — approved 2026-11-05
+## S38 · TASK-75: evolve ReviewItem into Exception — approved 2026-11-05
 **Context.** Discovery introduces two new upstream problems (unapplied cash, short-payment pattern) needing a queue/state-machine home. `ReviewItem` already provides one queue, one state machine, one Overview count (S14's "one write path").
 **Decision.** Extend `ReviewItem.kind` with `unallocated_payment` and `short_payment_pattern`; rename the entity/table to `Exception`/`exceptions`. No new queue, no new state machine.
 **Rejected.** A parallel `Exception` entity/queue (two queues to keep in sync, violates S14); a discriminated-union fork of `ReviewItem` (unneeded ceremony at this scope).
 
-## S26 · TASK-75: nullable Payment.invoice_id + new CreditNote entity — approved 2026-11-05
+## S39 · TASK-75: nullable Payment.invoice_id + new CreditNote entity — approved 2026-11-05
 **Context.** An unapplied payment has no invoice to attach to at receipt time; a short-payment write-off is a Manager decision distinct from the cash movement itself.
 **Decision.** `Payment.invoice_id` becomes nullable; an unapplied payment is a `Payment` row with `invoice_id = null`, allocated later via a transactional command. A new `CreditNote` entity (`credit_note_id, invoice_id, amount_paise, reason, approved_by`) records write-off acceptance as its own audited fact.
 **Rejected.** A synthetic placeholder invoice for unapplied payments (fabricates a fact); modelling write-offs as a `Dispute` subtype (conflates customer disputes with internal write-off decisions).
 
-## S27 · TASK-75: true multi-agent orchestration — USER-APPROVED, overriding recommendation, 2026-11-05
+## S40 · TASK-75: true multi-agent orchestration — USER-APPROVED, overriding recommendation, 2026-11-05
 **Context.** Three agent-architecture options were weighed: a single-pipeline provider-seam extension (recommended, smallest diff, consistent with v1's existing shape), a two-agent split, and three fully separate agents (Recommend/Policy/Execute) with their own state and hand-off records. The user was shown the cost/complexity tradeoff explicitly — tripled state/test surface versus the single-pipeline option — and reaffirmed the choice on being asked a second time.
 **Decision.** Three separate agents: Recommend produces a verified-facts recommendation (reusing `draft.ts`'s `factsFor()` pattern); Policy runs a gated rule table against the permission matrix and writes a versioned `PolicyDecision`; Execute reads only the `PolicyDecision.verdict`, never the raw recommendation, and writes exclusively through the existing `commands.ts` one-transaction path.
 **Rejected.** Single-pipeline provider-seam extension (my recommendation); a two-agent (Recommend+Policy combined, Execute separate) compromise.
 **Reason recorded.** The user's explicit, twice-confirmed Stage 2 decision, choosing the architectural story for the success audience (Discovery §1) over the smaller-diff option.
 
-## S28 · TASK-75: gated rule table policy engine + PolicyDecision record — approved 2026-11-05
+## S41 · TASK-75: gated rule table policy engine + PolicyDecision record — approved 2026-11-05
 **Context.** The Policy agent's decision must be auditable to a Senior PM interviewer ("why was this auto-permitted") and must not bypass the existing permission matrix (Discovery §2).
 **Decision.** An ordered gated rule table, same shape as `priority.v1`'s G1–G7, run against the ≤₹5,00,000-exact/unambiguous-vs-everything-else threshold; writes `{decision_id, exception_id, recommendation_ref, verdict, reason, config_version}`, append-only. Unit-tested exhaustively, matching `permissions.ts`'s existing bar.
 **Rejected.** A weighted/scoring model (less legible to audit); inline policy checks inside the Execute agent with no separate record (no independent audit trail).
 
-## S29 · TASK-75: NSM = one frozen AS_OF_DATE demo session, labelled Simulated — approved 2026-11-05
+## S42 · TASK-75: NSM = one frozen AS_OF_DATE demo session, labelled Simulated — approved 2026-11-05
 **Context.** Discovery §8.1 asks for an NSM normalized "per analyst-week," but the demo has no real session history to average over (S9's zero-cost per-visitor storage).
 **Decision.** NSM = Σ(correctly resolved exception value this session) ÷ 1 simulated analyst-week, where one simulated analyst-week = one frozen `AS_OF_DATE` demo session (mirrors S11's frozen clock). Always shown with the label "Simulated — one demo session = one analyst-week."
 **Rejected.** A rolling/multi-session average (no session persistence exists to support it); a hard-wired historical denominator (fabricates a number).
 
-## S30 · TASK-75: extend scripts/seed.ts in place, no second generator — approved 2026-11-05
+## S43 · TASK-75: extend scripts/seed.ts in place, no second generator — approved 2026-11-05
 **Context.** The existing fixed-PRNG seed generator and its coverage test are the single source of the shipped demo data (`docs/Data-Model.md` §7); a second generator would fork that source of truth.
 **Decision.** Add unallocated-payment, short-payment-pattern (≥3/90 days for one customer) and ambiguous/overpayment fixtures to `scripts/seed.ts`; bump the committed CSV/JSON output and extend the existing coverage test in the same script.
 **Rejected.** A separate v2-only generator/dataset (two scripts and two coverage tests to keep in sync).
 
-## S31 · TASK-75: v1 routes unchanged; add /exceptions, /exceptions/[id] — approved 2026-11-05
+## S44 · TASK-75: v1 routes unchanged; add /exceptions, /exceptions/[id] — approved 2026-11-05
 **Context.** v1's routes (`/`, `/queue`, `/invoices/[id]`, `/disputes`, `/payments`, `/drafts`, `/audit`, `/settings`) are stable and some are already load-bearing for TASK-45's splash trigger logic.
 **Decision.** No v1 route is renamed, merged or redirected. Two new top-level routes are added: `/exceptions` (list) and `/exceptions/[id]` (detail).
 **Rejected.** Renaming/merging `/queue` into `/exceptions` (breaks existing bookmarks/tests/splash logic for no stated benefit).
 
-## S32 · TASK-75: F16 reversal permission confirmed Manager-only — approved 2026-11-05
+## S45 · TASK-75: F16 reversal permission confirmed Manager-only — approved 2026-11-05
 **Context.** Discovery flagged F16 (exception reversal) as an open confirmation item, not a new design question — it should match the existing permission tier.
 **Decision.** Confirmed: reversal/reopen of an exception is Manager-only, matching the existing >₹5,00,000/ambiguous/write-off permission tier. No new permission tier is introduced.
 **Rejected.** A separate, lower-privilege reversal permission (would weaken the reopen-rate guardrail's meaning).
 
-## S33 · TASK-75/TASK-45/TASK-46 sequencing: finish, not park — approved 2026-11-05
+## S46 · TASK-75/TASK-45/TASK-46 sequencing: finish, not park — approved 2026-11-05
 **Context.** Discovery §7 left "finish or park TASK-45/46 before v2 code" as an open Stage 2 decision. Both tickets' remaining work (45.9/45.10 art+release evidence, 46.8 final heritage art) is small, close to Done per `HANDOFF.md`, and isolated from v2's domain/schema surface.
 **Decision.** Finish TASK-45 and TASK-46 completely (both Done in Campfire) before opening any TASK-75 Stage 4+ ticket's branch.
 **Rejected.** Parking them mid-flight to start v2 sooner (reopens in-flight branches later, risking context loss on nearly-finished work for no scheduling gain, since v2's own Stage 4 breakdown has not started).

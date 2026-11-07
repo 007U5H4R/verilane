@@ -24,6 +24,7 @@ export const ACTIONS = [
   "action_review",
   "reconcile_flag",
   "reconcile_decide",
+  "allocate_payment",
   "import_csv",
   "reset_demo",
   "switch_role",
@@ -117,6 +118,12 @@ const ANALYST_RULES: Record<Action, Rule> = {
   reconcile_flag: () => ALLOW,
   reconcile_decide: () =>
     deny("Only a Manager can verify or reject a payment claim."),
+  // TKT-75.02: an Analyst allocates unapplied cash to the invoice it settles,
+  // unless the item was escalated to a Manager.
+  allocate_payment: (s) =>
+    s.requires_role === "manager"
+      ? deny("This item was escalated to a Manager.")
+      : ALLOW,
   import_csv: () => ALLOW,
   reset_demo: () => ALLOW,
   switch_role: () => ALLOW,

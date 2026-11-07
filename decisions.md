@@ -1057,3 +1057,206 @@ Source: technical-plan-TASK-46 §A10 (TP-46.g); Stage 5 sign-off item 7.
   - Mobile also departs from Design §7: the Home strip was `clamp(160px, 44vw, 240px)` and is now a fixed 280px. It needs the same look-check and Design revision.
   - A landscape phone (844×390) falls in the 48–64rem tablet range, so it gets the 600px band on a 390px-tall viewport. It was not sampled and needs the look-check.
   - Widths from 1024 to about 1300 were not sampled (only 1440, 768 and 390 were). This is a candidate for a follow-up ticket.
+
+## S38 · TASK-75: evolve ReviewItem into Exception — approved 2026-11-05
+**Context.** Discovery introduces two new upstream problems (unapplied cash, short-payment pattern) needing a queue/state-machine home. `ReviewItem` already provides one queue, one state machine, one Overview count (S14's "one write path").
+**Decision.** Extend `ReviewItem.kind` with `unallocated_payment` and `short_payment_pattern`; rename the entity/table to `Exception`/`exceptions`. No new queue, no new state machine.
+**Rejected.** A parallel `Exception` entity/queue (two queues to keep in sync, violates S14); a discriminated-union fork of `ReviewItem` (unneeded ceremony at this scope).
+
+## S39 · TASK-75: nullable Payment.invoice_id + new CreditNote entity — approved 2026-11-05
+**Context.** An unapplied payment has no invoice to attach to at receipt time; a short-payment write-off is a Manager decision distinct from the cash movement itself.
+**Decision.** `Payment.invoice_id` becomes nullable; an unapplied payment is a `Payment` row with `invoice_id = null`, allocated later via a transactional command. A new `CreditNote` entity (`credit_note_id, invoice_id, amount_paise, reason, approved_by`) records write-off acceptance as its own audited fact.
+**Rejected.** A synthetic placeholder invoice for unapplied payments (fabricates a fact); modelling write-offs as a `Dispute` subtype (conflates customer disputes with internal write-off decisions).
+
+## S40 · TASK-75: true multi-agent orchestration — USER-APPROVED, overriding recommendation, 2026-11-05
+**Context.** Three agent-architecture options were weighed: a single-pipeline provider-seam extension (recommended, smallest diff, consistent with v1's existing shape), a two-agent split, and three fully separate agents (Recommend/Policy/Execute) with their own state and hand-off records. The user was shown the cost/complexity tradeoff explicitly — tripled state/test surface versus the single-pipeline option — and reaffirmed the choice on being asked a second time.
+**Decision.** Three separate agents: Recommend produces a verified-facts recommendation (reusing `draft.ts`'s `factsFor()` pattern); Policy runs a gated rule table against the permission matrix and writes a versioned `PolicyDecision`; Execute reads only the `PolicyDecision.verdict`, never the raw recommendation, and writes exclusively through the existing `commands.ts` one-transaction path.
+**Rejected.** Single-pipeline provider-seam extension (my recommendation); a two-agent (Recommend+Policy combined, Execute separate) compromise.
+**Reason recorded.** The user's explicit, twice-confirmed Stage 2 decision, choosing the architectural story for the success audience (Discovery §1) over the smaller-diff option.
+
+## S41 · TASK-75: gated rule table policy engine + PolicyDecision record — approved 2026-11-05
+**Context.** The Policy agent's decision must be auditable to a Senior PM interviewer ("why was this auto-permitted") and must not bypass the existing permission matrix (Discovery §2).
+**Decision.** An ordered gated rule table, same shape as `priority.v1`'s G1–G7, run against the ≤₹5,00,000-exact/unambiguous-vs-everything-else threshold; writes `{decision_id, exception_id, recommendation_ref, verdict, reason, config_version}`, append-only. Unit-tested exhaustively, matching `permissions.ts`'s existing bar.
+**Rejected.** A weighted/scoring model (less legible to audit); inline policy checks inside the Execute agent with no separate record (no independent audit trail).
+
+## S42 · TASK-75: NSM = one frozen AS_OF_DATE demo session, labelled Simulated — approved 2026-11-05
+**Context.** Discovery §8.1 asks for an NSM normalized "per analyst-week," but the demo has no real session history to average over (S9's zero-cost per-visitor storage).
+**Decision.** NSM = Σ(correctly resolved exception value this session) ÷ 1 simulated analyst-week, where one simulated analyst-week = one frozen `AS_OF_DATE` demo session (mirrors S11's frozen clock). Always shown with the label "Simulated — one demo session = one analyst-week."
+**Rejected.** A rolling/multi-session average (no session persistence exists to support it); a hard-wired historical denominator (fabricates a number).
+
+## S43 · TASK-75: extend scripts/seed.ts in place, no second generator — approved 2026-11-05
+**Context.** The existing fixed-PRNG seed generator and its coverage test are the single source of the shipped demo data (`docs/Data-Model.md` §7); a second generator would fork that source of truth.
+**Decision.** Add unallocated-payment, short-payment-pattern (≥3/90 days for one customer) and ambiguous/overpayment fixtures to `scripts/seed.ts`; bump the committed CSV/JSON output and extend the existing coverage test in the same script.
+**Rejected.** A separate v2-only generator/dataset (two scripts and two coverage tests to keep in sync).
+
+## S44 · TASK-75: v1 routes unchanged; add /exceptions, /exceptions/[id] — approved 2026-11-05
+**Context.** v1's routes (`/`, `/queue`, `/invoices/[id]`, `/disputes`, `/payments`, `/drafts`, `/audit`, `/settings`) are stable and some are already load-bearing for TASK-45's splash trigger logic.
+**Decision.** No v1 route is renamed, merged or redirected. Two new top-level routes are added: `/exceptions` (list) and `/exceptions/[id]` (detail).
+**Rejected.** Renaming/merging `/queue` into `/exceptions` (breaks existing bookmarks/tests/splash logic for no stated benefit).
+
+## S45 · TASK-75: F16 reversal permission confirmed Manager-only — approved 2026-11-05
+**Context.** Discovery flagged F16 (exception reversal) as an open confirmation item, not a new design question — it should match the existing permission tier.
+**Decision.** Confirmed: reversal/reopen of an exception is Manager-only, matching the existing >₹5,00,000/ambiguous/write-off permission tier. No new permission tier is introduced.
+**Rejected.** A separate, lower-privilege reversal permission (would weaken the reopen-rate guardrail's meaning).
+
+## S46 · TASK-75/TASK-45/TASK-46 sequencing: finish, not park — approved 2026-11-05
+**Context.** Discovery §7 left "finish or park TASK-45/46 before v2 code" as an open Stage 2 decision. Both tickets' remaining work (45.9/45.10 art+release evidence, 46.8 final heritage art) is small, close to Done per `HANDOFF.md`, and isolated from v2's domain/schema surface.
+**Decision.** Finish TASK-45 and TASK-46 completely (both Done in Campfire) before opening any TASK-75 Stage 4+ ticket's branch.
+**Rejected.** Parking them mid-flight to start v2 sooner (reopens in-flight branches later, risking context loss on nearly-finished work for no scheduling gain, since v2's own Stage 4 breakdown has not started).
+
+## D75-1 · TASK-75: true auto-execute (user choice, 2026-11-05) — accepted (Stage 4 sign-off)
+**Decision.** When Policy returns `auto_permitted`, the Execute agent writes through `commands.ts` with the Execute agent as actor and no human click (Solution-PRD §2.3/§7 stands).
+**Consequence.** Frozen Design §4/§11 ("Awaiting analyst approval", "Submit for approval" on `auto_permitted`) and Discovery F15 / §8.1 / §8.3 ("a permitted human approves", "actions executed without approval = 0") conflict with it. A post-freeze amendment (**gate A1**) must be user-approved before TKT-75.04 starts (`docs/milestones-TASK-75.md` → Gate A1).
+
+## D75-2 · TASK-75: rename ReviewItem → Exception as one compiler-driven prefactor ticket — accepted (Stage 4 sign-off)
+**Decision.** Rename `ReviewItem` → `Exception` lands as **one compiler-driven prefactor ticket** (38 files / ~278 references), not expand–contract.
+**Consequence.** Strict TS catches every call site; the suite stays green within one ticket. Test IDs (`data-testid="review-item"`) and route-visible copy are **not** renamed (R10, DoD 5).
+
+## D75-3 · TASK-75: nullable Payment.invoice_id + R2 null-handling audit in the same prefactor — accepted (Stage 4 sign-off)
+**Decision.** Nullable `Payment.invoice_id` widening + R2 null-handling audit (~48 payment `invoice_id` reads) goes into the same prefactor.
+**Consequence.** The tracer starts on a schema that already carries unapplied cash safely; the dangerous failure (silently dropping unapplied payments from totals) is pinned by a test before any feature reads it.
+
+## D75-4 · TASK-75: docs, eval gates and e2e travel with the slice that creates the behaviour — accepted (Stage 4 sign-off)
+**Decision.** Docs (Architecture / Data-Model / AI-Evaluation), eval gates and e2e travel **with the slice that creates the behaviour**. No horizontal docs/eval/e2e tickets.
+**Consequence.** Each ticket's DoD names its doc section, gate and TCs.
+
+## TP26 · TASK-75: Recommend Agent reuses draft.ts VerifiedFact pattern (TP-75 TP1) — approved 2026-11-05
+
+**Context.** The Recommend agent must output claims that trace back to source records, matching v1's trust model.
+
+**Decision.** Reuse `src/domain/draft.ts`'s existing `factsFor()` pattern and `VerifiedFact` type. No new output format is invented.
+
+## TP27 · TASK-75: Policy Agent is a pure function; verdict is written to DB, never computed on-the-fly (TP-75 TP2) — approved 2026-11-05
+
+**Context.** The Execute agent must read a persisted `PolicyDecision`, never infer a verdict from the raw recommendation.
+
+**Decision.** Policy agent writes `PolicyDecision` rows to the `policyDecisions` table (append-only, no deletes). Execute agent reads only the `verdict` field, never the original gate logic.
+
+## TP28 · TASK-75: NSM computation: session total ÷ 1, with "Simulated" label on every display (TP-75 TP3) — approved 2026-11-05
+
+**Context.** Discovery §8.1 requires NSM "per analyst-week," but demo has no session history.
+
+**Decision.** NSM = Σ(correctly resolved value in this session) ÷ 1. Always shown with the literal label "Simulated — one demo session = one analyst-week."
+
+## EXE116 · Stage 6 starts with G0 open: user overrides the TASK-45.10 gate (TASK-79) — accepted (user decision)
+- **Gate.** G0 (Solution-PRD §2.8 / S46) required TASK-45.10 and TASK-46.8 Done before any TASK-75 branch opened.
+- **State on 2026-11-05.** TASK-46.8 was Done; TASK-45.10 was In Progress (TC-130/TC-169 perf unresolved, tracked as TASK-80).
+- **Decision.** The user was told the gate was open and replied "start Task 75 stage 6".
+- **Consequence.** v2 work runs alongside the open TASK-45.10; 45.10 stays tracked separately; both share the e2e lock (`.scratch/task4x/e2e-lock.md`).
+
+## EXE117 · Branch is task/75-exceptionos (tickets-TASK-75 Common DoD), not task/75-exceptions (HANDOFF/technical-plan wording) (TASK-79.1) — accepted
+- `docs/tickets-TASK-75.md` Common DoD names `task/75-exceptionos`; `HANDOFF.md` and `docs/technical-plan.md` say `task/75-exceptions`. The branch and its worktree use `task/75-exceptionos`; the tickets doc is authoritative.
+
+## EXE118 · TASK-75's Stage 5 TP1–TP3 are appended as TP26–TP28 (TASK-79.1) — accepted
+- `decisions.md` already has TP1–TP25 (v1 TP1–TP8, TASK-46 TP9–TP15, TASK-45 TP16–TP25). Appending TASK-75's TP1–TP3 under the same numbers would give two entries per ID.
+- They are appended as **TP26–TP28** (TP1→TP26, TP2→TP27, TP3→TP28), with the original label kept in each heading, the same way TASK-45 appended TP-45.a… as TP16…. `docs/technical-plan.md` §10 and `docs/tickets.md` use the new numbers. Text is otherwise as-is.
+
+## EXE119 · The rename keeps v1's persisted field names, ids and entity key (TASK-79.1) — accepted
+- `ReviewItem` → `Exception` renames the type, Zod schema (`ExceptionSchema`, `ExceptionKindSchema`), row type (`ExceptionRow`), Dexie table (`reviewItems` → `exceptions`, v2), store hook fields and helpers (`exceptionsFor`, `syncExceptions`).
+- **Kept unchanged:** the row fields `review_id` and `linked_review_ids`, the `RV-…` ids, the command entity key `review` (audit subjects `review:<id>`), `REVIEW_KIND_LABEL`, the `src/domain/review.ts` file name, every `data-testid` (`review-item`) and all user-visible copy.
+- **Why:** these are persisted in IndexedDB rows and audit events, or asserted by v1 e2e. Renaming them would need a row rewrite in the v2 upgrade and an audit-subject migration for no user-visible gain. TKT-75.02+ may revisit with its own migration.
+- `Exception` is used as a type/schema name only; it collides with no JS global or lint rule (`DOMException` is distinct), so the `ExceptionItem` fallback was not needed.
+
+## EXE120 · v1 e2e specs read `db.exceptions` instead of `db.reviewItems` (TASK-79.1) — accepted
+- `tests/e2e/home-redesign.spec.ts` (1 line) and `tests/e2e/payments.spec.ts` (4 lines) reach into the Dexie handle via `window.__verilane.db`. The v2 table name changed, so the accessor changes; no assertion, test id, route or copy changed.
+
+## EXE121 · Commits 3 and 5 of TKT-75.01 land together; `message_id` optionality is typed via `EmailException` (TASK-79.1) — accepted
+- Renaming the `reviewItems` table cannot be green without the Dexie v2 upgrade that creates `exceptions`, so the rename and `version(2)` (plus empty `creditNotes` / `policyDecisions`) are one commit, as the brief allows.
+- `ExceptionSchema.message_id` is optional; a Zod `superRefine` requires it for every non-payment kind. Code that reads it (Payments page, Home feed, reconciliation) narrows with `isEmailException()` to `EmailException` (`message_id: string`), and `StoredException` is now `EmailException & Workflow`. For v1 data this filters nothing out (every v1 kind requires the email).
+- The two new kinds get labels in `REVIEW_KIND_LABEL` ("Unallocated payment", "Short-payment pattern"); they are not shown anywhere until TKT-75.02.
+
+## EXE122 · Nullable `Payment.invoice_id`: null = unapplied cash, handled explicitly; CSV import still requires an invoice (TASK-79.1) — accepted
+- `PaymentSchema.invoice_id` is `string | null`. Null means unapplied cash. `appliedPaiseOf()` / `outstandingOf()` never count it against an invoice, and `unappliedPayments()` / `unappliedCashPaise()` (aggregates.ts) total it separately, so it is never dropped (TC-003). The Payments KPI `ledgerTotal` already sums every unique entry, so it includes unapplied cash.
+- Every other read skips null explicitly: ingest's paid-per-invoice map, the loader's customer payment history, dispute ledger payments, reconciliation candidates, and the verify-payment command (which rejects a null entry as "not recorded against this invoice").
+- Where the UI would link a ledger entry's invoice, `InvoiceRef` renders plain "Unapplied" text for null and never links to `/invoices/null`. v1 data has no null payments, so no v1 screen, copy or test ID changes.
+- Dexie keeps `payments: "payment_id, invoice_id"`. IndexedDB leaves null keys out of the index, so unapplied payments are found with `.filter(p => p.invoice_id === null)`, not `where("invoice_id")`.
+- The payments CSV import still requires `invoice_id` (a blank cell is rejected, as in v1). Importing unallocated payments belongs to the TKT-75 slice that introduces `unallocated_payment`; there is no `""` → null coercion here.
+- The paid-per-invoice helpers in `tests/e2e/home.spec.ts` and `queue.spec.ts` gain the same null guard so they typecheck. Their assertions are unchanged.
+
+## EXE123 · A blank payments `invoice_id` imports as null (unapplied cash); this reverses EXE122's import rule (TASK-79.2) — accepted
+- **Change:** `ingestPayments` reads `invoice_id` with `nullableField` (blank → `null`, never `""`), and the payments import schema (`csv.ts` `RAW_SCHEMA.payments.invoice_id`) accepts a blank cell. Export already writes null as `""`, so export → import is now symmetric. Covered by the round-trip test in `src/store/csv.test.ts` and the seed round-trip (TC-059), which now includes P-012.
+- **Why EXE122's rule changes:** EXE122 deferred unapplied-payment import to "the TKT-75 slice that introduces `unallocated_payment`", which is this one. A bank file listing cash with no invoice is the exact input that raises an `unallocated_payment` exception. Rejecting the whole file, or coercing to `""`, would either block import or silently drop the cash from every total (the M2 finding). A user-authored row with a blank invoice is therefore treated as unapplied cash, raised as an exception for the Analyst, and never applied to any invoice until someone allocates it.
+- Nothing else about the payments import changes: a non-blank `invoice_id` is read exactly as in v1.
+
+## EXE124 · Loader recompute raises one `unallocated_payment` exception per unapplied payment; candidates live on the exception (TASK-79.2) — accepted
+- `paymentExceptionsFor(ledger)` (`src/domain/review.ts`) is pure and deterministic. Each payment with `invoice_id === null` gets exactly one exception, id `RV-PAY-<payment_id>`. Its candidates are the open invoices (not paid or written off) whose derived outstanding equals the payment amount, in ledger order. With one candidate, `invoice_id` names it and `validation_status` is `verified`. With none it is `missing`, and with several it is `conflict`; in both cases no invoice is named. `requires_role` is analyst.
+- `ExceptionSchema` gains two optional fields, `payment_id` and `candidate_invoice_ids`. The technical plan's `subject_payment_id` is spelled `payment_id` to match the `Payment` key. No Dexie index change is needed.
+- `recomputeCore` adds these to the same `syncExceptions` call the email kinds use, so there is no second sync path. `unallocated_payment` joins the derived kinds whose stale open rows are dropped. Once a payment is allocated it is no longer unapplied: no new row is computed, and the actioned row stays as history. Recompute is idempotent (TC-75.07, loader.test.ts).
+
+## EXE125 · `allocate_payment` writes one ledger row and re-derives the invoice inside one whole-DB transaction (TASK-79.2) — accepted
+- The new action goes through the one existing pipeline, `run()`. Its subject is the exception (`review:RV-PAY-…`), so `can()` reads `requires_role` from the stored row: an Analyst is denied only on a Manager-escalated item. The handler then:
+  1. requires the item to be open and an `unallocated_payment`;
+  2. requires the chosen `payload.invoice_id` to be in `candidate_invoice_ids` (the Analyst picks; the command never guesses);
+  3. requires the payment to still be unapplied;
+  4. puts the payment with its new `invoice_id` and steps the exception open → actioned with the review machine;
+  5. calls `tx.data.recompute()`.
+
+  `run()` writes the one audit event (`allocate_payment`, "Payment allocated").
+- "Update invoice balance and status" is met by derivation, not by writing the invoice row. Invoices are immutable source rows (`tx.put("invoices")` throws, as in v1). The outstanding is `amount − Σ applied payments`, and the recompute in the same transaction re-ranks the invoice, so INV-F closes at G1.
+- `payments` becomes a `TableName` (tx key `payment_id`). `allocate_payment` joins `WHOLE_DB`, so the nested recompute shares the command's single read-write transaction. A throw before commit rolls back the payment, the exception, the priorities and the audit event together (TC-75.09).
+- `Effect` gains an optional `invoice_id`, so the audit event names the invoice the Analyst chose rather than the exception's suggestion.
+
+## EXE126 · Related unapplied cash holds its candidate invoices at G5 and blocks drafts until allocated (TASK-79.2) — accepted
+- AC8 asks that an invoice with related unapplied cash gets no reminder until the cash is allocated. "Related" means the invoice is one of an open `unallocated_payment` exception's `candidate_invoice_ids`, i.e. its outstanding equals the bank line's amount.
+- Two places enforce it, both reusing existing paths rather than adding a new gate:
+  1. **Priority.** `deriveSignals` takes the stored exceptions (optional input) and adds every candidate to `holdReconcile`, cited by `<payment_id>:payments.csv:invoice_id`. The invoice ranks at G5 "Reconcile payment", which the queue never reminds. The loader passes the exceptions as stored after `syncExceptions`, so an actioned or dismissed item holds nothing.
+  2. **Drafts.** `draftContextFor` sets `paymentClaim` ("unapplied bank line P-…") for a candidate of an open item, so check 7 fails and no draft for it can be approved or sent.
+- On the seed, INV-F is already gated earlier (G3), so the hold is invisible there. TC-75.10 proves G5 with a fixture bank line that matches an otherwise-scored invoice, and that allocating it lifts the hold (the invoice closes at G1).
+- If several invoices match, all of them hold. That is deliberate: a reminder to any of them could chase money that is already in the bank.
+
+## EXE127 · "Exceptions" nav item, open-count badge, row model and Home group (TASK-79.2) — accepted
+- **Nav.** "Exceptions" (`/exceptions`, TriangleAlert) is inserted after Payments, the last primary item, so it sits after Drafts and immediately before the Audit Log divider (Design-TASK-75 §7). No existing item moves or is renamed. Below 768 px it is reached from the "More" sheet (`MORE_HREFS`), like Payments.
+- **Badge.** `useExceptionCount()` counts `db.exceptions` with `status = open`, every kind. It is live and tolerates a missing db like the other nav counts.
+- **Row model.** `buildExceptionRows` (`src/domain/exceptions/list.ts`) is pure and reads stored rows only.
+  - Kind: the label from `EXCEPTION_KIND_LABEL`, now the single definition. `REVIEW_KIND_LABEL` is an alias of it.
+  - Subject: `payment_id · customer` for payment kinds, or `· Unapplied bank line` when there is not exactly one candidate. For email kinds it is `customer · invoice no.`.
+  - Amount: for payment kinds, the bank line's amount. For email kinds, the email's amount if it has one, otherwise the invoice's derived outstanding.
+  - Status: Open / Pending Manager (an open item that requires Manager) / Resolved (actioned) / Dismissed.
+  - Priority: the related invoice's band.
+  - Rows are ordered open first, then by id.
+  - "Policy Review" (§5) is not shown: it belongs to the Policy agent (79.3).
+- **Filters.** The Queue facets (search, priority, invoice status, customer, ageing) apply to the exception's related invoice. A row with no single related invoice drops out when any facet is set. Search matches the subject, the kind label and the ids.
+- **List scope.** `/exceptions` lists *open* exceptions, so an allocated item leaves the list (AC10). All 7 kinds render through the same row; `short_payment_pattern` has no seed row until 79.5, so a 7-kind unit fixture proves it (list.test.ts).
+- **Home.** The task feed gains an "exceptions" group (open payment-originated exceptions, linking to `/exceptions`) after "payments". The existing "payments" group (uncertain matches and reconciliations) is unchanged.
+
+## EXE128 · `/exceptions` and `/exceptions/[id]` routes, four screen states, allocate through `execute` (TASK-79.2) — accepted
+- **Routes.** Both are static client routes. The list reads search params; the detail reads its id with `useParams()` inside `<Suspense>`, with no `generateStaticParams` (the dispute-detail pattern), because exception ids exist only in the browser's IndexedDB.
+- **List.** 64 px row cards (`min-h-16`): Kind / Subject / Amount / Status / Priority / Action. At md and up they sit on a six-column grid under a header row; below md each card is two lines. The v1 `FiltersPanel`, `filterIntent` and `queueParams` are reused unchanged, with the URL as the source of truth, as in the Queue. `QueueFilters` is a structural superset of `ExceptionFilters`. Facets list only values present in the rows, plus any already selected.
+- **Detail.**
+  - Payment evidence: bank line, date, amount, "Unapplied", provenance, and the ledger total of unapplied cash (M1).
+  - Invoice facts per candidate: number, customer, derived outstanding, days overdue, band, provenance.
+  - "Why this needs review".
+  - Audit trail, newest first, keyed on subject `review:<id>`.
+  - An action bar with disabled-with-reason (§11): "Already resolved", "Review this item in Inbox" (non-payment kinds; allocation is the only action this ticket adds), "Manager approval required" (from `can()`), and "Choose an invoice". The single candidate is preselected.
+- **One path.** Submit calls `execute({type:"allocate_payment"})`, the EXE125 single rw transaction. The UI writes nothing itself. The toast shows the audit summary.
+- **States.** Loading uses skeleton rows. Empty: "No exceptions to review" with a way to the Queue, and a distinct filtered-empty state with Clear filters. The detail has a not-found state. Error comes from an error boundary with Retry (attempt key) or from a missing db. `__state` is forced only when `NEXT_PUBLIC_E2E=1`.
+- **Deviations.**
+  - **Offline.** Allocate stays enabled offline. It is a local IndexedDB write, like every v1 command, and the shell's offline banner covers it.
+  - **Mark disputed.** It is shown but always disabled, with a reason. A dispute path from an exception is out of scope here.
+  - **Remittance.** It reads "None on file — matched on amount", because the seed has no remittance email for P-012.
+  - **Policy Review.** That status is not shown (79.3).
+
+## EXE129 · Amendment A1 approved by user (TASK-79.2 close-out) — accepted
+- The user approved Amendment A1 ("A1 is also approved", 2026-11-05), closing the PENDING status drafted in EXE-adjacent work under TASK-79.1.
+- Design-TASK-75.md §25 is updated from "pending approval" to "approved", with the approval line recorded there.
+- Discovery-PRD-TASK-75.md F15's note is updated to drop "pending" and point at this EXE instead of "until A1 is approved".
+- This unblocks TKT-75.04 (Execute agent true auto-execute on `auto_permitted`), which was gated on A1.
+- **Also recorded here (code-quality fix, not an architectural decision):** `src/components/exceptions/ExceptionCards.tsx`'s row-card grid originally switched to its wide layout at `md:` (768px), but the shell only drops its narrow 72px icon rail at `lg:` (1024px+), causing horizontal scroll at exactly 768px (caught by the TC-75.13/TC-062 e2e gate). Fixed by changing every `md:` prefix in that file to `lg:`, matching the convention already used by `DisputesView`, `LedgerTab` and `ReconciliationTab`. Independently verified by the 79.2 reviewer against those sibling views; no other `md:` usage in the file was affected.
+
+## EXE130 · Recommend/Policy design choices: domain-local Result, actor-independent verdict, audit write outside AuditAction, lazy on-page-view evaluation, TC numbering (TASK-79.3) — accepted
+- **Domain-local `Result<T,E>`.** `src/domain/result.ts` defines its own `Result`/`ok`/`err`/`Rejected`, not imported from `ai/provider.ts`. Recommend and Policy are pure financial/matching/permission logic — the same category as `matching.ts`/`priority.ts`/`permissions.ts` — and must never pass through a provider (A1, Architecture.md §4). Importing the AI-provider's `Result` would blur that line even though the shapes are similar.
+- **Verdict is actor-independent.** `decidePolicyVerdict()` takes `(kind, amountPaise, confidence)` only — never a role or who is logged in. `permissions.ts`'s `can()` still owns "can this actor click it", reading the exception's `requires_role`. An append-only, versioned PolicyDecision row would otherwise change meaning depending on who happened to view it, which breaks R7's append-only guarantee in spirit even if not in schema.
+- **Policy's audit write bypasses `commands.ts`'s closed `AuditAction` union on purpose.** `evaluatePolicyForException()` writes a `policy_evaluated` event directly to `db.audit`, tagged `subject: review:{review_id}`, the same way `recomputeCore()` writes derived tables directly. Recommend/Policy are not user-initiated commands, so routing them through `execute()`/`run()` would misrepresent them as actions a person took.
+- **Lazy, on-page-view evaluation — not wired into `recompute()`.** Policy evaluation is triggered only by `ExceptionDetailView.tsx`'s `usePolicyEvaluationTrigger` (a `useEffect` + one-shot ref keyed by exception id) when a person actually opens `/exceptions/[id]`. An earlier attempt wired it eagerly into `loader.ts`'s `recompute()`/`recomputeCore()` so every seed/recompute would have a Policy decision; this broke `allocatePayment.test.ts` and `startTour.test.ts`, which assert a clean post-seed audit log, because `recompute()` also runs inside `ensureSeeded()` and every store test's setup. Recommend stays a pure computation inside `useException()`'s `useLiveQuery` (no I/O, safe to recompute on every render); only Policy's write is deferred to a real page view. `loader.ts` is untouched by this ticket.
+- **AC6 "agent stages appear in the audit trail"** is satisfied by the Stage 1/2 UI blocks and the Policy Decision card, not by feeding Policy's `policy_evaluated` write into the page's human-facing "Audit trail" list. `useException()` (`src/store/hooks.ts`) now filters `action !== "policy_evaluated"` out of `detail.audit` before it reaches `<AuditTrail>`. The e2e test TC-75.13 asserts `exception-audit` reads exactly "No actions yet." before any person has acted (v1 copy, explicitly off-limits per the brief's file-overlap notice) — an earlier version of this change fed Policy's write straight into that list and broke that assertion the moment a payment exception's detail page was viewed, since Policy now runs automatically on view. `db.audit` itself still gets the `policy_evaluated` row (append-only, queryable directly), so nothing about Policy's own record-keeping changed — only what the human-action trail component is allowed to show. Recommend remains a pure computation with no audit write of its own; its output is shown directly in the Stage 1 block.
+- **TC numbering divergence.** The TKT-75.03 brief and `docs/test-cases.md` cross-reference TC-75.14–TC-75.20; the actual test-case ids in `docs/test-cases.md` for this ticket are TC-005–TC-011 (Recommend) and TC-008–TC-011 (Policy, overlapping ids reused across both agents' boundary tables). `recommend.test.ts`/`policy.test.ts` use the actual ids and note the divergence inline, pointing here.
+
+## EXE131 · Recommend/Policy fix round 1: agent events on the audit trail, fingerprinted re-evaluation, append-only hooks, validated + transactional writes (TASK-79.3) — accepted
+Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130's other bullets stand.
+- **AC6 premise corrected.** EXE130 claimed TC-75.13's "No actions yet." assertion was v1 copy that couldn't change. It was 79.2 copy, so it can change. `useException()` no longer filters `policy_evaluated`. The detail page's audit trail now shows both agent stages: "Recommend Agent generated facts" (written first) and then "Policy Agent evaluated exception (verdict: …)". `tests/e2e/exceptions.spec.ts` asserts both before anyone acts.
+- **Both agent events are typed `AuditAction`s with a system actor.** `recommend_generated` and `policy_evaluated` joined the closed union, and `classify.ts`'s exhaustive `ACTION_META` covers them. Each event carries `actor_role: "system"` and `actor_label` "Recommend Agent" or "Policy Agent", so a person viewing the page is never recorded as the actor. The Recommend event cites the fact evidence ids. The Policy event cites its `decision_id`.
+- **Input fingerprint, re-evaluate on change.** Each `PolicyDecisionRow` stores `input_fingerprint`: config_version, kind, amount, sorted candidate ids and confidence. `evaluatePolicyForException()` writes nothing when the latest row's fingerprint matches, which makes it idempotent and dedupes concurrent calls. When the fingerprint differs, it appends a new row. The detail page treats a row whose fingerprint differs, or that has none, as stale: it hides the row and re-evaluates. This means a CSV import that changes the amount can never leave a stale `auto_permitted` standing. Rows are ordered by `evaluated_at` and then by the numeric decision sequence, so the 11th evaluation sorts after the 2nd.
+- **Append-only is enforced in the DB layer.** Dexie `updating`/`deleting` hooks on `policyDecisions` throw. The only exception is `resetToSeed()`, which goes through the scoped `allowPolicyDecisionReset()` bypass.
+- **Validated, then one rw transaction.** The verdict enum, a non-blank `gate_id` and a known `config_version` (`KNOWN_POLICY_CONFIG_VERSIONS`) are checked before any write. An injected out-of-enum verdict (TC-75.16) persists nothing. An unknown config version is rejected up front, and the unreachable guard is gone. The prior-row read, the decision row and both audit events commit in one `db.transaction("rw", …)`, so a failed audit write rolls the decision back.
+- **The page has error and closed states.** `policyInputsFor()` returns an err when the bank line is missing; it never evaluates `amount ?? 0`. `ensurePolicyEvaluated()` returns a `Result`, and a rejection or a thrown write shows as "Policy couldn’t evaluate: …" (`data-testid="policy-error"`). The trigger fires once per `id|fingerprint`, so it never loops on retries. Closed exceptions intentionally get no new decision. When a closed exception has none, the page says "Not evaluated — this exception was closed before Policy ran." rather than "Not yet evaluated." forever.
+- **A partially missing candidate set is rejected.** If any candidate invoice is no longer on the ledger, Recommend returns `Rejected` and names the missing invoice. It no longer upgrades confidence based on the subset that remains.

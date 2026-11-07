@@ -21,7 +21,7 @@ import {
 import { HomeSkeleton } from "./HomeSkeleton";
 import { KpiStrip } from "./KpiStrip";
 import { TaskFeed } from "./TaskFeed";
-import { useOpenPaymentReviews } from "./useHomeAttention";
+import { useOpenPaymentExceptions, useOpenPaymentReviews } from "./useHomeAttention";
 
 // Charts load in their own chunk: recharts alone pushed Home's First Load JS
 // past the 300 KB gzip budget (TASK-25 · TC-083). The fallback reserves the
@@ -89,6 +89,7 @@ function HomeBody({ forcedBlockError }: { forcedBlockError: BlockId | null }) {
   const customers = useCustomers();
   const drafts = useDraftsAwaitingApproval();
   const reviews = useOpenPaymentReviews();
+  const exceptions = useOpenPaymentExceptions();
 
   if (
     items === undefined ||
@@ -96,7 +97,8 @@ function HomeBody({ forcedBlockError }: { forcedBlockError: BlockId | null }) {
     openDisputes === undefined ||
     customers === undefined ||
     drafts === undefined ||
-    reviews === undefined
+    reviews === undefined ||
+    exceptions === undefined
   )
     return <HomeSkeleton />;
   if (items.length === 0) return <NoAttention />;
@@ -129,6 +131,7 @@ function HomeBody({ forcedBlockError }: { forcedBlockError: BlockId | null }) {
                 customerNames,
                 drafts: draftRows,
                 reviews,
+                exceptions,
               })}
             />
           )}

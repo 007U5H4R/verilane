@@ -12,10 +12,21 @@ import { AS_OF_KEY } from "@/domain/commandConstants";
 import type { AuditEventInput } from "@/domain/commands";
 import { can, type Action, type Permission, type Role, type Subject } from "@/domain/permissions";
 import { approvalState } from "@/domain/draft";
-import { rank, type RankItem } from "@/domain/priority";
-import type { Customer, DataIssue, Dispute, EmailMessage, Extraction, Invoice, Match, Payment, Priority, ReviewItem } from "@/domain/schema";
-import { DraftSchema, type Draft } from "@/domain/schema";
-import type { AuditEventRow, VerilaneDb } from "./db";
+import { unappliedCashPaise, unappliedPayments } from "@/domain/aggregates";
+import { buildExceptionRows, type ExceptionRow as ExceptionListRow } from "@/domain/exceptions/list";
+import type { Paise } from "@/domain/money";
+import { outstandingOf, rank, type RankItem } from "@/domain/priority";
+import {
+  POLICY_CONFIG_VERSION,
+  evaluatePolicyForException,
+  latestPolicyDecisionForException,
+  policyInputFingerprint,
+} from "@/domain/policy";
+import { recommendForException, type RecommendedFacts } from "@/domain/recommend";
+import { err, ok, type Rejected, type Result } from "@/domain/result";
+import type { Customer, DataIssue, Dispute, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Priority, Exception } from "@/domain/schema";
+import { DraftSchema, isEmailException, isPaymentExceptionKind, type Draft } from "@/domain/schema";
+import type { AuditEventRow, PolicyDecisionRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
 export const DbContext = createContext<VerilaneDb | null>(null);
@@ -215,7 +226,7 @@ export interface PaymentsData {
   emails: Map<string, EmailMessage>;
   matches: Map<string, Match>;
   /** Open uncertain-match and reconciliation items, by email then id. */
-  reviewItems: ReviewItem[];
+  exceptions: Exception[];
 }
 
 const PAYMENT_REVIEW_KINDS = new Set(["uncertain_match", "reconciliation"]);
@@ -233,10 +244,10 @@ export function usePaymentsData(): PaymentsData | undefined {
       db.customers.toArray(),
       db.emails.toArray(),
       db.matches.toArray(),
-      db.reviewItems.toArray(),
+      db.exceptions.toArray(),
     ]);
-    const reviewItems = (items as ReviewItem[])
-      .filter((r) => r.status === "open" && PAYMENT_REVIEW_KINDS.has(r.kind))
+    const exceptions = (items as Exception[])
+      .filter((r): r is EmailException => r.status === "open" && PAYMENT_REVIEW_KINDS.has(r.kind) && isEmailException(r))
       .sort((a, b) => a.message_id.localeCompare(b.message_id) || a.review_id.localeCompare(b.review_id));
     return {
       payments: [...payments].sort((a, b) => b.paid_on.localeCompare(a.paid_on)),
@@ -244,7 +255,7 @@ export function usePaymentsData(): PaymentsData | undefined {
       customers: new Map(customers.map((c) => [c.customer_id, c])),
       emails: new Map(emails.map((e) => [e.message_id, e])),
       matches: new Map((matches as Match[]).map((m) => [m.message_id, m])),
-      reviewItems,
+      exceptions,
     };
   }, [db]);
 }
@@ -415,4 +426,183 @@ export function useHasOpenDispute(invoiceId: string): boolean | undefined {
         .count()) > 0,
     [db, invoiceId],
   );
+}
+
+/**
+ * How many exceptions are open (every kind), live — for the "Exceptions"
+ * sidebar badge (TKT-75.02, Design-TASK-75 §7). Tolerates a missing db like
+ * `useQueueCount()`; `undefined` while loading.
+ */
+export function useExceptionCount(): number | undefined {
+  const db = useContext(DbContext);
+  return useLiveQuery(async () => (db ? db.exceptions.where("status").equals("open").count() : undefined), [db]);
+}
+
+/** Open exceptions as `/exceptions` rows (TKT-75.02), read from stored rows only. */
+export function useOpenExceptionRows(): ExceptionListRow[] | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const [exceptions, invoices, priorities, payments, customers] = await Promise.all([
+      db.exceptions.where("status").equals("open").toArray(),
+      db.invoices.toArray(),
+      db.priorities.toArray(),
+      db.payments.toArray(),
+      db.customers.toArray(),
+    ]);
+    const priorityByInvoice = new Map(priorities.map((p) => [p.invoice_id, p]));
+    const items: RankItem[] = [];
+    for (const invoice of invoices) {
+      const priority = priorityByInvoice.get(invoice.invoice_id);
+      if (priority) items.push({ invoice, priority });
+    }
+    return buildExceptionRows({
+      // Rows are schema-validated on load; same cast as `usePaymentsData`.
+      exceptions: exceptions as Exception[],
+      items,
+      customers: new Map(customers.map((c) => [c.customer_id, c])),
+      payments,
+    });
+  }, [db]);
+}
+
+export interface ExceptionCandidate {
+  invoice: Invoice;
+  priority?: Priority;
+  customer?: Customer;
+  /** Derived from the ledger (`outstandingOf`), never stored. */
+  outstandingPaise: Paise;
+}
+
+export interface ExceptionDetail {
+  exception: Exception;
+  /** The bank line, for a payment-originated exception. */
+  payment?: Payment;
+  /** Each candidate invoice (payment kinds) or the linked invoice (email kinds). */
+  candidates: ExceptionCandidate[];
+  /** Audit events about this exception (`review:<id>`), newest first. */
+  audit: AuditEventRow[];
+  /** Σ unapplied cash on the ledger (M1: `unappliedCashPaise`). */
+  unappliedCashPaise: Paise;
+  unappliedCount: number;
+  /**
+   * Stage 1 (Recommend Agent, TKT-75.03/F15): verified facts over the
+   * already-fetched `payments`/`invoices`/candidate customer — pure, no I/O.
+   * `undefined` for a non-payment-exception kind (Recommend is payment-only).
+   */
+  recommendation?: Result<RecommendedFacts, Rejected>;
+}
+
+/** One exception with its evidence, for `/exceptions/[id]`: `undefined` while loading, `null` when not found. */
+export function useException(id: string): ExceptionDetail | undefined | null {
+  const db = useDb();
+  return useLiveQuery(async () => {
+    const row = await db.exceptions.get(id);
+    if (!row) return null;
+    const exception = row as Exception;
+    const [payments, invoices, priorities, customers, audit] = await Promise.all([
+      db.payments.toArray(),
+      db.invoices.toArray(),
+      db.priorities.toArray(),
+      db.customers.toArray(),
+      db.audit.where("subject").equals(`review:${id}`).toArray(),
+    ]);
+    const ids = isPaymentExceptionKind(exception.kind)
+      ? (exception.candidate_invoice_ids ?? [])
+      : exception.invoice_id !== undefined
+        ? [exception.invoice_id]
+        : [];
+    const invoiceById = new Map(invoices.map((i) => [i.invoice_id, i]));
+    const priorityById = new Map(priorities.map((p) => [p.invoice_id, p]));
+    const customerById = new Map(customers.map((c) => [c.customer_id, c]));
+    const candidates: ExceptionCandidate[] = [];
+    for (const invoiceId of ids) {
+      const invoice = invoiceById.get(invoiceId);
+      if (!invoice) continue;
+      candidates.push({
+        invoice,
+        priority: priorityById.get(invoiceId),
+        customer: customerById.get(invoice.customer_id),
+        outstandingPaise: outstandingOf(invoice, { payments }),
+      });
+    }
+    const recommendation = isPaymentExceptionKind(exception.kind)
+      ? recommendForException(exception, payments, invoices, candidates[0]?.customer)
+      : undefined;
+    return {
+      exception,
+      payment: exception.payment_id !== undefined ? payments.find((p) => p.payment_id === exception.payment_id) : undefined,
+      candidates,
+      // The full trail, agents included (TASK-79.3 fix r1 M1/EXE131): the
+      // Recommend + Policy system events are part of the AC6 audit trail.
+      audit: audit.sort((a, b) => (b.event_id ?? 0) - (a.event_id ?? 0)),
+      unappliedCashPaise: unappliedCashPaise(payments),
+      unappliedCount: unappliedPayments(payments).length,
+      recommendation,
+    };
+  }, [db, id]);
+}
+
+/** The latest PolicyDecision for `exceptionId` (Stage 2, TKT-75.03), live.
+ * `undefined` while loading; `null` once loaded with no decision yet — the
+ * detail page's trigger uses that distinction to evaluate exactly once. */
+export function usePolicyDecision(exceptionId: string): PolicyDecisionRow | null | undefined {
+  const db = useDb();
+  return useLiveQuery(async () => (await latestPolicyDecisionForException(db, exceptionId)) ?? null, [db, exceptionId]);
+}
+
+/** What Stage 2 (Policy) would be evaluated with for this detail, or why it can't be. */
+export interface PolicyInputs {
+  amountPaise: number;
+  confidence: RecommendedFacts["confidence"] | undefined;
+  /** `policyInputFingerprint` of these inputs — a stored decision whose
+   * `input_fingerprint` differs is stale and must be re-evaluated (M2). */
+  fingerprint: string;
+}
+
+/**
+ * `ok(null)` when Policy doesn't apply: a non-payment exception, or a closed
+ * one — closed exceptions intentionally get no new decision (their outcome is
+ * already on the audit trail; evaluating after the fact would invent a gate
+ * that never ran). `err` when the bank line is missing: never evaluate an
+ * amount of 0 in its place (m2).
+ */
+export function policyInputsFor(detail: ExceptionDetail): Result<PolicyInputs | null, Rejected> {
+  const { exception, payment, recommendation } = detail;
+  if (!isPaymentExceptionKind(exception.kind) || exception.status !== "open") return ok(null);
+  if (!payment) {
+    return err(`the bank line ${exception.payment_id ?? "(none)"} for this exception is no longer on the ledger.`);
+  }
+  const amountPaise = payment.amount_paise;
+  const confidence = recommendation?.ok ? recommendation.value.confidence : undefined;
+  const fingerprint = policyInputFingerprint({ exception, amountPaise, confidence }, POLICY_CONFIG_VERSION);
+  return ok({ amountPaise, confidence, fingerprint });
+}
+
+/**
+ * Triggers Stage 2 (Policy) on demand, from a detail-page view only — never
+ * from `loader.ts`'s global `recompute()` (EXE130: eager evaluation during
+ * `recompute()` wrote a PolicyDecision/audit row for the seeded
+ * `RV-PAY-P-012` exception on every `ensureSeeded()`, breaking pre-existing
+ * `allocatePayment.test.ts`/`startTour.test.ts` assertions that assume a
+ * clean post-seed audit log; this is a wiring choice, not a schema limit).
+ * Idempotent per input fingerprint (the domain call writes nothing when the
+ * latest decision already matches). `ok(null)` when Policy doesn't apply;
+ * `err` for a missing bank line, a rejected evaluation or a thrown write —
+ * the page shows that as an error state instead of "Not yet evaluated." (m2).
+ */
+export async function ensurePolicyEvaluated(
+  db: VerilaneDb,
+  detail: ExceptionDetail,
+): Promise<Result<PolicyDecisionRow | null, Rejected>> {
+  const inputs = policyInputsFor(detail);
+  if (!inputs.ok) return inputs;
+  if (inputs.value === null) return ok(null);
+  const { recommendation } = detail;
+  try {
+    return await evaluatePolicyForException(db, detail.exception, inputs.value.amountPaise, inputs.value.confidence, {
+      recommendation: recommendation?.ok ? recommendation.value : undefined,
+    });
+  } catch (e) {
+    return err(e instanceof Error ? e.message : String(e));
+  }
 }

@@ -7,7 +7,7 @@
  */
 import { paise } from "./money";
 import { outstandingOf } from "./priority";
-import type { Extraction, Invoice, Match, Payment, ReviewItem } from "./schema";
+import type { Extraction, Invoice, Match, Payment, Exception } from "./schema";
 
 export interface ReviewLedger {
   invoices: Invoice[];
@@ -35,7 +35,7 @@ function base(x: Extraction, review_id: string) {
   };
 }
 
-function uncertain(m: Match, x: Extraction): ReviewItem {
+function uncertain(m: Match, x: Extraction): Exception {
   const recommendation =
     m.outcome === "unresolved"
       ? "Identify the sender before linking this email to any invoice"
@@ -50,7 +50,7 @@ function uncertain(m: Match, x: Extraction): ReviewItem {
   };
 }
 
-export function reviewItemsFor(m: Match, x: Extraction, ledger: ReviewLedger): ReviewItem[] {
+export function exceptionsFor(m: Match, x: Extraction, ledger: ReviewLedger): Exception[] {
   if (m.outcome !== "matched" || !m.invoice_id) return [uncertain(m, x)];
   if (x.status !== "valid") return [];
 
@@ -118,4 +118,55 @@ export function reviewItemsFor(m: Match, x: Extraction, ledger: ReviewLedger): R
     default:
       return [];
   }
+}
+
+const paymentEvidence = (p: Payment) => [
+  `${p.payment_id}:payments.csv:amount_paise`,
+  `${p.payment_id}:payments.csv:invoice_id`,
+];
+
+/**
+ * Unallocated-payment exceptions (TKT-75.02, EXE124). Pure and deterministic:
+ * one per unapplied payment, id `RV-PAY-<payment_id>`. Candidates are the open
+ * invoices (not paid / written off) whose outstanding equals the payment, in
+ * ledger order. Exactly one candidate is named as `invoice_id`; the Analyst
+ * still confirms it before `allocate_payment` runs.
+ */
+export function paymentExceptionsFor(ledger: ReviewLedger): Exception[] {
+  return ledger.payments
+    .filter((p) => p.invoice_id === null)
+    .map((p) => {
+      const candidates = ledger.invoices
+        .filter((inv) => inv.status !== "paid" && inv.status !== "written_off")
+        .filter((inv) => {
+          const out = outstandingOf(inv, ledger);
+          return out > 0 && out === p.amount_paise;
+        })
+        .map((inv) => inv.invoice_id);
+      const only = candidates.length === 1 ? candidates[0] : undefined;
+      return {
+        review_id: `RV-PAY-${p.payment_id}`,
+        kind: "unallocated_payment" as const,
+        payment_id: p.payment_id,
+        ...(only !== undefined && { invoice_id: only }),
+        candidate_invoice_ids: candidates,
+        linked_review_ids: [],
+        recommendation:
+          only !== undefined
+            ? `Allocate this payment to ${only} after checking the bank line`
+            : candidates.length === 0
+              ? "Find the invoice this payment settles before allocating it"
+              : "Choose which of the matching invoices this payment settles",
+        evidence_ids: paymentEvidence(p),
+        validation_status: only !== undefined ? "verified" : candidates.length === 0 ? "missing" : "conflict",
+        escalation_reason:
+          only !== undefined
+            ? "Bank line has no invoice; its amount matches exactly one open invoice"
+            : candidates.length === 0
+              ? "Bank line has no invoice and matches no open invoice"
+              : "Bank line has no invoice; its amount matches several open invoices",
+        requires_role: "analyst" as const,
+        status: "open" as const,
+      };
+    });
 }

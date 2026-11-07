@@ -1,8 +1,8 @@
 # TASK-75 — Milestones (Verilane v2 · ExceptionOS scope change)
 
 > Stage 4 · Problem Breakdown · Campfire TASK-75 · 2026-11-05 · **APPROVED 2026-11-05** (9-ticket vertical-slice breakdown, user sign-off)
-> Inputs (all approved): [`Discovery-PRD-TASK-75.md`](Discovery-PRD-TASK-75.md) (F12–F18, FS14–FS22, §8.1 NSM + guardrails, §8.2 walk, §8.3 targets), [`Solution-PRD-TASK-75.md`](Solution-PRD-TASK-75.md) (§2.1–2.9, R1–R11, §5 docs, §6 DoD 1–7, §7 matrix, §8 NFRs, §9 risks, Appendix A S25–S33), [`Design-TASK-75.md`](Design-TASK-75.md) (frozen 2026-11-05, §22; mockup `.design/exploration/task-75/mockup.html`). Tickets: [`tickets-TASK-75.md`](tickets-TASK-75.md).
-> Scope: ticket-scoped. Root `milestones.md`, `tickets.md` are not touched. `decisions.md` S25–S33 are appended only on the TASK-75 branch (TKT-75.01).
+> Inputs (all approved): [`Discovery-PRD-TASK-75.md`](Discovery-PRD-TASK-75.md) (F12–F18, FS14–FS22, §8.1 NSM + guardrails, §8.2 walk, §8.3 targets), [`Solution-PRD-TASK-75.md`](Solution-PRD-TASK-75.md) (§2.1–2.9, R1–R11, §5 docs, §6 DoD 1–7, §7 matrix, §8 NFRs, §9 risks, Appendix A S38–S46), [`Design-TASK-75.md`](Design-TASK-75.md) (frozen 2026-11-05, §22; mockup `.design/exploration/task-75/mockup.html`). Tickets: [`tickets-TASK-75.md`](tickets-TASK-75.md).
+> Scope: ticket-scoped. Root `milestones.md`, `tickets.md` are not touched. `decisions.md` S38–S46 are appended only on the TASK-75 branch (TKT-75.01).
 > IDs: provisional `M-75.1`…`M-75.3`, `TKT-75.01`…`TKT-75.09`, `TC-75.xx`. Campfire IDs are canonical: parent TASK-79, TKT-75.0N = TASK-79.N (mapping in the tickets doc). Stage 5 allocates real `TC-###` numbers.
 
 ## Stage 4 decisions recorded at sign-off
@@ -16,7 +16,7 @@
 
 ## Entry gates
 
-- **G0 — TASK-45 and TASK-46 Done in Campfire** (Solution-PRD §2.8, §6 DoD 6, S33). No TASK-75 branch is opened before both show Done. At sign-off (2026-11-05) open: 45.5, 45.6, 45.8, 45.10, 46.4, 46.7, 46.8. Planning (Stage 5) may proceed; execution (Stage 6) may not.
+- **G0 — TASK-45 and TASK-46 Done in Campfire** (Solution-PRD §2.8, §6 DoD 6, S46). No TASK-75 branch is opened before both show Done. At sign-off (2026-11-05) open: 45.5, 45.6, 45.8, 45.10, 46.4, 46.7, 46.8. Planning (Stage 5) may proceed; execution (Stage 6) may not.
 - **A1 — Design/Discovery amendment for auto-execute (blocks TKT-75.04). APPROVED by the user 2026-11-05 ("A1 Amendment approved").** Content:
   1. Design §4 Stage 3 copy: `auto_permitted` → "Executed by Execute agent · {time} · policy v{n}" (not "Awaiting analyst approval").
   2. Design §11 action bar matrix: `auto_permitted` → resolved, button disabled "Already resolved"; `needs_analyst` → Analyst "Submit for approval" enabled; `needs_manager` → disabled for Analyst ("Manager approval required"), enabled for Manager; `blocked` → disabled with the policy reason.
@@ -31,7 +31,7 @@ G0 (TASK-45/46 Done)
    │
    ▼
 ┌──────────── M-75.1 Foundation + tracer ─────────────┐
-│ TKT-75.01 branch + S25–S33 + rename + nullable      │
+│ TKT-75.01 branch + S38–S46 + rename + nullable      │
 │     invoice_id + Dexie v2 + A1 draft                │
 │        │                                            │
 │        ▼                                            │
@@ -88,7 +88,7 @@ If the tracer cannot do this without forking the queue, loader or command path, 
 ## M-75.1 · Foundation and tracer bullet
 - **Objective:** a green branch with the renamed, widened schema, then one complete unallocated-payment path through every layer.
 - **Scope:** TKT-75.01, TKT-75.02.
-- **Deliverables:** `task/75-exceptionos` branch; S25–S33 in `decisions.md`; A1 amendment draft; Dexie v2; `/exceptions`, `/exceptions/[id]` (unallocated payment only); allocate command; sidebar item + badge; Data-Model.md §2/§4/§6/§7 updates.
+- **Deliverables:** `task/75-exceptionos` branch; S38–S46 in `decisions.md`; A1 amendment draft; Dexie v2; `/exceptions`, `/exceptions/[id]` (unallocated payment only); allocate command; sidebar item + badge; Data-Model.md §2/§4/§6/§7 updates.
 - **Dependencies:** G0.
 - **Entry:** G0 met; `test:all` baseline on the base commit recorded in HANDOFF.
 - **Exit:** tracer go/no-go passes; `test:all` no worse than baseline; v1 e2e unchanged.
@@ -105,7 +105,7 @@ If the tracer cannot do this without forking the queue, loader or command path, 
 - **Exit:** `pnpm eval` green incl. policy-conflict-executed = 0, allocation accuracy 100% unambiguous / 100% ambiguous escalated, short-payment detection 100%; exhaustive policy-gate tests; every new write path has a one-transaction + audit unit test.
 - **DoD:** common DoD.
 - **Sequence / priority / status:** 2nd · High · Not started.
-- **Risks:** three-agent surface (S27) — mitigated by Execute writing only via `commands.ts`; A1 approval latency.
+- **Risks:** three-agent surface (S40) — mitigated by Execute writing only via `commands.ts`; A1 approval latency.
 
 ## M-75.3 · NSM and release
 - **Objective:** the NSM and guardrails computed live on Home, then release evidence for every new surface and the §8.2 walk.

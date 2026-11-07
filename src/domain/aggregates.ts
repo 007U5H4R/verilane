@@ -6,7 +6,7 @@
  * `usePayments()` data, never the other way round.
  */
 import { addPaise, ZERO_PAISE, type Paise } from "./money";
-import { outstandingOf, type RankItem } from "./priority";
+import { isUnapplied, outstandingOf, type RankItem } from "./priority";
 import type { Payment, Priority } from "./schema";
 
 export interface HomeAggregateInput {
@@ -117,4 +117,15 @@ export function priorityMix(input: HomeAggregateInput): PriorityMixCount[] {
     }
   }
   return PRIORITY_MIX_BANDS.map((band) => ({ band, count: counts.get(band) ?? 0 }));
+}
+
+/** Payments with no invoice (`invoice_id: null`, TASK-79.1, TC-003). */
+export function unappliedPayments(payments: readonly Payment[]): Payment[] {
+  return payments.filter(isUnapplied);
+}
+
+/** "Unapplied cash": Σ payments not applied to any invoice. Counted here so
+ * a null-invoice payment is never silently dropped from totals (TC-003). */
+export function unappliedCashPaise(payments: readonly Payment[]): Paise {
+  return unappliedPayments(payments).reduce((sum, p) => addPaise(sum, p.amount_paise), ZERO_PAISE);
 }

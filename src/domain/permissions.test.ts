@@ -47,6 +47,7 @@ const BASELINE = {
   action_review: { subject: review(), analyst: true, manager: true },
   reconcile_flag: { subject: review({ review_kind: "reconciliation", requires_role: "manager" }), analyst: true, manager: true },
   reconcile_decide: { subject: review({ review_kind: "reconciliation" }), analyst: false, manager: true },
+  allocate_payment: { subject: review({ review_kind: "unallocated_payment" }), analyst: true, manager: true },
   import_csv: { subject: sys, analyst: true, manager: true },
   reset_demo: { subject: sys, analyst: true, manager: true },
   switch_role: { subject: sys, analyst: true, manager: true },
@@ -116,6 +117,12 @@ const CONDITIONS: Array<{
     name: "verify or reject a payment claim",
     action: "reconcile_decide",
     subject: review({ review_kind: "reconciliation" }),
+    analyst: false,
+  },
+  {
+    name: "allocate a manager-only unallocated payment",
+    action: "allocate_payment",
+    subject: review({ review_kind: "unallocated_payment", requires_role: "manager" }),
     analyst: false,
   },
 ];
