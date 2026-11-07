@@ -47,7 +47,7 @@ export interface NsmInput {
     candidate_invoice_ids?: readonly string[];
     [key: string]: unknown;
   }[];
-  invoices: readonly { invoice_id: string; status: string }[];
+  invoices: readonly { invoice_id: string; status: string; amount_paise: number }[];
   disputes: readonly { invoice_id?: string; status: string }[];
   policyDecisions: readonly { decision_id: string; exception_id: string; verdict?: string }[];
 }
@@ -278,11 +278,20 @@ export function computeNsm(input: NsmInput): NsmResult {
   };
 }
 
-/** Invoices a reminder must not go to (Discovery §8.1): disputed, paid, or open unapplied cash could settle them. */
+/**
+ * Invoices a reminder must not go to (Discovery §8.1): disputed, paid, or open
+ * unapplied cash could settle them. "Paid" is the source status or a derived
+ * outstanding <= 0, the same closed test as priority.ts G1 (`outstandingOf`:
+ * amount minus the payments applied to the invoice; unapplied cash never matches).
+ */
 function inappropriateInvoices(input: NsmInput): Set<string> {
   const out = new Set<string>();
+  const applied = new Map<string, number>();
+  for (const p of input.payments) {
+    if (p.invoice_id !== null) applied.set(p.invoice_id, (applied.get(p.invoice_id) ?? 0) + p.amount_paise);
+  }
   for (const inv of input.invoices) {
-    if (inv.status === "paid") out.add(inv.invoice_id);
+    if (inv.status === "paid" || inv.amount_paise - (applied.get(inv.invoice_id) ?? 0) <= 0) out.add(inv.invoice_id);
   }
   for (const d of input.disputes) {
     if (d.invoice_id && OPEN_DISPUTE.has(d.status)) out.add(d.invoice_id);

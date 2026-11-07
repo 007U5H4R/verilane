@@ -61,9 +61,9 @@ function input(audit: NsmAuditEvent[], over: Partial<NsmInput> = {}): NsmInput {
       { review_id: "EXC-2", kind: "unallocated_payment", status: "actioned", payment_id: "PAY-2" },
     ],
     invoices: [
-      { invoice_id: "INV-1", status: "open" },
-      { invoice_id: "INV-2", status: "open" },
-      { invoice_id: "INV-9", status: "open" },
+      { invoice_id: "INV-1", status: "open", amount_paise: 90_000_00 },
+      { invoice_id: "INV-2", status: "open", amount_paise: 90_000_00 },
+      { invoice_id: "INV-9", status: "open", amount_paise: 90_000_00 },
     ],
     disputes: [],
     policyDecisions: [],
@@ -267,11 +267,11 @@ describe("computeNsm — TC-75.42 guardrails from the same session", () => {
     const g = computeNsm(
       input([reset(), send("INV-1"), send("INV-2"), send("INV-3"), send("INV-4", "autopilot_send"), send("INV-9")], {
         invoices: [
-          { invoice_id: "INV-1", status: "open" },
-          { invoice_id: "INV-2", status: "paid" },
-          { invoice_id: "INV-3", status: "open" },
-          { invoice_id: "INV-4", status: "partially_paid" },
-          { invoice_id: "INV-9", status: "open" },
+          { invoice_id: "INV-1", status: "open", amount_paise: 90_000_00 },
+          { invoice_id: "INV-2", status: "paid", amount_paise: 90_000_00 },
+          { invoice_id: "INV-3", status: "open", amount_paise: 90_000_00 },
+          { invoice_id: "INV-4", status: "partially_paid", amount_paise: 90_000_00 },
+          { invoice_id: "INV-9", status: "open", amount_paise: 90_000_00 },
         ],
         disputes: [
           { invoice_id: "INV-3", status: "under_review" },
@@ -285,6 +285,21 @@ describe("computeNsm — TC-75.42 guardrails from the same session", () => {
     // INV-2 paid, INV-3 and INV-4 open disputes, INV-9 unapplied-cash candidate; INV-1's dispute is closed.
     expect(g.inappropriateReminders).toBe(4);
     expect(g.inappropriateReminderRate).toBeCloseTo(4 / 5);
+  });
+
+  it("a reminder to an invoice whose derived outstanding is <= 0 is inappropriate even if its source status is open (as priority.ts G1)", () => {
+    const send = (invoice: string) => ev({ action: "approve_draft", subject: `draft:D-${invoice}`, invoice_id: invoice });
+    const g = computeNsm(
+      input([reset(), send("INV-1"), send("INV-2"), send("INV-3")], {
+        invoices: [
+          { invoice_id: "INV-1", status: "open", amount_paise: 50_000_00 }, // settled exactly by PAY-1
+          { invoice_id: "INV-2", status: "open", amount_paise: 10_000_00 }, // overpaid by PAY-2
+          { invoice_id: "INV-3", status: "open", amount_paise: 10_000_00 }, // nothing applied
+        ],
+      }),
+    ).guardrails;
+    expect(g.reminderSends).toBe(3);
+    expect(g.inappropriateReminders).toBe(2);
   });
 
   it("actions executed without approval counts closings and sends with neither a human nor an auto_permitted decision", () => {
