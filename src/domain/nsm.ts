@@ -185,6 +185,10 @@ export function computeNsm(input: NsmInput): NsmResult {
 
     if (SEND_ACTIONS.has(e.action)) {
       reminderSends++;
+      // Judged against CURRENT state (today's invoices, disputes, exceptions),
+      // not the state when the reminder was sent: a send that was fine then can
+      // read as inappropriate now, and the reverse. A point-in-time check needs
+      // a snapshot on the send event (EXE171 limitation, EXE172 follow-up).
       if (typeof e.invoice_id === "string" && inappropriate.has(e.invoice_id)) inappropriateReminders++;
       if (!isApproved(e, verdictOf)) actionsWithoutApproval++;
       continue;
@@ -280,7 +284,8 @@ export function computeNsm(input: NsmInput): NsmResult {
 
 /**
  * Invoices a reminder must not go to (Discovery §8.1): disputed, paid, or open
- * unapplied cash could settle them. "Paid" is the source status or a derived
+ * unapplied cash could settle them. Built from current rows only, so it says
+ * what is inappropriate now, not at send time (see the reminder loop). "Paid" is the source status or a derived
  * outstanding <= 0, the same closed test as priority.ts G1 (`outstandingOf`:
  * amount minus the payments applied to the invoice; unapplied cash never matches).
  */
