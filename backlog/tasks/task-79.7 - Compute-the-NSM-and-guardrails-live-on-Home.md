@@ -1,9 +1,10 @@
 ---
 id: TASK-79.7
 title: Compute the NSM and guardrails live on Home
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-05 04:43'
+updated_date: '2026-11-07 01:09'
 labels:
   - P1
   - M-75.3
