@@ -150,3 +150,78 @@ describe("recommendForException — determinism", () => {
     expect(a).toEqual(b);
   });
 });
+
+// TASK-79.8 fix (TC-75.37/TC-75.38 at unit level; see decisions.md EXE161).
+// Recommend must never upgrade a cited-but-unknown reference to a confident
+// pick, and an overpayment from a named payer proposes only the matched portion.
+describe("recommendForException — FS16 remittance reference (TASK-79.8)", () => {
+  const cited = (ref: string): Payment => ({ ...pay("P-012", null, 2_500_000), remittance_reference: ref });
+
+  it("a reference that names no candidate: low confidence, cited verbatim, never matched by similarity", () => {
+    const invoices = [invoice("INV-037", 2_500_000)]; // invoice_number INV-1037
+    const result = recommendForException(exception({ candidate_invoice_ids: ["INV-037"] }), [cited("INV-1O37")], invoices, customer);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.confidence).toBe("low");
+    expect(result.value.facts).toContainEqual({
+      claimId: "RV-PAY-P-012:remittance_reference",
+      kind: "remittance_reference",
+      value: "INV-1O37",
+      evidenceId: "P-012:payments.csv:remittance_reference",
+    });
+    expect(result.value.recommendation_text).toBe(
+      'Remittance cites "INV-1O37", which matches no invoice number; it is not matched by similarity. Requires review.',
+    );
+  });
+
+  it("a reference equal to the single candidate's invoice_number keeps high confidence", () => {
+    const invoices = [invoice("INV-037", 2_500_000)];
+    const result = recommendForException(exception({ candidate_invoice_ids: ["INV-037"] }), [cited("INV-1037")], invoices, customer);
+    expect(result.ok && result.value.confidence).toBe("high");
+  });
+
+  it("zero candidates with a reference: rejected, and the reason quotes the reference verbatim", () => {
+    const result = recommendForException(exception({ candidate_invoice_ids: [] }), [cited("INV-9999")], [], customer);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.reason).toBe(
+      'Cannot recommend: no open invoice matches this payment\'s amount, and the cited reference "INV-9999" matches no invoice number.',
+    );
+  });
+});
+
+describe("recommendForException — FS15 overpayment from a named payer (TASK-79.8)", () => {
+  const payer = (amount: number): Payment => ({ ...pay("P-012", null, amount), payer_customer_id: "C-006" });
+  const open = [invoice("INV-001", 1_000_000), invoice("INV-002", 1_500_000)];
+
+  it("pays more than the payer owes: proposes the open balance, holds the excess unapplied, low confidence", () => {
+    const result = recommendForException(exception({ candidate_invoice_ids: [] }), [payer(3_000_000)], open, undefined);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.confidence).toBe("low");
+    expect(result.value.candidate_invoice_ids).toEqual(["INV-001", "INV-002"]);
+    expect(result.value.proposed_allocation_paise).toBe(2_500_000);
+    expect(result.value.unapplied_excess_paise).toBe(500_000);
+    expect(result.value.recommendation_text).toBe(
+      "₹30,000.00 exceeds C-006's open balance of ₹25,000.00: propose allocating ₹25,000.00 across INV-1001, INV-1002 and holding ₹5,000.00 as unapplied cash. Requires review.",
+    );
+  });
+
+  it("a named payer whose open balance covers the payment is not an overpayment: still cannot recommend", () => {
+    const result = recommendForException(exception({ candidate_invoice_ids: [] }), [payer(2_000_000)], open, undefined);
+    expect(result.ok).toBe(false);
+  });
+
+  it("a named payer with no open balance: cannot recommend (nothing to propose)", () => {
+    const result = recommendForException(exception({ candidate_invoice_ids: [] }), [payer(2_000_000)], [], undefined);
+    expect(result.ok).toBe(false);
+  });
+
+  it("paid, written-off and fully settled invoices are not part of the open balance", () => {
+    const paid = { ...invoice("INV-003", 9_000_000), status: "paid" as const };
+    const settled = invoice("INV-004", 700_000);
+    const payments = [payer(3_000_000), pay("P-001", "INV-004", 700_000)];
+    const result = recommendForException(exception({ candidate_invoice_ids: [] }), payments, [...open, paid, settled], undefined);
+    expect(result.ok && result.value.proposed_allocation_paise).toBe(2_500_000);
+  });
+});

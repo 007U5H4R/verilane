@@ -322,6 +322,8 @@ export const VerifiedFactKindSchema = z.enum([
   "due_date",
   "days_overdue",
   "contact",
+  // TASK-79.8 (EXE162): the reference a bank line cites, kept verbatim.
+  "remittance_reference",
 ]);
 export type VerifiedFactKind = z.infer<typeof VerifiedFactKindSchema>;
 
