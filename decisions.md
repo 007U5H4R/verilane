@@ -1340,3 +1340,8 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 ## EXE184 · Raw `execute()` stays ungated; TC-75.13's P-012 e2e now expects auto-execution (TASK-79.4) — accepted
 - `execute()` in tx.ts is unchanged (additive-only constraint); the detail page now submits through `submitAllocationGated()`. Any other caller of `execute({type:"allocate_payment"})` bypasses the verdict gate — a known limit to close when the allocate call sites are consolidated.
 - Seeded P-012 is `auto_permitted`, so opening its detail page now allocates it via Execute. The first TC-75.13 e2e no longer clicks submit: it asserts the Stage 3 "Executed by Execute agent · … · policy v1" copy, the single `allocate_payment` event labelled "Execute Agent" with `config_version: "policy-v1"`, the persisted INV-F allocation, and the disabled "Already resolved" bar.
+
+## EXE185 · An open item's "Pending Manager" badge comes from the persisted policy verdict (TASK-79.4, review m3) — accepted
+- `exceptionStatusLabel(x, verdict?)`: Resolved / Dismissed first. For an open item with a verdict, `needs_manager` reads "Pending Manager" and any other verdict reads "Open". With no verdict yet (Policy has not run) it falls back to v1's `requires_role`. The header and Stage 3 now agree on a G3/G4 `needs_manager` item whose `requires_role` is unset.
+- Header: the verdict comes from the page's policy gate and is ignored while the decision is stale. Queue: `useOpenExceptionRows` reads `policyDecisions` and keeps the latest per exception, using `byEvaluation` (now exported from policy.ts) as the order.
+- Testids and the v1 label strings are unchanged.

@@ -157,7 +157,7 @@ export function ExceptionDetailContent({
         <p className="flex flex-wrap items-center gap-2 font-mono text-[13px] text-text-muted">
           <span className="break-all">{x.review_id}</span>
           <Badge variant="outline" data-testid="exception-status">
-            {exceptionStatusLabel(x)}
+            {exceptionStatusLabel(x, policyGate && !policyGate.stale ? policyGate.decision?.verdict : undefined)}
           </Badge>
         </p>
       </header>

@@ -15,6 +15,7 @@ import { approvalState } from "@/domain/draft";
 import { unappliedCashPaise, unappliedPayments } from "@/domain/aggregates";
 import { buildExceptionRows, type ExceptionRow as ExceptionListRow } from "@/domain/exceptions/list";
 import type { Paise } from "@/domain/money";
+import { byEvaluation } from "@/domain/policy";
 import { outstandingOf, rank, type RankItem } from "@/domain/priority";
 import {
   POLICY_CONFIG_VERSION,
@@ -442,13 +443,17 @@ export function useExceptionCount(): number | undefined {
 export function useOpenExceptionRows(): ExceptionListRow[] | undefined {
   const db = useDb();
   return useLiveQuery(async () => {
-    const [exceptions, invoices, priorities, payments, customers] = await Promise.all([
+    const [exceptions, invoices, priorities, payments, customers, decisions] = await Promise.all([
       db.exceptions.where("status").equals("open").toArray(),
       db.invoices.toArray(),
       db.priorities.toArray(),
       db.payments.toArray(),
       db.customers.toArray(),
+      db.policyDecisions.toArray(),
     ]);
+    // Latest decision per exception drives the badge (review m3, EXE185).
+    const verdicts = new Map<string, string>();
+    for (const d of [...decisions].sort(byEvaluation)) if (d.verdict) verdicts.set(d.exception_id, d.verdict);
     const priorityByInvoice = new Map(priorities.map((p) => [p.invoice_id, p]));
     const items: RankItem[] = [];
     for (const invoice of invoices) {
@@ -461,6 +466,7 @@ export function useOpenExceptionRows(): ExceptionListRow[] | undefined {
       items,
       customers: new Map(customers.map((c) => [c.customer_id, c])),
       payments,
+      verdicts,
     });
   }, [db]);
 }
