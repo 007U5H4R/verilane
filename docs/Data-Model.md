@@ -87,7 +87,7 @@ item_id, kind (`draft` · `uncertain_match` · `dispute` · `missing_info` · `r
 
 **Reversal** (`reverse_allocation`, Manager only, EXE140–EXE142): the inverse of `allocate_payment`, in one rw transaction. The payment's `invoice_id` goes back to null; the derived tables are recomputed, so the invoice's outstanding and status return (invoice rows are never written). The exception reopens via `reopen`, with `reopen_reason: "reversed"` and `reversed: true`, and its `invoice_id` is cleared so the recompute re-derives it from the candidates. One `reverse_allocation` audit event records `reverses_event_id`, the `event_id` of the `allocate_payment` event it undoes. An Analyst's attempt is refused and audited as one `permission_denied` event (FS21), written in its own transaction after the refused one rolls back.
 
-**Reversed marker:** `reversed: true` is sticky. A later re-allocation does not clear it, and neither does `reopen_reason`. The North Star Metric (TKT-75.07) reads it as "not correctly resolved".
+**Reversed marker:** `reversed: true` is sticky. A later re-allocation does not clear it, and neither does `reopen_reason`. So `reversed: true` alone does **not** mean "not correctly resolved": an item that is reversed and then correctly re-allocated keeps it. The North Star Metric (TKT-75.07) pairs audit events instead (EXE140): it credits an `allocate_payment` event unless a `reverse_allocation` event names it in `after.reverses_event_id`.
 
 ### AuditEvent (append-only)
 event_id (monotonic), at, actor_role, actor_label, action, subject ref, summary (finance-manager-readable), before?, after?, evidence_ids[], mode?. No update or delete API exists; Reset clears the whole database and writes a `demo_reset` event as the new first entry.
