@@ -1,9 +1,10 @@
 ---
 id: TASK-79.3
 title: Add Recommend and Policy agents with an append-only PolicyDecision
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-05 04:43'
+updated_date: '2026-11-07 04:44'
 labels:
   - P1
   - M-75.2
