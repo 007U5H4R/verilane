@@ -115,6 +115,19 @@ describe("toCsv / parseImport — TC-059 round-trip", () => {
 
   // M2 / EXE123: unapplied cash (`invoice_id: null`) exports as a blank cell
   // and re-imports as null — never dropped, never "".
+  it("round-trips an unapplied payment (null invoice_id) symmetrically", () => {
+    const rows = [
+      { payment_id: "P-900", invoice_id: "INV-001", paid_on: "2026-10-01", amount_paise: 100 },
+      { payment_id: "P-901", invoice_id: null, paid_on: "2026-10-02", amount_paise: 2_500_000 },
+    ];
+    const csv = toCsv("payments", rows);
+    expect(csv.split(/\r?\n/)[2]).toBe("P-901,,2026-10-02,2500000");
+    const back = parseImport("payments", csv);
+    if (!back.ok) throw new Error(JSON.stringify(back.error));
+    expect(back.value.rows).toEqual(rows);
+    expect(back.value.dataIssues).toEqual([]);
+  });
+
   it("round-trips a bank line's optional payer and remittance reference (TKT-75.08, EXE160)", () => {
     const rows = [
       { payment_id: "P-900", invoice_id: null, paid_on: "2026-10-01", amount_paise: 100, payer_customer_id: "C-004" },
@@ -127,17 +140,9 @@ describe("toCsv / parseImport — TC-059 round-trip", () => {
     expect(back.value.rows).toEqual(rows);
   });
 
-  it("round-trips an unapplied payment (null invoice_id) symmetrically", () => {
-    const rows = [
-      { payment_id: "P-900", invoice_id: "INV-001", paid_on: "2026-10-01", amount_paise: 100 },
-      { payment_id: "P-901", invoice_id: null, paid_on: "2026-10-02", amount_paise: 2_500_000 },
-    ];
-    const csv = toCsv("payments", rows);
-    expect(csv.split(/\r?\n/)[2]).toBe("P-901,,2026-10-02,2500000");
-    const back = parseImport("payments", csv);
-    if (!back.ok) throw new Error(JSON.stringify(back.error));
-    expect(back.value.rows).toEqual(rows);
-    expect(back.value.dataIssues).toEqual([]);
+  it("a payments export with no payer or remittance reference keeps the 4-column header (TKT-75.08 review m9)", () => {
+    const csv = toCsv("payments", [{ payment_id: "P-900", invoice_id: null, paid_on: "2026-10-01", amount_paise: 100 }]);
+    expect(csv.split(/\r?\n/)[0]).toBe("payment_id,invoice_id,paid_on,amount_paise");
   });
 
   it("exports workflow tables with a header row and escaped cells", () => {
