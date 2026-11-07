@@ -1276,12 +1276,25 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
   - the payment must exist and be applied to the item's `invoice_id`;
   - there must be an `allocate_payment` audit event on the subject.
 - Anything else is refused before any write.
+  - The latest `allocate_payment` event must also name that same invoice (review m5).
+- **NSM must not read the marker on its own (review m1).**
+  - `reversed` is per item and sticky. An item that is allocated, reversed, then correctly re-allocated stays `reversed: true` forever.
+  - So NSM ("value closed and not later reversed") must pair audit events: credit an `allocate_payment` event unless a `reverse_allocation` event names it in `after.reverses_event_id`.
+  - On an actioned item, `reopen_reason` is stale by design.
 
 ## EXE141 · An Analyst's reversal attempt is refused and audited, in its own transaction (TASK-79.6, FS21) — accepted
 - `run()` throws `PermissionDenied` before any write, and the command's transaction rolls back. A refusal written inside that transaction would roll back with it.
 - So `execute()` catches `PermissionDenied`. For actions in `AUDITED_REFUSALS` (only `reverse_allocation`), it opens a second rw transaction and writes one `permission_denied` event via `recordRefusal()`. That event carries the subject, the role, the subject's `invoice_id`, and `after: {refused_action, reason}`. `execute()` then rethrows, so the caller still sees the denial.
-- v1 denials are unchanged: still refused, still not audited. Widening the set is a one-line change, but it would change v1 audit counts, so it is left for a deliberate decision.
+- v1 denials are unchanged: still refused, still not audited. Widening the set would change v1 audit counts, so it is left for a deliberate decision (see the known limit below).
 - `permission_denied` is a new `AuditAction` with its own `ACTION_META` row: category `review`, so it is not counted as an approval.
+- **A failed refusal audit never replaces the denial (review M1).**
+  - The refusal transaction has its own try/catch.
+  - On failure, it `console.error`s the audit error and attaches it as `cause` on the `PermissionDenied`.
+  - It then always rethrows the original `PermissionDenied`, and nothing is persisted.
+- **The refusal records the role the command ran as (review m6).** That role is read once, inside the command's transaction, and passed through. It is not read again, so a role switch from another tab in between cannot mislabel the actor.
+- **Known limit (review m7):** the `permission_denied` `ACTION_META` row hard-codes `module: "payments"`.
+  - That is correct while the set is only `reverse_allocation`.
+  - Widening `AUDITED_REFUSALS` takes two changes: add to the set, then derive the module from `after.refused_action`, or a refused draft action would show under Payments.
 
 ## EXE142 · The reversal audit names the allocation event; the exception's `invoice_id` is cleared (TASK-79.6) — accepted
 - `Tx` gains an optional `latestAudit(subject, action)`. The store implements it with the existing `subject` index on `audit`. The reversal records `reverses_event_id` (the `allocate_payment` event's `event_id`) in `after`, and the event number in the summary. This makes the link explicit, and it does not rely on audit ordering at read time.

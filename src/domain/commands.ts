@@ -866,6 +866,10 @@ async function reverseAllocation(ctx: Ctx): Promise<Effect> {
   const subject = `review:${ctx.cmd.subject.id}`;
   const allocation = await ctx.tx.latestAudit(subject, "allocate_payment");
   if (!allocation) throw new InvalidCommand(`No allocation of payment ${paymentId} is in the audit log.`);
+  const allocatedTo = (allocation.after as Row | undefined)?.invoice_id;
+  if (allocatedTo !== invoiceId) {
+    throw new InvalidCommand(`The latest allocation of payment ${paymentId} is not to ${invoiceId ?? "this invoice"}.`);
+  }
 
   await ctx.tx.put("payments", { ...payment, invoice_id: null });
   // The invoice is the allocation's, not the item's: the recompute re-derives

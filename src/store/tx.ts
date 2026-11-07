@@ -154,12 +154,15 @@ export async function execute(
     import("@/domain/commands"),
     import("./loader"),
   ]);
+  // The role the command ran as, read once inside its transaction; the
+  // refusal records this role, not a re-read one (m6).
+  let actor: Role | undefined;
   try {
     return await db.transaction(
       "rw",
       scope,
       async () => {
-        const actor = await currentRole(db);
+        actor = await currentRole(db);
         const event = await run({ ...input, actor }, dexieTx(db, recompute));
         await opts.beforeCommit?.();
         return event;
@@ -168,11 +171,18 @@ export async function execute(
   } catch (err) {
     // FS21 (EXE141): the refused command rolled back; its refusal is audited
     // in a transaction of its own, then the denial still reaches the caller.
-    if (err instanceof PermissionDenied && AUDITED_REFUSALS.has(input.type)) {
-      await db.transaction("rw", [db.invoices, db.drafts, db.disputes, db.exceptions, db.meta, db.audit], async () => {
-        const actor = await currentRole(db);
-        await recordRefusal({ ...input, actor }, err, dexieTx(db, recompute));
-      });
+    if (err instanceof PermissionDenied && AUDITED_REFUSALS.has(input.type) && actor !== undefined) {
+      const deniedAs = actor;
+      try {
+        await db.transaction("rw", [db.invoices, db.drafts, db.disputes, db.exceptions, db.meta, db.audit], () =>
+          recordRefusal({ ...input, actor: deniedAs }, err, dexieTx(db, recompute)),
+        );
+      } catch (auditErr) {
+        // A failed refusal audit must not replace the denial (M1): log it,
+        // keep it on the error, and still throw PermissionDenied.
+        console.error(`Could not record permission_denied for ${input.type}:`, auditErr);
+        err.cause = auditErr;
+      }
     }
     throw err;
   }
