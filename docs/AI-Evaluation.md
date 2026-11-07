@@ -13,6 +13,7 @@ The eval measures the **guardrailed pipeline**: provider → schema validation �
 | `eval/seed.labels.json` | 25 threads / 50 invoices (the shipped seed) | regression on the demo data | labels written by hand **from the scenario spec**, not from extractor output |
 | `eval/heldout/` | 30 extra fictional threads plus their invoices | catch overfitting of the rule-based extractor to the seed wording | written **before** extractor rules are tuned and frozen; extractor authors don't edit it to make tests pass |
 | `eval/drafts.cases.json` | ≥ 20 draft cases, including adversarial edits (FS12) | unsupported-claim detection, approval enforcement | hand-authored |
+| allocation labels (`eval/allocation.ts`, TKT-75.08) | 5 seed bank lines (P-012, FS14–FS17 = P-013…P-016) + 10 held-out inline ledgers | allocation-recommendation accuracy: an unapplied bank line is auto-picked only when exactly one invoice is safe | labels hand-written from the scenario (which invoice is right, or that none is); the held-out ledgers share no fixture with the seed |
 | fault-injection | generated per run | malformed JSON, missing fields, out-of-enum class, hallucinated amount, wrong invoice ref, refusal | `ai/faulty.ts` mutates valid outputs deterministically |
 
 **Label schema per thread:** expected customer_id or `null`, expected invoice_id or `null`, match outcome, email class, dispute type?, amounts[] in paise, invoice_refs[], commitment_date?, and `ambiguous: boolean`.
@@ -30,6 +31,10 @@ The eval measures the **guardrailed pipeline**: provider → schema validation �
 | Dispute recall | TP / (TP + FN) over threads labelled dispute or duplicate | **≥ 95%** |
 | Approval enforcement | blocked approvals / approval attempts that *should* be blocked (failing check, wrong role, unresolved dispute, payment claim, > ₹5L as Analyst) | **100%** |
 | Policy conflict executed (TKT-75.04, TC-75.25) | allocations the Execute agent wrote where the persisted PolicyDecision was not a fresh `auto_permitted` — every seeded exception × every forced verdict (and none), plus a stale-decision and a reversed-allocation trap; `eval/policy-conflict.eval.ts`, with a positive control that a fresh `auto_permitted` executes once | **0** |
+| Allocation: unambiguous correct (TKT-75.08) | bank lines labelled unambiguous whose Recommend → Policy outcome equals the label (auto-picked the labelled invoice, or a unique match over ₹5L named but sent to the Manager) / unambiguous lines | **100%** |
+| Allocation: ambiguous escalated (TKT-75.08) | ambiguous bank lines (tie, overpayment, mistyped or unknown reference, untraceable) that are **not** `auto_permitted` and get the labelled verdict / ambiguous lines | **100%** |
+
+The two allocation gates run in `eval/allocation.eval.ts` (TC-75.40), part of `pnpm eval`, and print TP/FP/TN/FN to the console, with positive = Policy `auto_permitted`. An auto-pick of the wrong invoice counts as FP. Measured on 2026-11-07: seed 1/1 and 4/4, TP 1 · FP 0 · TN 4 · FN 0; held-out 4/4 and 6/6, TP 3 · FP 0 · TN 7 · FN 0. Against the pre-TASK-79.8 Recommend, the gate is red: FS16 and the held-out mistyped reference are auto-picked (FP 1 per set), and FS15 and the held-out overpayment are `blocked` rather than proposed. They are kept out of `report.json`, so the v1 report schema is unchanged (EXE163).
 
 Also reported, not gated: TP/FP/TN/FN, precision, recall and F1 per email class and per dispute type; ambiguous-case escalation rate (should be 100%: an ambiguous email must never auto-match); fault-injection rejection rate (must be 100%, reported as a guardrail test); exact-match accuracy per extracted field; unsupported-claim rate.
 

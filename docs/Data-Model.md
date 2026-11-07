@@ -44,6 +44,8 @@
 | invoice_id | FK \| null | null = unapplied cash (received, not yet allocated to an invoice; TASK-79.1). A blank CSV cell imports as null (EXE123, TKT-75.02); `allocate_payment` sets it to the chosen invoice (EXE125) |
 | paid_on | date | |
 | amount_paise | int | partial payments allowed (FS8) |
+| payer_customer_id | FK, optional | The customer the bank names as payer, when it does (FS15). A blank cell or a missing column means not on file (EXE160, TKT-75.08) |
+| remittance_reference | string, optional | The reference the bank line cites, kept verbatim. Recommend compares it only for exact equality with an invoice number or id, never by similarity (FS16, EXE160/EXE162) |
 
 **Derived:** `outstanding_paise = amount_paise − Σ payments applied to this invoice`. This is computed and never stored as a source fact. If the CSV also supplies `outstanding_amount`, a mismatch becomes a `DataIssue` (conflict) and the invoice goes to `needs_review`. An unapplied payment (`invoice_id = null`) never reduces any invoice's outstanding; it is totalled separately as "unapplied cash" (`unappliedCashPaise()`, TC-003) so it is never silently dropped.
 
@@ -131,3 +133,14 @@ event_id (monotonic), at, actor_role, actor_label, action, subject ref, summary 
 | Reminder hold | `INV-F` | The invoice is a candidate of an open unallocated item, so its drafts are blocked (check 7). On the seed it already ranks at G3, so the G5 hold is proven by a fixture (TC-75.10, EXE126). |
 
 The seed has no remittance email for P-012, so the detail page shows "None on file — matched on amount". There are no `short_payment_pattern` rows until TKT-75.05.
+
+**Seed coverage added for TKT-75.08 (allocation edge cases, R9 third scenario).** The rows are appended after P-012, so no earlier row or PRNG draw moves. The coverage test is `scripts/seed.test.ts` (describe "TKT-75.08 allocation edge cases"). The behaviour is asserted through Recommend → Policy in `src/domain/allocation-edge.test.ts` (TC-75.36–TC-75.39).
+
+| Scenario | Seed rows | What it proves |
+|---|---|---|
+| FS14 · fits two invoices equally | `P-013`: ₹48,000, payer C-009. `INV-019` and `INV-020` both have ₹48,000 outstanding | Neither is picked. Both are candidates, confidence is low, and Policy says `needs_manager` (G3). |
+| FS15 · exceeds the customer's open balance | `P-014`: ₹3,10,000, payer C-004. C-004's open balance is ₹2,90,000 | Recommend proposes allocating ₹2,90,000 across C-004's open invoices and holding ₹20,000 as unapplied cash, at low confidence, so it goes to review (`needs_manager`, G3). |
+| FS16 · mistyped invoice reference | `P-015`: ₹88,000, reference `INV-1O37` (letter O). `INV-037` (`INV-1037`) has ₹88,000 outstanding | There is no fuzzy match. The reference is a verbatim `remittance_reference` fact, confidence is low, and Policy says `needs_manager` (G3), never `auto_permitted`. |
+| FS17 · untraceable cash | `P-016`: ₹61,500. No payer, no reference, no amount match | It stays unallocated with the reason "Bank line has no invoice and matches no open invoice". Recommend rejects it and Policy says `blocked` (G2). No invoice is touched. |
+
+Unapplied cash on the seed is now ₹5,32,500.00 across 5 bank lines (it was ₹25,000.00 across 1), and there are 27 exceptions (it was 23). Invoice, customer and thread counts and every priority are unchanged. `SEED_VERSION` is not bumped (as with P-012 in TKT-75.02), so a browser that already loaded the seed needs Settings → Reset to see P-013…P-016. The CSV export of payments still writes only the import columns, so the two optional fields are not exported.

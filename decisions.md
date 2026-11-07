@@ -1314,6 +1314,42 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
   - Working: both buttons read "Reversing…" and are disabled, and the dialog can't be dismissed.
 - **Offline.** The control stays enabled. The reversal is a local IndexedDB write with no network or sync dependency, the same as allocation, which also stays enabled. Reset and import are paused because they need the network. The shell's offline banner still shows.
 
+## EXE160 · A bank line may carry an optional payer and remittance reference (TASK-79.8) — accepted
+- `PaymentSchema` gains two optional fields. `payer_customer_id` is the customer the bank names as payer. `remittance_reference` is the reference the bank line cites, kept verbatim. `payments.csv` gains both columns.
+- A blank cell, or a CSV without the columns, ingests as "not on file". This keeps every v1 import and every existing payments CSV valid.
+- FS15 (an overpayment) needs to know whose open balance the line exceeds. FS16 (a mistyped reference) needs the cited reference on file so it can be shown verbatim and never fuzzy-matched. Nothing else reads these fields.
+- The CSV export still writes only `IMPORT_COLUMNS`, so the fields are not exported. That is a known gap and is not in scope.
+
+## EXE161 · FS14–FS17 are appended seed bank lines P-013…P-016; SEED_VERSION is not bumped (TASK-79.8) — accepted
+- The four bank lines are appended after P-012, so no earlier row or PRNG draw moves.
+  - P-013: ₹48,000, payer C-009. It ties INV-019 and INV-020.
+  - P-014: ₹3,10,000, payer C-004, whose open balance is ₹2,90,000.
+  - P-015: ₹88,000, citing "INV-1O37" with a letter O. INV-037 (INV-1037) is the amount match.
+  - P-016: ₹61,500, untraceable.
+- Invoice, customer and thread counts and every priority are unchanged. Payments go from 12 to 16, exceptions from 23 to 27, and unapplied cash from ₹25,000.00 on 1 line to ₹5,32,500.00 on 5. TC-75.13's e2e unapplied-cash assertion is updated to match.
+- `SEED_VERSION` stays put, as it did for P-012 in TKT-75.02. Bumping it would change the PWA cache key and `loader.test.ts`'s pinned version for a fixture-only change. A browser that already loaded the seed needs Settings → Reset to see the new lines.
+
+## EXE162 · Recommend never auto-picks a line whose cited reference names no candidate, and proposes only the matched portion of an overpayment (TASK-79.8, fix to TASK-79.3) — accepted, pending 79.3 reconciliation
+- **The defect, found by the fixtures:**
+  - FS16 had exactly one amount match, so 79.3's Recommend said high confidence and Policy said `auto_permitted` (G5), even though the bank line cites a reference that is no invoice number.
+  - FS15 had no amount match, so Recommend rejected it and Policy said `blocked` (G2). There was no proposal and no excess held.
+- **The smallest fix, in `recommend.ts` only:**
+  - Policy is unchanged.
+  - When `remittance_reference` is set, Recommend records it as a verbatim `remittance_reference` fact, which is a new `VerifiedFactKind`. If it does not exactly equal some candidate's `invoice_number` or `invoice_id`, confidence is forced to low, so Policy G3 says `needs_manager`. There is no similarity matching.
+  - When there are no candidates and the line names a payer whose open balance is above zero but below the amount, Recommend proposes allocating the balance across that payer's open invoices. It holds the rest as unapplied cash in `proposed_allocation_paise` and `unapplied_excess_paise`, at low confidence (G3).
+  - Every other path is byte-identical to before.
+- Policy remains pure and actor-independent. Execute (79.4) still consumes only `PolicyDecision`. A low-confidence proposal never executes.
+- **Known follow-ups, out of scope here:**
+  - The policy input fingerprint uses the exception's (empty) candidate list for FS15, not Recommend's.
+  - G3's reason text says "Ambiguous match".
+  - The detail page's FS15 candidate list and its "Remittance: None on file" copy do not reflect the new fields.
+
+## EXE163 · The allocation-recommendation accuracy gate is a separate eval file, outside report.json (TASK-79.8) — accepted
+- `eval/allocation.ts` is a pure scorer. `eval/allocation.eval.ts` is the TC-75.40 gate. It runs in `pnpm eval` with the rest of `eval/**/*.eval.ts`.
+- Each labelled bank line goes through the app's own pipeline: `paymentExceptionsFor` → Recommend → `decidePolicyVerdict`. The gate needs unambiguous correct = 100% and ambiguous escalated (never auto-picked) = 100%, with FP = 0. It prints TP/FP/TN/FN, where positive = `auto_permitted`.
+- There are two sets. The committed seed covers P-012 and FS14–FS17. A held-out set of 10 inline ledgers shares no fixture with the seed.
+- The gate is kept out of `eval/run.ts` and `report.json`, so the v1 report schema, and the 8 known reds, are untouched.
+
 ## EXE180 · Execute agent: persisted verdict only, writes through `run()`, triggered on page view; risk (a) closed by a double fingerprint check (TASK-79.4) — accepted
 - **One write path.** `runExecuteAgent()` in `commands.ts` (additive) reads the latest *persisted* `PolicyDecisionRow` through a `PolicyTx.policyFacts()` read inside the command's transaction, and only for `auto_permitted` calls `run({type:"allocate_payment"})` — the same handler, permission check and one audit event a human submit uses (R6, R11). Any in-memory verdict the caller holds (`observed`) is ignored (TC-75.21). Every other verdict returns `handed_off` with its queue (`needs_analyst`→analyst, `needs_manager`→manager, `blocked`→blocked) and the policy's reason, and writes nothing (TC-75.23).
 - **Actor.** `actor_role` stays `analyst`: Execute's authority is capped at what an Analyst may do, as Copilot's is. The audit event keeps action `allocate_payment` (so reversal and the NSM still find it) and is relabelled `actor_label: "Execute Agent"`, cites the decision id first in `evidence_ids`, and records `after.policy_decision_id` + `after.config_version`; the summary ends `· policy policy-v1 (POL-…)` (TC-75.22). Only a single-candidate match is executed.
