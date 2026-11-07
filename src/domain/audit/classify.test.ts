@@ -9,6 +9,7 @@ const EXTRA = [
   "autopilot_held",
   "recommend_generated",
   "policy_evaluated",
+  "permission_denied",
 ] as const;
 const ALL = [...ACTIONS, ...EXTRA];
 
