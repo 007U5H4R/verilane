@@ -80,7 +80,7 @@ export function recommendForException(
     return err(
       ref === undefined
         ? "Cannot recommend: no open invoice matches this payment's amount."
-        : `Cannot recommend: no open invoice matches this payment's amount, and the cited reference "${ref}" matches no invoice number.`,
+        : `Cannot recommend: no open invoice matches this payment's amount, and the cited reference "${ref}" is not matched by similarity.`,
     );
   }
 
@@ -109,7 +109,7 @@ export function recommendForException(
     ref !== undefined && !candidateInvoices.some((i) => i.invoice_number === ref || i.invoice_id === ref);
   const confidence: RecommendConfidence = candidateInvoices.length === 1 && !refUnmatched ? "high" : "low";
   const recommendation_text = refUnmatched
-    ? `Remittance cites "${ref}", which matches no invoice number; it is not matched by similarity. Requires review.`
+    ? `Remittance cites "${ref}", which names none of the candidate invoices; it is not matched by similarity. Requires review.`
     : confidence === "high"
       ? `${formatInr(payment.amount_paise)} matches ${candidateInvoices[0]!.invoice_number ?? candidateInvoices[0]!.invoice_id} exactly.`
       : "Cannot determine which invoice; requires review.";
@@ -153,7 +153,8 @@ function proposeOverpayment(
     if (i.invoice_number) add("invoice_number", i.invoice_number, `${i.invoice_id}:invoices.csv:invoice_number`);
   }
   return {
-    recommendation_text: `${formatInr(payment.amount_paise)} exceeds ${payer}'s open balance of ${formatInr(balance)}: propose allocating ${formatInr(balance)} across ${numbers.join(", ")} and holding ${formatInr(excess)} as unapplied cash. Requires review.`,
+    // The payer id is not a verified fact, so the text says "the payer" (review m1).
+    recommendation_text: `${formatInr(payment.amount_paise)} exceeds the payer's open balance of ${formatInr(balance)}: propose allocating ${formatInr(balance)} across ${numbers.join(", ")} and holding ${formatInr(excess)} as unapplied cash. Requires review.`,
     candidate_invoice_ids: open.map((i) => i.invoice_id),
     proposed_allocation_paise: balance,
     unapplied_excess_paise: excess,

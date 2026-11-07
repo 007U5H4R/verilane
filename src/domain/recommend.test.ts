@@ -170,8 +170,34 @@ describe("recommendForException — FS16 remittance reference (TASK-79.8)", () =
       evidenceId: "P-012:payments.csv:remittance_reference",
     });
     expect(result.value.recommendation_text).toBe(
-      'Remittance cites "INV-1O37", which matches no invoice number; it is not matched by similarity. Requires review.',
+      'Remittance cites "INV-1O37", which names none of the candidate invoices; it is not matched by similarity. Requires review.',
     );
+  });
+
+  it("a reference naming a real invoice that is not a candidate: low confidence, and the text claims only what was checked (review M3)", () => {
+    // INV-002 (INV-1002) is on the ledger but its amount does not match, so it is not a candidate.
+    const invoices = [invoice("INV-037", 2_500_000), invoice("INV-002", 1_500_000)];
+    const result = recommendForException(exception({ candidate_invoice_ids: ["INV-037"] }), [cited("INV-1002")], invoices, customer);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.confidence).toBe("low");
+    expect(result.value.recommendation_text).toBe(
+      'Remittance cites "INV-1002", which names none of the candidate invoices; it is not matched by similarity. Requires review.',
+    );
+    expect(result.value.recommendation_text).not.toMatch(/matches no invoice/);
+  });
+
+  it("zero candidates with a reference naming a real invoice of another amount: rejected without claiming it names no invoice (review M3)", () => {
+    const result = recommendForException(
+      exception({ candidate_invoice_ids: [] }),
+      [cited("INV-1002")],
+      [invoice("INV-002", 1_500_000)],
+      customer,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.reason).not.toMatch(/matches no invoice/);
+    expect(result.error.reason).toContain('"INV-1002"');
   });
 
   it("a reference equal to the single candidate's invoice_number keeps high confidence", () => {
@@ -185,7 +211,7 @@ describe("recommendForException — FS16 remittance reference (TASK-79.8)", () =
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.reason).toBe(
-      'Cannot recommend: no open invoice matches this payment\'s amount, and the cited reference "INV-9999" matches no invoice number.',
+      'Cannot recommend: no open invoice matches this payment\'s amount, and the cited reference "INV-9999" is not matched by similarity.',
     );
   });
 });
@@ -203,7 +229,7 @@ describe("recommendForException — FS15 overpayment from a named payer (TASK-79
     expect(result.value.proposed_allocation_paise).toBe(2_500_000);
     expect(result.value.unapplied_excess_paise).toBe(500_000);
     expect(result.value.recommendation_text).toBe(
-      "₹30,000.00 exceeds C-006's open balance of ₹25,000.00: propose allocating ₹25,000.00 across INV-1001, INV-1002 and holding ₹5,000.00 as unapplied cash. Requires review.",
+      "₹30,000.00 exceeds the payer's open balance of ₹25,000.00: propose allocating ₹25,000.00 across INV-1001, INV-1002 and holding ₹5,000.00 as unapplied cash. Requires review.",
     );
   });
 
