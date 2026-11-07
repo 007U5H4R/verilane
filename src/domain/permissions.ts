@@ -25,6 +25,7 @@ export const ACTIONS = [
   "reconcile_flag",
   "reconcile_decide",
   "allocate_payment",
+  "reverse_allocation",
   "import_csv",
   "reset_demo",
   "switch_role",
@@ -124,6 +125,9 @@ const ANALYST_RULES: Record<Action, Rule> = {
     s.requires_role === "manager"
       ? deny("This item was escalated to a Manager.")
       : ALLOW,
+  // TKT-75.06: undoing an applied allocation moves the ledger back; Manager only.
+  // A refused attempt is audited (FS21, EXE141).
+  reverse_allocation: () => deny("Only a Manager can reverse an allocation."),
   import_csv: () => ALLOW,
   reset_demo: () => ALLOW,
   switch_role: () => ALLOW,

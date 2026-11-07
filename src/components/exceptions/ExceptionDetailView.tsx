@@ -20,6 +20,7 @@ import { isPaymentExceptionKind } from "@/domain/schema";
 import { runExecuteAgentFor } from "@/store/executeAgent";
 import { submitAllocationGated } from "@/store/tx";
 import { ExceptionDetailContent, ExceptionDetailError, ExceptionDetailSkeleton } from "./ExceptionDetailParts";
+import { ReverseAllocationSection } from "./ReverseAllocationSection";
 
 /**
  * `/exceptions/[id]` (TKT-75.02): one exception with payment evidence,
@@ -167,7 +168,13 @@ function ExceptionBody({ id }: { id: string }) {
   const execute = useExecuteAgentTrigger(id, detail, policy);
   if (detail === undefined) return <ExceptionDetailSkeleton />;
   if (detail === null) return <NotFound />;
-  return <LoadedException detail={detail} policy={policy} execute={execute} />;
+  return (
+    <>
+      <LoadedException detail={detail} policy={policy} execute={execute} />
+      {/* TKT-75.06: its own section below the action bar, not part of it (EXE143). */}
+      <ReverseAllocationSection detail={detail} />
+    </>
+  );
 }
 
 function LoadedException({
