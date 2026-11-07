@@ -1318,7 +1318,7 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - `PaymentSchema` gains two optional fields. `payer_customer_id` is the customer the bank names as payer. `remittance_reference` is the reference the bank line cites, kept verbatim. `payments.csv` gains both columns.
 - A blank cell, or a CSV without the columns, ingests as "not on file". This keeps every v1 import and every existing payments CSV valid.
 - FS15 (an overpayment) needs to know whose open balance the line exceeds. FS16 (a mistyped reference) needs the cited reference on file so it can be shown verbatim and never fuzzy-matched. Nothing else reads these fields.
-- The CSV export still writes only `IMPORT_COLUMNS`, so the fields are not exported. That is a known gap and is not in scope.
+- `toCsv("payments")` writes the two columns after `IMPORT_COLUMNS`, but only when some row has a value. A v1 export stays byte-identical, and TC-059's round trip keeps the new fields. The header check still requires only the v1 columns.
 
 ## EXE161 · FS14–FS17 are appended seed bank lines P-013…P-016; SEED_VERSION is not bumped (TASK-79.8) — accepted
 - The four bank lines are appended after P-012, so no earlier row or PRNG draw moves.

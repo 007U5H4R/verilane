@@ -115,6 +115,18 @@ describe("toCsv / parseImport — TC-059 round-trip", () => {
 
   // M2 / EXE123: unapplied cash (`invoice_id: null`) exports as a blank cell
   // and re-imports as null — never dropped, never "".
+  it("round-trips a bank line's optional payer and remittance reference (TKT-75.08, EXE160)", () => {
+    const rows = [
+      { payment_id: "P-900", invoice_id: null, paid_on: "2026-10-01", amount_paise: 100, payer_customer_id: "C-004" },
+      { payment_id: "P-901", invoice_id: null, paid_on: "2026-10-02", amount_paise: 200, remittance_reference: "INV-1O37" },
+    ];
+    const csv = toCsv("payments", rows);
+    expect(csv.split(/\r?\n/)[0]).toBe("payment_id,invoice_id,paid_on,amount_paise,payer_customer_id,remittance_reference");
+    const back = parseImport("payments", csv);
+    if (!back.ok) throw new Error(JSON.stringify(back.error));
+    expect(back.value.rows).toEqual(rows);
+  });
+
   it("round-trips an unapplied payment (null invoice_id) symmetrically", () => {
     const rows = [
       { payment_id: "P-900", invoice_id: "INV-001", paid_on: "2026-10-01", amount_paise: 100 },
