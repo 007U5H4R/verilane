@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { ageingBuckets, kpis, priorityMix, type HomeAggregateInput } from "@/domain/aggregates";
 import { formatDate } from "@/domain/clock";
+import { computeNsm, type NsmInput } from "@/domain/nsm";
 import { attentionGroups, type DraftLike } from "@/domain/home/attention";
 import {
   DbContext,
@@ -18,10 +19,13 @@ import {
   useQueue,
   usePayments,
 } from "@/store/hooks";
+import { useOnline } from "@/lib/useOnline";
 import { HomeSkeleton } from "./HomeSkeleton";
 import { KpiStrip } from "./KpiStrip";
+import { NsmSection } from "./NsmSection";
 import { TaskFeed } from "./TaskFeed";
 import { useOpenPaymentExceptions, useOpenPaymentReviews } from "./useHomeAttention";
+import { useNsmInput } from "./useNsm";
 
 // Charts load in their own chunk: recharts alone pushed Home's First Load JS
 // past the 300 KB gzip budget (TASK-25 · TC-083). The fallback reserves the
@@ -38,10 +42,11 @@ const PriorityMixChart = dynamic(() => import("./PriorityMixChart").then((m) => 
   loading: () => <ChartFallback height="h-[240px]" />,
 });
 
-type BlockId = "kpi" | "feed" | "ageing" | "mix";
+type BlockId = "kpi" | "nsm" | "feed" | "ageing" | "mix";
 
 /**
- * Home (TASK-18.2/18.3, Design.md Home spec + §18): KPI strip, "Needs your
+ * Home (TASK-18.2/18.3, Design.md Home spec + §18): KPI strip, the North
+ * Star Metric section (TKT-75.07, Design-TASK-75 §6), "Needs your
  * attention" task feed, two charts. Four page-level states, plus each
  * block independently error-boundaried so one bad aggregate doesn't blank
  * the rest of the page: every aggregate is computed *inside* its block's
@@ -118,6 +123,7 @@ function HomeBody({ forcedBlockError }: { forcedBlockError: BlockId | null }) {
         message="Couldn’t load the KPI strip."
         render={(i) => <KpiStrip kpis={kpis(i)} openDisputesCount={openDisputes} />}
       />
+      <NsmBlock forceError={forcedBlockError === "nsm"} />
       <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[1.4fr_1fr]">
         <Block
           id="feed"
@@ -164,6 +170,36 @@ function poisoned(input: HomeAggregateInput): HomeAggregateInput {
   };
 }
 
+/**
+ * The NSM section in its own boundary (TC-75.44): it loads and fails
+ * independently of the KPI/feed/chart blocks, and `computeNsm` runs during
+ * render so a throw lands in the boundary, not in the live query.
+ */
+function NsmBlock({ forceError }: { forceError: boolean }) {
+  const nsmInput = useNsmInput();
+  const online = useOnline();
+  const [attempt, setAttempt] = useState(0);
+  const retry = () => setAttempt((n) => n + 1);
+  return (
+    <div data-testid="home-block-nsm" className="min-w-0">
+      <BlockBoundary
+        key={attempt}
+        message="Couldn’t compute the North Star Metric."
+        onRetry={retry}
+        fallback={<NsmSection result={undefined} online={online} error onRetry={retry} />}
+      >
+        <NsmContent input={nsmInput} online={online} forceError={forceError} />
+      </BlockBoundary>
+    </div>
+  );
+}
+
+function NsmContent({ input, online, forceError }: { input: NsmInput | undefined; online: boolean; forceError: boolean }) {
+  // E2E (TC-056 pattern): a forced error throws where the real computation would.
+  if (forceError) throw new Error("forced block error (E2E, TC-056)");
+  return <NsmSection result={input ? computeNsm(input) : undefined} online={online} />;
+}
+
 /** Home's attention-centric empty copy (Design.md §18) — plain, no celebration. */
 function NoAttention() {
   return <EmptyState title="Nothing needs your attention" />;
@@ -199,7 +235,7 @@ function Block({
 }
 
 class BlockBoundary extends Component<
-  { children: ReactNode; message: string; onRetry: () => void },
+  { children: ReactNode; message: string; onRetry: () => void; fallback?: ReactNode },
   { failed: boolean }
 > {
   state = { failed: false };
@@ -211,7 +247,7 @@ class BlockBoundary extends Component<
   }
   render() {
     return this.state.failed ? (
-      <ErrorState message={this.props.message} onRetry={this.props.onRetry} />
+      (this.props.fallback ?? <ErrorState message={this.props.message} onRetry={this.props.onRetry} />)
     ) : (
       this.props.children
     );
