@@ -1300,3 +1300,15 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 - `Tx` gains an optional `latestAudit(subject, action)`. The store implements it with the existing `subject` index on `audit`. The reversal records `reverses_event_id` (the `allocate_payment` event's `event_id`) in `after`, and the event number in the summary. This makes the link explicit, and it does not rely on audit ordering at read time.
 - The reopened exception's `invoice_id` is deleted, not left at the reversed invoice. With several candidates, the loader's `syncExceptions` merge keeps fields that the computed row lacks, so a stale `invoice_id` would otherwise survive. With one candidate, the recompute sets it back to that candidate, which matches the pre-allocation row.
 
+
+## EXE143 · The "Reverse allocation" control is its own Manager-only section with a confirm step, and stays enabled offline (TASK-79.6, TKT-75.06) — accepted
+- **Placement.** `ReverseAllocationSection` mounts in `ExceptionBody`, below `LoadedException`, as its own card. It is not part of the action bar (`role="group"` "Exception actions"), which 79.4 owns. The only change to `ExceptionDetailView.tsx` is the one `return` line in `ExceptionBody`.
+- **Role.** Hidden for an Analyst, per the ticket ("no dead control"). The server-side guard (EXE141) still refuses and audits a direct attempt. Visibility uses `useCan("reverse_allocation", …)`, the same rule the command checks.
+- **When it shows.** Only for an `unallocated_payment` that is `actioned`, whose payment is still applied to the exception's `invoice_id` (`reversibleAllocation()`). Once reversed, any role sees an "Allocation reversed" notice while the item is open with `reopen_reason: "reversed"`.
+- **Confirm step.** An `AlertDialog` names the payment, the amount and the invoice, and lists the effects. Its buttons are Cancel and a destructive "Reverse allocation". It is capped at `calc(100% - 2rem)` wide so it fits at 375px.
+- **Screen states.**
+  - Loading: the detail page's skeleton (the section is not rendered).
+  - Empty: the section is absent (nothing to reverse, or not a Manager).
+  - Error: an inline `role="alert"` in the dialog, plus a toast. Nothing is written, because the command runs in one transaction.
+  - Working: both buttons read "Reversing…" and are disabled, and the dialog can't be dismissed.
+- **Offline.** The control stays enabled. The reversal is a local IndexedDB write with no network or sync dependency, the same as allocation, which also stays enabled. Reset and import are paused because they need the network. The shell's offline banner still shows.
