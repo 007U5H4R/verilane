@@ -7,7 +7,7 @@ import { RowSkeleton } from "@/components/states/RowSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ExceptionRow } from "@/domain/exceptions/list";
-import { formatInr } from "@/domain/money";
+import { formatSignedInr } from "@/domain/money";
 import { cn } from "@/lib/cn";
 
 /**
@@ -93,7 +93,7 @@ export function ExceptionCards({ rows }: { rows: readonly ExceptionRow[] }) {
             </div>
             <div className="flex min-w-0 flex-wrap items-center gap-2 lg:contents">
               <span className="font-mono text-sm tabular-nums text-text lg:text-right">
-                {r.amountPaise === null ? "Not available." : formatInr(r.amountPaise)}
+                {r.amountPaise === null ? "Not available." : formatSignedInr(r.amountPaise)}
               </span>
               <span className="text-sm text-text-muted">{r.statusLabel}</span>
               <span className="flex flex-wrap items-center gap-1">

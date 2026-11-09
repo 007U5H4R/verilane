@@ -262,11 +262,13 @@ export const ExceptionKindSchema = z.enum([
   // TASK-75 (TKT-75.01): raised from the payments ledger, not an email.
   "unallocated_payment",
   "short_payment_pattern",
+  // TKT-75.05 (EXE151): one short payment; the pattern links its instances.
+  "short_payment",
 ]);
 export type ExceptionKind = z.infer<typeof ExceptionKindSchema>;
 
 /** The kinds raised from payments rather than an email: `message_id` is optional for these only. */
-export const PAYMENT_EXCEPTION_KINDS = ["unallocated_payment", "short_payment_pattern"] as const;
+export const PAYMENT_EXCEPTION_KINDS = ["unallocated_payment", "short_payment_pattern", "short_payment"] as const;
 export type PaymentExceptionKind = (typeof PAYMENT_EXCEPTION_KINDS)[number];
 export function isPaymentExceptionKind(kind: ExceptionKind): kind is PaymentExceptionKind {
   return (PAYMENT_EXCEPTION_KINDS as readonly string[]).includes(kind);
@@ -303,6 +305,12 @@ export const ExceptionSchema = z.object({
   reopen_reason: z.enum(["reversed"]).optional(),
   /** TKT-75.06 (EXE140): sticky — an allocation on this item was reversed at some point. Not by itself "not correctly resolved": NSM pairs `allocate_payment` events with `reverse_allocation` via `after.reverses_event_id`. */
   reversed: z.boolean().optional(),
+  /** Short-payment kinds only (TKT-75.05, EXE152): whose short payments these are. */
+  customer_id: z.string().min(1).optional(),
+  /** Short-payment kinds only: the amount kept back (an instance) or the total across the pattern. */
+  deducted_paise: paiseAmount.optional(),
+  /** `short_payment` only: the payer's stated reason, verbatim; absent = none stated (FS18). */
+  deduction_reason: z.string().min(1).optional(),
 }).superRefine((x, ctx) => {
   if (x.message_id === undefined && !isPaymentExceptionKind(x.kind)) {
     ctx.addIssue({ code: "custom", path: ["message_id"], message: `${x.kind} exceptions need the email that raised them` });
