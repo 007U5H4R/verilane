@@ -247,7 +247,7 @@ describe("seed — TC-011 coverage", () => {
     for (const s of shorts) byCustomer.set(s.customer_id, [...(byCustomer.get(s.customer_id) ?? []), s]);
     const within90 = (list: typeof shorts) => {
       const days = list.map((s) => Date.parse(s.paid_on)).sort((a, b) => a - b);
-      return days.some((d, i) => i + 2 < days.length && days[i + 2] - d <= 90 * 86_400_000);
+      return days.some((d, i) => i + 2 < days.length && (days[i + 2] as number) - d <= 90 * 86_400_000);
     };
 
     it("FS19: one customer has 3 or more short payments within 90 days", () => {
