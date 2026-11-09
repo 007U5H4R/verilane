@@ -87,6 +87,8 @@ async function detail(confidence: RecommendConfidence | undefined): Promise<Exce
     unappliedCashPaise: (await payment()).amount_paise,
     unappliedCount: 1,
     recommendation,
+    shortPaymentInstances: [],
+    creditNotes: [],
   };
 }
 

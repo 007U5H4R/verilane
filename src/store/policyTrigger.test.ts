@@ -44,6 +44,8 @@ const detail = (over: Partial<ExceptionDetail> = {}): ExceptionDetail => ({
   unappliedCashPaise: paise(2_500_000),
   unappliedCount: 1,
   recommendation,
+  shortPaymentInstances: [],
+  creditNotes: [],
   ...over,
 });
 
@@ -67,6 +69,42 @@ describe("policyInputsFor", () => {
   it("the bank line is missing: err, never an amount of 0", () => {
     const r = policyInputsFor(detail({ payment: undefined }));
     expect(r.ok).toBe(false);
+  });
+
+  // TKT-75.05 (TASK-79.5): short-payment kinds have no `payment_id`/`payment`
+  // at all — the amount comes from `deducted_paise` instead.
+  it("a short-payment pattern: amount is deducted_paise, no payment row needed", () => {
+    const shortException: Exception = {
+      ...exception,
+      review_id: "RV-SPP-C-001",
+      kind: "short_payment_pattern",
+      payment_id: undefined,
+      candidate_invoice_ids: undefined,
+      customer_id: "C-001",
+      deducted_paise: paise(300_000),
+    };
+    const r = policyInputsFor(detail({ exception: shortException, payment: undefined, recommendation: undefined }));
+    expect(r.ok).toBe(true);
+    if (!r.ok || !r.value) throw new Error("expected inputs");
+    expect(r.value.amountPaise).toBe(300_000);
+    expect(r.value.confidence).toBeUndefined();
+  });
+
+  it("a standalone short-payment instance: amount is deducted_paise", () => {
+    const shortException: Exception = {
+      ...exception,
+      review_id: "RV-SP-INV-004",
+      kind: "short_payment",
+      payment_id: undefined,
+      candidate_invoice_ids: undefined,
+      invoice_id: "INV-004",
+      customer_id: "C-002",
+      deducted_paise: paise(50_000),
+    };
+    const r = policyInputsFor(detail({ exception: shortException, payment: undefined, recommendation: undefined }));
+    expect(r.ok).toBe(true);
+    if (!r.ok || !r.value) throw new Error("expected inputs");
+    expect(r.value.amountPaise).toBe(50_000);
   });
 });
 

@@ -134,6 +134,8 @@ const detail = (over: Partial<ExceptionDetail> = {}): ExceptionDetail => ({
   audit: [],
   unappliedCashPaise: paise(2_500_000),
   unappliedCount: 1,
+  shortPaymentInstances: [],
+  creditNotes: [],
   ...over,
 });
 
