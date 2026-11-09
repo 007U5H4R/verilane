@@ -135,7 +135,7 @@ describe("approve_write_off — TC-75.29 (standalone instance)", () => {
       after: { status: "actioned", credit_note_ids: ["CN-INV-004"], amount_paise: 50_000 },
     });
     // The audit's `after` agrees with the persisted row.
-    expect((await db.exceptions.get(STANDALONE))?.status).toBe(audit[0]?.after?.status);
+    expect((await db.exceptions.get(STANDALONE))?.status).toBe("actioned");
   });
 
   it("a second write-off attempt on an already-written-off instance is refused, nothing written", async () => {
