@@ -1346,7 +1346,8 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
 
 ## EXE155 · A patterned instance is written off from its pattern, not on its own (TASK-79.5) — accepted
 - `writeOffTarget()` is `null` for a `short_payment` whose pattern is still open. For a Manager, the control there becomes a link: "Write off from the pattern". An Analyst sees nothing.
-- Why: a Manager writing off one instance first closes it, and the pattern's later `approve_write_off` then refuses ("Review item … is closed"). This is a domain edge left as is, and the UI routes around it. The target is also `null` when any row in the history is already closed, so the control never offers a write-off the command would refuse.
+- Why: a pattern write-off should cover the whole pattern in one place.
+- Amended 2026-11-09 (user decision: "skip done ones"): a pattern's `approve_write_off` now skips any linked instance already resolved on its own. It writes credit notes only for the open ones, leaves earlier notes untouched, and names the skipped IDs in the summary and in the audit's `after.skipped_review_ids`. If every instance is already resolved, it closes the pattern with no new note. A closed single `short_payment` is still refused. In the UI, `writeOffTarget()` counts only open instances and is `null` when none are left. Tests: `approveWriteOff.test.ts` and `ShortPaymentSection.test.ts`.
 
 ## EXE156 · The write-off stays enabled offline (TASK-79.5, Design §13) — accepted
 - The write-off is a local IndexedDB transaction with nothing to sync, so the same reasoning as the reversal (EXE143) applies. Design §13's "disabled with reason" covers only actions that need sync, and the app-shell offline banner still shows.

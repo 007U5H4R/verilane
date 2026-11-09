@@ -101,6 +101,48 @@ describe("approve_write_off — TC-75.29 (pattern)", () => {
     await expect(execute(db, writeOff(PATTERN))).rejects.toBeInstanceOf(InvalidCommand);
     expect(await snapshot()).toEqual(before);
   });
+
+  it("skips an instance already written off on its own and writes off the rest (EXE155)", async () => {
+    await asRole("manager");
+    await execute(db, writeOff(I2));
+    const i2Note = await db.creditNotes.get("CN-INV-002");
+
+    const event = await execute(db, writeOff(PATTERN));
+
+    const notes = await db.creditNotes.toArray();
+    expect(notes.map((n) => n.invoice_id).sort()).toEqual(["INV-001", "INV-002", "INV-003"]);
+    // The earlier note is left exactly as it was.
+    expect(await db.creditNotes.get("CN-INV-002")).toEqual(i2Note);
+    for (const id of [I1, I2, I3, PATTERN]) expect((await db.exceptions.get(id))?.status).toBe("actioned");
+
+    const audit = (await db.audit.toArray()).filter((a) => a.subject === `review:${PATTERN}`);
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({
+      before: { status: "open" },
+      after: {
+        status: "actioned",
+        credit_note_ids: ["CN-INV-001", "CN-INV-003"],
+        amount_paise: 200_000,
+        skipped_review_ids: [I2],
+      },
+    });
+    expect(event.summary).toBe(
+      `Approved write-off of ₹2,000.00 (2 credit notes: CN-INV-001, CN-INV-003; skipped 1 already resolved: ${I2})`,
+    );
+  });
+
+  it("closes the pattern with no new credit note when every instance was already resolved (EXE155)", async () => {
+    await asRole("manager");
+    for (const id of [I1, I2, I3]) await execute(db, writeOff(id));
+
+    const event = await execute(db, writeOff(PATTERN));
+
+    expect(await db.creditNotes.count()).toBe(3);
+    expect((await db.exceptions.get(PATTERN))?.status).toBe("actioned");
+    expect(event.summary).toBe(
+      `Approved write-off of ₹0.00 (0 credit notes; skipped 3 already resolved: ${I1}, ${I2}, ${I3})`,
+    );
+  });
 });
 
 describe("approve_write_off — TC-75.29 (standalone instance)", () => {

@@ -81,16 +81,19 @@ function openPatternOf(d: ExceptionDetail): Exception | null {
 /**
  * What `approve_write_off` would write off from this exception, or `null`
  * when there's nothing to approve here: not a short kind, already closed,
- * a target already closed (the command would refuse), or a patterned
- * instance whose open pattern is where the write-off belongs (EXE155).
+ * no open instance left to write off, or a patterned instance whose open
+ * pattern is where the write-off belongs (EXE155). A pattern counts only
+ * its still-open instances.
  */
 export function writeOffTarget(d: ExceptionDetail): { count: number; totalPaise: Paise } | null {
   const x = d.exception;
   if (!isShortPaymentKind(x.kind) || x.status !== "open") return null;
   if (openPatternOf(d) !== null) return null;
-  const { rows, totalPaise } = shortPaymentHistory(d);
-  if (rows.length === 0 || rows.some((r) => !r.open)) return null;
-  return { count: rows.length, totalPaise };
+  // A pattern skips instances already resolved on their own (EXE155): only
+  // the open ones are written off, matching `approve_write_off`.
+  const open = shortPaymentHistory(d).rows.filter((r) => r.open);
+  if (open.length === 0) return null;
+  return { count: open.length, totalPaise: paise(open.reduce((sum, r) => sum + r.deductedPaise, 0)) };
 }
 
 function creditNoteFor(notes: readonly CreditNoteRow[], invoiceId: string | null): CreditNoteRow | undefined {

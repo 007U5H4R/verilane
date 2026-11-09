@@ -196,6 +196,17 @@ describe("writeOffTarget", () => {
     expect(writeOffTarget(detail(inst(4, { linked_review_ids: [] })))).toEqual({ count: 1, totalPaise: 100_000 });
   });
 
+  it("a pattern counts only its still-open instances; one already written off is skipped (EXE155)", () => {
+    const d = patternDetail({ shortPaymentInstances: [inst(1), inst(2, { status: "actioned" }), inst(3)] });
+    expect(writeOffTarget(d)).toEqual({ count: 2, totalPaise: 200_000 });
+  });
+
+  it("a pattern with no open instance left has nothing to write off", () => {
+    const closed = { status: "actioned" as const };
+    const d = patternDetail({ shortPaymentInstances: [inst(1, closed), inst(2, closed), inst(3, closed)] });
+    expect(writeOffTarget(d)).toBeNull();
+  });
+
   it("nothing to write off once closed", () => {
     expect(writeOffTarget(patternDetail({}, { status: "actioned" }))).toBeNull();
   });

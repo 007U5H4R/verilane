@@ -901,8 +901,11 @@ async function reverseAllocation(ctx: Ctx): Promise<Effect> {
  * R4, Manager only: writes one `CreditNote` per short-payment instance the
  * subject names — itself for a `short_payment`, or every linked instance for
  * a `short_payment_pattern` — and actions each instance plus the subject, all
- * in this one transaction. A credit note already on record for an invoice
- * refuses the whole write-off before anything is written (no partial state).
+ * in this one transaction. For a pattern, an instance already resolved on
+ * its own (e.g. written off singly) is skipped and named in the summary and
+ * audit (EXE155); a closed single `short_payment` is refused. A credit note
+ * already on record for a still-open instance's invoice refuses the whole
+ * write-off before anything is written (no partial state).
  */
 async function approveWriteOff(ctx: Ctx): Promise<Effect> {
   const row = ctx.row ?? {};
@@ -917,10 +920,15 @@ async function approveWriteOff(ctx: Ctx): Promise<Effect> {
   }
 
   const targets: Row[] = [];
+  const skippedIds: string[] = [];
   for (const id of targetIds) {
     const instanceRow = await ctx.tx.get("exceptions", id);
     if (!instanceRow) throw new InvalidCommand(`No exception ${id}.`);
     if (status(instanceRow) !== "open") {
+      if (row.kind === "short_payment_pattern") {
+        skippedIds.push(id);
+        continue;
+      }
       throw new InvalidCommand(`Review item ${id} is closed.`);
     }
     const invoiceId = str(instanceRow.invoice_id);
@@ -962,10 +970,19 @@ async function approveWriteOff(ctx: Ctx): Promise<Effect> {
   const subjectTo =
     row.kind === "short_payment_pattern" ? (await step(ctx, "review", "exceptions", ["action"])).to : lastTo;
 
+  const notes = `${creditNoteIds.length} credit note${creditNoteIds.length === 1 ? "" : "s"}`;
+  const listed = creditNoteIds.length > 0 ? `${notes}: ${creditNoteIds.join(", ")}` : notes;
+  const skipped =
+    skippedIds.length > 0 ? `; skipped ${skippedIds.length} already resolved: ${skippedIds.join(", ")}` : "";
   return {
-    summary: `Approved write-off of ${formatInr(paise(totalPaise))} (${creditNoteIds.length} credit note${creditNoteIds.length === 1 ? "" : "s"}: ${creditNoteIds.join(", ")})`,
+    summary: `Approved write-off of ${formatInr(paise(totalPaise))} (${listed}${skipped})`,
     before: { status: subjectBefore },
-    after: { status: subjectTo, credit_note_ids: creditNoteIds, amount_paise: totalPaise },
+    after: {
+      status: subjectTo,
+      credit_note_ids: creditNoteIds,
+      amount_paise: totalPaise,
+      ...(skippedIds.length > 0 ? { skipped_review_ids: skippedIds } : {}),
+    },
     evidence_ids: Array.isArray(row.evidence_ids) ? (row.evidence_ids as string[]) : [],
   };
 }
