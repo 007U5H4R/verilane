@@ -172,6 +172,27 @@ describe("TC-75.23 a non-permitted verdict writes nothing and hands off", () => 
   }
 });
 
+describe("TC-75.30 (TKT-75.05) Execute never auto-writes a credit note for a short-payment kind", () => {
+  // G1 (TKT-75.03) already gives any non-unallocated_payment kind needs_analyst,
+  // so this is never auto_permitted; here it's not even a policy question —
+  // currentDecision's own kind check (TKT-75.04) makes it not_applicable before
+  // any verdict is consulted, for a standalone instance or a whole pattern.
+  const cases: Array<[string, string]> = [
+    ["a standalone short_payment instance", "RV-SP-INV-004"],
+    ["a short_payment_pattern", "RV-SPP-C-001"],
+  ];
+  for (const [label, id] of cases) {
+    it(`${label}: not_applicable, no credit note, no audit, no allocation`, async () => {
+      const before = { audit: await db.audit.count(), creditNotes: await db.creditNotes.toArray() };
+      const out = await executeAgent(db, { subject: { kind: "review", id }, expected_fingerprint: "irrelevant" });
+      expect(out).toMatchObject({ kind: "not_applicable", reason: "Only an unallocated payment can be allocated." });
+      expect(await db.audit.count()).toBe(before.audit);
+      expect(await db.creditNotes.toArray()).toEqual(before.creditNotes);
+      expect((await db.exceptions.get(id))?.status).toBe("open");
+    });
+  }
+});
+
 describe("risk (a): a stale latest decision is never acted on", () => {
   it("inputs mutated after an auto_permitted decision: the old verdict is refused", async () => {
     const { fingerprint } = await decide("high");
