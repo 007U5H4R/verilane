@@ -44,6 +44,10 @@
  * | FS10 unknown status              | INV-H (status_raw `pending_review`)          | —                  |
  * | Paid history / closed            | rows 1–8, INV-I (paid), 1050 (written off)   | —                  |
  * | Unapplied bank line (TKT-75.02)  | P-012 (no invoice) = INV-F's ₹25,000 only    | —                  |
+ * | FS14 fits two invoices equally   | P-013 ₹48,000 = 1019 and 1020 (C-009 pair)   | —                  |
+ * | FS15 exceeds open balance        | P-014 ₹3,10,000 from C-004 (open ₹2,90,000)  | —                  |
+ * | FS16 mistyped reference          | P-015 cites "INV-1O37" (letter O), ₹88,000   | —                  |
+ * | FS17 untraceable cash            | P-016 ₹61,500, no payer, no reference        | —                  |
  * | Not yet due (G6)                 | 1047, 1048, 1049                             | —                  |
  *
  * Paid history sets each customer's average days late (Architecture.md §5):
@@ -53,7 +57,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const SEED_VERSION = "2026-10-30.1";
+export const SEED_VERSION = "2026-11-07.1";
 export const SEED_AS_OF = "2026-10-30";
 const PRNG_SEED = 20261030;
 
@@ -90,7 +94,12 @@ export type EdgeCase =
   | "FS7"
   | "FS8"
   | "FS9"
-  | "FS10";
+  | "FS10"
+  // TKT-75.08: unapplied bank lines the allocation recommender must not guess on.
+  | "FS14"
+  | "FS15"
+  | "FS16"
+  | "FS17";
 
 export interface CustomerSpec {
   customer_id: string;
@@ -752,6 +761,33 @@ export interface SeedFiles {
 }
 
 /** Builds every seed file's contents. Pure and deterministic. */
+/**
+ * TKT-75.08 (FS14–FS17): unapplied bank lines appended after P-012, so no
+ * existing payment id, invoice or PRNG filler moves. Amounts are chosen
+ * against the generated ledger and pinned by `scripts/seed.test.ts`.
+ */
+export interface PaymentFixtureSpec {
+  payment_id: string;
+  paid_days_ago: number;
+  amount_rupees: number;
+  payer_customer_id?: string;
+  remittance_reference?: string;
+  edge_cases: EdgeCase[];
+}
+
+export const PAYMENT_FIXTURES: PaymentFixtureSpec[] = [
+  // Equals both halves of C-009's duplicate pair (1019/1020): no pick.
+  { payment_id: "P-013", paid_days_ago: 2, amount_rupees: 48_000, payer_customer_id: "C-009", edge_cases: ["FS14"] },
+  // C-004 (Deccan Logistics) owes ₹2,90,000 across INV-D, INV-J and 1034;
+  // this line pays ₹20,000 more than that.
+  { payment_id: "P-014", paid_days_ago: 2, amount_rupees: 310_000, payer_customer_id: "C-004", edge_cases: ["FS15"] },
+  // Cites "INV-1O37" (capital letter O, not zero). Its amount equals 1037's
+  // outstanding, but the reference names no invoice, so nothing is matched.
+  { payment_id: "P-015", paid_days_ago: 3, amount_rupees: 88_000, remittance_reference: "INV-1O37", edge_cases: ["FS16"] },
+  // No payer, no reference, and no open invoice has this outstanding.
+  { payment_id: "P-016", paid_days_ago: 4, amount_rupees: 61_500, edge_cases: ["FS17"] },
+];
+
 export function generateSeed(): SeedFiles {
   const rand = mulberry32(PRNG_SEED);
   const randInt = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
@@ -839,6 +875,13 @@ export function generateSeed(): SeedFiles {
   // Appended after the loop so no other row's id or PRNG filler moves. The
   // bank line's own reference is the remittance; there is no email for it.
   paymentRows.push([`P-${String(paymentRows.length + 1).padStart(3, "0")}`, null, addDays(SEED_AS_OF, -1), 25_000 * 100]);
+  for (const f of PAYMENT_FIXTURES) {
+    const id = `P-${String(paymentRows.length + 1).padStart(3, "0")}`;
+    if (id !== f.payment_id) throw new Error(`payment fixture ${f.payment_id} would be written as ${id}`);
+    paymentRows.push([id, null, addDays(SEED_AS_OF, -f.paid_days_ago), f.amount_rupees * 100, f.payer_customer_id ?? null, f.remittance_reference ?? null]);
+  }
+  // Every row carries the two optional TKT-75.08 columns (blank on v1 rows).
+  for (const row of paymentRows) while (row.length < 6) row.push(null);
 
   const customersCsv = toCsv(
     ["customer_id", "name", "contact_emails", "payment_terms_days", "segment"],
@@ -863,7 +906,10 @@ export function generateSeed(): SeedFiles {
     invoiceRows,
   );
 
-  const paymentsCsv = toCsv(["payment_id", "invoice_id", "paid_on", "amount_paise"], paymentRows);
+  const paymentsCsv = toCsv(
+    ["payment_id", "invoice_id", "paid_on", "amount_paise", "payer_customer_id", "remittance_reference"],
+    paymentRows,
+  );
 
   const emails = THREADS.map((t) => ({
     thread_id: t.thread_id,

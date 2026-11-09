@@ -1314,37 +1314,45 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
   - Working: both buttons read "Reversing…" and are disabled, and the dialog can't be dismissed.
 - **Offline.** The control stays enabled. The reversal is a local IndexedDB write with no network or sync dependency, the same as allocation, which also stays enabled. Reset and import are paused because they need the network. The shell's offline banner still shows.
 
-## EXE180 · Execute agent: persisted verdict only, writes through `run()`, triggered on page view; risk (a) closed by a double fingerprint check (TASK-79.4) — accepted
-- **One write path.** `runExecuteAgent()` in `commands.ts` (additive) reads the latest *persisted* `PolicyDecisionRow` through a `PolicyTx.policyFacts()` read inside the command's transaction, and only for `auto_permitted` calls `run({type:"allocate_payment"})` — the same handler, permission check and one audit event a human submit uses (R6, R11). Any in-memory verdict the caller holds (`observed`) is ignored (TC-75.21). Every other verdict returns `handed_off` with its queue (`needs_analyst`→analyst, `needs_manager`→manager, `blocked`→blocked) and the policy's reason, and writes nothing (TC-75.23).
-- **Actor.** `actor_role` stays `analyst`: Execute's authority is capped at what an Analyst may do, as Copilot's is. The audit event keeps action `allocate_payment` (so reversal and the NSM still find it) and is relabelled `actor_label: "Execute Agent"`, cites the decision id first in `evidence_ids`, and records `after.policy_decision_id` + `after.config_version`; the summary ends `· policy policy-v1 (POL-…)` (TC-75.22). Only a single-candidate match is executed.
-- **Trigger.** Policy evaluation is lazy (EXE130), so Execute runs right after it on the detail page: `runExecuteAgentFor()` (`src/store/executeAgent.ts`) calls `ensurePolicyEvaluated()` then `executeAgent()`, one-shot per `id|decision_id|fingerprint`.
-- **Risk (a), stale latest decision.** `currentDecision()` refuses unless the latest row's `input_fingerprint` equals BOTH the caller's `policyInputsFor(detail).fingerprint` AND a fingerprint recomputed from the exception and payment re-read inside the transaction. The page re-evaluates first, so a changed input gets a fresh row and Execute acts on that; a caller that skips re-evaluation gets `refused`. Test: `executeAgent.test.ts` "risk (a)".
-- Alternative rejected: a `currentPolicyDecision(detail)` helper in `policy.ts` alone — it checks the caller's view but not the in-tx state, so a write between page read and Execute would slip through.
+## EXE160 · A bank line may carry an optional payer and remittance reference (TASK-79.8) — accepted
+- `PaymentSchema` gains two optional fields. `payer_customer_id` is the customer the bank names as payer. `remittance_reference` is the reference the bank line cites, kept verbatim. `payments.csv` gains both columns.
+- A blank cell, or a CSV without the columns, ingests as "not on file". This keeps every v1 import and every existing payments CSV valid.
+- FS15 (an overpayment) needs to know whose open balance the line exceeds. FS16 (a mistyped reference) needs the cited reference on file so it can be shown verbatim and never fuzzy-matched. Nothing else reads these fields.
+- `toCsv("payments")` writes the two columns after `IMPORT_COLUMNS`, but only when some row has a value. A v1 export stays byte-identical, and TC-059's round trip keeps the new fields. The header check still requires only the v1 columns.
 
-## EXE181 · Risk (b): Execute refuses any exception whose history has a reversed allocation, paired by `reverses_event_id` (TASK-79.4) — accepted
-- Chosen over adding reversal state to the policy fingerprint: the fingerprint is 79.3's and 79.6 is still in flight, and a refusal keeps a Manager-reversed item with a human instead of silently re-applying it.
-- `hasReversedAllocation(history)` is true when an `allocate_payment` event has a later event whose `after.reverses_event_id` is its `event_id`. A sticky `reversed` flag alone does not count, and a reversal pointing at another event does not block. Tests build the shape directly (79.6's command is not on this branch).
-- UI: a `refused` outcome sets `executeRefused`, which re-enables the human submit for an `auto_permitted` item.
-- **Merge note for 79.6:** its reversal audit event must set `after.reverses_event_id` to the reversed allocation's `event_id`.
+## EXE161 · FS14–FS17 are appended seed bank lines P-013…P-016, and SEED_VERSION is bumped to 2026-11-07.1 (TASK-79.8) — accepted
+- The four bank lines are appended after P-012, so no earlier row or PRNG draw moves.
+  - P-013: ₹48,000, payer C-009. It ties INV-019 and INV-020.
+  - P-014: ₹3,10,000, payer C-004, whose open balance is ₹2,90,000.
+  - P-015: ₹88,000, citing "INV-1O37" with a letter O. INV-037 (INV-1037) is the amount match.
+  - P-016: ₹61,500, untraceable.
+- Invoice, customer and thread counts and every priority are unchanged. Payments go from 12 to 16, exceptions from 23 to 27, and unapplied cash from ₹25,000.00 on 1 line to ₹5,32,500.00 on 5. TC-75.13's e2e unapplied-cash assertion is updated to match.
+- `SEED_VERSION` is bumped from `2026-10-30.1` to `2026-11-07.1` (review M1). Without the bump, existing browsers would never see the new lines:
+  - the service worker serves `/seed/*` cache-first under `verilane-<seedVersion>`;
+  - `adoptManifest` refetches only when that cache name changes.
+  - With the bump, a browser that already holds the old seed gets the usual "New demo data available" prompt (TC-014) and never a silent wipe.
+- `scripts/seed.test.ts` now pins a sha256 of the generated data files for each `SEED_VERSION`. Changing seed content without bumping the version and adding a pin fails the unit suite. The e2e PWA specs read the version from `public/seed/manifest.json` rather than hard-coding it.
 
-## EXE182 · Human submit is gated by the persisted verdict; refusals are audited as `permission_denied` (FS21) (TASK-79.4) — accepted
-- `runPolicyGated()` (commands.ts, additive) wraps `run()` for `allocate_payment`: `blocked` refuses every role with the policy reason; `needs_manager` refuses an Analyst with "Manager approval required"; a missing or stale decision is an `InvalidCommand`. `submitAllocationGated()` (tx.ts, additive) writes the refusal in its own transaction, so a refused attempt is on the audit trail.
-- **Amended (integration with 79.6): one FS21 format.** The refusal now goes through 79.6's `recordRefusal()`. The earlier `policyRefusalEvent()` is removed. `reverse_allocation` and gated `allocate_payment` refusals are therefore audited in one format: summary "Refused {action words} on {id}: {reason}", the `invoice_id` (for an unallocated payment, the target invoice from the payload), and `after: {refused_action, reason}`. A policy refusal also carries the PolicyDecision id, in `evidence_ids` and as `after.policy_decision_id`. See the EXE141 amendment.
-- `permission_denied` joined `AuditAction`/`ACTION_META`. **Merge note:** the row is identical to 79.6's. The merge kept one copy; git auto-merged two, and the merge commit deleted the duplicate.
+## EXE162 · Recommend never auto-picks a line whose cited reference names no candidate, and proposes only the matched portion of an overpayment (TASK-79.8, fix to TASK-79.3) — accepted, pending 79.3 reconciliation
+- **The defect, found by the fixtures:**
+  - FS16 had exactly one amount match, so 79.3's Recommend said high confidence and Policy said `auto_permitted` (G5), even though the bank line cites a reference that is no invoice number.
+  - FS15 had no amount match, so Recommend rejected it and Policy said `blocked` (G2). There was no proposal and no excess held.
+- **The smallest fix, in `recommend.ts` only:**
+  - Policy is unchanged.
+  - When `remittance_reference` is set, Recommend records it as a verbatim `remittance_reference` fact, which is a new `VerifiedFactKind`. If it does not exactly equal some candidate's `invoice_number` or `invoice_id`, confidence is forced to low, so Policy G3 says `needs_manager`. There is no similarity matching.
+  - When there are no candidates and the line names a payer whose open balance is above zero but below the amount, Recommend proposes allocating the balance across that payer's open invoices. It holds the rest as unapplied cash in `proposed_allocation_paise` and `unapplied_excess_paise`, at low confidence (G3).
+  - Every other path is byte-identical to before.
+- Policy remains pure and actor-independent. Execute (79.4) still consumes only `PolicyDecision`. A low-confidence proposal never executes.
+- **Known follow-ups, out of scope here:**
+  - The policy input fingerprint uses the exception's (empty) candidate list for FS15, not Recommend's.
+  - G3's reason text says "Ambiguous match".
+  - The detail page's FS15 candidate list does not reflect the new fields. (Its Remittance field now shows the cited reference verbatim, review M2.)
 
-## EXE183 · Action-bar matrix (A1 §25 row 2) and the Stage 3 Execute block (TASK-79.4) — accepted
-- `allocateBlocker(d, selected, permission, gate?)` keeps v1's checks first (closed → "Already resolved", non-payment, permission), then applies the gate: policy error → "Policy couldn’t evaluate this item"; no or stale decision → "Waiting for the policy decision"; `blocked` → the policy reason; `needs_manager` + Analyst → "Manager approval required"; `auto_permitted` (not refused) → "Execute agent is applying this allocation". The last two strings are additions to A1's matrix for the transient states between page load and Execute finishing; A1's four rows are unchanged.
-- Stage 3 is its own `<section data-testid="stage-execute" data-execute-state=…>` after the Policy block. Copy: executed → "Executed by Execute agent · {time} · policy v{n}" (`policy-v1` displayed as "policy v1"); `needs_analyst` → "Ready to allocate — handed to the Analyst queue."; `needs_manager` → "Pending manager hand-off."; `blocked` → "Not executable — {reason}"; each with a "Next:" line. A person's resolution shows "Already resolved — no Execute action.".
-- The page imports `EXECUTE_LABEL` as a type only, so the detail bundle doesn't pull in commands.ts.
-
-## EXE184 · Raw `execute()` stays ungated; TC-75.13's P-012 e2e now expects auto-execution (TASK-79.4) — accepted
-- `execute()` in tx.ts is unchanged (additive-only constraint); the detail page now submits through `submitAllocationGated()`. Any other caller of `execute({type:"allocate_payment"})` bypasses the verdict gate — a known limit to close when the allocate call sites are consolidated.
-- Seeded P-012 is `auto_permitted`, so opening its detail page now allocates it via Execute. The first TC-75.13 e2e no longer clicks submit: it asserts the Stage 3 "Executed by Execute agent · … · policy v1" copy, the single `allocate_payment` event labelled "Execute Agent" with `config_version: "policy-v1"`, the persisted INV-F allocation, and the disabled "Already resolved" bar.
-
-## EXE185 · An open item's "Pending Manager" badge comes from the persisted policy verdict (TASK-79.4, review m3) — accepted
-- `exceptionStatusLabel(x, verdict?)`: Resolved / Dismissed first. For an open item with a verdict, `needs_manager` reads "Pending Manager" and any other verdict reads "Open". With no verdict yet (Policy has not run) it falls back to v1's `requires_role`. The header and Stage 3 now agree on a G3/G4 `needs_manager` item whose `requires_role` is unset.
-- Header: the verdict comes from the page's policy gate and is ignored while the decision is stale. Queue: `useOpenExceptionRows` reads `policyDecisions` and keeps the latest per exception, using `byEvaluation` (now exported from policy.ts) as the order.
-- Testids and the v1 label strings are unchanged.
+## EXE163 · The allocation-recommendation accuracy gate is a separate eval file, outside report.json (TASK-79.8) — accepted
+- `eval/allocation.ts` is a pure scorer. `eval/allocation.eval.ts` is the TC-75.40 gate. It runs in `pnpm eval` with the rest of `eval/**/*.eval.ts`.
+- Each labelled bank line goes through the app's own pipeline: `paymentExceptionsFor` → Recommend → `decidePolicyVerdict`. The gate needs unambiguous correct = 100% and ambiguous escalated (never auto-picked) = 100%, with FP = 0. It prints TP/FP/TN/FN, where positive = `auto_permitted`.
+- There are two sets. The committed seed covers P-012 and FS14–FS17. A held-out set of 10 inline ledgers shares no fixture with the seed.
+- The gate is kept out of `eval/run.ts` and `report.json`, so the v1 report schema, and the 8 known reds, are untouched.
 
 ## EXE170 · The North Star Metric is computed from paired audit events of the current session (TASK-79.7, TKT-75.07) — accepted
 - **NSM** = Σ value (paise) of payment exceptions closed by an approved action and not later reversed or reopened, in the current session. `computeNsm()` in `src/domain/nsm.ts` is pure (rows in, numbers out). No number is seeded, and the Home figure on a fresh seed is ₹0.
@@ -1408,3 +1416,35 @@ All guardrails are computed from the same session as the NSM (EXE170). A rate is
   - `permission_denied` rows can carry a decision id, but they are not closings or sends, so they are never judged.
 - **"Paid" for the inappropriate-reminder guardrail** (EXE171) is the source status `paid` **or** derived outstanding <= 0. Outstanding is `amount_paise` minus the payments applied to the invoice, the same closed test as `priority.ts` G1; unapplied cash never matches. `NsmInput.invoices` now carries `amount_paise`, which the Dexie rows already have.
 - **Unchanged.** The guardrail is still judged against current state, not send-time state (EXE171 limitation). This is now also stated in code.
+
+## EXE180 · Execute agent: persisted verdict only, writes through `run()`, triggered on page view; risk (a) closed by a double fingerprint check (TASK-79.4) — accepted
+- **One write path.** `runExecuteAgent()` in `commands.ts` (additive) reads the latest *persisted* `PolicyDecisionRow` through a `PolicyTx.policyFacts()` read inside the command's transaction, and only for `auto_permitted` calls `run({type:"allocate_payment"})` — the same handler, permission check and one audit event a human submit uses (R6, R11). Any in-memory verdict the caller holds (`observed`) is ignored (TC-75.21). Every other verdict returns `handed_off` with its queue (`needs_analyst`→analyst, `needs_manager`→manager, `blocked`→blocked) and the policy's reason, and writes nothing (TC-75.23).
+- **Actor.** `actor_role` stays `analyst`: Execute's authority is capped at what an Analyst may do, as Copilot's is. The audit event keeps action `allocate_payment` (so reversal and the NSM still find it) and is relabelled `actor_label: "Execute Agent"`, cites the decision id first in `evidence_ids`, and records `after.policy_decision_id` + `after.config_version`; the summary ends `· policy policy-v1 (POL-…)` (TC-75.22). Only a single-candidate match is executed.
+- **Trigger.** Policy evaluation is lazy (EXE130), so Execute runs right after it on the detail page: `runExecuteAgentFor()` (`src/store/executeAgent.ts`) calls `ensurePolicyEvaluated()` then `executeAgent()`, one-shot per `id|decision_id|fingerprint`.
+- **Risk (a), stale latest decision.** `currentDecision()` refuses unless the latest row's `input_fingerprint` equals BOTH the caller's `policyInputsFor(detail).fingerprint` AND a fingerprint recomputed from the exception and payment re-read inside the transaction. The page re-evaluates first, so a changed input gets a fresh row and Execute acts on that; a caller that skips re-evaluation gets `refused`. Test: `executeAgent.test.ts` "risk (a)".
+- Alternative rejected: a `currentPolicyDecision(detail)` helper in `policy.ts` alone — it checks the caller's view but not the in-tx state, so a write between page read and Execute would slip through.
+
+## EXE181 · Risk (b): Execute refuses any exception whose history has a reversed allocation, paired by `reverses_event_id` (TASK-79.4) — accepted
+- Chosen over adding reversal state to the policy fingerprint: the fingerprint is 79.3's and 79.6 is still in flight, and a refusal keeps a Manager-reversed item with a human instead of silently re-applying it.
+- `hasReversedAllocation(history)` is true when an `allocate_payment` event has a later event whose `after.reverses_event_id` is its `event_id`. A sticky `reversed` flag alone does not count, and a reversal pointing at another event does not block. Tests build the shape directly (79.6's command is not on this branch).
+- UI: a `refused` outcome sets `executeRefused`, which re-enables the human submit for an `auto_permitted` item.
+- **Merge note for 79.6:** its reversal audit event must set `after.reverses_event_id` to the reversed allocation's `event_id`.
+
+## EXE182 · Human submit is gated by the persisted verdict; refusals are audited as `permission_denied` (FS21) (TASK-79.4) — accepted
+- `runPolicyGated()` (commands.ts, additive) wraps `run()` for `allocate_payment`: `blocked` refuses every role with the policy reason; `needs_manager` refuses an Analyst with "Manager approval required"; a missing or stale decision is an `InvalidCommand`. `submitAllocationGated()` (tx.ts, additive) writes the refusal in its own transaction, so a refused attempt is on the audit trail.
+- **Amended (integration with 79.6): one FS21 format.** The refusal now goes through 79.6's `recordRefusal()`. The earlier `policyRefusalEvent()` is removed. `reverse_allocation` and gated `allocate_payment` refusals are therefore audited in one format: summary "Refused {action words} on {id}: {reason}", the `invoice_id` (for an unallocated payment, the target invoice from the payload), and `after: {refused_action, reason}`. A policy refusal also carries the PolicyDecision id, in `evidence_ids` and as `after.policy_decision_id`. See the EXE141 amendment.
+- `permission_denied` joined `AuditAction`/`ACTION_META`. **Merge note:** the row is identical to 79.6's. The merge kept one copy; git auto-merged two, and the merge commit deleted the duplicate.
+
+## EXE183 · Action-bar matrix (A1 §25 row 2) and the Stage 3 Execute block (TASK-79.4) — accepted
+- `allocateBlocker(d, selected, permission, gate?)` keeps v1's checks first (closed → "Already resolved", non-payment, permission), then applies the gate: policy error → "Policy couldn’t evaluate this item"; no or stale decision → "Waiting for the policy decision"; `blocked` → the policy reason; `needs_manager` + Analyst → "Manager approval required"; `auto_permitted` (not refused) → "Execute agent is applying this allocation". The last two strings are additions to A1's matrix for the transient states between page load and Execute finishing; A1's four rows are unchanged.
+- Stage 3 is its own `<section data-testid="stage-execute" data-execute-state=…>` after the Policy block. Copy: executed → "Executed by Execute agent · {time} · policy v{n}" (`policy-v1` displayed as "policy v1"); `needs_analyst` → "Ready to allocate — handed to the Analyst queue."; `needs_manager` → "Pending manager hand-off."; `blocked` → "Not executable — {reason}"; each with a "Next:" line. A person's resolution shows "Already resolved — no Execute action.".
+- The page imports `EXECUTE_LABEL` as a type only, so the detail bundle doesn't pull in commands.ts.
+
+## EXE184 · Raw `execute()` stays ungated; TC-75.13's P-012 e2e now expects auto-execution (TASK-79.4) — accepted
+- `execute()` in tx.ts is unchanged (additive-only constraint); the detail page now submits through `submitAllocationGated()`. Any other caller of `execute({type:"allocate_payment"})` bypasses the verdict gate — a known limit to close when the allocate call sites are consolidated.
+- Seeded P-012 is `auto_permitted`, so opening its detail page now allocates it via Execute. The first TC-75.13 e2e no longer clicks submit: it asserts the Stage 3 "Executed by Execute agent · … · policy v1" copy, the single `allocate_payment` event labelled "Execute Agent" with `config_version: "policy-v1"`, the persisted INV-F allocation, and the disabled "Already resolved" bar.
+
+## EXE185 · An open item's "Pending Manager" badge comes from the persisted policy verdict (TASK-79.4, review m3) — accepted
+- `exceptionStatusLabel(x, verdict?)`: Resolved / Dismissed first. For an open item with a verdict, `needs_manager` reads "Pending Manager" and any other verdict reads "Open". With no verdict yet (Policy has not run) it falls back to v1's `requires_role`. The header and Stage 3 now agree on a G3/G4 `needs_manager` item whose `requires_role` is unset.
+- Header: the verdict comes from the page's policy gate and is ignored while the decision is stale. Queue: `useOpenExceptionRows` reads `policyDecisions` and keeps the latest per exception, using `byEvaluation` (now exported from policy.ts) as the order.
+- Testids and the v1 label strings are unchanged.

@@ -1,10 +1,10 @@
 ---
 id: TASK-79.8
 title: Add edge-case payment fixtures and the allocation-accuracy gate
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-05 04:43'
-updated_date: '2026-11-06 15:28'
+updated_date: '2026-11-09 07:12'
 labels:
   - P2
   - M-75.2

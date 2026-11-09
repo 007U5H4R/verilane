@@ -55,6 +55,13 @@ export const IMPORT_COLUMNS: Record<ImportKind, readonly string[]> = {
   payments: ["payment_id", "invoice_id", "paid_on", "amount_paise"],
 };
 
+/** Optional columns an import may carry. `toCsv()` writes each one after the
+ * required ones only when some row has a value, so the fields survive a round
+ * trip and a v1 export is unchanged (EXE160). A file without them still imports. */
+const OPTIONAL_COLUMNS: Partial<Record<ImportKind, readonly string[]>> = {
+  payments: ["payer_customer_id", "remittance_reference"],
+};
+
 /** Columns that must be unique within a file (blank cells are exempt); a
  * repeat rejects the file. `invoice_number` is a unique index in the store. */
 const UNIQUE_COLUMNS: Record<ImportKind, readonly string[]> = {
@@ -218,7 +225,13 @@ function toCell(v: unknown): string | number | boolean {
 export function toCsv(kind: ExportKind, rows: readonly object[]): string {
   let fields: string[];
   if (kind === "invoices" || kind === "customers" || kind === "payments") {
-    fields = [...IMPORT_COLUMNS[kind]];
+    const optional = (OPTIONAL_COLUMNS[kind] ?? []).filter((f) =>
+      rows.some((r) => {
+        const v = (r as Record<string, unknown>)[f];
+        return v !== undefined && v !== null && v !== "";
+      }),
+    );
+    fields = [...IMPORT_COLUMNS[kind], ...optional];
   } else {
     const seen = new Set<string>();
     for (const r of rows) for (const k of Object.keys(r)) seen.add(k);

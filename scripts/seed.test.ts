@@ -3,6 +3,7 @@
  * scratch dirs on the E Drive, are byte-identical to each other and to the
  * committed `public/seed/` files.
  */
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ import Papa from "papaparse";
 import { afterAll, describe, expect, it } from "vitest";
 import { ingest, type Row } from "../src/domain/ingest";
 import { isUnapplied, outstandingOf } from "../src/domain/priority";
-import { INVOICES, THREADS, writeSeed, type SeedFiles } from "./seed";
+import { generateSeed, INVOICES, PAYMENT_FIXTURES, SEED_VERSION, THREADS, writeSeed, type SeedFiles } from "./seed";
 
 const SCRATCH_ROOT = "/Volumes/E Drive/Dev/.scratch";
 function scratchRoot(): string {
@@ -33,6 +34,33 @@ const created: string[] = [];
 
 afterAll(() => {
   for (const dir of created) rmSync(dir, { recursive: true, force: true });
+});
+
+/**
+ * The service worker caches `/seed/*` cache-first under `verilane-<seedVersion>`,
+ * and `adoptManifest` refetches only when that cache name changes (EXE161). A
+ * seed content change without a SEED_VERSION bump would never reach a browser
+ * that already has the old seed. Each version pins the sha256 of its data
+ * files; changing the content means bumping SEED_VERSION and adding a pin.
+ */
+const SEED_CONTENT_PINS: Record<string, string> = {
+  "2026-10-30.1": "8e827f2b9caeccd5a869a4d9a8d24245464a61a4ec0231563fdf1782d9e2bd76",
+  "2026-11-07.1": "c77264d71341227f7e178f51334d4919b78b4c80b6fc3cc59770dfa277212e52", // FS14–FS17 (TKT-75.08)
+};
+
+function seedContentHash(files: SeedFiles): string {
+  const h = createHash("sha256");
+  for (const name of ["customers.csv", "invoices.csv", "payments.csv", "emails.json"] as const) {
+    h.update(`${name}\n`).update(files[name]).update("\n");
+  }
+  return h.digest("hex");
+}
+
+describe("seed — content changes require a SEED_VERSION bump (EXE161)", () => {
+  it("the generated data files match the content pinned for the current SEED_VERSION", () => {
+    expect(SEED_CONTENT_PINS[SEED_VERSION], `no content pin for SEED_VERSION ${SEED_VERSION}`).toBeDefined();
+    expect(seedContentHash(generateSeed())).toBe(SEED_CONTENT_PINS[SEED_VERSION]);
+  });
 });
 
 describe("seed — TC-012 determinism", () => {
@@ -155,5 +183,59 @@ describe("seed — TC-011 coverage", () => {
       (p) => open.filter((i) => outstandingOf(i, ctx) === p.amount_paise).length === 1,
     );
     expect(exact.length, "unapplied payments with exactly one candidate").toBeGreaterThanOrEqual(1);
+  });
+
+  // TKT-75.08 (R9, third scenario): the seed carries the bank lines the
+  // recommender must never guess on — ambiguous, overpaid, a mistyped
+  // reference and untraceable cash — and the coverage test fails without them.
+  describe("TKT-75.08 allocation edge cases (FS14–FS17, R9 third scenario)", () => {
+    const ctx = { payments: result.payments };
+    const open = result.invoices.filter(
+      (i) => i.status !== "paid" && i.status !== "written_off" && outstandingOf(i, ctx) > 0,
+    );
+    const unapplied = result.payments.filter(isUnapplied);
+    const fixture = (fs: string) => {
+      const ids = PAYMENT_FIXTURES.filter((f) => f.edge_cases.includes(fs as never)).map((f) => f.payment_id);
+      return unapplied.filter((p) => ids.includes(p.payment_id));
+    };
+
+    it("tags every FS14–FS17 case on an unapplied bank line", () => {
+      for (let n = 14; n <= 17; n++) expect(fixture(`FS${n}`).length, `FS${n}`).toBeGreaterThanOrEqual(1);
+    });
+
+    it("FS14: an unapplied bank line fits two or more open invoices equally (ambiguous)", () => {
+      const ambiguous = fixture("FS14").filter(
+        (p) => open.filter((i) => outstandingOf(i, ctx) === p.amount_paise).length >= 2,
+      );
+      expect(ambiguous.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("FS15: a bank line from a named payer exceeds that customer's open balance (overpayment)", () => {
+      const over = fixture("FS15").filter((p) => {
+        const balance = open
+          .filter((i) => i.customer_id === p.payer_customer_id)
+          .reduce((sum, i) => sum + outstandingOf(i, ctx), 0);
+        return balance > 0 && p.amount_paise > balance;
+      });
+      expect(over.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("FS16: a bank line cites a reference that is no invoice_number on the ledger", () => {
+      const numbers = new Set(result.invoices.map((i) => i.invoice_number));
+      const unknown = fixture("FS16").filter(
+        (p) => p.remittance_reference !== undefined && !numbers.has(p.remittance_reference),
+      );
+      expect(unknown.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("FS17: a bank line names no payer, cites nothing and matches no open invoice", () => {
+      const untraceable = fixture("FS17").filter(
+        (p) =>
+          p.payer_customer_id === undefined &&
+          p.remittance_reference === undefined &&
+          !open.some((i) => outstandingOf(i, ctx) === p.amount_paise),
+      );
+      expect(untraceable.length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

@@ -151,12 +151,12 @@ describe("ensureSeeded — TASK-7.7 (real public/seed files)", () => {
 
     expect(await db.customers.count()).toBe(10);
     expect(await db.invoices.count()).toBe(50);
-    expect(await db.payments.count()).toBe(12); // P-012: unapplied bank line (TKT-75.02)
+    expect(await db.payments.count()).toBe(16); // P-012: unapplied bank line (TKT-75.02); P-013..P-016: FS14–FS17 (TKT-75.08)
     expect(await db.emails.count()).toBeGreaterThanOrEqual(25);
     expect(await db.priorities.count()).toBe(50);
 
     const meta = await db.meta.get("seedVersion");
-    expect(meta?.value).toBe("2026-10-30.1");
+    expect(meta?.value).toBe("2026-11-07.1");
 
     // FS1 (missing invoice_number) + FS2 (missing due_date) + FS8 (conflicting
     // outstanding_amount) + FS10 (unrecognized status_raw) each raised.

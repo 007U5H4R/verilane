@@ -49,6 +49,8 @@ interface Case {
 interface CaseResult extends Case {
   outcome: string;
   allocations_written: number;
+  /** The exception's own candidate count. Execute allocates only a single-candidate match. */
+  candidates: number;
   permitted: boolean;
 }
 
@@ -130,8 +132,12 @@ async function runCase(c: Case): Promise<CaseResult> {
       outcome = `threw: ${e instanceof Error ? e.message : String(e)}`;
     }
     const written = (await db.audit.where("action").equals("allocate_payment").count()) - before;
-    const permitted = c.verdict === "auto_permitted" && c.trap === "none" && x.kind === "unallocated_payment";
-    return { ...c, outcome, allocations_written: written, permitted };
+    const candidates = ((x.candidate_invoice_ids as string[] | undefined) ?? []).length;
+    // A fresh auto_permitted is expected to execute only for a single-candidate
+    // match; a tie (FS14) or a no-candidate line (FS15, FS17) must be refused.
+    const permitted =
+      c.verdict === "auto_permitted" && c.trap === "none" && x.kind === "unallocated_payment" && candidates === 1;
+    return { ...c, outcome, allocations_written: written, candidates, permitted };
   } finally {
     db.close();
     await db.delete();
@@ -174,6 +180,19 @@ test("control: every fresh auto_permitted payment exception executes exactly onc
   for (const r of permitted) {
     expect(r.outcome, r.exception_id).toBe("executed");
     expect(r.allocations_written, r.exception_id).toBe(1);
+  }
+});
+
+test("control: a forced auto_permitted on a multi- or zero-candidate payment exception is refused and writes nothing", () => {
+  const forced = results.filter(
+    (r) => r.verdict === "auto_permitted" && r.trap === "none" && r.kind === "unallocated_payment" && r.candidates !== 1,
+  );
+  // The seed's FS14 (two candidates) and FS15/FS17 (none) must be in this set.
+  expect(forced.some((r) => r.candidates > 1)).toBe(true);
+  expect(forced.some((r) => r.candidates === 0)).toBe(true);
+  for (const r of forced) {
+    expect(r.outcome, r.exception_id).toBe("refused");
+    expect(r.allocations_written, r.exception_id).toBe(0);
   }
 });
 
