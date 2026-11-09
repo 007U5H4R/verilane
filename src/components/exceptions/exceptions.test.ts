@@ -441,3 +441,132 @@ describe("/exceptions/[id] — TC-75.24 action-bar matrix (A1 row 2) + Stage 3 E
     expect(out).not.toContain('data-testid="stage-execute"');
   });
 });
+
+describe("/exceptions/[id] — short-payment kinds (TKT-75.05, Design-TASK-75 §8/§11, TC-75.29/30 UI)", () => {
+  const pol = (over: Partial<PolicyDecisionRow> = {}): PolicyDecisionRow => ({
+    decision_id: "POL-RV-SPP-C-001-1",
+    exception_id: "RV-SPP-C-001",
+    evaluated_at: "2026-11-05T00:00:00.000Z",
+    config_version: "policy-v1",
+    verdict: "needs_analyst",
+    reason: "Policy rules for \"short_payment_pattern\" are not yet defined; routed to Analyst review.",
+    input_fingerprint: "fp",
+    ...over,
+  });
+  const gate = (over: Partial<PolicyGate> = {}): PolicyGate => ({
+    decision: pol(),
+    stale: false,
+    error: null,
+    role: "manager",
+    executeRefused: false,
+    ...over,
+  });
+  const spInstance = (n: number, over: Partial<Exception> = {}): Exception => ({
+    review_id: `RV-SP-INV-00${n}`,
+    kind: "short_payment",
+    invoice_id: `INV-00${n}`,
+    payment_id: `P-10${n}`,
+    customer_id: "C-001",
+    deducted_paise: paise(100_000),
+    deduction_reason: "Damaged goods",
+    linked_review_ids: ["RV-SPP-C-001"],
+    recommendation: "Check the stated reason before a Manager writes off ₹1,000.00",
+    evidence_ids: [],
+    validation_status: "verified",
+    escalation_reason: "",
+    requires_role: "manager",
+    status: "open",
+    ...over,
+  });
+  const spPattern: Exception = {
+    review_id: "RV-SPP-C-001",
+    kind: "short_payment_pattern",
+    customer_id: "C-001",
+    deducted_paise: paise(300_000),
+    linked_review_ids: ["RV-SP-INV-001", "RV-SP-INV-002", "RV-SP-INV-003"],
+    recommendation: "Needs review: 1 of 3 short payments state no reason",
+    evidence_ids: [],
+    validation_status: "missing",
+    escalation_reason: "3 short payments, 3 or more within 90 days, totalling ₹3,000.00",
+    requires_role: "manager",
+    status: "open",
+  };
+  const sp = (over: Partial<ExceptionDetail> = {}) =>
+    detail({
+      exception: spPattern,
+      payment: undefined,
+      candidates: [],
+      shortPaymentInstances: [spInstance(1), spInstance(2, { deduction_reason: undefined }), spInstance(3)],
+      ...over,
+    });
+  const DENIED = { allowed: false, reason: "Only a Manager can approve a write-off." } as const;
+  const writeOff = (permission: { allowed: boolean } = ALLOWED, busy = false) => ({ permission, busy, onRequest: () => {} });
+  const writeOffAudit = {
+    event_id: 77,
+    action: "approve_write_off",
+    subject: "review:RV-SPP-C-001",
+    summary: "Approved write-off of ₹3,000.00 (3 credit notes: CN-INV-001, CN-INV-002, CN-INV-003)",
+    at: "2026-11-05T10:00:00.000Z",
+    actor_label: "Manager",
+  };
+
+  it("shows the short-payment history in place of the bank-line and candidate-invoice groups", () => {
+    const out = content(sp(), { policyGate: gate() });
+    expect(out).toContain('data-testid="short-payment-history"');
+    expect(out).not.toContain('data-testid="payment-evidence"');
+    expect(out).not.toContain("No open invoice matches this item.");
+    expect(out).not.toContain('data-testid="credit-note-evidence"');
+  });
+
+  it("CreditNote evidence appears once a note exists", () => {
+    const out = content(
+      sp({
+        exception: { ...spPattern, status: "actioned" },
+        creditNotes: [{ credit_note_id: "CN-INV-001", invoice_id: "INV-001", created_at: "2026-11-05T10:00:00.000Z", amount_paise: 100_000 }],
+      }),
+      { policyGate: gate() },
+    );
+    expect(out).toContain('data-testid="credit-note-evidence"');
+    expect(out).toContain("CN-INV-001");
+  });
+
+  it("Manager: the action bar carries “Approve write-off”; Submit (allocation) says why it doesn't apply", () => {
+    const out = content(sp(), { policyGate: gate(), writeOff: writeOff() });
+    expect(out).toContain('data-testid="approve-write-off"');
+    expect(allocateBlocker(sp(), null, ALLOWED, gate())).toBe("A short payment is written off, not allocated");
+    expect(out).toContain('data-testid="exception-submit"');
+  });
+
+  it("Analyst: no write-off control at all, and Submit says Manager approval is required", () => {
+    const out = content(sp(), { permission: { allowed: false, reason: "x" }, policyGate: gate({ role: "analyst" }), writeOff: writeOff(DENIED) });
+    expect(out).not.toContain('data-testid="approve-write-off"');
+    expect(allocateBlocker(sp(), null, { allowed: false, reason: "x" }, gate({ role: "analyst" }))).toBe("Manager approval required");
+  });
+
+  it("closed: Submit is 'Already resolved' and no write-off control", () => {
+    const closedSp = sp({ exception: { ...spPattern, status: "actioned" } });
+    const out = content(closedSp, { policyGate: gate(), writeOff: writeOff() });
+    expect(out).not.toContain('data-testid="approve-write-off"');
+    expect(allocateBlocker(closedSp, null, ALLOWED, gate())).toBe("Already resolved");
+  });
+
+  it("TC-75.30: Stage 3 never auto-writes a credit note — even on an auto_permitted verdict", () => {
+    for (const verdict of ["auto_permitted", "needs_analyst", "needs_manager"]) {
+      const s = executeStage({ detail: sp(), gate: gate({ decision: pol({ verdict }) }) });
+      expect(s.state).toBe("manager");
+      expect(s.status).toBe("Pending manager write-off.");
+      expect(s.next).toContain("Execute never writes a credit note");
+    }
+  });
+
+  it("Stage 3 after a write-off reads the persisted approve_write_off event", () => {
+    const s = executeStage({ detail: sp({ exception: { ...spPattern, status: "actioned" }, audit: [writeOffAudit] }), gate: gate() });
+    expect(s.state).toBe("resolved");
+    expect(s.status).toContain("Written off by a Manager");
+    expect(s.status).toContain(formatDateTime(writeOffAudit.at));
+  });
+
+  it("Stage 3 still waits for a current Policy decision first", () => {
+    expect(executeStage({ detail: sp(), gate: gate({ decision: undefined }) }).state).toBe("waiting");
+  });
+});
