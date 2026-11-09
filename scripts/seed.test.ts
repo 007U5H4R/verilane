@@ -5,6 +5,7 @@
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Papa from "papaparse";
 import { afterAll, describe, expect, it } from "vitest";
@@ -13,6 +14,14 @@ import { isUnapplied, outstandingOf } from "../src/domain/priority";
 import { generateSeed, INVOICES, PAYMENT_FIXTURES, SEED_VERSION, THREADS, writeSeed, type SeedFiles } from "./seed";
 
 const SCRATCH_ROOT = "/Volumes/E Drive/Dev/.scratch";
+function scratchRoot(): string {
+  try {
+    mkdirSync(SCRATCH_ROOT, { recursive: true });
+    return SCRATCH_ROOT;
+  } catch {
+    return tmpdir(); // not on the dev machine (e.g. CI) — use the OS temp dir
+  }
+}
 const FILES: (keyof SeedFiles)[] = [
   "manifest.json",
   "customers.csv",
@@ -56,9 +65,9 @@ describe("seed — content changes require a SEED_VERSION bump (EXE161)", () => 
 
 describe("seed — TC-012 determinism", () => {
   it("two runs and the committed public/seed are byte-identical", () => {
-    mkdirSync(SCRATCH_ROOT, { recursive: true });
-    const a = mkdtempSync(join(SCRATCH_ROOT, "verilane-seed-a-"));
-    const b = mkdtempSync(join(SCRATCH_ROOT, "verilane-seed-b-"));
+    const base = scratchRoot();
+    const a = mkdtempSync(join(base, "verilane-seed-a-"));
+    const b = mkdtempSync(join(base, "verilane-seed-b-"));
     created.push(a, b);
 
     writeSeed(a);
