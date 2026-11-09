@@ -86,7 +86,7 @@ describe("/exceptions list states — TC-75.12", () => {
 
   it("disputed / closed rows are muted with the exclusion badge", () => {
     const out = html(createElement(ExceptionCards, { rows: [row({ muted: true, band: "disputed" })] }));
-    expect(out).toContain("opacity-60");
+    expect(out).toContain("bg-surface-sunken");
     expect(out).toContain("Disputed — excluded from queue");
   });
 });
