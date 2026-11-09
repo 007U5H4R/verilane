@@ -1,9 +1,10 @@
 ---
 id: TASK-79.5
 title: Detect short-payment patterns and add Manager-only credit-note write-off
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-05 04:43'
+updated_date: '2026-11-09 10:29'
 labels:
   - P1
   - M-75.2
