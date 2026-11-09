@@ -931,6 +931,7 @@ async function approveWriteOff(ctx: Ctx): Promise<Effect> {
 
   const creditNoteIds: string[] = [];
   let totalPaise = 0;
+  let lastTo = status(row);
   for (const t of targets) {
     const invoiceId = str(t.invoice_id);
     if (invoiceId === undefined) throw new InvalidCommand(`Short payment ${String(t.review_id)} has no invoice.`);
@@ -951,12 +952,15 @@ async function approveWriteOff(ctx: Ctx): Promise<Effect> {
     });
     creditNoteIds.push(creditNoteId);
     totalPaise += amount;
-    await step({ ...ctx, row: t }, "review", "exceptions", ["action"]);
+    lastTo = (await step({ ...ctx, row: t }, "review", "exceptions", ["action"])).to;
   }
 
+  // A single `short_payment` is its own (only) target, already stepped above;
+  // a pattern steps itself here. Either way the audit records the real end
+  // status, never the pre-write one.
   const subjectBefore = status(row);
   const subjectTo =
-    row.kind === "short_payment_pattern" ? (await step(ctx, "review", "exceptions", ["action"])).to : subjectBefore;
+    row.kind === "short_payment_pattern" ? (await step(ctx, "review", "exceptions", ["action"])).to : lastTo;
 
   return {
     summary: `Approved write-off of ${formatInr(paise(totalPaise))} (${creditNoteIds.length} credit note${creditNoteIds.length === 1 ? "" : "s"}: ${creditNoteIds.join(", ")})`,
