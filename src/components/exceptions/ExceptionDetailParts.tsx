@@ -11,9 +11,11 @@ import type { EXECUTE_LABEL, ExecuteOutcome } from "@/domain/commands";
 import { formatInr } from "@/domain/money";
 import type { Permission, Role } from "@/domain/permissions";
 import { isPaymentExceptionKind } from "@/domain/schema";
+import { isShortPaymentKind } from "@/domain/shortPayments";
 import type { AuditEventRow, PolicyDecisionRow } from "@/store/db";
 import type { ExceptionCandidate, ExceptionDetail } from "@/store/hooks";
 import { cn } from "@/lib/cn";
+import { CreditNoteEvidence, ShortPaymentSection, WriteOffControl, type WriteOffControlProps } from "./ShortPaymentSection";
 
 /**
  * `/exceptions/[id]` parts (TKT-75.02, Design-TASK-75 §8, §10, §11, §13, §14):
@@ -91,6 +93,9 @@ export function allocateBlocker(
   if (x.status !== "open") return "Already resolved";
   if (!isPaymentExceptionKind(x.kind)) return "Review this item in Inbox";
   if (!permission.allowed) return "Manager approval required";
+  // TKT-75.05: a short payment has no candidate invoice; the Manager closes it
+  // with "Approve write-off" (EXE154), never through an allocation.
+  if (isShortPaymentKind(x.kind)) return "A short payment is written off, not allocated";
   if (gate) {
     if (gate.error !== null) return "Policy couldn’t evaluate this item";
     if (!gate.decision || gate.stale) return "Waiting for the policy decision";
@@ -124,6 +129,8 @@ export interface ExceptionDetailContentProps {
   executeOutcome?: ExecuteOutcome | null;
   /** Execute failed to run (a rejected transaction) — shown in Stage 3. */
   executeError?: string | null;
+  /** TKT-75.05: the Manager-only write-off control (short-payment kinds only). */
+  writeOff?: Omit<WriteOffControlProps, "detail">;
 }
 
 export function ExceptionDetailContent({
@@ -139,9 +146,11 @@ export function ExceptionDetailContent({
   policyGate,
   executeOutcome,
   executeError = null,
+  writeOff,
 }: ExceptionDetailContentProps) {
   const x = detail.exception;
   const payment = isPaymentExceptionKind(x.kind);
+  const short = isShortPaymentKind(x.kind);
   const blocker = allocateBlocker(detail, selected, permission, policyGate);
   const reasonId = `submit-reason-${x.review_id}`;
 
@@ -164,14 +173,23 @@ export function ExceptionDetailContent({
 
       <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex min-w-0 flex-col gap-4">
-          {payment && <PaymentEvidence detail={detail} />}
-          <CandidateFacts
-            candidates={detail.candidates}
-            selectable={payment && x.status === "open"}
-            selected={selected}
-            onSelect={onSelect}
-            allocatedTo={x.status === "actioned" ? (x.invoice_id ?? null) : null}
-          />
+          {short ? (
+            <>
+              <ShortPaymentSection detail={detail} />
+              <CreditNoteEvidence creditNotes={detail.creditNotes} />
+            </>
+          ) : (
+            <>
+              {payment && <PaymentEvidence detail={detail} />}
+              <CandidateFacts
+                candidates={detail.candidates}
+                selectable={payment && x.status === "open"}
+                selected={selected}
+                onSelect={onSelect}
+                allocatedTo={x.status === "actioned" ? (x.invoice_id ?? null) : null}
+              />
+            </>
+          )}
           {(x.recommendation !== "" || x.escalation_reason !== "") && (
             <section className={CARD} aria-labelledby="exception-why">
               <h2 id="exception-why" className="font-semibold text-text">
@@ -225,6 +243,7 @@ export function ExceptionDetailContent({
         >
           Mark disputed
         </Button>
+        {short && writeOff && <WriteOffControl detail={detail} {...writeOff} />}
         <Button
           type="button"
           size="sm"
@@ -562,6 +581,14 @@ export function executeStage({
   error?: string | null;
 }): ExecuteStage {
   const x = detail.exception;
+  const short = isShortPaymentKind(x.kind);
+  if (short && x.status !== "open") {
+    const wrote = detail.audit.find((e) => e.action === "approve_write_off");
+    const at = wrote && typeof wrote.at === "string" ? formatDateTime(wrote.at) : null;
+    return at !== null
+      ? { state: "resolved", status: `Written off by a Manager · ${at}`, next: "Nothing — the credit notes and their audit event were written in one transaction." }
+      : { state: "resolved", status: "Already resolved — no Execute action.", next: "Nothing; a person closed this item." };
+  }
   if (x.status !== "open") {
     const ran = detail.audit.find((e) => e.action === "allocate_payment" && e.actor_label === EXECUTE_ACTOR);
     if (ran) {
@@ -585,6 +612,16 @@ export function executeStage({
   }
   const d = gate.decision;
   const decisionId = d.decision_id;
+  // TC-75.30: a write-off is Manager-only whatever the verdict — Execute
+  // never writes a credit note (FS19).
+  if (short) {
+    return {
+      state: "manager",
+      status: "Pending manager write-off.",
+      next: "A Manager reviews the deductions and approves the write-off. Execute never writes a credit note.",
+      decisionId,
+    };
+  }
   switch (d.verdict) {
     case "auto_permitted":
       if (outcome?.kind === "refused") {

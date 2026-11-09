@@ -26,6 +26,7 @@ export const ACTIONS = [
   "reconcile_decide",
   "allocate_payment",
   "reverse_allocation",
+  "approve_write_off",
   "import_csv",
   "reset_demo",
   "switch_role",
@@ -128,6 +129,9 @@ const ANALYST_RULES: Record<Action, Rule> = {
   // TKT-75.06: undoing an applied allocation moves the ledger back; Manager only.
   // A refused attempt is audited (FS21, EXE141).
   reverse_allocation: () => deny("Only a Manager can reverse an allocation."),
+  // TKT-75.05 (R4): a short-payment write-off issues a CreditNote; Manager
+  // only. A refused attempt is audited (FS21, EXE141).
+  approve_write_off: () => deny("Only a Manager can approve a write-off."),
   import_csv: () => ALLOW,
   reset_demo: () => ALLOW,
   switch_role: () => ALLOW,

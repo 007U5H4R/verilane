@@ -11,6 +11,7 @@ import { asOf, daysBetween } from "@/domain/clock";
 import { match } from "@/domain/match";
 import { prioritise, type PriorityCtx } from "@/domain/priority";
 import { exceptionsFor, paymentExceptionsFor } from "@/domain/review";
+import { shortPaymentExceptionsFor } from "@/domain/shortPayments";
 import { deriveSignals } from "@/domain/signals";
 import type {
   Dispute,
@@ -193,6 +194,8 @@ async function recomputeCore(db: VerilaneDb): Promise<void> {
     disputes.push(...disputesFor(m, ext, email, invoices));
   }
   exceptions.push(...paymentExceptionsFor({ invoices, payments }));
+  // TKT-75.05 (FS18/FS19): short payments and the per-customer pattern.
+  exceptions.push(...shortPaymentExceptionsFor({ invoices, payments }));
   await db.matches.clear();
   await db.matches.bulkPut(matches);
   await syncExceptions(db, exceptions);
@@ -267,8 +270,15 @@ async function syncDisputes(db: VerilaneDb, computed: Dispute[]): Promise<void> 
   );
 }
 
-/** Kinds recompute derives (email kinds, plus unallocated_payment from the ledger, EXE124). */
-const DERIVED_EXCEPTION_KINDS = new Set(["uncertain_match", "reconciliation", "dispute", "unallocated_payment"]);
+/** Kinds recompute derives (email kinds, plus unallocated_payment from the ledger, EXE124, and the short-payment kinds, TKT-75.05). */
+const DERIVED_EXCEPTION_KINDS = new Set([
+  "uncertain_match",
+  "reconciliation",
+  "dispute",
+  "unallocated_payment",
+  "short_payment",
+  "short_payment_pattern",
+]);
 
 /**
  * Review items are workflow rows: a person may action or dismiss one. Upsert

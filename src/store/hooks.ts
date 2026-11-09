@@ -25,9 +25,10 @@ import {
 } from "@/domain/policy";
 import { recommendForException, type RecommendedFacts } from "@/domain/recommend";
 import { err, ok, type Rejected, type Result } from "@/domain/result";
+import { isShortPaymentKind } from "@/domain/shortPayments";
 import type { Customer, DataIssue, Dispute, EmailException, EmailMessage, Extraction, Invoice, Match, Payment, Priority, Exception } from "@/domain/schema";
 import { DraftSchema, isEmailException, isPaymentExceptionKind, type Draft } from "@/domain/schema";
-import type { AuditEventRow, PolicyDecisionRow, VerilaneDb } from "./db";
+import type { AuditEventRow, CreditNoteRow, PolicyDecisionRow, VerilaneDb } from "./db";
 import { currentRole, execute, type CommandInput } from "./tx";
 
 export const DbContext = createContext<VerilaneDb | null>(null);
@@ -493,9 +494,26 @@ export interface ExceptionDetail {
   /**
    * Stage 1 (Recommend Agent, TKT-75.03/F15): verified facts over the
    * already-fetched `payments`/`invoices`/candidate customer — pure, no I/O.
-   * `undefined` for a non-payment-exception kind (Recommend is payment-only).
+   * `undefined` for a non-payment-exception kind, and for short-payment
+   * kinds (TKT-75.05): Recommend allocates a bank line to candidate
+   * invoices, which a short payment has none of (a `short_payment_pattern`
+   * also has no `payment_id`; a single `short_payment` does) — never a
+   * misleading rejected recommendation.
    */
   recommendation?: Result<RecommendedFacts, Rejected>;
+  /**
+   * Short-payment kinds only (TKT-75.05, Design §8): the customer's other
+   * short payments — the pattern's own linked instances; for a patterned
+   * instance, its pattern row; for a standalone instance, empty. Drives the
+   * detail page's history section.
+   */
+  shortPaymentInstances: Exception[];
+  /**
+   * Short-payment kinds only (Design §8): the CreditNote(s) already written
+   * off against this exception's invoice(s). Empty until `approve_write_off`
+   * runs — the evidence group only renders once this is non-empty.
+   */
+  creditNotes: CreditNoteRow[];
 }
 
 /** One exception with its evidence, for `/exceptions/[id]`: `undefined` while loading, `null` when not found. */
@@ -512,6 +530,23 @@ export function useException(id: string): ExceptionDetail | undefined | null {
       db.customers.toArray(),
       db.audit.where("subject").equals(`review:${id}`).toArray(),
     ]);
+    // Short-payment kinds only (TKT-75.05): the pattern's own linked
+    // instances (each a `short_payment` row), for the detail page's history.
+    const shortPaymentInstances = isShortPaymentKind(exception.kind)
+      ? ((await db.exceptions.bulkGet(exception.linked_review_ids)).filter((r): r is Exception => r !== undefined))
+      : [];
+    // The invoice(s) this exception's write-off, if any, would be/was filed
+    // against: the exception's own invoice, plus (for a pattern) each
+    // instance's invoice.
+    const writeOffInvoiceIds = isShortPaymentKind(exception.kind)
+      ? [
+          ...(exception.invoice_id !== undefined ? [exception.invoice_id] : []),
+          ...shortPaymentInstances.flatMap((i) => (i.invoice_id !== undefined ? [i.invoice_id] : [])),
+        ]
+      : [];
+    const creditNotes = writeOffInvoiceIds.length > 0
+      ? await db.creditNotes.where("invoice_id").anyOf(writeOffInvoiceIds).toArray()
+      : [];
     const ids = isPaymentExceptionKind(exception.kind)
       ? (exception.candidate_invoice_ids ?? [])
       : exception.invoice_id !== undefined
@@ -531,7 +566,10 @@ export function useException(id: string): ExceptionDetail | undefined | null {
         outstandingPaise: outstandingOf(invoice, { payments }),
       });
     }
-    const recommendation = isPaymentExceptionKind(exception.kind)
+    // Recommend is for unallocated bank lines (F15). Short-payment kinds are
+    // skipped (TKT-75.05): they have no candidate invoices, and a pattern has
+    // no `payment_id` (a single `short_payment` does).
+    const recommendation = isPaymentExceptionKind(exception.kind) && !isShortPaymentKind(exception.kind)
       ? recommendForException(exception, payments, invoices, candidates[0]?.customer)
       : undefined;
     return {
@@ -544,6 +582,8 @@ export function useException(id: string): ExceptionDetail | undefined | null {
       unappliedCashPaise: unappliedCashPaise(payments),
       unappliedCount: unappliedPayments(payments).length,
       recommendation,
+      shortPaymentInstances,
+      creditNotes,
     };
   }, [db, id]);
 }
@@ -570,16 +610,27 @@ export interface PolicyInputs {
  * one — closed exceptions intentionally get no new decision (their outcome is
  * already on the audit trail; evaluating after the fact would invent a gate
  * that never ran). `err` when the bank line is missing: never evaluate an
- * amount of 0 in its place (m2).
+ * amount of 0 in its place (m2). Short-payment kinds (TKT-75.05) have no bank
+ * line at all — their amount is `deducted_paise`, not a `payment` row; Policy
+ * routes them to `needs_analyst` via G1 regardless (never `auto_permitted`),
+ * since their write-off is gated by `can()` in `commands.ts`, not this verdict.
  */
 export function policyInputsFor(detail: ExceptionDetail): Result<PolicyInputs | null, Rejected> {
   const { exception, payment, recommendation } = detail;
   if (!isPaymentExceptionKind(exception.kind) || exception.status !== "open") return ok(null);
+  const confidence = recommendation?.ok ? recommendation.value.confidence : undefined;
+  if (isShortPaymentKind(exception.kind)) {
+    if (exception.deducted_paise === undefined) {
+      return err(`the deducted amount for exception ${exception.review_id} is missing.`);
+    }
+    const amountPaise = exception.deducted_paise;
+    const fingerprint = policyInputFingerprint({ exception, amountPaise, confidence }, POLICY_CONFIG_VERSION);
+    return ok({ amountPaise, confidence, fingerprint });
+  }
   if (!payment) {
     return err(`the bank line ${exception.payment_id ?? "(none)"} for this exception is no longer on the ledger.`);
   }
   const amountPaise = payment.amount_paise;
-  const confidence = recommendation?.ok ? recommendation.value.confidence : undefined;
   const fingerprint = policyInputFingerprint({ exception, amountPaise, confidence }, POLICY_CONFIG_VERSION);
   return ok({ amountPaise, confidence, fingerprint });
 }

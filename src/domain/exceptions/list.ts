@@ -8,6 +8,7 @@
 import { ageingBucketOfPriority, type AgeingBucket } from "../aggregates";
 import type { Paise } from "../money";
 import { outstandingOf, type RankItem } from "../priority";
+import { isShortPaymentKind } from "../shortPayments";
 import {
   isPaymentExceptionKind,
   type Customer,
@@ -72,6 +73,7 @@ export const EXCEPTION_KIND_LABEL: Record<ExceptionKind, string> = {
   reconciliation: "Payment reconciliation",
   unallocated_payment: "Unallocated payment",
   short_payment_pattern: "Short-payment pattern",
+  short_payment: "Short payment",
 };
 
 export function exceptionHref(id: string): string {
@@ -120,7 +122,15 @@ export function buildExceptionRows(src: ExceptionSources): ExceptionRow[] {
 
       let subject: string;
       let amountPaise: Paise | null;
-      if (isPaymentExceptionKind(x.kind)) {
+      if (isShortPaymentKind(x.kind)) {
+        // TKT-75.05 (Design §5): the customer's name and the amount kept back, shown negative.
+        const customer = x.customer_id ?? invoice?.customer_id;
+        subject =
+          x.kind === "short_payment_pattern"
+            ? `${customer !== undefined ? customerName(customer) : "Customer"} · ${x.linked_review_ids.length} short payments`
+            : `${customer !== undefined ? customerName(customer) : "Customer"} · ${invoice?.invoice_number ?? x.invoice_id ?? "Invoice"}`;
+        amountPaise = x.deducted_paise !== undefined ? (-x.deducted_paise as Paise) : null;
+      } else if (isPaymentExceptionKind(x.kind)) {
         const payment = x.payment_id !== undefined ? payments.get(x.payment_id) : undefined;
         subject = `${x.payment_id ?? "Payment"} · ${invoice ? customerName(invoice.customer_id) : "Unapplied bank line"}`;
         amountPaise = payment?.amount_paise ?? null;
@@ -146,7 +156,7 @@ export function buildExceptionRows(src: ExceptionSources): ExceptionRow[] {
         statusLabel: exceptionStatusLabel(x, src.verdicts?.get(x.review_id)),
         band: priority?.band ?? null,
         invoiceId: invoice ? invoice.invoice_id : null,
-        customerId: invoice?.customer_id ?? null,
+        customerId: invoice?.customer_id ?? x.customer_id ?? null,
         invoiceStatus: invoice?.status ?? null,
         ageing: priority ? ageingBucketOfPriority(priority) : null,
         muted: priority?.band === "disputed" || priority?.band === "closed",

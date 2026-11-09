@@ -46,6 +46,7 @@ afterAll(() => {
 const SEED_CONTENT_PINS: Record<string, string> = {
   "2026-10-30.1": "8e827f2b9caeccd5a869a4d9a8d24245464a61a4ec0231563fdf1782d9e2bd76",
   "2026-11-07.1": "c77264d71341227f7e178f51334d4919b78b4c80b6fc3cc59770dfa277212e52", // FS14–FS17 (TKT-75.08)
+  "2026-11-07.2": "0f6f653eb054b06fed1baa391f122a1b96b1959ff52ebdfd3f2614d0f8b04475", // FS18–FS19 short payments (TKT-75.05)
 };
 
 function seedContentHash(files: SeedFiles): string {
@@ -236,6 +237,41 @@ describe("seed — TC-011 coverage", () => {
           !open.some((i) => outstandingOf(i, ctx) === p.amount_paise),
       );
       expect(untraceable.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // TKT-75.05 (FS18/FS19, TC-75.26): a customer whose paid invoices were each
+  // settled short. A short payment is a paid invoice whose applied payments
+  // fall below its amount; the gap is the deduction.
+  describe("TKT-75.05 short payments (FS18, FS19)", () => {
+    const shorts = result.invoices.flatMap((inv) => {
+      if (inv.status !== "paid") return [];
+      const applied = result.payments.filter((p) => p.invoice_id === inv.invoice_id);
+      const paid = applied.reduce((sum, p) => sum + p.amount_paise, 0);
+      if (applied.length === 0 || paid >= inv.amount_paise) return [];
+      const last = applied.map((p) => p.paid_on).sort().at(-1) as string;
+      return [{ customer_id: inv.customer_id, paid_on: last, reason: applied.find((p) => p.deduction_reason)?.deduction_reason }];
+    });
+    const byCustomer = new Map<string, typeof shorts>();
+    for (const s of shorts) byCustomer.set(s.customer_id, [...(byCustomer.get(s.customer_id) ?? []), s]);
+    const within90 = (list: typeof shorts) => {
+      const days = list.map((s) => Date.parse(s.paid_on)).sort((a, b) => a - b);
+      return days.some((d, i) => i + 2 < days.length && (days[i + 2] as number) - d <= 90 * 86_400_000);
+    };
+
+    it("FS19: one customer has 3 or more short payments within 90 days", () => {
+      const patterned = [...byCustomer.values()].filter(within90);
+      expect(patterned).toHaveLength(1);
+    });
+
+    it("FS18: one of that customer's short payments states no reason", () => {
+      const patterned = [...byCustomer.values()].filter(within90);
+      expect(patterned[0]?.some((s) => s.reason === undefined)).toBe(true);
+      expect(patterned[0]?.some((s) => s.reason !== undefined)).toBe(true);
+    });
+
+    it("has a customer with short payments that do not form a pattern (a negative case)", () => {
+      expect([...byCustomer.values()].some((list) => list.length > 0 && !within90(list))).toBe(true);
     });
   });
 });

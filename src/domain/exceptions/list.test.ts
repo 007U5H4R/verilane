@@ -62,9 +62,11 @@ const payments: Payment[] = [
   { payment_id: "P-2", invoice_id: null, paid_on: "2026-10-02", amount_paise: paise(900) },
 ];
 
-const items = [item("I-1", "high", 40, 10_000, "C-1"), item("I-2", "disputed", 10, 2500, "C-2")];
+const paidShort = item("I-3", "closed", null, 5000, "C-1");
+paidShort.invoice = { ...paidShort.invoice, status: "paid", status_raw: "paid" };
+const items = [item("I-1", "high", 40, 10_000, "C-1"), item("I-2", "disputed", 10, 2500, "C-2"), paidShort];
 
-// One exception per kind (the seed has no short_payment_pattern until 79.5).
+// One exception per kind, plus an unallocated payment with no candidate.
 const sevenKinds: Exception[] = [
   exc({ review_id: "RV-D", kind: "draft", message_id: "M1", invoice_id: "I-1" }),
   exc({ review_id: "RV-U", kind: "uncertain_match", message_id: "M2", invoice_id: "I-1" }),
@@ -78,16 +80,46 @@ const sevenKinds: Exception[] = [
     email_amount_paise: 4200 as Exception["email_amount_paise"],
   }),
   exc({ review_id: "RV-PAY-P-1", kind: "unallocated_payment", payment_id: "P-1", candidate_invoice_ids: ["I-2"] }),
-  exc({ review_id: "RV-SP", kind: "short_payment_pattern", payment_id: "P-2", candidate_invoice_ids: [], requires_role: "manager" }),
+  exc({ review_id: "RV-PAY-P-2", kind: "unallocated_payment", payment_id: "P-2", candidate_invoice_ids: [] }),
+  // TKT-75.05: a short payment on paid invoice I-3, and its customer's pattern.
+  exc({
+    review_id: "RV-SP-I-3",
+    kind: "short_payment",
+    invoice_id: "I-3",
+    customer_id: "C-1",
+    deducted_paise: 400 as Exception["deducted_paise"],
+    linked_review_ids: ["RV-SPP-C-1"],
+    requires_role: "manager",
+  }),
+  exc({
+    review_id: "RV-SPP-C-1",
+    kind: "short_payment_pattern",
+    customer_id: "C-1",
+    deducted_paise: 1200 as Exception["deducted_paise"],
+    linked_review_ids: ["RV-SP-I-3", "RV-SP-I-4", "RV-SP-I-5"],
+    requires_role: "manager",
+  }),
 ];
 
 const src = (exceptions: Exception[]): ExceptionSources => ({ exceptions, items, customers, payments });
 
 describe("buildExceptionRows — TC-75.11", () => {
-  it("lists all 7 kinds, one row each", () => {
+  it("lists every kind, one row per exception", () => {
     const rows = buildExceptionRows(src(sevenKinds));
     expect(new Set(rows.map((r) => r.kind))).toEqual(new Set(ExceptionKindSchema.options));
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(sevenKinds.length);
+  });
+
+  it("TKT-75.05 (Design §5): a short-payment row shows the customer's name and a negative amount", () => {
+    const rows = buildExceptionRows(src(sevenKinds));
+    expect(rows.find((r) => r.id === "RV-SP-I-3")).toMatchObject({ subject: "Acme · N-I-3", amountPaise: -400, customerId: "C-1", kindLabel: "Short payment" });
+    expect(rows.find((r) => r.id === "RV-SPP-C-1")).toMatchObject({
+      subject: "Acme · 3 short payments",
+      amountPaise: -1200,
+      customerId: "C-1",
+      invoiceId: null,
+      kindLabel: "Short-payment pattern",
+    });
   });
 
   it("is deterministic: same input, same order (open first, then by id)", () => {
@@ -110,7 +142,7 @@ describe("buildExceptionRows — TC-75.11", () => {
   });
 
   it("a payment exception with no single candidate says so", () => {
-    const row = buildExceptionRows(src(sevenKinds)).find((r) => r.id === "RV-SP")!;
+    const row = buildExceptionRows(src(sevenKinds)).find((r) => r.id === "RV-PAY-P-2")!;
     expect(row).toMatchObject({ subject: "P-2 · Unapplied bank line", amountPaise: 900, band: null, invoiceId: null });
   });
 
@@ -155,13 +187,13 @@ describe("filterExceptionRows — the reused Queue filters", () => {
     filterExceptionRows(rows, { ...NO_EXCEPTION_FILTERS, ...f }).map((r) => r.id);
 
   it("no filters keeps every row", () => {
-    expect(ids({})).toHaveLength(7);
+    expect(ids({})).toHaveLength(sevenKinds.length);
   });
 
   it("search matches subject, kind label and ids, case-insensitively", () => {
     expect(ids({ q: "globex" })).toEqual(["RV-PAY-P-1", "RV-S"]);
-    expect(ids({ q: "unallocated" })).toEqual(["RV-PAY-P-1"]);
-    expect(ids({ q: "p-2" })).toEqual(["RV-SP"]);
+    expect(ids({ q: "unallocated" })).toEqual(["RV-PAY-P-1", "RV-PAY-P-2"]);
+    expect(ids({ q: "p-2" })).toEqual(["RV-PAY-P-2"]);
   });
 
   it("priority, customer, status and ageing filter by the related invoice; rows without one drop out", () => {

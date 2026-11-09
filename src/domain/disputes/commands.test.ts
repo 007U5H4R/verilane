@@ -14,6 +14,7 @@ function memTx(seed: Partial<Record<TableName, Row[]>>) {
     disputes: "dispute_id",
     exceptions: "review_id",
     payments: "payment_id",
+    creditNotes: "credit_note_id",
     meta: "key",
   };
   const tables = new Map<TableName, Map<string, Row>>();

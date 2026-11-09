@@ -129,6 +129,7 @@ describe("decidePolicyVerdict — each kind (table-driven, m6)", () => {
   const cases: Array<[PaymentExceptionKind, PolicyVerdict, string]> = [
     ["unallocated_payment", "auto_permitted", "G5"],
     ["short_payment_pattern", "needs_analyst", "G1"],
+    ["short_payment", "needs_analyst", "G1"],
   ];
   it.each(cases)("%s (₹10, high confidence) -> %s via %s", (kind, verdict, gate) => {
     const result = decidePolicyVerdict({ kind, amountPaise: 1_000, confidence: "high" });
