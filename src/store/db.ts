@@ -53,7 +53,7 @@ export interface ExceptionRow {
   [key: string]: unknown;
 }
 
-/** `creditNotes` (TASK-75, technical-plan §1.3): empty until TKT-75.06 writes one. */
+/** `creditNotes` (TASK-75, technical-plan §1.3): written by TKT-75.05's `approve_write_off`. */
 export interface CreditNoteRow {
   credit_note_id: string;
   invoice_id: string;

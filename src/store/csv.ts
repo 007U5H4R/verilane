@@ -59,7 +59,7 @@ export const IMPORT_COLUMNS: Record<ImportKind, readonly string[]> = {
  * required ones only when some row has a value, so the fields survive a round
  * trip and a v1 export is unchanged (EXE160). A file without them still imports. */
 const OPTIONAL_COLUMNS: Partial<Record<ImportKind, readonly string[]>> = {
-  payments: ["payer_customer_id", "remittance_reference"],
+  payments: ["payer_customer_id", "remittance_reference", "deduction_reason"],
 };
 
 /** Columns that must be unique within a file (blank cells are exempt); a

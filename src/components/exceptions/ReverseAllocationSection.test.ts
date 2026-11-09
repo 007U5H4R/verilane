@@ -36,6 +36,8 @@ const detail = (x: Partial<Exception> = {}, paymentInvoice: string | null = "INV
   audit: [],
   unappliedCashPaise: paise(0),
   unappliedCount: 0,
+  shortPaymentInstances: [],
+  creditNotes: [],
 });
 
 const subject = { kind: "review" as const, id: "RV-PAY-P-012" };

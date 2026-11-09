@@ -87,6 +87,11 @@ export function formatInr(p: Paise): string {
   return `₹${formatted}`;
 }
 
+/** Like `formatInr`, with a leading minus sign for a negative figure, e.g. `−₹1,000.00` (a short-payment deduction, TKT-75.05). */
+export function formatSignedInr(p: Paise): string {
+  return p < 0 ? `−${formatInr((-p) as Paise)}` : formatInr(p);
+}
+
 const WHOLE_RUPEES = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 
 /** Formats paise as whole rupees, e.g. `₹3,40,000` (queue reason chips). */

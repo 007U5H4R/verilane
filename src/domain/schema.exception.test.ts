@@ -18,14 +18,14 @@ const base = {
 } as const;
 
 describe("Exception schema (TC-002)", () => {
-  it("accepts the two new payment kinds", () => {
+  it("accepts the payment kinds (TKT-75.05 adds short_payment, EXE151)", () => {
     expect(ExceptionKindSchema.options).toEqual(
-      expect.arrayContaining(["unallocated_payment", "short_payment_pattern"]),
+      expect.arrayContaining(["unallocated_payment", "short_payment_pattern", "short_payment"]),
     );
-    expect(PAYMENT_EXCEPTION_KINDS).toEqual(["unallocated_payment", "short_payment_pattern"]);
+    expect(PAYMENT_EXCEPTION_KINDS).toEqual(["unallocated_payment", "short_payment_pattern", "short_payment"]);
   });
 
-  it.each(["unallocated_payment", "short_payment_pattern"] as const)(
+  it.each(["unallocated_payment", "short_payment_pattern", "short_payment"] as const)(
     "%s parses without a message_id and keeps its kind",
     (kind) => {
       const parsed = ExceptionSchema.parse({ ...base, kind });

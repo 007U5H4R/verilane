@@ -1314,6 +1314,51 @@ Supersedes EXE130's "audit write outside AuditAction" and "AC6" bullets. EXE130'
   - Working: both buttons read "Reversing…" and are disabled, and the dialog can't be dismissed.
 - **Offline.** The control stays enabled. The reversal is a local IndexedDB write with no network or sync dependency, the same as allocation, which also stays enabled. Reset and import are paused because they need the network. The shell's offline banner still shows.
 
+## EXE150 · A short payment's stated reason is carried verbatim and never inferred (TASK-79.5, TKT-75.05, FS18) — accepted
+- `payments.csv` gains an optional `deduction_reason` column (`PaymentSchema.deduction_reason`). It is copied verbatim onto the `short_payment` exception. Absent means the payer stated no reason.
+- No deduction type is ever assumed from the amount, the customer or past deductions. A missing reason marks the item "Needs review" (validation `missing`), and the UI says so (EXE153).
+- A write-off of an instance with no stated reason writes the CreditNote reason "No reason stated", not a guessed one.
+
+## EXE151 · A new `short_payment` kind per instance; the pattern links its instances inside an inclusive 90-day window (TASK-79.5, TKT-75.05, FS19) — accepted
+- `ExceptionKindSchema` gains `short_payment`: one exception per short-paid invoice (`RV-SP-{invoice_id}`). It joins `PAYMENT_EXCEPTION_KINDS`, so `message_id` stays optional for it. Existing kinds, ids and testids are unchanged.
+- `short_payment_pattern` (`RV-SPP-{customer_id}`) is raised when 3 or more of a customer's short payments fall within one `SHORT_PAYMENT_WINDOW_DAYS` (90) window. The window is inclusive: payments exactly 90 days apart count. The pattern's `linked_review_ids` lists its instances, and each instance links back to the pattern.
+- Why a separate instance kind: a write-off, a credit note and the audit need one row per invoice. A pattern-only model would hide standalone short payments.
+
+## EXE152 · Short-payment fields on Exception and ExceptionDetail; `CN-{invoice_id}` credit notes; Manager-only write-off enforced by `can()` (TASK-79.5, TKT-75.05, R4) — accepted
+- `Exception` gains optional `customer_id`, `deducted_paise` (the instance's deduction, or the pattern's total) and `deduction_reason`, set for short kinds only. A single `short_payment` carries its `payment_id`; a pattern has none.
+- `ExceptionDetail` gains required `shortPaymentInstances` (the pattern's instances, or an instance's pattern) and `creditNotes` (notes already written for those invoices). They are required, not optional, so every consumer handles the empty case explicitly. Both are `[]` for other kinds.
+- A credit note's key is `CN-{invoice_id}`. One note per invoice makes a repeat write-off detectable inside the transaction, and the whole write-off refuses before anything is written.
+- Policy routes both short kinds to `needs_analyst`, so the Execute agent never writes for them and never auto-writes a credit note (EXE157). The write-off itself is the `approve_write_off` command, which `can()` allows for a Manager only. An Analyst's attempt is refused and audited (FS21, the EXE141 path). The command's audit records the subject's real before/after status for both kinds.
+
+## EXE153 · Short-payment detail: the history and CreditNote groups replace the bank-line and candidate groups (TASK-79.5, TKT-75.05) — accepted
+- On `/exceptions/[id]`, a `short_payment` or `short_payment_pattern` item renders `ShortPaymentSection` (`data-testid="short-payment-history"`) and `CreditNoteEvidence` in place of `PaymentEvidence` and `CandidateFacts`. Why: a short payment has no candidate invoices, so v1's group would claim "No open invoice matches this item", which is false here.
+- History: a pattern lists its linked `short_payment` instances, and an instance is its own one-row history. A patterned instance links to its pattern, and the pattern row is never listed as a payment. Each row shows the invoice link, the deduction as a negative amount, the stated reason verbatim, its exception link and the Design §8 provenance line ("Source: payments.csv · Row: {payment_id} · Field: amount_paise, deduction_reason").
+- FS18: a missing reason shows a "Needs review" chip and "No reason stated — no deduction type assumed". No deduction type is ever inferred.
+- `CreditNoteEvidence` renders nothing until a CreditNote row exists, so it is never a placeholder.
+- Empty: a pattern with no linked instances on the ledger says so instead of rendering an empty list. Loading and error reuse the page's existing skeleton and error states.
+- Policy, Execute and the audit trail still render for short kinds, since they are in `PAYMENT_EXCEPTION_KINDS`.
+
+## EXE154 · "Approve write-off" is a Manager-only action-bar control, hidden for an Analyst (TASK-79.5, FS19, R4) — accepted, deviation pending design sign-off
+- `WriteOffControl` (`data-testid="approve-write-off"`) sits in the action bar between "Mark disputed" and "Submit for approval". It renders only when `can(role, "approve_write_off")` allows it, so an Analyst sees no control at all and therefore no dead one. This follows the EXE143 rule.
+- The click opens an AlertDialog confirm (`approve-write-off-dialog` / `-confirm` / `-error`). The confirm runs `execute({type:"approve_write_off"})`, a single rw transaction that writes the credit notes, closes the items and appends the audit event. The dialog is mounted only while the role may write off and there is a target, so a role switch unmounts it.
+- `allocateBlocker` now returns "A short payment is written off, not allocated" for short kinds. The check runs after the closed and permission checks, so an Analyst still reads "Manager approval required" and a closed item "Already resolved". Submit stays in the DOM, disabled, and its testid is unchanged.
+- **Deviation:** Design-TASK-75 §11 says "No new buttons introduced"; A1 amended that only for the reversal. The ticket brief requires a role-gated Manager control. The button is shipped behind the permission, and an A1-style amendment needs design sign-off at Gate 2/3.
+
+## EXE155 · A patterned instance is written off from its pattern, not on its own (TASK-79.5) — accepted
+- `writeOffTarget()` is `null` for a `short_payment` whose pattern is still open. For a Manager, the control there becomes a link: "Write off from the pattern". An Analyst sees nothing.
+- Why: a pattern write-off should cover the whole pattern in one place.
+- Amended 2026-11-09 (user decision: "skip done ones"): a pattern's `approve_write_off` now skips any linked instance already resolved on its own. It writes credit notes only for the open ones, leaves earlier notes untouched, and names the skipped IDs in the summary and in the audit's `after.skipped_review_ids`. If every instance is already resolved, it closes the pattern with no new note. A closed single `short_payment` is still refused. In the UI, `writeOffTarget()` counts only open instances and is `null` when none are left. Tests: `approveWriteOff.test.ts` and `ShortPaymentSection.test.ts`.
+
+## EXE156 · The write-off stays enabled offline (TASK-79.5, Design §13) — accepted
+- The write-off is a local IndexedDB transaction with nothing to sync, so the same reasoning as the reversal (EXE143) applies. Design §13's "disabled with reason" covers only actions that need sync, and the app-shell offline banner still shows.
+
+## EXE157 · Stage 3 never auto-writes a credit note; a closed short item reads its `approve_write_off` event (TASK-79.5, TC-75.30) — accepted
+- For an open short kind, `executeStage()` returns state `manager` with "Pending manager write-off." and a "Next" line saying "Execute never writes a credit note". This holds for every verdict, including `auto_permitted`, and only after a current Policy decision exists; before that it is still "waiting" or "error". Execute's domain path already hands non-`auto_permitted` verdicts off without writing, and Policy routes short kinds to `needs_analyst`.
+- When closed, Stage 3 reads the persisted `approve_write_off` audit event: "Written off by a Manager · {time}". It never derives that from memory.
+
+## EXE158 · Muted (written-off) rows use `bg-surface-sunken` plus a text badge, never `opacity-*` (TASK-79.5, TASK-88 scar) — accepted
+- A closed history row gets `bg-surface-sunken` and a "Written off" badge, or "Closed" when no credit note exists. Its text keeps the normal `text-text` / `text-text-muted` tokens. A unit test asserts that no `opacity-` class appears in the section or the CreditNote group, so the WCAG 1.4.3 regression from TASK-88 can't return here.
+
 ## EXE160 · A bank line may carry an optional payer and remittance reference (TASK-79.8) — accepted
 - `PaymentSchema` gains two optional fields. `payer_customer_id` is the customer the bank names as payer. `remittance_reference` is the reference the bank line cites, kept verbatim. `payments.csv` gains both columns.
 - A blank cell, or a CSV without the columns, ingests as "not on file". This keeps every v1 import and every existing payments CSV valid.

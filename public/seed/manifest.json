@@ -1,5 +1,5 @@
 {
-  "seedVersion": "2026-11-07.1",
+  "seedVersion": "2026-11-07.2",
   "invoices": "/seed/invoices.csv",
   "customers": "/seed/customers.csv",
   "payments": "/seed/payments.csv",
