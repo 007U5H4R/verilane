@@ -21,6 +21,7 @@ import { runExecuteAgentFor } from "@/store/executeAgent";
 import { submitAllocationGated } from "@/store/tx";
 import { ExceptionDetailContent, ExceptionDetailError, ExceptionDetailSkeleton } from "./ExceptionDetailParts";
 import { ReverseAllocationSection } from "./ReverseAllocationSection";
+import { useWriteOff } from "./WriteOffDialog";
 
 /**
  * `/exceptions/[id]` (TKT-75.02): one exception with payment evidence,
@@ -194,6 +195,8 @@ function LoadedException({
   const db = useContext(DbContext);
   const role = useRole();
   const permission = useCan("allocate_payment", { kind: "review", id: x.review_id, requires_role: x.requires_role });
+  // TKT-75.05: the Manager-only write-off (short-payment kinds only).
+  const writeOff = useWriteOff(detail);
 
   async function submit() {
     const inputs = policyInputsFor(detail);
@@ -214,26 +217,30 @@ function LoadedException({
   }
 
   return (
-    <ExceptionDetailContent
-      detail={detail}
-      selected={selected}
-      onSelect={setPicked}
-      permission={permission}
-      busy={busy}
-      onSubmit={() => void submit()}
-      policyDecision={policy.policyDecision}
-      policyError={policy.policyError}
-      policyStale={policy.policyStale}
-      policyGate={{
-        decision: policy.policyDecision,
-        stale: policy.policyStale,
-        error: policy.policyError,
-        role,
-        executeRefused: execute.executeOutcome?.kind === "refused",
-      }}
-      executeOutcome={execute.executeOutcome}
-      executeError={execute.executeError}
-    />
+    <>
+      <ExceptionDetailContent
+        detail={detail}
+        selected={selected}
+        onSelect={setPicked}
+        permission={permission}
+        busy={busy}
+        onSubmit={() => void submit()}
+        policyDecision={policy.policyDecision}
+        policyError={policy.policyError}
+        policyStale={policy.policyStale}
+        policyGate={{
+          decision: policy.policyDecision,
+          stale: policy.policyStale,
+          error: policy.policyError,
+          role,
+          executeRefused: execute.executeOutcome?.kind === "refused",
+        }}
+        executeOutcome={execute.executeOutcome}
+        executeError={execute.executeError}
+        writeOff={writeOff.control}
+      />
+      {writeOff.dialog}
+    </>
   );
 }
 
