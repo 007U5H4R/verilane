@@ -495,14 +495,17 @@ export interface ExceptionDetail {
    * Stage 1 (Recommend Agent, TKT-75.03/F15): verified facts over the
    * already-fetched `payments`/`invoices`/candidate customer — pure, no I/O.
    * `undefined` for a non-payment-exception kind, and for short-payment
-   * kinds (TKT-75.05): they carry no `payment_id`, so Recommend's bank-line
-   * lookup would always reject — never a misleading rejected recommendation.
+   * kinds (TKT-75.05): Recommend allocates a bank line to candidate
+   * invoices, which a short payment has none of (a `short_payment_pattern`
+   * also has no `payment_id`; a single `short_payment` does) — never a
+   * misleading rejected recommendation.
    */
   recommendation?: Result<RecommendedFacts, Rejected>;
   /**
    * Short-payment kinds only (TKT-75.05, Design §8): the customer's other
-   * short payments — the pattern's own linked instances, or (for a
-   * standalone instance) empty. Drives the detail page's history section.
+   * short payments — the pattern's own linked instances; for a patterned
+   * instance, its pattern row; for a standalone instance, empty. Drives the
+   * detail page's history section.
    */
   shortPaymentInstances: Exception[];
   /**
@@ -563,8 +566,9 @@ export function useException(id: string): ExceptionDetail | undefined | null {
         outstandingPaise: outstandingOf(invoice, { payments }),
       });
     }
-    // Recommend is payment-only (F15): short-payment kinds have no
-    // `payment_id`, so this call would always reject (TKT-75.05 skip).
+    // Recommend is for unallocated bank lines (F15). Short-payment kinds are
+    // skipped (TKT-75.05): they have no candidate invoices, and a pattern has
+    // no `payment_id` (a single `short_payment` does).
     const recommendation = isPaymentExceptionKind(exception.kind) && !isShortPaymentKind(exception.kind)
       ? recommendForException(exception, payments, invoices, candidates[0]?.customer)
       : undefined;
