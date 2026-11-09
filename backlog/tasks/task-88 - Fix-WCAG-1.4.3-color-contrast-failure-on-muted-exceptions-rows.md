@@ -1,10 +1,10 @@
 ---
 id: TASK-88
 title: Fix WCAG 1.4.3 color-contrast failure on muted /exceptions rows
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-09 07:57'
-updated_date: '2026-11-09 07:57'
+updated_date: '2026-11-09 08:25'
 labels:
   - P1
 dependencies: []
