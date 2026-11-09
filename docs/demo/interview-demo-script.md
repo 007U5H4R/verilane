@@ -68,7 +68,7 @@
 **Click:** Audit Log, and set Rows per page to 50.
 **Show:**
 - the Recommend and Policy evaluations;
-- two `allocate_payment` rows: P-012 by "Execute Agent" and P-013 by "Manager";
+- two `allocate_payment` rows: P-012 as "Execute Agent allocated payment" by the System actor, and P-013 by "Manager";
 - the draft generated for the disputed invoice, with "8 of 9 checks pass";
 - no submitted draft.
 
