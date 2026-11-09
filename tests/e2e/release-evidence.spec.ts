@@ -8,10 +8,10 @@ import AxeBuilder from "@axe-core/playwright";
 //   TC-75.48 1280 / 1024 / 768 / 375 screenshots, no horizontal scroll
 //   TC-75.49 axe clean (no serious/critical), keyboard path, focus order
 // Screenshots and JSON land in the release evidence pack under a label
-// (RELEASE_LABEL, default `base-a3a0f14`) so the final post-79.5/79.8 run can
+// (RELEASE_LABEL, default `base-f561490`) so the final post-79.5 run can
 // sit beside this one. Writing evidence never fails a test.
 
-const LABEL = process.env.RELEASE_LABEL ?? "base-a3a0f14";
+const LABEL = process.env.RELEASE_LABEL ?? "base-f561490";
 const PACK = `/Volumes/E Drive/Dev/.scratch/task75/release/${LABEL}`;
 const ID = "RV-PAY-P-012";
 const OFFLINE = "You're offline — viewing cached data; some actions are paused";
@@ -76,7 +76,7 @@ test("TC-75.47: Home NSM — page states, NSM empty / working / error, and offli
   // NSM empty: a fresh session has resolved nothing.
   await open(page, "/");
   await expect(page.locator('[data-state="working"]')).toBeVisible();
-  await expect(nsm.locator("[data-nsm-state]")).toHaveAttribute("data-nsm-state", "empty");
+  await expect(nsm).toHaveAttribute("data-nsm-state", "empty");
   await expect(nsm).toContainText("No exceptions resolved yet this session.");
   await expect(page.getByTestId("home-nsm-value")).toHaveText("₹0.00");
   await shot(page, `states-nsm-empty-${p}`);
@@ -85,7 +85,7 @@ test("TC-75.47: Home NSM — page states, NSM empty / working / error, and offli
   await open(page, `/exceptions/${ID}`);
   await expect(page.getByTestId("exception-status")).toHaveText("Resolved");
   await open(page, "/");
-  await expect(nsm.locator("[data-nsm-state]")).toHaveAttribute("data-nsm-state", "working");
+  await expect(nsm).toHaveAttribute("data-nsm-state", "working");
   await expect(page.getByTestId("home-nsm-value")).toHaveText("₹25,000.00");
   await shot(page, `states-nsm-working-${p}`);
 
@@ -213,6 +213,7 @@ test("TC-75.48: 1280/1024/768/375 — screenshots and no horizontal scroll", asy
 test("TC-75.49: axe — no serious or critical violations at 1280 and 375", async ({ page }, info) => {
   test.setTimeout(120_000);
   const found: string[] = [];
+  const details: { node: string; summary: string | undefined }[] = [];
   const results: { route: string; width: number; violations: { id: string; impact: string | null | undefined; nodes: number }[] }[] = [];
   for (const vp of [WIDTHS[0], WIDTHS[3]]) {
     await page.setViewportSize(vp);
@@ -228,11 +229,15 @@ test("TC-75.49: axe — no serious or critical violations at 1280 and 375", asyn
       });
       for (const v of violations) {
         if (v.impact !== "serious" && v.impact !== "critical") continue;
-        for (const n of v.nodes) found.push(`${r.href} @${vp.width} ${v.id} (${v.impact}) ${n.target.join(" ")}`);
+        for (const n of v.nodes) {
+          const node = `${r.href} @${vp.width} ${v.id} (${v.impact}) ${n.target.join(" ")}`;
+          found.push(node);
+          details.push({ node, summary: n.failureSummary });
+        }
       }
     }
   }
-  save(`TC-75.49-axe-${info.project.name}.json`, { found, results });
+  save(`TC-75.49-axe-${info.project.name}.json`, { found, details, results });
   expect(found).toEqual([]);
 });
 
@@ -249,6 +254,7 @@ interface Stop {
   name: string;
   x: number;
   y: number;
+  h: number;
   inMain: boolean;
   outline: string;
 }
@@ -267,6 +273,7 @@ async function focusOrder(page: Page, steps: number): Promise<Stop[]> {
         name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 60),
         x: Math.round(r.left + window.scrollX),
         y: Math.round(r.top + window.scrollY),
+        h: Math.round(r.height),
         inMain: el.closest("main") !== null,
         outline: `${cs.outlineStyle} ${cs.outlineWidth} | ${cs.boxShadow === "none" ? "no-shadow" : "shadow"}`,
       };
@@ -300,11 +307,12 @@ test("TC-75.49: keyboard path Exceptions → P-012 and a top-to-bottom focus ord
   save(`TC-75.49-focus-order-${info.project.name}.json`, { detail, list });
 
   // Inside <main>, every Tab moves down the page or along the same line —
-  // never back up (2px tolerance for baseline differences in a row).
+  // never back up. "Back up" means the new stop sits wholly above the
+  // previous one; a radio and its label link on one row differ by a few px.
   for (const [name, stops] of [["detail", detail], ["list", list]] as const) {
     const main = stops.filter((s) => s.inMain);
     expect(main.length, `${name}: Tab reaches main content`).toBeGreaterThan(0);
-    const backwards = main.slice(1).filter((s, i) => s.y < main[i]!.y - 2);
+    const backwards = main.slice(1).filter((s, i) => s.y + s.h <= main[i]!.y);
     expect(backwards, `${name}: focus order follows the visual order`).toEqual([]);
   }
   // Back-link is a real control that does something.
