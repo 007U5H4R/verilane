@@ -1,9 +1,10 @@
 ---
 id: TASK-79
 title: Build the ExceptionOS v2 scope change
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-05 04:42'
+updated_date: '2026-11-05 09:40'
 labels:
   - P1
 dependencies: []
