@@ -122,6 +122,22 @@ describe("approve_write_off — TC-75.29 (standalone instance)", () => {
     expect(event.summary).toBe("Approved write-off of ₹500.00 (1 credit note: CN-INV-004)");
   });
 
+  it("the audit event records the instance's real end status: open → actioned (regression)", async () => {
+    await asRole("manager");
+    await execute(db, writeOff(STANDALONE));
+
+    const audit = await db.audit.toArray();
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({
+      action: "approve_write_off",
+      subject: `review:${STANDALONE}`,
+      before: { status: "open" },
+      after: { status: "actioned", credit_note_ids: ["CN-INV-004"], amount_paise: 50_000 },
+    });
+    // The audit's `after` agrees with the persisted row.
+    expect((await db.exceptions.get(STANDALONE))?.status).toBe(audit[0]?.after?.status);
+  });
+
   it("a second write-off attempt on an already-written-off instance is refused, nothing written", async () => {
     await asRole("manager");
     await execute(db, writeOff(STANDALONE));
