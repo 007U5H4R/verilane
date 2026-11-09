@@ -64,6 +64,9 @@ export const PaymentSchema = z.object({
   // carries neither (a v1 row is unchanged). Never fuzzy-matched.
   payer_customer_id: z.string().min(1).optional(),
   remittance_reference: z.string().min(1).optional(),
+  // TASK-79.5 (FS18): the reason the payer gave for paying short, verbatim.
+  // Absent means no reason was stated — never inferred (EXE150).
+  deduction_reason: z.string().min(1).optional(),
 });
 export type Payment = z.infer<typeof PaymentSchema>;
 

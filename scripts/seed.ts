@@ -48,6 +48,9 @@
  * | FS15 exceeds open balance        | P-014 ₹3,10,000 from C-004 (open ₹2,90,000)  | —                  |
  * | FS16 mistyped reference          | P-015 cites "INV-1O37" (letter O), ₹88,000   | —                  |
  * | FS17 untraceable cash            | P-016 ₹61,500, no payer, no reference        | —                  |
+ * | FS19 short-payment pattern       | C-001: P-001..P-003 each ₹1,000 short (54 d) | —                  |
+ * | FS18 short payment, no reason    | P-002 (no deduction_reason)                  | —                  |
+ * | Short, no pattern (negative)     | C-002: P-004, P-005 each ₹500 short          | —                  |
  * | Not yet due (G6)                 | 1047, 1048, 1049                             | —                  |
  *
  * Paid history sets each customer's average days late (Architecture.md §5):
@@ -57,7 +60,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const SEED_VERSION = "2026-11-07.1";
+export const SEED_VERSION = "2026-11-07.2";
 export const SEED_AS_OF = "2026-10-30";
 const PRNG_SEED = 20261030;
 
@@ -99,7 +102,10 @@ export type EdgeCase =
   | "FS14"
   | "FS15"
   | "FS16"
-  | "FS17";
+  | "FS17"
+  // TKT-75.05: short payments (FS18 no stated reason, FS19 a 90-day pattern).
+  | "FS18"
+  | "FS19";
 
 export interface CustomerSpec {
   customer_id: string;
@@ -788,6 +794,28 @@ export const PAYMENT_FIXTURES: PaymentFixtureSpec[] = [
   { payment_id: "P-016", paid_days_ago: 4, amount_rupees: 61_500, edge_cases: ["FS17"] },
 ];
 
+/**
+ * TKT-75.05 (FS18/FS19): existing paid-history lines settled short. Applied
+ * after every row is built and keyed by the payment's own id, so no row moves;
+ * only the amount drops and the stated reason is written.
+ */
+export interface ShortPaymentSpec {
+  payment_id: string;
+  short_by_rupees: number;
+  deduction_reason?: string;
+  edge_cases: EdgeCase[];
+}
+
+export const SHORT_PAYMENT_FIXTURES: ShortPaymentSpec[] = [
+  // C-001: three short payments 54 days apart -> one pattern (FS19).
+  { payment_id: "P-001", short_by_rupees: 1_000, deduction_reason: "Pricing difference against the agreed rate card", edge_cases: ["FS19"] },
+  { payment_id: "P-002", short_by_rupees: 1_000, edge_cases: ["FS18", "FS19"] },
+  { payment_id: "P-003", short_by_rupees: 1_000, deduction_reason: "Damaged goods deduction", edge_cases: ["FS19"] },
+  // C-002: only two short payments -> no pattern.
+  { payment_id: "P-004", short_by_rupees: 500, deduction_reason: "Late delivery penalty", edge_cases: [] },
+  { payment_id: "P-005", short_by_rupees: 500, deduction_reason: "Late delivery penalty", edge_cases: [] },
+];
+
 export function generateSeed(): SeedFiles {
   const rand = mulberry32(PRNG_SEED);
   const randInt = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
@@ -882,6 +910,14 @@ export function generateSeed(): SeedFiles {
   }
   // Every row carries the two optional TKT-75.08 columns (blank on v1 rows).
   for (const row of paymentRows) while (row.length < 6) row.push(null);
+  for (const s of SHORT_PAYMENT_FIXTURES) {
+    const row = paymentRows.find((r) => r[0] === s.payment_id);
+    if (row === undefined) throw new Error(`short-payment fixture ${s.payment_id} names no payment`);
+    row[3] = (row[3] as number) - s.short_by_rupees * 100;
+    row[6] = s.deduction_reason ?? null;
+  }
+  // ...and the TKT-75.05 deduction_reason column.
+  for (const row of paymentRows) while (row.length < 7) row.push(null);
 
   const customersCsv = toCsv(
     ["customer_id", "name", "contact_emails", "payment_terms_days", "segment"],
@@ -907,7 +943,7 @@ export function generateSeed(): SeedFiles {
   );
 
   const paymentsCsv = toCsv(
-    ["payment_id", "invoice_id", "paid_on", "amount_paise", "payer_customer_id", "remittance_reference"],
+    ["payment_id", "invoice_id", "paid_on", "amount_paise", "payer_customer_id", "remittance_reference", "deduction_reason"],
     paymentRows,
   );
 

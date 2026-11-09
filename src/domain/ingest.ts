@@ -144,6 +144,7 @@ function ingestPayments(rows: Row[], dataIssues: DataIssue[]): Payment[] {
         amount_paise: strictInt(field(row, "amount_paise")),
         ...optionalField(row, "payer_customer_id"),
         ...optionalField(row, "remittance_reference"),
+        ...optionalField(row, "deduction_reason"),
       };
       return validRow(PaymentSchema, candidate, candidate.payment_id, dataIssues);
     })
