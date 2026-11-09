@@ -128,6 +128,7 @@ E2E runs against a **production build compiled with test hooks**, so `build:e2e`
 pnpm build:e2e && pnpm e2e --workers=1
 ```
 
+- **Preflight** — `tests/e2e/global-setup.ts` stops the run in seconds if `.next` is a plain `pnpm build` (no `window.__verilane`; rerun `pnpm build:e2e`) or if the reused server on `E2E_PORT` serves another build (a stale `next start` from another worktree). `E2E_ALLOW_PLAIN_BUILD=1` skips the build check for specs that run on a plain build, such as `trust-walk.spec.ts`.
 - **Use `--workers=1`.** Parallel workers have proven flaky on the development machine; every recorded green e2e run used a single worker.
 - **Port** — Playwright starts `pnpm start` on port 3100 and will reuse a server that's already running there. Set `E2E_PORT` to use another port, e.g. `E2E_PORT=3113 pnpm e2e --workers=1`.
 - **Browsers and temp files** — by default both stay inside the repo, under `node_modules/.cache/playwright` (gitignored, on the repo's own disk). `playwright.config.ts` sets this, so nothing lands in the OS browser cache or temp dir. On a fresh checkout, install Chromium there once:

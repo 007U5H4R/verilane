@@ -18,6 +18,9 @@ const port = process.env.E2E_PORT ?? "3100";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // Runs after webServer is up: fails fast on a plain (non-e2e) .next build or
+  // a reused server that is serving some other build (scripts/e2e-preflight.ts).
+  globalSetup: "./tests/e2e/global-setup.ts",
   // TASK-45.2 (TP-45.h): the splash A/B is slow and noisy, so it runs only via
   // `pnpm e2e:splash-perf` (SPLASH_PERF=1), never in the default `pnpm e2e`.
   ...(process.env.SPLASH_PERF === "1" ? { grep: /@splash-perf/ } : { grepInvert: /@splash-perf/ }),
