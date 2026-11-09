@@ -50,6 +50,8 @@ const BASELINE = {
   allocate_payment: { subject: review({ review_kind: "unallocated_payment" }), analyst: true, manager: true },
   // TKT-75.06 (S45, TC-75.33): reversing an allocation is Manager-only.
   reverse_allocation: { subject: review({ review_kind: "unallocated_payment" }), analyst: false, manager: true },
+  // TKT-75.05 (R4, TC-75.29): approving a write-off issues a CreditNote; Manager-only.
+  approve_write_off: { subject: review({ review_kind: "short_payment_pattern" }), analyst: false, manager: true },
   import_csv: { subject: sys, analyst: true, manager: true },
   reset_demo: { subject: sys, analyst: true, manager: true },
   switch_role: { subject: sys, analyst: true, manager: true },

@@ -29,6 +29,7 @@ const KEY: Record<Exclude<TableName, "invoices">, string> = {
   disputes: "dispute_id",
   exceptions: "review_id",
   payments: "payment_id",
+  creditNotes: "credit_note_id",
   meta: "key",
 };
 
@@ -126,8 +127,16 @@ function dexieDataOps(db: VerilaneDb, recompute: typeof Recompute): DataOps {
 
 /** Commands that rewrite source or derived tables need every table in scope. */
 // allocate_payment writes a ledger row, then re-derives every table (EXE125).
-// reverse_allocation is its inverse (TKT-75.06).
-const WHOLE_DB: ReadonlySet<string> = new Set(["import_csv", "reset_demo", "set_as_of", "allocate_payment", "reverse_allocation"]);
+// reverse_allocation is its inverse (TKT-75.06); approve_write_off writes the
+// creditNotes table alongside the review item(s) it actions (TKT-75.05).
+const WHOLE_DB: ReadonlySet<string> = new Set([
+  "import_csv",
+  "reset_demo",
+  "set_as_of",
+  "allocate_payment",
+  "reverse_allocation",
+  "approve_write_off",
+]);
 
 /** The persisted role (`meta.role`), defaulting to Analyst. */
 export async function currentRole(db: VerilaneDb): Promise<Role> {

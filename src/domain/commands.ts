@@ -54,6 +54,7 @@ import {
   RESOLUTION_LABELS,
 } from "./disputes/model";
 import { buildDraft, factsFor, locateFootnotes } from "./draft";
+import { isShortPaymentKind } from "./shortPayments";
 import { VerifiedFactSchema, type Extraction, type VerifiedFact } from "./schema";
 import { draftContextFor, validate, type DraftSources } from "./validate";
 
@@ -69,7 +70,7 @@ export {
 } from "./commandConstants";
 
 export type Row = Record<string, unknown>;
-export type TableName = "invoices" | "drafts" | "disputes" | "exceptions" | "payments" | "meta";
+export type TableName = "invoices" | "drafts" | "disputes" | "exceptions" | "payments" | "creditNotes" | "meta";
 
 
 /**
@@ -178,6 +179,7 @@ const SUBJECT_KIND: Record<Action, SubjectKind> = {
   reconcile_decide: "review",
   allocate_payment: "review",
   reverse_allocation: "review",
+  approve_write_off: "review",
   import_csv: "system",
   reset_demo: "system",
   switch_role: "system",
@@ -601,6 +603,7 @@ const HANDLERS: Record<Action, Handler> = {
   reconcile_decide: (ctx) => reconcileDecide(ctx),
   allocate_payment: (ctx) => allocatePayment(ctx),
   reverse_allocation: (ctx) => reverseAllocation(ctx),
+  approve_write_off: (ctx) => approveWriteOff(ctx),
 
   generate_draft: (ctx) => generateDraft(ctx),
 
@@ -892,8 +895,79 @@ async function reverseAllocation(ctx: Ctx): Promise<Effect> {
   };
 }
 
+// --- Short-payment write-off (TKT-75.05, EXE150-159) ------------------------
+
+/**
+ * R4, Manager only: writes one `CreditNote` per short-payment instance the
+ * subject names — itself for a `short_payment`, or every linked instance for
+ * a `short_payment_pattern` — and actions each instance plus the subject, all
+ * in this one transaction. A credit note already on record for an invoice
+ * refuses the whole write-off before anything is written (no partial state).
+ */
+async function approveWriteOff(ctx: Ctx): Promise<Effect> {
+  const row = ctx.row ?? {};
+  if (typeof row.kind !== "string" || !isShortPaymentKind(row.kind)) {
+    throw new InvalidCommand("Only a short payment or its pattern can be written off.");
+  }
+  requireOpen(ctx);
+  const linked = Array.isArray(row.linked_review_ids) ? (row.linked_review_ids as string[]) : [];
+  const targetIds = row.kind === "short_payment_pattern" ? linked : [ctx.cmd.subject.id];
+  if (targetIds.length === 0) {
+    throw new InvalidCommand(`No short-payment instances are linked to ${ctx.cmd.subject.id}.`);
+  }
+
+  const targets: Row[] = [];
+  for (const id of targetIds) {
+    const instanceRow = await ctx.tx.get("exceptions", id);
+    if (!instanceRow) throw new InvalidCommand(`No exception ${id}.`);
+    if (status(instanceRow) !== "open") {
+      throw new InvalidCommand(`Review item ${id} is closed.`);
+    }
+    const invoiceId = str(instanceRow.invoice_id);
+    const existing = invoiceId !== undefined ? await ctx.tx.get("creditNotes", `CN-${invoiceId}`) : undefined;
+    if (existing) throw new InvalidCommand(`A credit note already exists for ${invoiceId}.`);
+    targets.push(instanceRow);
+  }
+
+  const creditNoteIds: string[] = [];
+  let totalPaise = 0;
+  for (const t of targets) {
+    const invoiceId = str(t.invoice_id);
+    if (invoiceId === undefined) throw new InvalidCommand(`Short payment ${String(t.review_id)} has no invoice.`);
+    const amount = t.deducted_paise;
+    if (typeof amount !== "number" || !Number.isInteger(amount)) {
+      throw new InvalidCommand(`Short payment ${String(t.review_id)} has no deducted amount.`);
+    }
+    const creditNoteId = `CN-${invoiceId}`;
+    await ctx.tx.put("creditNotes", {
+      credit_note_id: creditNoteId,
+      invoice_id: invoiceId,
+      customer_id: t.customer_id,
+      amount_paise: amount,
+      reason: str(t.deduction_reason) ?? "No reason stated",
+      approved_by: "manager",
+      created_at: ctx.tx.now(),
+      exception_id: t.review_id,
+    });
+    creditNoteIds.push(creditNoteId);
+    totalPaise += amount;
+    await step({ ...ctx, row: t }, "review", "exceptions", ["action"]);
+  }
+
+  const subjectBefore = status(row);
+  const subjectTo =
+    row.kind === "short_payment_pattern" ? (await step(ctx, "review", "exceptions", ["action"])).to : subjectBefore;
+
+  return {
+    summary: `Approved write-off of ${formatInr(paise(totalPaise))} (${creditNoteIds.length} credit note${creditNoteIds.length === 1 ? "" : "s"}: ${creditNoteIds.join(", ")})`,
+    before: { status: subjectBefore },
+    after: { status: subjectTo, credit_note_ids: creditNoteIds, amount_paise: totalPaise },
+    evidence_ids: Array.isArray(row.evidence_ids) ? (row.evidence_ids as string[]) : [],
+  };
+}
+
 /** Commands whose refusal is itself audited (FS21, EXE141); v1 denials are not. */
-export const AUDITED_REFUSALS: ReadonlySet<Action> = new Set<Action>(["reverse_allocation"]);
+export const AUDITED_REFUSALS: ReadonlySet<Action> = new Set<Action>(["reverse_allocation", "approve_write_off"]);
 
 /**
  * Records a refused command as one `permission_denied` event. The store runs
