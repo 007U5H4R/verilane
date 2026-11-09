@@ -81,7 +81,7 @@ export function ExceptionCards({ rows }: { rows: readonly ExceptionRow[] }) {
             className={cn(
               GRID,
               "flex min-h-16 min-w-0 flex-col gap-1 rounded-lg border border-border bg-surface px-4 py-3 shadow-card",
-              r.muted && "opacity-60",
+              r.muted && "bg-surface-sunken",
             )}
           >
             <div className="flex min-w-0 items-center justify-between gap-2 lg:contents">
