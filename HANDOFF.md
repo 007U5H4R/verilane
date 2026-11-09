@@ -12,7 +12,7 @@
 - 79.1 (schema/prefactor) — **Done**, reviewed and approved. Commit `1416a6a`.
 - 79.2 (tracer: unallocated payment end-to-end) — **Done**, reviewed and approved (reviewer: APPROVE, one non-blocking doc nit). Verdict: `docs/verdict-TKT-75.02.md` (GO). Close-out commit `5426df1`.
 - **A1 (Design/Discovery amendment, true auto-execute) — APPROVED by user** 2026-11-05 ("A1 is also approved"). Recorded as EXE129. `Design-TASK-75.md` §25 and `Discovery-PRD-TASK-75.md` F15 both updated to reflect approval. TASK-79.4 is unblocked (still waiting on 79.3).
-- Next free EXE: **EXE130**.
+- Next free EXE: **EXE132** (79.3 used EXE130–131; ranges 140s=79.6, 160s=79.8, 170s=79.7, 180s=79.4 are reserved — see ledger).
 - Wave plan: W1 79.2 (done) → **W2 79.3 then 79.6 (sequential, not parallel — file overlap found on `permissions.ts` and the `/exceptions/[id]` detail page)** → W3 {79.4 ∥ 79.8} → W4 79.5 → W5 79.7 → 79.9. Re-check file overlap before every parallel pair.
 - TASK-87 (CI workflow, unrelated side quest) shipped separately on `main`, merged and deployed — not part of this branch.
 

@@ -17,7 +17,7 @@
 ## Entry gates
 
 - **G0 — TASK-45 and TASK-46 Done in Campfire** (Solution-PRD §2.8, §6 DoD 6, S46). No TASK-75 branch is opened before both show Done. At sign-off (2026-11-05) open: 45.5, 45.6, 45.8, 45.10, 46.4, 46.7, 46.8. Planning (Stage 5) may proceed; execution (Stage 6) may not.
-- **A1 — Design/Discovery amendment for auto-execute (blocks TKT-75.04).** Drafted in TKT-75.01, approved by the user before TKT-75.04 starts. Content:
+- **A1 — Design/Discovery amendment for auto-execute (blocks TKT-75.04). APPROVED by the user 2026-11-05 ("A1 Amendment approved").** Content:
   1. Design §4 Stage 3 copy: `auto_permitted` → "Executed by Execute agent · {time} · policy v{n}" (not "Awaiting analyst approval").
   2. Design §11 action bar matrix: `auto_permitted` → resolved, button disabled "Already resolved"; `needs_analyst` → Analyst "Submit for approval" enabled; `needs_manager` → disabled for Analyst ("Manager approval required"), enabled for Manager; `blocked` → disabled with the policy reason.
   3. Design §11: Manager-only **"Reverse allocation"** control on a resolved allocation (F16). This is a new button, which the freeze sends back to design review, so A1 covers it explicitly.
